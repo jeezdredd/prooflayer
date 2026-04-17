@@ -1,0 +1,49 @@
+[project]
+name = "prooflayer"
+version = "0.1.0"
+description = "Content verification SaaS platform"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.1,<5.2",
+    "djangorestframework>=3.15,<3.16",
+    "djangorestframework-simplejwt>=5.4,<6.0",
+    "django-cors-headers>=4.6,<5.0",
+    "celery[redis]>=5.4,<5.5",
+    "redis>=5.2,<6.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "Pillow>=11.0,<12.0",
+    "python-magic>=0.4.27,<0.5",
+    "gunicorn>=23.0,<24.0",
+    "django-storages>=1.14,<2.0",
+    "whitenoise>=6.8,<7.0",
+    "django-filter>=24.0,<25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9.0",
+    "pytest-django>=4.9,<5.0",
+    "factory-boy>=3.3,<4.0",
+    "pytest-cov>=6.0,<7.0",
+    "ruff>=0.8,<1.0",
+    "django-debug-toolbar>=5.0,<6.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.dev"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests as slow",
+]
+pythonpath = ["backend"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["backend"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
