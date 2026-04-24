@@ -42,6 +42,7 @@ class SubmissionListSerializer(serializers.ModelSerializer):
 class SubmissionDetailSerializer(serializers.ModelSerializer):
     analysis_results = serializers.SerializerMethodField()
     similar_submissions = serializers.SerializerMethodField()
+    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -58,11 +59,20 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "is_known_fake",
             "phash",
             "dhash",
+            "file_url",
             "analysis_results",
             "similar_submissions",
             "created_at",
             "updated_at",
         )
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if obj.file:
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
 
     def get_analysis_results(self, obj):
         from analyzers.serializers import AnalysisResultSerializer

@@ -45,7 +45,7 @@ export default function ResultPage() {
       </div>
       <ResultCard submission={submission} />
       {submission.status === "completed" && (
-        <VotingPanel submissionId={submission.id} />
+        <VotingPanel submissionId={submission.id} fileUrl={submission.file_url} />
       )}
     </div>
   );

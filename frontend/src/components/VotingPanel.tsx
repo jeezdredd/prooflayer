@@ -3,6 +3,7 @@ import { useVoteStats, useCastVote } from "../hooks/useCrowdsource";
 
 interface VotingPanelProps {
   submissionId: string;
+  fileUrl?: string | null;
 }
 
 const VOTE_OPTIONS = [
@@ -11,7 +12,7 @@ const VOTE_OPTIONS = [
   { value: "uncertain", label: "Uncertain", color: "gray" },
 ] as const;
 
-export default function VotingPanel({ submissionId }: VotingPanelProps) {
+export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps) {
   const { data: stats } = useVoteStats(submissionId);
   const { mutate: castVote, isPending } = useCastVote();
 
@@ -23,6 +24,15 @@ export default function VotingPanel({ submissionId }: VotingPanelProps) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 mt-4">
+      {fileUrl && (
+        <div className="mb-4 flex justify-center">
+          <img
+            src={fileUrl}
+            alt="Submission"
+            className="max-h-64 max-w-full rounded-lg object-contain border border-gray-100"
+          />
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-gray-700">Community Verdict</h4>
         {stats && (

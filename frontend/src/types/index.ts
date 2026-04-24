@@ -40,6 +40,7 @@ export interface Submission {
   final_score: number | null;
   final_verdict: string;
   is_known_fake: boolean;
+  file_url: string | null;
   analysis_results: AnalysisResult[];
   created_at: string;
   updated_at: string;
