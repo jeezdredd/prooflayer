@@ -23,8 +23,6 @@ app.conf.task_default_routing_key = "default"
 
 app.conf.task_routes = {
     "content.tasks.*": {"queue": "default"},
-    "analyzers.tasks.run_analyzer": {"queue": "default"},
-    "analyzers.tasks.run_ml_analyzer": {"queue": "ml"},
     "analyzers.tasks.aggregate_verdicts": {"queue": "default"},
 }
 

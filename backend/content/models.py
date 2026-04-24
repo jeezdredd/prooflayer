@@ -33,6 +33,8 @@ class Submission(models.Model):
     final_score = models.FloatField(null=True, blank=True)
     final_verdict = models.CharField(max_length=30, blank=True)
     is_known_fake = models.BooleanField(default=False)
+    phash = models.BigIntegerField(null=True, blank=True, db_index=True)
+    dhash = models.BigIntegerField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

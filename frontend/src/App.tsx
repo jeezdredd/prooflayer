@@ -8,6 +8,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UploadPage from "./pages/UploadPage";
 import ResultPage from "./pages/ResultPage";
+import DashboardPage from "./pages/DashboardPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/upload" element={<UploadPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/results/:id" element={<ResultPage />} />
         </Route>
       </Route>

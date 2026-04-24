@@ -10,9 +10,21 @@ interface AuthState {
   hydrate: () => void;
 }
 
+function loadFromStorage(): Pick<AuthState, "user" | "isAuthenticated"> {
+  try {
+    const tokens = localStorage.getItem("tokens");
+    const userStr = localStorage.getItem("user");
+    if (tokens && userStr) {
+      return { user: JSON.parse(userStr), isAuthenticated: true };
+    }
+  } catch {
+    // ignore
+  }
+  return { user: null, isAuthenticated: false };
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
+  ...loadFromStorage(),
 
   setUser: (user) => {
     localStorage.setItem("user", JSON.stringify(user));
@@ -30,10 +42,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   hydrate: () => {
-    const tokens = localStorage.getItem("tokens");
-    const userStr = localStorage.getItem("user");
-    if (tokens && userStr) {
-      set({ user: JSON.parse(userStr), isAuthenticated: true });
-    }
+    set(loadFromStorage());
   },
 }));

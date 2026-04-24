@@ -54,17 +54,28 @@ class MetadataAnalyzer(BaseAnalyzer):
         if evidence["metadata_presence"]["stripped"]:
             flags.append("metadata_stripped")
 
+        strong_flags = [f for f in flags if f != "metadata_stripped"]
+
         if "ai_tool_signature" in flags:
             confidence = 0.9
             verdict = "fake"
-        elif len(flags) >= 2:
+        elif len(strong_flags) >= 2:
+            confidence = 0.8
+            verdict = "suspicious"
+        elif len(strong_flags) == 1 and "metadata_stripped" in flags:
             confidence = 0.7
             verdict = "suspicious"
-        elif len(flags) == 1:
-            confidence = 0.5
-            verdict = "suspicious"
-        else:
+        elif len(strong_flags) == 1:
             confidence = 0.6
+            verdict = "suspicious"
+        elif "metadata_stripped" in flags:
+            confidence = 0.4
+            verdict = "suspicious"
+        elif metadata.get("exif"):
+            confidence = 0.8
+            verdict = "authentic"
+        else:
+            confidence = 0.5
             verdict = "authentic"
 
         evidence["flags"] = flags

@@ -46,12 +46,20 @@ export default function UploadPage() {
       {isComplete && submission && (
         <div className="mt-6">
           <ResultCard submission={submission} />
-          <button
-            onClick={reset}
-            className="mt-4 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
-          >
-            Verify another file
-          </button>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={reset}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+            >
+              Verify another file
+            </button>
+            <button
+              onClick={() => navigate(`/results/${submission.id}`)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            >
+              View full result →
+            </button>
+          </div>
         </div>
       )}
     </div>

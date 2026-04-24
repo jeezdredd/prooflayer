@@ -2,9 +2,12 @@ import client from "./client";
 import type {
   AuthResponse,
   PaginatedResponse,
+  Report,
   Submission,
   SubmissionListItem,
   User,
+  Vote,
+  VoteStats,
 } from "../types";
 
 export const auth = {
@@ -36,9 +39,23 @@ export const content = {
     });
   },
 
-  list: () => client.get<PaginatedResponse<SubmissionListItem>>("/content/submissions/"),
+  list: (params?: Record<string, string>) =>
+    client.get<PaginatedResponse<SubmissionListItem>>("/content/submissions/", { params }),
 
   detail: (id: string) => client.get<Submission>(`/content/submissions/${id}/`),
 
   delete: (id: string) => client.delete(`/content/submissions/${id}/`),
+};
+
+export const crowdsource = {
+  vote: (data: { submission: string; value: string }) =>
+    client.post<Vote>("/crowdsource/votes/", data),
+
+  stats: (submissionId: string) =>
+    client.get<VoteStats>(`/crowdsource/votes/stats/${submissionId}/`),
+};
+
+export const reports = {
+  create: (data: { submission: string; reason: string; description?: string }) =>
+    client.post<Report>("/reports/", data),
 };

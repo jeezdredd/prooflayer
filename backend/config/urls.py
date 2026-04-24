@@ -8,6 +8,8 @@ urlpatterns = [
     path("api/v1/auth/", include("users.urls")),
     path("api/v1/content/", include("content.urls")),
     path("api/v1/analyzers/", include("analyzers.urls")),
+    path("api/v1/crowdsource/", include("crowdsource.urls")),
+    path("api/v1/reports/", include("reports.urls")),
 ]
 
 if settings.DEBUG:

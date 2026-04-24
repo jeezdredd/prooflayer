@@ -14,6 +14,15 @@ class SubmissionViewSet(
     viewsets.GenericViewSet,
 ):
     lookup_field = "id"
+    filterset_fields = {
+        "status": ["exact"],
+        "final_verdict": ["exact"],
+        "is_known_fake": ["exact"],
+        "created_at": ["gte", "lte"],
+    }
+    search_fields = ["original_filename"]
+    ordering_fields = ["created_at", "final_score", "file_size"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         return Submission.objects.filter(user=self.request.user)

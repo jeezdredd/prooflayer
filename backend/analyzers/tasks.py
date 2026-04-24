@@ -31,7 +31,12 @@ def dispatch_analysis(submission_id):
 
     tasks = []
     for config in configs:
-        tasks.append(run_analyzer.s(submission_id, config.id))
+        sig = run_analyzer.s(submission_id, config.id).set(
+            queue=config.queue,
+            soft_time_limit=config.timeout,
+            time_limit=config.timeout + 30,
+        )
+        tasks.append(sig)
 
     callback = aggregate_verdicts.s(submission_id)
     chord(group(tasks))(callback)

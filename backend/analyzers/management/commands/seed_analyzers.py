@@ -11,6 +11,22 @@ ANALYZERS = [
         "queue": "default",
         "timeout": 60,
     },
+    {
+        "name": "ela",
+        "analyzer_class": "analyzers.implementations.ela_analyzer.ELAAnalyzer",
+        "version": "1.0.0",
+        "weight": 1.5,
+        "queue": "default",
+        "timeout": 60,
+    },
+    {
+        "name": "ai_detector",
+        "analyzer_class": "analyzers.implementations.clip_detector.AIImageDetector",
+        "version": "1.0.0",
+        "weight": 2.0,
+        "queue": "ml",
+        "timeout": 120,
+    },
 ]
 
 
@@ -18,6 +34,7 @@ class Command(BaseCommand):
     help = "Seed analyzer configurations"
 
     def handle(self, *args, **options):
+        active_names = {a["name"] for a in ANALYZERS}
         for analyzer_data in ANALYZERS:
             obj, created = AnalyzerConfig.objects.update_or_create(
                 name=analyzer_data["name"],
@@ -25,3 +42,9 @@ class Command(BaseCommand):
             )
             status = "Created" if created else "Updated"
             self.stdout.write(f"{status}: {obj.name} v{obj.version}")
+
+        stale = AnalyzerConfig.objects.exclude(name__in=active_names).filter(is_active=True)
+        for config in stale:
+            config.is_active = False
+            config.save(update_fields=["is_active"])
+            self.stdout.write(f"Deactivated: {config.name}")

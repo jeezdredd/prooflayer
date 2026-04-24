@@ -5,6 +5,8 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
+    libjpeg-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -12,8 +14,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 
 COPY pyproject.toml uv.lock* /tmp/
-RUN uv pip install --system --no-cache -r /tmp/pyproject.toml
+RUN uv pip install --system --no-cache \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    -r /tmp/pyproject.toml
 
 COPY backend/ /app/
+
+RUN python -c "from transformers import AutoModelForImageClassification, AutoFeatureExtractor; AutoModelForImageClassification.from_pretrained('Nahrawy/AIorNot'); AutoFeatureExtractor.from_pretrained('Nahrawy/AIorNot')"
 
 EXPOSE 8000

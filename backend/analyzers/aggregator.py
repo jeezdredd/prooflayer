@@ -19,17 +19,22 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     weighted_score = 0.0
 
     for result in valid_results:
-        weight = result.analyzer.weight
+        effective_weight = result.analyzer.weight * result.confidence
         base_score = VERDICT_SCORES.get(result.verdict, 0.5)
-        score = base_score * result.confidence + (1 - result.confidence) * 0.5
-        weighted_score += score * weight
-        total_weight += weight
+        weighted_score += base_score * effective_weight
+        total_weight += effective_weight
 
     final_score = weighted_score / total_weight if total_weight > 0 else 0.5
 
-    verdicts = {r.verdict for r in valid_results}
-    has_disagreement = len(verdicts) > 1 and AnalysisResult.Verdict.AUTHENTIC in verdicts and (
-        AnalysisResult.Verdict.FAKE in verdicts or AnalysisResult.Verdict.SUSPICIOUS in verdicts
+    confident_results = [r for r in valid_results if r.confidence >= 0.6]
+    confident_verdicts = {r.verdict for r in confident_results}
+    has_disagreement = (
+        len(confident_verdicts) > 1
+        and AnalysisResult.Verdict.AUTHENTIC in confident_verdicts
+        and (
+            AnalysisResult.Verdict.FAKE in confident_verdicts
+            or AnalysisResult.Verdict.SUSPICIOUS in confident_verdicts
+        )
     )
 
     if has_disagreement:

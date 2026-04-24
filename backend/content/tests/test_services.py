@@ -4,8 +4,17 @@ import pytest
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from content.services import compute_sha256, extract_metadata, generate_thumbnail, check_known_fake
-from content.models import KnownFakeHash
+from analyzers.tests.factories import AnalysisResultFactory
+from content.models import KnownFakeHash, Submission
+from content.services import (
+    check_known_fake,
+    clone_analysis_results,
+    compute_sha256,
+    extract_metadata,
+    find_cached_result,
+    generate_thumbnail,
+)
+from content.tests.factories import SubmissionFactory
 
 
 class TestComputeSha256:
@@ -64,3 +73,42 @@ class TestCheckKnownFake:
 
     def test_unknown_hash(self):
         assert check_known_fake("b" * 64) is False
+
+
+@pytest.mark.django_db
+class TestFindCachedResult:
+    def test_returns_completed_match(self):
+        sub = SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.COMPLETED)
+        other = SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.PENDING)
+        result = find_cached_result("a" * 64, other.id)
+        assert result == sub
+
+    def test_excludes_self(self):
+        sub = SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.COMPLETED)
+        result = find_cached_result("a" * 64, sub.id)
+        assert result is None
+
+    def test_ignores_non_completed(self):
+        SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.PROCESSING)
+        other = SubmissionFactory(sha256_hash="a" * 64)
+        result = find_cached_result("a" * 64, other.id)
+        assert result is None
+
+
+@pytest.mark.django_db
+class TestCloneAnalysisResults:
+    def test_clones_results(self):
+        source = SubmissionFactory(status=Submission.Status.COMPLETED)
+        target = SubmissionFactory()
+        AnalysisResultFactory(submission=source)
+        AnalysisResultFactory(submission=source)
+        clone_analysis_results(source, target)
+        assert target.analysis_results.count() == 2
+
+    def test_cloned_execution_time_zero(self):
+        source = SubmissionFactory(status=Submission.Status.COMPLETED)
+        target = SubmissionFactory()
+        AnalysisResultFactory(submission=source, execution_time=5.5)
+        clone_analysis_results(source, target)
+        cloned = target.analysis_results.first()
+        assert cloned.execution_time == 0.0

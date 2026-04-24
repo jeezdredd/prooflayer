@@ -92,6 +92,39 @@ class TestSubmissionDetail:
 
 
 @pytest.mark.django_db
+class TestSubmissionListFilters:
+    def setup_method(self):
+        self.client = APIClient()
+        self.user = UserFactory()
+        self.client.force_authenticate(user=self.user)
+        self.url = reverse("submission-list")
+
+    def test_filter_by_status(self):
+        SubmissionFactory(user=self.user, status="completed")
+        SubmissionFactory(user=self.user, status="pending")
+        response = self.client.get(self.url, {"status": "completed"})
+        assert response.data["count"] == 1
+
+    def test_filter_by_verdict(self):
+        SubmissionFactory(user=self.user, final_verdict="fake")
+        SubmissionFactory(user=self.user, final_verdict="authentic")
+        response = self.client.get(self.url, {"final_verdict": "fake"})
+        assert response.data["count"] == 1
+
+    def test_search_by_filename(self):
+        SubmissionFactory(user=self.user, original_filename="photo.jpg")
+        SubmissionFactory(user=self.user, original_filename="document.png")
+        response = self.client.get(self.url, {"search": "photo"})
+        assert response.data["count"] == 1
+
+    def test_ordering_by_file_size(self):
+        SubmissionFactory(user=self.user, file_size=100)
+        SubmissionFactory(user=self.user, file_size=500)
+        response = self.client.get(self.url, {"ordering": "file_size"})
+        assert response.data["results"][0]["file_size"] == 100
+
+
+@pytest.mark.django_db
 class TestSubmissionDelete:
     def setup_method(self):
         self.client = APIClient()

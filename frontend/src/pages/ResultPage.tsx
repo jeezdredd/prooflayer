@@ -1,6 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { useSubmissionDetail } from "../hooks/useUpload";
 import ResultCard from "../components/ResultCard";
+import VotingPanel from "../components/VotingPanel";
+import ReportButton from "../components/ReportButton";
 
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,10 +29,24 @@ export default function ResultPage() {
 
   return (
     <div>
-      <Link to="/upload" className="text-sm text-blue-600 hover:underline mb-4 inline-block">
-        &larr; Back to upload
-      </Link>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
+            &larr; Dashboard
+          </Link>
+          <span className="text-gray-300">/</span>
+          <Link to="/upload" className="text-sm text-blue-600 hover:underline">
+            Verify another
+          </Link>
+        </div>
+        {submission.status === "completed" && (
+          <ReportButton submissionId={submission.id} />
+        )}
+      </div>
       <ResultCard submission={submission} />
+      {submission.status === "completed" && (
+        <VotingPanel submissionId={submission.id} />
+      )}
     </div>
   );
 }

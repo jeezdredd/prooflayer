@@ -20,6 +20,8 @@ INSTALLED_APPS = [
     "users",
     "content",
     "analyzers",
+    "crowdsource",
+    "reports",
 ]
 
 MIDDLEWARE = [

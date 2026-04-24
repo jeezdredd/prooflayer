@@ -54,6 +54,7 @@ export interface SubmissionListItem {
   final_score: number | null;
   final_verdict: string;
   is_known_fake: boolean;
+  thumbnail_url: string | null;
   created_at: string;
 }
 
@@ -62,4 +63,29 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+}
+
+export interface VoteStats {
+  submission_id: string;
+  real_count: number;
+  fake_count: number;
+  uncertain_count: number;
+  total: number;
+  user_vote: "real" | "fake" | "uncertain" | null;
+}
+
+export interface Vote {
+  id: string;
+  submission: string;
+  value: "real" | "fake" | "uncertain";
+  created_at: string;
+}
+
+export interface Report {
+  id: string;
+  submission: string;
+  reason: "fake_content" | "misleading" | "copyright" | "spam" | "other";
+  description: string;
+  status: "pending" | "reviewed" | "resolved" | "dismissed";
+  created_at: string;
 }
