@@ -90,3 +90,31 @@ export interface Report {
   status: "pending" | "reviewed" | "resolved" | "dismissed";
   created_at: string;
 }
+
+export interface ProvenanceResult {
+  id: string;
+  source_type: "phash_match" | "tineye" | "google_vision" | "c2pa";
+  source_url: string;
+  title: string;
+  similarity_score: number | null;
+  raw_data: Record<string, unknown>;
+  found_at: string;
+}
+
+export interface FactCheckClaim {
+  claim: string;
+  assessment: "likely_true" | "likely_false" | "uncertain";
+  explanation: string;
+  fact_checks: Array<{
+    claim_text: string;
+    rating: string;
+    url: string;
+    publisher: string;
+  }>;
+}
+
+export interface FactCheckResult {
+  claims_count: number;
+  overall_verdict: "mostly_accurate" | "mixed" | "misleading" | "no_claims";
+  claims: FactCheckClaim[];
+}

@@ -3,6 +3,7 @@ import { useSubmissionDetail } from "../hooks/useUpload";
 import ResultCard from "../components/ResultCard";
 import VotingPanel from "../components/VotingPanel";
 import ReportButton from "../components/ReportButton";
+import ProvenancePanel from "../components/ProvenancePanel";
 
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,6 +45,9 @@ export default function ResultPage() {
         )}
       </div>
       <ResultCard submission={submission} />
+      {submission.status === "completed" && (
+        <ProvenancePanel submissionId={submission.id} />
+      )}
       {submission.status === "completed" && (
         <VotingPanel submissionId={submission.id} fileUrl={submission.file_url} />
       )}

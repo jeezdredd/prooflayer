@@ -10,6 +10,8 @@ urlpatterns = [
     path("api/v1/analyzers/", include("analyzers.urls")),
     path("api/v1/crowdsource/", include("crowdsource.urls")),
     path("api/v1/reports/", include("reports.urls")),
+    path("api/v1/provenance/", include("provenance.urls")),
+    path("api/v1/factcheck/", include("factcheck.urls")),
 ]
 
 if settings.DEBUG:

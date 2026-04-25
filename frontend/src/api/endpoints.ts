@@ -1,7 +1,9 @@
 import client from "./client";
 import type {
   AuthResponse,
+  FactCheckResult,
   PaginatedResponse,
+  ProvenanceResult,
   Report,
   Submission,
   SubmissionListItem,
@@ -58,4 +60,14 @@ export const crowdsource = {
 export const reports = {
   create: (data: { submission: string; reason: string; description?: string }) =>
     client.post<Report>("/reports/", data),
+};
+
+export const provenance = {
+  list: (submissionId: string) =>
+    client.get<ProvenanceResult[]>(`/provenance/${submissionId}/`),
+};
+
+export const factcheck = {
+  check: (text: string) =>
+    client.post<FactCheckResult>("/factcheck/check/", { text }),
 };

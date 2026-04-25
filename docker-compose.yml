@@ -31,6 +31,7 @@ services:
       dockerfile: backend/Dockerfile
     command: >
       sh -c "python manage.py migrate &&
+             python manage.py seed_analyzers &&
              python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/app
@@ -42,6 +43,8 @@ services:
       - DATABASE_URL=postgres://prooflayer:${POSTGRES_PASSWORD:-prooflayer_dev}@db:5432/prooflayer
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
     depends_on:
       db:
         condition: service_healthy
@@ -65,11 +68,37 @@ services:
       - DATABASE_URL=postgres://prooflayer:${POSTGRES_PASSWORD:-prooflayer_dev}@db:5432/prooflayer
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  ollama_init:
+    image: ollama/ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["ollama", "pull", "qwen2.5:3b"]
+    volumes:
+      - ollama_data:/root/.ollama
 
   frontend:
     build:
@@ -87,3 +116,4 @@ services:
 volumes:
   postgres_data:
   media_data:
+  ollama_data:

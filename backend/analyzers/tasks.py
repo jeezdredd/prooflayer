@@ -117,3 +117,6 @@ def aggregate_verdicts(result_ids, submission_id):
         "Submission %s completed: score=%.4f verdict=%s",
         submission_id, submission.final_score, submission.final_verdict,
     )
+
+    from provenance.tasks import run_provenance_check
+    run_provenance_check.delay(submission_id)

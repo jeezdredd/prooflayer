@@ -22,6 +22,8 @@ INSTALLED_APPS = [
     "analyzers",
     "crowdsource",
     "reports",
+    "provenance",
+    "factcheck",
 ]
 
 MIDDLEWARE = [
@@ -113,9 +115,20 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 300
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 
-MAX_UPLOAD_SIZE = 50 * 1024 * 1024
-ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
+MAX_UPLOAD_SIZE = 500 * 1024 * 1024
+ALLOWED_MIME_TYPES = [
+    "image/jpeg", "image/png", "image/webp",
+    "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm",
+    "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/mp4",
+    "text/plain",
+]
 FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
 DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
+
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
+TINEYE_API_KEY = os.environ.get("TINEYE_API_KEY", "")
+GOOGLE_VISION_KEY = os.environ.get("GOOGLE_VISION_KEY", "")
+GOOGLE_FACT_CHECK_KEY = os.environ.get("GOOGLE_FACT_CHECK_KEY", "")
 
 DATABASES = {}

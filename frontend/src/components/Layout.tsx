@@ -34,6 +34,14 @@ export default function Layout() {
             >
               Dashboard
             </NavLink>
+            <NavLink
+              to="/factcheck"
+              className={({ isActive }) =>
+                isActive ? "text-sm font-medium text-gray-900" : "text-sm text-gray-500 hover:text-gray-900"
+              }
+            >
+              Fact Check
+            </NavLink>
           </div>
           {user && (
             <div className="flex items-center gap-4">

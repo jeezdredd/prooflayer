@@ -27,6 +27,30 @@ ANALYZERS = [
         "queue": "ml",
         "timeout": 120,
     },
+    {
+        "name": "video_frame",
+        "analyzer_class": "analyzers.implementations.video_analyzer.VideoFrameAnalyzer",
+        "version": "1.0.0",
+        "weight": 2.0,
+        "queue": "ml",
+        "timeout": 300,
+    },
+    {
+        "name": "llm_text",
+        "analyzer_class": "analyzers.implementations.llm_analyzer.LLMTextAnalyzer",
+        "version": "1.0.0",
+        "weight": 2.5,
+        "queue": "ml",
+        "timeout": 180,
+    },
+    {
+        "name": "audio_spectrogram",
+        "analyzer_class": "analyzers.implementations.audio_analyzer.AudioSpectrogramAnalyzer",
+        "version": "1.0.0",
+        "weight": 2.0,
+        "queue": "ml",
+        "timeout": 120,
+    },
 ]
 
 
