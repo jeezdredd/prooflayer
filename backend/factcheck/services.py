@@ -6,38 +6,66 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_FACTCHECK_PROMPT = """Analyze the following text for factual claims. For each sentence that makes a verifiable factual claim, return:
-- The claim text
-- Whether it seems likely true, likely false, or uncertain based on your knowledge
-- A brief explanation (1 sentence)
+OLLAMA_FACTCHECK_PROMPT = """You are a fact-checking assistant. Analyze the text below for factual claims.
 
-Respond ONLY with a JSON array like:
+Use the web search results provided as context to assess each claim.
+
+For each sentence containing a verifiable factual claim, return an assessment.
+Respond ONLY with a JSON array:
 [
-  {{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "..."}}
+  {{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "one sentence"}}
 ]
+
+Web search context:
+{search_context}
 
 Text to analyze:
 {text}"""
+
+
+def search_web(query, max_results=5):
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+        snippets = []
+        for r in results:
+            title = r.get("title", "")
+            body = r.get("body", "")
+            url = r.get("href", "")
+            snippets.append(f"[{title}] {body} ({url})")
+        return "\n".join(snippets)
+    except Exception as exc:
+        logger.warning("DuckDuckGo search failed: %s", exc)
+        return ""
 
 
 def analyze_with_ollama(text):
     ollama_url = getattr(settings, "OLLAMA_URL", "http://ollama:11434")
     model = getattr(settings, "OLLAMA_MODEL", "qwen2.5:3b")
 
-    prompt = OLLAMA_FACTCHECK_PROMPT.format(text=text[:3000])
+    search_context = search_web(text[:200])
+    prompt = OLLAMA_FACTCHECK_PROMPT.format(
+        search_context=search_context or "No search results available.",
+        text=text[:2000],
+    )
 
     try:
         response = http_requests.post(
             f"{ollama_url}/api/generate",
             json={"model": model, "prompt": prompt, "stream": False, "format": "json"},
-            timeout=120,
+            timeout=180,
         )
         response.raise_for_status()
         raw = response.json().get("response", "")
-        claims = json.loads(raw)
-        if not isinstance(claims, list):
-            raise ValueError("Expected list")
-        return claims
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return parsed
+        if isinstance(parsed, dict):
+            if "claims" in parsed:
+                return parsed["claims"]
+            return [parsed]
+        raise ValueError(f"Unexpected type: {type(parsed)}")
     except Exception as exc:
         logger.warning("Ollama factcheck failed: %s", exc)
         return _fallback_sentence_split(text)
