@@ -105,6 +105,21 @@ services:
     volumes:
       - ollama_data:/root/.ollama
 
+  flower:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: celery -A config.celery flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.dev
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12px; color: #111; background: #fff; }
+  .page { padding: 40px 48px; max-width: 800px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 24px; }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { color: #2563eb; }
+  .meta { font-size: 10px; color: #6b7280; text-align: right; }
+  .verdict-banner { border-radius: 8px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; }
+  .verdict-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
+  .verdict-value { font-size: 28px; font-weight: 800; text-transform: uppercase; }
+  .verdict-score { font-size: 13px; font-weight: 600; opacity: 0.9; }
+  .section { margin-bottom: 24px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 12px; }
+  .file-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field { display: flex; flex-direction: column; gap: 2px; }
+  .field-label { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; }
+  .field-value { font-size: 12px; color: #111; word-break: break-all; }
+  .analyzer-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+  .analyzer-name { flex: 1; font-weight: 600; }
+  .analyzer-verdict { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; }
+  .verdict-fake { background: #fee2e2; color: #dc2626; }
+  .verdict-suspicious { background: #fef3c7; color: #d97706; }
+  .verdict-authentic { background: #dcfce7; color: #16a34a; }
+  .verdict-inconclusive { background: #f3f4f6; color: #6b7280; }
+  .verdict-error { background: #f3f4f6; color: #9ca3af; }
+  .confidence-bar-bg { width: 80px; height: 6px; background: #e5e7eb; border-radius: 3px; }
+  .confidence-bar { height: 6px; border-radius: 3px; background: #2563eb; }
+  .confidence-val { font-size: 11px; color: #6b7280; width: 36px; text-align: right; }
+  .provenance-item { padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+  .provenance-source { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; }
+  .provenance-title { font-weight: 600; margin: 2px 0; }
+  .provenance-url { font-size: 10px; color: #2563eb; word-break: break-all; }
+  .claim-item { padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+  .claim-text { font-weight: 600; margin-bottom: 4px; }
+  .claim-assessment { font-size: 11px; color: #6b7280; }
+  .claim-explanation { font-size: 11px; color: #374151; margin-top: 4px; }
+  .thumbnail { max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid #e5e7eb; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; }
+  .known-fake-badge { background: #fee2e2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 4px; display: inline-block; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="logo">Proof<span>Layer</span></div>
+    <div class="meta">
+      <div>Forensic Analysis Report</div>
+      <div>Generated {{ generated_at|date:"Y-m-d H:i" }} UTC</div>
+      <div>Submission ID: {{ submission.id }}</div>
+    </div>
+  </div>
+
+  <div class="verdict-banner" style="background: {{ verdict_color }}18; border: 2px solid {{ verdict_color }}40;">
+    {% if thumbnail_url %}
+    <img src="{{ thumbnail_url }}" class="thumbnail" alt="thumbnail">
+    {% endif %}
+    <div>
+      <div class="verdict-label">Overall Verdict</div>
+      <div class="verdict-value" style="color: {{ verdict_color }}">{{ verdict|upper }}</div>
+      <div class="verdict-score" style="color: {{ verdict_color }}">{{ score_pct }}% fake probability</div>
+      {% if submission.is_known_fake %}
+      <div class="known-fake-badge">⚠ Matches Known Fake Database</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">File Information</div>
+    <div class="file-info">
+      <div class="field">
+        <span class="field-label">Filename</span>
+        <span class="field-value">{{ submission.original_filename }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">MIME Type</span>
+        <span class="field-value">{{ submission.mime_type }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">File Size</span>
+        <span class="field-value">{{ submission.file_size|filesizeformat }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">SHA-256</span>
+        <span class="field-value">{{ submission.sha256_hash|default:"—" }}</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Submitted</span>
+        <span class="field-value">{{ submission.created_at|date:"Y-m-d H:i" }} UTC</span>
+      </div>
+      <div class="field">
+        <span class="field-label">Status</span>
+        <span class="field-value">{{ submission.status|upper }}</span>
+      </div>
+    </div>
+  </div>
+
+  {% if analysis_results %}
+  <div class="section">
+    <div class="section-title">Analyzer Breakdown</div>
+    {% for result in analysis_results %}
+    <div class="analyzer-row">
+      <div class="analyzer-name">{{ result.analyzer.name }}</div>
+      <div class="confidence-bar-bg">
+        <div class="confidence-bar" style="width: {{ result.confidence|floatformat:0 }}0px; background: {% if result.verdict == 'fake' %}#dc2626{% elif result.verdict == 'suspicious' %}#d97706{% elif result.verdict == 'authentic' %}#16a34a{% else %}#9ca3af{% endif %};"></div>
+      </div>
+      <div class="confidence-val">{{ result.confidence|floatformat:0 }}%</div>
+      <div class="analyzer-verdict verdict-{{ result.verdict }}">{{ result.verdict|upper }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if provenance_results %}
+  <div class="section">
+    <div class="section-title">Provenance — Origin Tracking</div>
+    {% for p in provenance_results %}
+    <div class="provenance-item">
+      <div class="provenance-source">{{ p.source_type }}</div>
+      {% if p.title %}<div class="provenance-title">{{ p.title }}</div>{% endif %}
+      {% if p.source_url %}<div class="provenance-url">{{ p.source_url }}</div>{% endif %}
+      {% if p.similarity_score %}<div class="claim-assessment">Similarity: {{ p.similarity_score|floatformat:2 }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if factcheck and factcheck.claims %}
+  <div class="section">
+    <div class="section-title">Fact-Check — Claim Analysis</div>
+    <div style="margin-bottom: 10px; font-size: 11px; color: #6b7280;">Overall: <strong>{{ factcheck.overall_verdict|upper }}</strong> · {{ factcheck.claims_count }} claim{{ factcheck.claims_count|pluralize }} analyzed</div>
+    {% for claim in factcheck.claims %}
+    <div class="claim-item">
+      <div class="claim-text">{{ claim.claim }}</div>
+      <div class="claim-assessment">Assessment: <strong>{{ claim.assessment|upper }}</strong></div>
+      {% if claim.explanation %}<div class="claim-explanation">{{ claim.explanation }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    <span>ProofLayer · proofLayer.io</span>
+    <span>This report is generated automatically. Results are probabilistic, not legal evidence.</span>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,8 +1,12 @@
+from django.http import HttpResponse
 from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Submission
+from .pdf import generate_report_pdf
 from .serializers import SubmissionCreateSerializer, SubmissionDetailSerializer, SubmissionListSerializer
+from .throttles import UploadRateThrottle
 from .validators import validate_file_size, validate_mime_type
 
 
@@ -34,6 +38,11 @@ class SubmissionViewSet(
             return SubmissionListSerializer
         return SubmissionDetailSerializer
 
+    def get_throttles(self):
+        if self.action == "create":
+            return [UploadRateThrottle()]
+        return super().get_throttles()
+
     def create(self, request, *args, **kwargs):
         file = request.FILES.get("file")
         if not file:
@@ -55,6 +64,17 @@ class SubmissionViewSet(
 
         serializer = SubmissionCreateSerializer(submission)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"], url_path="report.pdf")
+    def report_pdf(self, request, id=None):
+        submission = self.get_object()
+        if submission.status != "completed":
+            return Response({"detail": "Report available only for completed submissions."}, status=status.HTTP_400_BAD_REQUEST)
+        pdf_buffer = generate_report_pdf(submission, request)
+        filename = f"prooflayer_report_{submission.id}.pdf"
+        response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
     def perform_destroy(self, instance):
         if instance.file:
