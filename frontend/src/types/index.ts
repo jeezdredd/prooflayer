@@ -36,6 +36,7 @@ export interface Submission {
   file_size: number;
   sha256_hash: string;
   status: "pending" | "processing" | "completed" | "failed";
+  status_message: string;
   metadata: Record<string, unknown>;
   final_score: number | null;
   final_verdict: string;

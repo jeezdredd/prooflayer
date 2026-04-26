@@ -45,6 +45,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-llava:7b}
+      - HF_TOKEN=${HF_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -70,6 +72,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-llava:7b}
+      - HF_TOKEN=${HF_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -97,7 +101,7 @@ services:
     restart: "no"
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["ollama", "pull", "qwen2.5:3b"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b && ollama pull llava:7b"]
     volumes:
       - ollama_data:/root/.ollama
 

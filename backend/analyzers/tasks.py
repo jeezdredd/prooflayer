@@ -11,6 +11,16 @@ from .registry import load_analyzer_class
 
 logger = logging.getLogger(__name__)
 
+ANALYZER_STATUS_MESSAGES = {
+    "metadata": "Analyzing metadata and EXIF...",
+    "ela": "Checking image integrity (ELA)...",
+    "ai_detector": "Running AI image detector...",
+    "llm_vision": "Analyzing image with vision AI...",
+    "video_frame": "Extracting and analyzing video frames...",
+    "audio_spectrogram": "Analyzing audio spectrogram...",
+    "llm_text": "Analyzing text with AI...",
+}
+
 
 @shared_task
 def dispatch_analysis(submission_id):
@@ -28,6 +38,9 @@ def dispatch_analysis(submission_id):
         submission.final_score = 0.5
         submission.save(update_fields=["status", "final_verdict", "final_score"])
         return
+
+    submission.status_message = "Starting analyzers..."
+    submission.save(update_fields=["status_message"])
 
     tasks = []
     for config in configs:
@@ -63,6 +76,10 @@ def run_analyzer(self, submission_id, config_id):
                 "Analyzer %s does not support %s, skipping", config.name, submission.mime_type
             )
             return None
+
+        status_msg = ANALYZER_STATUS_MESSAGES.get(config.name, f"Running {config.name}...")
+        submission.status_message = status_msg
+        submission.save(update_fields=["status_message"])
 
         output = analyzer.analyze(submission.file.path, submission.metadata)
         execution_time = time.time() - start_time
@@ -101,6 +118,9 @@ def aggregate_verdicts(result_ids, submission_id):
         logger.error("Submission %s not found for aggregation", submission_id)
         return
 
+    submission.status_message = "Aggregating results..."
+    submission.save(update_fields=["status_message"])
+
     results = list(submission.analysis_results.select_related("analyzer").all())
 
     if not results:
@@ -112,7 +132,8 @@ def aggregate_verdicts(result_ids, submission_id):
         submission.final_verdict = verdict
 
     submission.status = Submission.Status.COMPLETED
-    submission.save(update_fields=["final_score", "final_verdict", "status"])
+    submission.status_message = ""
+    submission.save(update_fields=["final_score", "final_verdict", "status", "status_message"])
     logger.info(
         "Submission %s completed: score=%.4f verdict=%s",
         submission_id, submission.final_score, submission.final_verdict,

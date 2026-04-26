@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class AudioSpectrogramAnalyzer(BaseAnalyzer):
     name = "audio_spectrogram"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/mp4"]
@@ -68,6 +68,18 @@ class AudioSpectrogramAnalyzer(BaseAnalyzer):
         if rms_std < 0.005:
             flags.append("unnatural_volume_consistency")
 
+        stft = np.abs(librosa.stft(y))
+        stft_norm = stft / (stft.sum(axis=0, keepdims=True) + 1e-9)
+        spectral_entropy = float(np.mean(-np.sum(stft_norm * np.log2(stft_norm + 1e-9), axis=0)))
+        evidence["spectral_entropy"] = round(spectral_entropy, 4)
+        if spectral_entropy > 9.5:
+            flags.append("unnaturally_high_spectral_entropy")
+
+        noise_floor = float(np.percentile(np.abs(y), 5))
+        evidence["noise_floor"] = round(noise_floor, 8)
+        if noise_floor < 1e-5:
+            flags.append("near_zero_noise_floor")
+
         evidence["flags"] = flags
         flag_count = len(flags)
 
@@ -79,12 +91,12 @@ class AudioSpectrogramAnalyzer(BaseAnalyzer):
             confidence = 0.70
         elif flag_count == 2:
             verdict = "suspicious"
-            confidence = 0.55
+            confidence = 0.60
         elif flag_count == 1:
             verdict = "inconclusive"
-            confidence = 0.40
+            confidence = 0.45
         else:
-            verdict = "authentic"
-            confidence = 0.65
+            verdict = "inconclusive"
+            confidence = 0.35
 
         return AnalysisOutput(confidence=confidence, verdict=verdict, evidence=evidence)

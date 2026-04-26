@@ -69,9 +69,12 @@ class VideoFrameAnalyzer(BaseAnalyzer):
         elif ai_frame_ratio >= 0.3:
             verdict = "suspicious"
             confidence = avg_confidence
+        elif ai_frame_ratio >= 0.1:
+            verdict = "inconclusive"
+            confidence = 0.45
         else:
-            verdict = "authentic"
-            confidence = max(0.4, 1.0 - avg_confidence)
+            verdict = "inconclusive"
+            confidence = 0.30
 
         return AnalysisOutput(
             confidence=confidence,

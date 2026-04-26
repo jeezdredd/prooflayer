@@ -51,6 +51,14 @@ ANALYZERS = [
         "queue": "ml",
         "timeout": 120,
     },
+    {
+        "name": "llm_vision",
+        "analyzer_class": "analyzers.implementations.llm_image_analyzer.LLMImageAnalyzer",
+        "version": "1.0.0",
+        "weight": 3.0,
+        "queue": "ml",
+        "timeout": 300,
+    },
 ]
 
 

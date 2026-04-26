@@ -30,11 +30,18 @@ class Submission(models.Model):
         db_index=True,
     )
     metadata = models.JSONField(default=dict, blank=True)
+    status_message = models.CharField(max_length=100, blank=True)
     final_score = models.FloatField(null=True, blank=True)
     final_verdict = models.CharField(max_length=30, blank=True)
     is_known_fake = models.BooleanField(default=False)
     phash = models.BigIntegerField(null=True, blank=True, db_index=True)
     dhash = models.BigIntegerField(null=True, blank=True, db_index=True)
+    approved_for_training = models.BooleanField(default=False, db_index=True)
+    verified_label = models.CharField(
+        max_length=10,
+        blank=True,
+        choices=[("real", "Real"), ("fake", "Fake")],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -53,6 +53,7 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "file_size",
             "sha256_hash",
             "status",
+            "status_message",
             "metadata",
             "final_score",
             "final_verdict",

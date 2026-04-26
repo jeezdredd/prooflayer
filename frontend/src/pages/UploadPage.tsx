@@ -31,6 +31,7 @@ export default function UploadPage() {
         <UploadProgress
           progress={progress}
           status={status === "uploading" ? "uploading" : "processing"}
+          statusMessage={submission?.status_message}
         />
       )}
 
