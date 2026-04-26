@@ -1,8 +1,9 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
+dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = "cd backend && python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+startCommand = "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
 healthcheckPath = "/api/v1/auth/health/"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
