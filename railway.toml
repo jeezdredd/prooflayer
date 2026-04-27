@@ -3,8 +3,8 @@ builder = "dockerfile"
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+startCommand = "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --preload"
 healthcheckPath = "/api/v1/auth/health/"
-healthcheckTimeout = 120
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
