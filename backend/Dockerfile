@@ -27,10 +27,8 @@ RUN uv pip install --system --no-cache \
 
 COPY backend/ /app/
 
-RUN python -c "from transformers import AutoModelForImageClassification, AutoFeatureExtractor; AutoModelForImageClassification.from_pretrained('Nahrawy/AIorNot'); AutoFeatureExtractor.from_pretrained('Nahrawy/AIorNot')"
-
 RUN DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 300"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 300 --access-logfile - --error-logfile - --log-level info"]
