@@ -26,4 +26,6 @@ app.conf.task_routes = {
     "analyzers.tasks.aggregate_verdicts": {"queue": "default"},
 }
 
+app.conf.broker_connection_retry_on_startup = True
+
 app.autodiscover_tasks()
