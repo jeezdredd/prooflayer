@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
 
-interface Filters {
-  search?: string;
-  status?: string;
-  final_verdict?: string;
-}
-
 interface DashboardFiltersProps {
   onChange: (filters: Record<string, string>) => void;
 }
