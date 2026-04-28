@@ -6,7 +6,18 @@ from kombu import Exchange, Queue
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
 app = Celery("prooflayer")
-app.config_from_object("django.conf:settings", namespace="CELERY")
+
+app.conf.update(
+    broker_url=os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0"),
+    result_backend=os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0"),
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
+    task_track_started=True,
+    task_time_limit=300,
+    task_soft_time_limit=240,
+    broker_connection_retry_on_startup=True,
+)
 
 default_exchange = Exchange("default", type="direct")
 ml_exchange = Exchange("ml", type="direct")
@@ -26,6 +37,4 @@ app.conf.task_routes = {
     "analyzers.tasks.aggregate_verdicts": {"queue": "default"},
 }
 
-app.conf.broker_connection_retry_on_startup = True
-
-app.autodiscover_tasks()
+app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports"])
