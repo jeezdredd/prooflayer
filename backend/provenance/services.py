@@ -4,6 +4,8 @@ import logging
 import requests as http_requests
 from django.conf import settings
 
+from content.storage_utils import local_file
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +37,7 @@ def run_tineye_search(submission):
         return []
 
     try:
-        with open(submission.file.path, "rb") as f:
+        with local_file(submission.file) as path, open(path, "rb") as f:
             response = http_requests.post(
                 "https://api.tineye.com/rest/search/",
                 headers={"x-api-key": api_key},
@@ -71,7 +73,7 @@ def run_google_vision_search(submission):
         return []
 
     try:
-        with open(submission.file.path, "rb") as f:
+        with local_file(submission.file) as path, open(path, "rb") as f:
             image_content = base64.b64encode(f.read()).decode("utf-8")
 
         payload = {
@@ -113,7 +115,8 @@ def extract_c2pa(submission):
         return None
 
     try:
-        manifest_json = c2pa.read_file(submission.file.path, None)
+        with local_file(submission.file) as path:
+            manifest_json = c2pa.read_file(path, None)
         if not manifest_json:
             return None
         r = ProvenanceResult.objects.create(

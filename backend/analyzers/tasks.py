@@ -4,6 +4,7 @@ import time
 from celery import chord, group, shared_task
 
 from content.models import Submission
+from content.storage_utils import local_file
 
 from .aggregator import aggregate
 from .models import AnalyzerConfig, AnalysisResult
@@ -81,7 +82,8 @@ def run_analyzer(self, submission_id, config_id):
         submission.status_message = status_msg
         submission.save(update_fields=["status_message"])
 
-        output = analyzer.analyze(submission.file.path, submission.metadata)
+        with local_file(submission.file) as path:
+            output = analyzer.analyze(path, submission.metadata)
         execution_time = time.time() - start_time
 
         result = AnalysisResult.objects.create(

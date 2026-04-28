@@ -13,6 +13,7 @@ from .services import (
     find_cached_result,
     generate_thumbnail,
 )
+from .storage_utils import local_file
 
 logger = logging.getLogger(__name__)
 
@@ -79,21 +80,22 @@ def process_submission(self, submission_id):
             return
 
         _set_status(submission, "Extracting metadata...")
-        metadata = extract_metadata(submission.file.path)
-        submission.metadata = metadata
+        with local_file(submission.file) as path:
+            metadata = extract_metadata(path)
+            submission.metadata = metadata
 
-        thumb_buffer = generate_thumbnail(submission.file.path)
-        if thumb_buffer:
-            thumb_name = f"thumb_{submission.id}.jpg"
-            submission.thumbnail.save(thumb_name, ContentFile(thumb_buffer.read()), save=False)
+            thumb_buffer = generate_thumbnail(path)
+            if thumb_buffer:
+                thumb_name = f"thumb_{submission.id}.jpg"
+                submission.thumbnail.save(thumb_name, ContentFile(thumb_buffer.read()), save=False)
 
-        is_fake = check_known_fake(sha256)
-        submission.is_known_fake = is_fake
+            is_fake = check_known_fake(sha256)
+            submission.is_known_fake = is_fake
 
-        _set_status(submission, "Computing perceptual hashes...")
-        ph, dh = compute_perceptual_hashes(submission.file.path)
-        submission.phash = ph
-        submission.dhash = dh
+            _set_status(submission, "Computing perceptual hashes...")
+            ph, dh = compute_perceptual_hashes(path)
+            submission.phash = ph
+            submission.dhash = dh
 
         submission.save(update_fields=["sha256_hash", "metadata", "thumbnail", "is_known_fake", "phash", "dhash"])
 
