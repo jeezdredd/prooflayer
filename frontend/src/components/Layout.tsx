@@ -42,6 +42,40 @@ export default function Layout() {
             >
               Fact Check
             </NavLink>
+            <NavLink
+              to="/community-fakes"
+              className={({ isActive }) =>
+                isActive ? "text-sm font-medium text-gray-900" : "text-sm text-gray-500 hover:text-gray-900"
+              }
+            >
+              Community Fakes
+            </NavLink>
+            <NavLink
+              to="/compare"
+              className={({ isActive }) =>
+                isActive ? "text-sm font-medium text-gray-900" : "text-sm text-gray-500 hover:text-gray-900"
+              }
+            >
+              Compare
+            </NavLink>
+            <NavLink
+              to="/embed"
+              className={({ isActive }) =>
+                isActive ? "text-sm font-medium text-gray-900" : "text-sm text-gray-500 hover:text-gray-900"
+              }
+            >
+              Embed
+            </NavLink>
+            {user?.is_staff && (
+              <NavLink
+                to="/review"
+                className={({ isActive }) =>
+                  isActive ? "text-sm font-medium text-purple-700" : "text-sm text-purple-600 hover:text-purple-800"
+                }
+              >
+                Review
+              </NavLink>
+            )}
           </div>
           {user && (
             <div className="flex items-center gap-4">

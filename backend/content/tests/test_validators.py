@@ -28,7 +28,7 @@ class TestValidateMimeType:
         assert mime == "image/png"
 
     def test_invalid_type_rejected(self):
-        f = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
+        f = SimpleUploadedFile("test.exe", b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff" + b"\x00" * 200, content_type="application/x-msdownload")
         with pytest.raises(ValidationError, match="Unsupported file type"):
             validate_mime_type(f)
 

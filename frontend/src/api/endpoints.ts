@@ -46,6 +46,9 @@ export const content = {
 
   detail: (id: string) => client.get<Submission>(`/content/submissions/${id}/`),
 
+  compare: (ids: [string, string]) =>
+    client.get<Submission[]>(`/content/submissions/compare/`, { params: { ids: ids.join(",") } }),
+
   delete: (id: string) => client.delete(`/content/submissions/${id}/`),
 };
 
@@ -70,4 +73,14 @@ export const provenance = {
 export const factcheck = {
   check: (text: string) =>
     client.post<FactCheckResult>("/factcheck/check/", { text }),
+};
+
+export const review = {
+  queue: (params?: Record<string, string>) =>
+    client.get<PaginatedResponse<SubmissionListItem & { submitter_email: string; override_count: number }>>(
+      "/content/review/queue/",
+      { params },
+    ),
+  override: (id: string, data: { verdict: string; reason: string }) =>
+    client.post(`/content/review/${id}/override/`, data),
 };

@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import type { Submission } from "../types";
+import AnalyzerTimeline from "./AnalyzerTimeline";
 
 interface ResultCardProps {
   submission: Submission;
@@ -68,36 +69,7 @@ export default function ResultCard({ submission }: ResultCardProps) {
         </div>
       )}
 
-      {submission.analysis_results.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">Analyzer Breakdown</h4>
-          <div className="space-y-3">
-            {submission.analysis_results.map((result) => {
-              const rv = VERDICT_STYLES[result.verdict] || VERDICT_STYLES.inconclusive;
-              return (
-                <div key={result.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <span className="text-sm font-medium text-gray-900">{result.analyzer_name}</span>
-                    {result.execution_time && (
-                      <span className="text-xs text-gray-400 ml-2">
-                        {result.execution_time.toFixed(1)}s
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600">
-                      {(result.confidence * 100).toFixed(0)}%
-                    </span>
-                    <span className={clsx("text-xs px-2 py-0.5 rounded-full font-medium", rv.bg, rv.text)}>
-                      {rv.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <AnalyzerTimeline submission={submission} />
     </div>
   );
 }

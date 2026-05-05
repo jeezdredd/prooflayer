@@ -17,7 +17,10 @@ class ELAAnalyzer(BaseAnalyzer):
         return ["image/jpeg", "image/png", "image/webp"]
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
-        original = Image.open(file_path).convert("RGB")
+        original = Image.open(file_path)
+        source_format = (original.format or "").upper()
+        original = original.convert("RGB")
+        is_lossless_source = source_format in ("PNG", "WEBP", "BMP", "TIFF", "GIF")
 
         buf = io.BytesIO()
         original.save(buf, format="JPEG", quality=ELA_QUALITY)
@@ -55,13 +58,18 @@ class ELAAnalyzer(BaseAnalyzer):
             "block_std": round(block_std, 3),
             "block_mean": round(block_mean, 3),
             "uniformity_ratio": round(uniformity_ratio, 4),
+            "source_format": source_format,
         }
+
+        if is_lossless_source:
+            evidence["note"] = "lossless source (PNG/WebP/etc) — ELA heuristics unreliable"
+            return AnalysisOutput(confidence=0.5, verdict="inconclusive", evidence=evidence)
 
         if uniformity_ratio < 0.3 and mean_error < 5.0:
             confidence = 0.85
             verdict = "fake"
         elif uniformity_ratio < 0.5 and mean_error < 8.0:
-            confidence = 0.65
+            confidence = 0.6
             verdict = "suspicious"
         elif uniformity_ratio > 1.0 or mean_error > 15.0:
             confidence = 0.75

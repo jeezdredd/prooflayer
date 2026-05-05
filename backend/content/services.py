@@ -14,6 +14,25 @@ def compute_sha256(file):
     return sha256.hexdigest()
 
 
+def _json_safe(value):
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8", errors="replace")
+        except Exception:
+            return value.hex()
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        pass
+    return str(value)
+
+
 def extract_metadata(file_path):
     try:
         img = Image.open(file_path)
@@ -32,13 +51,15 @@ def extract_metadata(file_path):
         exif = {}
         for tag_id, value in exif_data.items():
             tag_name = ExifTags.TAGS.get(tag_id, str(tag_id))
-            try:
-                if isinstance(value, bytes):
-                    value = value.decode("utf-8", errors="replace")
-                str(value)
-                exif[tag_name] = value
-            except Exception:
-                exif[tag_name] = str(value)
+            exif[tag_name] = _json_safe(value)
+
+        try:
+            gps_ifd = exif_data.get_ifd(0x8825)
+            if gps_ifd:
+                exif["GPSInfo"] = {str(k): _json_safe(v) for k, v in gps_ifd.items()}
+        except Exception:
+            pass
+
         metadata["exif"] = exif
 
     return metadata

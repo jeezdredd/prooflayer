@@ -45,7 +45,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
-      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-llava:7b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-moondream}
       - HF_TOKEN=${HF_TOKEN:-}
     depends_on:
       db:
@@ -72,13 +72,43 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
-      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-llava:7b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-moondream}
       - HF_TOKEN=${HF_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio_init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} &&
+      mc mb -p local/${AWS_STORAGE_BUCKET_NAME:-prooflayer-media} || true &&
+      mc anonymous set download local/${AWS_STORAGE_BUCKET_NAME:-prooflayer-media} || true
+      "
 
   ollama:
     image: ollama/ollama
@@ -101,7 +131,7 @@ services:
     restart: "no"
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b && ollama pull llava:7b"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b && ollama pull moondream"]
     volumes:
       - ollama_data:/root/.ollama
 
@@ -124,6 +154,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     command: pnpm dev --host 0.0.0.0
     volumes:
       - ./frontend:/app
@@ -137,3 +168,4 @@ volumes:
   postgres_data:
   media_data:
   ollama_data:
+  minio_data:

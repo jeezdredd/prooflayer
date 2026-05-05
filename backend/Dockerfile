@@ -31,6 +31,8 @@ RUN uv pip install --system --no-cache \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     -r /tmp/pyproject.toml
 
+RUN python -m spacy download en_core_web_sm
+
 COPY backend/ /app/
 
 RUN DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput

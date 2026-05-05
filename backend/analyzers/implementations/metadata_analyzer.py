@@ -69,8 +69,8 @@ class MetadataAnalyzer(BaseAnalyzer):
             confidence = 0.6
             verdict = "suspicious"
         elif "metadata_stripped" in flags:
-            confidence = 0.4
-            verdict = "suspicious"
+            confidence = 0.5
+            verdict = "inconclusive"
         elif metadata.get("exif"):
             confidence = 0.8
             verdict = "authentic"

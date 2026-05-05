@@ -4,6 +4,8 @@ import logging
 import requests as http_requests
 from django.conf import settings
 
+from factcheck.ner import extract_claim_sentences, extract_entities
+
 logger = logging.getLogger(__name__)
 
 OLLAMA_FACTCHECK_PROMPT = """You are a fact-checking assistant. Analyze the text below for factual claims.
@@ -44,10 +46,14 @@ def analyze_with_ollama(text):
     ollama_url = getattr(settings, "OLLAMA_URL", "http://ollama:11434")
     model = getattr(settings, "OLLAMA_MODEL", "qwen2.5:3b")
 
-    search_context = search_web(text[:200])
+    candidate_claims = extract_claim_sentences(text, max_claims=8)
+    focused_text = "\n".join(candidate_claims) if candidate_claims else text[:2000]
+    search_query = " ".join(candidate_claims[:2])[:200] if candidate_claims else text[:200]
+    search_context = search_web(search_query)
+
     prompt = OLLAMA_FACTCHECK_PROMPT.format(
         search_context=search_context or "No search results available.",
-        text=text[:2000],
+        text=focused_text[:2000],
     )
 
     try:
@@ -108,6 +114,7 @@ def check_google_fact_check(claim_text):
 
 def analyze_text(text):
     claims = analyze_with_ollama(text)
+    entities = extract_entities(text)
     enriched = []
     for claim_obj in claims:
         fact_checks = check_google_fact_check(claim_obj.get("claim", ""))
@@ -130,4 +137,5 @@ def analyze_text(text):
         "claims_count": total,
         "overall_verdict": overall,
         "claims": enriched,
+        "entities": entities,
     }

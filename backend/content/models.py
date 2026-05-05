@@ -64,3 +64,29 @@ class KnownFakeHash(models.Model):
 
     def __str__(self):
         return f"{self.sha256_hash[:16]}... ({self.source})"
+
+
+class VerdictOverride(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name="verdict_overrides",
+    )
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="verdict_overrides",
+    )
+    previous_verdict = models.CharField(max_length=30, blank=True)
+    new_verdict = models.CharField(max_length=30)
+    reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "verdict_overrides"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.submission_id} {self.previous_verdict}→{self.new_verdict}"

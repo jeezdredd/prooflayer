@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -7,6 +7,16 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile || pnpm install
 
+FROM base AS dev
+
+COPY . .
+
+EXPOSE 5173
+
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]
+
+FROM base AS builder
+
 COPY . .
 
 ARG VITE_API_URL
@@ -14,7 +24,7 @@ ENV VITE_API_URL=$VITE_API_URL
 
 RUN pnpm build
 
-FROM nginx:alpine
+FROM nginx:alpine AS prod
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

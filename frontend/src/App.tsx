@@ -11,6 +11,10 @@ import ResultPage from "./pages/ResultPage";
 import DashboardPage from "./pages/DashboardPage";
 import FactCheckPage from "./pages/FactCheckPage";
 import LandingPage from "./pages/LandingPage";
+import CommunityFakesPage from "./pages/CommunityFakesPage";
+import ComparePage from "./pages/ComparePage";
+import EmbedPage from "./pages/EmbedPage";
+import ReviewQueuePage from "./pages/ReviewQueuePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,6 +38,10 @@ function AppRoutes() {
         <Route element={<Layout />}>
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/community-fakes" element={<CommunityFakesPage />} />
+          <Route path="/compare" element={<ComparePage />} />
+          <Route path="/embed" element={<EmbedPage />} />
+          <Route path="/review" element={<ReviewQueuePage />} />
           <Route path="/results/:id" element={<ResultPage />} />
           <Route path="/factcheck" element={<FactCheckPage />} />
         </Route>

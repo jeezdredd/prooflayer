@@ -88,7 +88,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "content.pagination.StandardPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -181,11 +181,14 @@ LOGGING = {
         "level": "INFO",
     },
     "loggers": {
-        "django.request": {
-            "handlers": ["console"],
-            "level": "ERROR",
-            "propagate": False,
-        },
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "urllib3": {"level": "WARNING"},
+        "boto3": {"level": "WARNING"},
+        "botocore": {"level": "WARNING"},
+        "s3transfer": {"level": "WARNING"},
+        "weasyprint": {"level": "ERROR"},
+        "fontTools": {"level": "ERROR"},
     },
 }
 

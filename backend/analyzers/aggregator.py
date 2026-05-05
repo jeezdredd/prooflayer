@@ -15,6 +15,10 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     if not valid_results:
         return 0.5, "inconclusive"
 
+    decisive_results = [r for r in valid_results if r.verdict != AnalysisResult.Verdict.INCONCLUSIVE]
+    if not decisive_results:
+        return 0.5, "inconclusive"
+
     total_weight = 0.0
     weighted_score = 0.0
 
@@ -41,8 +45,10 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
         final_verdict = "needs_review"
     elif final_score < 0.3:
         final_verdict = "authentic"
-    elif final_score < 0.5:
+    elif final_score < 0.45:
         final_verdict = "suspicious"
+    elif final_score < 0.55:
+        final_verdict = "inconclusive"
     elif final_score < 0.7:
         final_verdict = "likely_fake"
     else:

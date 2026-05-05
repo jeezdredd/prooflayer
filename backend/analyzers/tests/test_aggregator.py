@@ -44,6 +44,17 @@ class TestAggregate:
         score, verdict = aggregate([r1, r2])
         assert verdict == "needs_review"
 
+    def test_all_inconclusive_returns_inconclusive(self):
+        config1 = AnalyzerConfigFactory(name="ana_a")
+        config2 = AnalyzerConfigFactory(name="ana_b")
+        from content.tests.factories import SubmissionFactory
+        sub = SubmissionFactory()
+        r1 = AnalysisResultFactory(submission=sub, analyzer=config1, confidence=0.5, verdict=AnalysisResult.Verdict.INCONCLUSIVE)
+        r2 = AnalysisResultFactory(submission=sub, analyzer=config2, confidence=0.5, verdict=AnalysisResult.Verdict.INCONCLUSIVE)
+        score, verdict = aggregate([r1, r2])
+        assert verdict == "inconclusive"
+        assert score == 0.5
+
     def test_weighted_scoring(self):
         config_heavy = AnalyzerConfigFactory(name="heavy", weight=3.0)
         config_light = AnalyzerConfigFactory(name="light", weight=1.0)

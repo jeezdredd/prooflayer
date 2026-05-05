@@ -5,6 +5,7 @@ export interface User {
   avatar: string;
   bio: string;
   is_verified: boolean;
+  is_staff: boolean;
   date_joined: string;
 }
 
@@ -29,6 +30,11 @@ export interface AnalysisResult {
   created_at: string;
 }
 
+export interface ExpectedAnalyzer {
+  name: string;
+  description: string;
+}
+
 export interface Submission {
   id: string;
   original_filename: string;
@@ -43,6 +49,7 @@ export interface Submission {
   is_known_fake: boolean;
   file_url: string | null;
   analysis_results: AnalysisResult[];
+  expected_analyzers: ExpectedAnalyzer[];
   created_at: string;
   updated_at: string;
 }

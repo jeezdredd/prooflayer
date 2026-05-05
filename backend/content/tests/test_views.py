@@ -38,7 +38,7 @@ class TestSubmissionCreate:
         assert response.status_code == 400
 
     def test_upload_invalid_mime(self):
-        f = SimpleUploadedFile("test.txt", b"hello world", content_type="text/plain")
+        f = SimpleUploadedFile("test.exe", b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff" + b"\x00" * 200, content_type="application/x-msdownload")
         response = self.client.post(self.url, {"file": f}, format="multipart")
         assert response.status_code == 400
 

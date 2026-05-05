@@ -1,11 +1,17 @@
 import tempfile
 from unittest.mock import patch, MagicMock
 
+import numpy as np
 import pytest
 import torch
 from PIL import Image
 
-from analyzers.implementations.clip_detector import AIImageDetector, _model_cache
+from analyzers.implementations.clip_detector import (
+    AIImageDetector,
+    _ai_prob_from_outputs,
+    _model_cache,
+    _photographic_score,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -16,107 +22,99 @@ def clear_model_cache():
 
 
 @pytest.fixture
-def test_image_path():
-    img = Image.new("RGB", (224, 224), color="blue")
+def photographic_image_path():
+    arr = (np.random.rand(256, 256, 3) * 255).astype("uint8")
+    img = Image.fromarray(arr, mode="RGB")
     f = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
     img.save(f, format="JPEG")
     f.close()
     return f.name
 
 
-def _make_mock_model(ai_score_high=True):
+@pytest.fixture
+def flat_image_path():
+    img = Image.new("RGB", (256, 256), color=(120, 120, 120))
+    f = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+    img.save(f, format="JPEG")
+    f.close()
+    return f.name
+
+
+def _mk_mock_for_label(ai_prob: float, label_real="human", label_ai="artificial"):
     mock_model = MagicMock()
-    mock_feature_extractor = MagicMock()
-
-    if ai_score_high:
-        logits = torch.tensor([[-2.0, 2.0]])
-    else:
-        logits = torch.tensor([[2.0, -2.0]])
-
+    mock_extractor = MagicMock()
+    logits = torch.tensor([[float(np.log(max(1 - ai_prob, 1e-6))), float(np.log(max(ai_prob, 1e-6)))]])
     mock_outputs = MagicMock()
     mock_outputs.logits = logits
     mock_model.return_value = mock_outputs
     mock_model.eval = MagicMock()
     mock_model.config = MagicMock()
-    mock_model.config.id2label = {0: "Real", 1: "AI"}
+    mock_model.config.id2label = {0: label_real, 1: label_ai}
+    mock_extractor.return_value = {"pixel_values": torch.randn(1, 3, 224, 224)}
+    return mock_model, mock_extractor
 
-    mock_feature_extractor.return_value = {"pixel_values": torch.randn(1, 3, 224, 224)}
 
-    return mock_model, mock_feature_extractor
+class TestPhotographicScore:
+    def test_flat_image_marked_non_photographic(self, flat_image_path):
+        img = Image.open(flat_image_path)
+        score = _photographic_score(img)
+        assert score["is_photographic"] is False
+
+    def test_noisy_image_marked_photographic(self, photographic_image_path):
+        img = Image.open(photographic_image_path)
+        score = _photographic_score(img)
+        assert score["is_photographic"] is True
+
+
+class TestAIProbFromOutputs:
+    def test_split_ai_real_keys(self):
+        model = MagicMock()
+        model.config.id2label = {0: "human", 1: "artificial"}
+        probs = torch.tensor([0.2, 0.8])
+        result = _ai_prob_from_outputs(model, probs)
+        assert abs(result - 0.8) < 1e-3
+
+    def test_unknown_labels_returns_neutral(self):
+        model = MagicMock()
+        model.config.id2label = {0: "alpha", 1: "beta"}
+        probs = torch.tensor([0.5, 0.5])
+        assert _ai_prob_from_outputs(model, probs) == 0.5
 
 
 @patch("analyzers.implementations.clip_detector.AutoModelForImageClassification")
 @patch("analyzers.implementations.clip_detector.AutoFeatureExtractor")
 class TestAIImageDetector:
-    def test_supported_mime_types(self, mock_extractor_cls, mock_model_cls):
-        analyzer = AIImageDetector()
-        assert "image/jpeg" in analyzer.supported_mime_types()
-        assert "image/png" in analyzer.supported_mime_types()
-        assert "image/webp" in analyzer.supported_mime_types()
+    def test_supported_mime_types(self, _ext, _mod):
+        a = AIImageDetector()
+        assert "image/jpeg" in a.supported_mime_types()
+        assert "image/png" in a.supported_mime_types()
+        assert "image/webp" in a.supported_mime_types()
 
-    def test_analyze_returns_valid_output(self, mock_extractor_cls, mock_model_cls, test_image_path):
-        mock_model, mock_fe = _make_mock_model(ai_score_high=True)
-        mock_model_cls.from_pretrained.return_value = mock_model
-        mock_extractor_cls.from_pretrained.return_value = mock_fe
+    def test_non_photographic_returns_inconclusive(self, mock_ext, mock_mod, flat_image_path):
+        out = AIImageDetector().analyze(flat_image_path, {})
+        assert out.verdict == "inconclusive"
+        assert out.evidence["content_check"]["is_photographic"] is False
+        mock_mod.from_pretrained.assert_not_called()
 
-        analyzer = AIImageDetector()
-        output = analyzer.analyze(test_image_path, {})
+    def test_high_ensemble_returns_fake(self, mock_ext, mock_mod, photographic_image_path):
+        m, e = _mk_mock_for_label(ai_prob=0.95)
+        mock_mod.from_pretrained.return_value = m
+        mock_ext.from_pretrained.return_value = e
+        out = AIImageDetector().analyze(photographic_image_path, {})
+        assert out.verdict == "fake"
+        assert out.evidence["ensemble_size"] == 3
 
-        assert 0 <= output.confidence <= 1
-        assert output.verdict in ("authentic", "suspicious", "fake", "inconclusive")
-        assert "ai_probability" in output.evidence
-        assert "human_probability" in output.evidence
+    def test_low_ensemble_returns_authentic(self, mock_ext, mock_mod, photographic_image_path):
+        m, e = _mk_mock_for_label(ai_prob=0.05)
+        mock_mod.from_pretrained.return_value = m
+        mock_ext.from_pretrained.return_value = e
+        out = AIImageDetector().analyze(photographic_image_path, {})
+        assert out.verdict == "authentic"
 
-    def test_high_ai_score_returns_fake(self, mock_extractor_cls, mock_model_cls, test_image_path):
-        mock_model, mock_fe = _make_mock_model(ai_score_high=True)
-        mock_model_cls.from_pretrained.return_value = mock_model
-        mock_extractor_cls.from_pretrained.return_value = mock_fe
-
-        analyzer = AIImageDetector()
-        output = analyzer.analyze(test_image_path, {})
-
-        assert output.verdict == "fake"
-        assert output.confidence == 0.9
-
-    def test_low_ai_score_returns_authentic(self, mock_extractor_cls, mock_model_cls, test_image_path):
-        mock_model, mock_fe = _make_mock_model(ai_score_high=False)
-        mock_model_cls.from_pretrained.return_value = mock_model
-        mock_extractor_cls.from_pretrained.return_value = mock_fe
-
-        analyzer = AIImageDetector()
-        output = analyzer.analyze(test_image_path, {})
-
-        assert output.verdict == "authentic"
-        assert output.confidence == 0.8
-
-    def test_model_cached_after_first_call(self, mock_extractor_cls, mock_model_cls, test_image_path):
-        mock_model, mock_fe = _make_mock_model()
-        mock_model_cls.from_pretrained.return_value = mock_model
-        mock_extractor_cls.from_pretrained.return_value = mock_fe
-
-        analyzer = AIImageDetector()
-        analyzer.analyze(test_image_path, {})
-        analyzer.analyze(test_image_path, {})
-
-        mock_model_cls.from_pretrained.assert_called_once()
-
-    def test_evidence_contains_model_info(self, mock_extractor_cls, mock_model_cls, test_image_path):
-        mock_model, mock_fe = _make_mock_model()
-        mock_model_cls.from_pretrained.return_value = mock_model
-        mock_extractor_cls.from_pretrained.return_value = mock_fe
-
-        analyzer = AIImageDetector()
-        output = analyzer.analyze(test_image_path, {})
-
-        assert output.evidence["model"] == "Nahrawy/AIorNot"
-
-    def test_probabilities_sum_to_one(self, mock_extractor_cls, mock_model_cls, test_image_path):
-        mock_model, mock_fe = _make_mock_model()
-        mock_model_cls.from_pretrained.return_value = mock_model
-        mock_extractor_cls.from_pretrained.return_value = mock_fe
-
-        analyzer = AIImageDetector()
-        output = analyzer.analyze(test_image_path, {})
-
-        total = output.evidence["ai_probability"] + output.evidence["human_probability"]
-        assert abs(total - 1.0) < 0.01
+    def test_evidence_contains_per_model(self, mock_ext, mock_mod, photographic_image_path):
+        m, e = _mk_mock_for_label(ai_prob=0.5)
+        mock_mod.from_pretrained.return_value = m
+        mock_ext.from_pretrained.return_value = e
+        out = AIImageDetector().analyze(photographic_image_path, {})
+        assert "models" in out.evidence
+        assert len(out.evidence["models"]) == 3
