@@ -5,6 +5,8 @@ import ResultCard from "../components/ResultCard";
 import VotingPanel from "../components/VotingPanel";
 import ReportButton from "../components/ReportButton";
 import ProvenancePanel from "../components/ProvenancePanel";
+import { Skeleton, SkeletonText } from "../components/ui/Skeleton";
+import { toast } from "../components/ui/Toast";
 
 function DownloadReportButton({ submissionId }: { submissionId: string }) {
   const [loading, setLoading] = useState(false);
@@ -26,6 +28,9 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
       a.download = `prooflayer_report_${submissionId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success("Report downloaded");
+    } catch {
+      toast.error("Failed to download report");
     } finally {
       setLoading(false);
     }
@@ -48,8 +53,43 @@ export default function ResultPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" />
+      <div className="animate-fade-in">
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-4 w-48" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-32 rounded-lg" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </div>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-5 w-2/5" />
+              <Skeleton className="h-3 w-1/4" />
+            </div>
+            <Skeleton className="h-7 w-24 rounded-full" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-32 h-32 rounded" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-3/4" />
+            </div>
+          </div>
+          <div className="space-y-3 pt-4 border-t border-gray-100">
+            <Skeleton className="h-4 w-1/3" />
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 pl-10">
+                <Skeleton className="w-8 h-8 rounded-full" />
+                <div className="flex-1">
+                  <SkeletonText lines={1} />
+                </div>
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

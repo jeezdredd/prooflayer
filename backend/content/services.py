@@ -98,24 +98,42 @@ def compute_perceptual_hashes(file_path):
         return None, None
 
 
+CACHE_TTL_DAYS = 14
+
+
 def find_cached_result(sha256_hash, exclude_id):
+    from datetime import timedelta
+    from django.utils import timezone
     from .models import Submission
-    return Submission.objects.filter(
-        sha256_hash=sha256_hash,
-        status=Submission.Status.COMPLETED,
-    ).exclude(id=exclude_id).order_by("-created_at").first()
+    cutoff = timezone.now() - timedelta(days=CACHE_TTL_DAYS)
+    return (
+        Submission.objects
+        .filter(
+            sha256_hash=sha256_hash,
+            status=Submission.Status.COMPLETED,
+            updated_at__gte=cutoff,
+        )
+        .exclude(id=exclude_id)
+        .order_by("-created_at")
+        .first()
+    )
 
 
 def clone_analysis_results(source_submission, target_submission):
-    from analyzers.models import AnalysisResult
+    from analyzers.models import AnalysisResult, AnalyzerConfig
+    active_analyzer_ids = set(
+        AnalyzerConfig.objects.filter(is_active=True).values_list("id", flat=True)
+    )
     for result in source_submission.analysis_results.all():
+        if result.analyzer_id not in active_analyzer_ids:
+            continue
         AnalysisResult.objects.create(
             submission=target_submission,
             analyzer=result.analyzer,
             confidence=result.confidence,
             verdict=result.verdict,
             evidence=result.evidence,
-            execution_time=0.0,
+            execution_time=result.execution_time or 0.0,
         )
 
 

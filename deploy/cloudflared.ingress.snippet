@@ -1,0 +1,13 @@
+# Append to /etc/cloudflared/config.yml under `ingress:`
+# Order matters - put specific hostnames BEFORE the wildcard catch-all.
+
+  - hostname: prooflayer.cloud
+    service: http://localhost:80
+  - hostname: api.prooflayer.cloud
+    service: http://localhost:80
+  - hostname: flower.prooflayer.cloud
+    service: http://localhost:80
+  # wildcard for future <project>.prooflayer.cloud subdomains
+  - hostname: "*.prooflayer.cloud"
+    service: http://localhost:80
+  - service: http_status:404

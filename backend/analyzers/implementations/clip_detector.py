@@ -1,3 +1,4 @@
+import gc
 import logging
 
 import numpy as np
@@ -10,17 +11,24 @@ from analyzers.base import AnalysisOutput, BaseAnalyzer
 logger = logging.getLogger(__name__)
 
 ENSEMBLE_MODELS = [
-    "Organika/sdxl-detector",
     "dima806/ai_vs_real_image_detection",
     "umm-maybe/AI-image-detector",
 ]
 
 _model_cache: dict[str, tuple] = {}
+_MAX_CACHED = 1
 
 
 def _load_model(name: str):
     if name not in _model_cache:
-        model = AutoModelForImageClassification.from_pretrained(name)
+        if len(_model_cache) >= _MAX_CACHED:
+            evict_key = next(iter(_model_cache))
+            del _model_cache[evict_key]
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            logger.info("AI detector evicted cached model: %s", evict_key)
+        model = AutoModelForImageClassification.from_pretrained(name, use_safetensors=True)
         extractor = AutoFeatureExtractor.from_pretrained(name)
         model.eval()
         _model_cache[name] = (model, extractor)
@@ -62,7 +70,8 @@ def _photographic_score(image: Image.Image) -> dict:
     }
 
 
-def _run_one(name: str, image: Image.Image) -> dict:
+def _run_one(name: str, idx: int, image: Image.Image) -> dict:
+    label = f"classifier_{idx + 1}"
     try:
         model, extractor = _load_model(name)
         inputs = extractor(images=image, return_tensors="pt")
@@ -72,14 +81,14 @@ def _run_one(name: str, image: Image.Image) -> dict:
         ai_prob = _ai_prob_from_outputs(model, probs)
         id2label = model.config.id2label
         return {
-            "model": name,
+            "classifier": label,
             "ai_probability": round(ai_prob, 4),
             "per_label": {id2label[i]: round(float(probs[i]), 4) for i in range(len(probs))},
             "ok": True,
         }
     except Exception as exc:
         logger.warning("AI detector model %s failed: %s", name, exc)
-        return {"model": name, "ok": False, "error": str(exc)}
+        return {"classifier": label, "ok": False, "error": str(exc)}
 
 
 class AIImageDetector(BaseAnalyzer):
@@ -91,26 +100,27 @@ class AIImageDetector(BaseAnalyzer):
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
         image = Image.open(file_path).convert("RGB")
+        skip_photo_check = bool(metadata.get("skip_photo_check"))
 
         photo_check = _photographic_score(image)
-        if not photo_check["is_photographic"]:
+        if not skip_photo_check and not photo_check["is_photographic"]:
             return AnalysisOutput(
                 confidence=0.5,
                 verdict="inconclusive",
                 evidence={
-                    "note": "image looks like a screenshot/diagram/UI — AI photo detectors unreliable on non-photographic content",
+                    "note": "image looks like a screenshot/diagram/UI - AI photo detectors unreliable on non-photographic content",
                     "content_check": photo_check,
                 },
             )
 
-        per_model = [_run_one(name, image) for name in ENSEMBLE_MODELS]
+        per_model = [_run_one(name, idx, image) for idx, name in enumerate(ENSEMBLE_MODELS)]
         ok_results = [r for r in per_model if r.get("ok")]
 
         if not ok_results:
             return AnalysisOutput(
                 confidence=0.0,
                 verdict="error",
-                evidence={"error": "all ensemble models failed", "models": per_model},
+                evidence={"error": "all ensemble models failed", "classifiers": per_model},
             )
 
         ai_probs = [r["ai_probability"] for r in ok_results]
@@ -124,7 +134,7 @@ class AIImageDetector(BaseAnalyzer):
             "ai_probability_max": round(ai_max, 4),
             "ai_models_voting_fake": agreement,
             "content_check": photo_check,
-            "models": per_model,
+            "classifiers": per_model,
         }
 
         if ai_avg > 0.75 or (ai_avg > 0.6 and agreement >= 2):

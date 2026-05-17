@@ -28,4 +28,4 @@ class ProvenanceResult(models.Model):
         ordering = ["-found_at"]
 
     def __str__(self):
-        return f"{self.source_type} — {self.submission_id}"
+        return f"{self.source_type} - {self.submission_id}"

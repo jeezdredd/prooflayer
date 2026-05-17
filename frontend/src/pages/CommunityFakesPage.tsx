@@ -13,13 +13,26 @@ export default function CommunityFakesPage() {
   const { data, isLoading } = useDashboard(params);
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Community Fakes</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Confirmed fake submissions flagged by the community or matching the known-fake database.
-        </p>
+    <div className="animate-rise">
+      <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <span className="label-mono signal-blood">Service / 04</span>
+          <h1 className="font-display text-6xl text-ink-50 leading-none mt-3">
+            Known <span className="italic text-signal-blood">Fakes</span>
+          </h1>
+          <p className="text-ink-400 mt-3 max-w-xl leading-relaxed">
+            Submissions matching the community-curated registry of confirmed forgeries.
+            Future uploads with the same SHA-256 are flagged automatically.
+          </p>
+        </div>
+        {data && (
+          <div className="text-right">
+            <div className="font-display text-5xl text-signal-blood ticker">{data.count}</div>
+            <div className="label-mono mt-1">Confirmed Fakes</div>
+          </div>
+        )}
       </div>
+
       <SubmissionTable
         data={data}
         isLoading={isLoading}

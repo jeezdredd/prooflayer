@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { useVoteStats, useCastVote } from "../hooks/useCrowdsource";
+import { toast } from "./ui/Toast";
 
 interface VotingPanelProps {
   submissionId: string;
@@ -45,7 +46,15 @@ export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps)
           return (
             <button
               key={value}
-              onClick={() => castVote({ submission: submissionId, value })}
+              onClick={() =>
+                castVote(
+                  { submission: submissionId, value },
+                  {
+                    onSuccess: () => toast.success(`Voted "${label}"`),
+                    onError: () => toast.error("Vote failed"),
+                  },
+                )
+              }
               disabled={isPending}
               className={clsx(
                 "flex-1 flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-colors text-sm font-medium",

@@ -55,7 +55,7 @@ def process_submission(self, submission_id):
         submission.save(update_fields=["status", "status_message"])
 
         file_label = MIME_LABELS.get(submission.mime_type, submission.mime_type)
-        _set_status(submission, f"File identified: {file_label} — computing fingerprints...")
+        _set_status(submission, f"File identified: {file_label} - computing fingerprints...")
 
         sha256 = compute_sha256(submission.file)
         submission.sha256_hash = sha256

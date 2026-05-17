@@ -60,7 +60,7 @@ function SideCard({ submission }: { submission: Submission }) {
           </div>
         </div>
         <span className={clsx("text-xs px-2 py-0.5 rounded-full font-medium uppercase shrink-0", verdictCls)}>
-          {submission.final_verdict || "—"}
+          {submission.final_verdict || "-"}
         </span>
       </div>
 
@@ -93,7 +93,7 @@ function SideCard({ submission }: { submission: Submission }) {
               <div className="flex items-center gap-2">
                 <span className="text-gray-500 tabular-nums">{(r.confidence * 100).toFixed(0)}%</span>
                 <span className={clsx("px-1.5 py-0.5 rounded font-medium uppercase text-[10px]", cls)}>
-                  {r.verdict || "—"}
+                  {r.verdict || "-"}
                 </span>
               </div>
             </div>

@@ -43,12 +43,13 @@ class VideoFrameAnalyzer(BaseAnalyzer):
                     frame_path = os.path.join(tmpdir, f"frame_{frame_idx}.jpg")
                     cv2.imwrite(frame_path, frame)
                     try:
-                        output = detector.analyze(frame_path, {})
+                        output = detector.analyze(frame_path, {"skip_photo_check": True})
                         frame_results.append({
                             "frame": frame_idx,
                             "timestamp": round(frame_idx / fps, 1),
                             "confidence": output.confidence,
                             "verdict": output.verdict,
+                            "ai_probability_avg": output.evidence.get("ai_probability_avg"),
                         })
                     except Exception as exc:
                         logger.warning("Frame %s analysis failed: %s", frame_idx, exc)

@@ -175,6 +175,6 @@ class MetadataAnalyzer(BaseAnalyzer):
 
         if has_format and has_dimensions and not exif:
             result["stripped"] = True
-            result["details"] = "Image has no EXIF data — metadata may have been stripped"
+            result["details"] = "Image has no EXIF data - metadata may have been stripped"
 
         return result

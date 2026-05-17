@@ -68,7 +68,7 @@ class LLMTextAnalyzer(BaseAnalyzer):
             return AnalysisOutput(
                 confidence=llm_confidence,
                 verdict=verdict,
-                evidence={"llm_verdict": llm_verdict, "reasoning": reasoning, "model": model},
+                evidence={"llm_verdict": llm_verdict, "reasoning": reasoning},
             )
         except Exception as exc:
             logger.warning("LLM text analysis failed: %s", exc)

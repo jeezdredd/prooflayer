@@ -5,11 +5,11 @@ from .models import Submission, VerdictOverride
 ANALYZER_DESCRIPTIONS = {
     "metadata": "Reads EXIF/XMP metadata. Looks for editing software signatures, missing camera fields, and timestamp inconsistencies.",
     "ela": "Error Level Analysis. Re-saves the image at a known compression and compares pixel-level differences to spot spliced or pasted regions.",
-    "ai_detector": "Ensemble of 3 image classifiers (Organika SDXL detector, dima806 BeiT, umm-maybe ViT). Pre-filters non-photographic content (screenshots, diagrams, UI) since AI photo detectors are unreliable outside their training distribution. Averages AI-generated probability across models; verdict requires multi-model agreement.",
-    "llm_vision": "Vision LLM (moondream). Examines lighting consistency, texture coherence, fine details (fingers, eyes, text), and overall aesthetic.",
+    "ai_detector": "Ensemble of independent image classifiers. Pre-filters non-photographic content (screenshots, diagrams, UI) since AI photo detectors are unreliable outside their training distribution. Averages AI-generated probability across models; verdict requires multi-model agreement.",
+    "llm_vision": "Vision LLM. Examines lighting consistency, texture coherence, fine details (fingers, eyes, text), and overall aesthetic.",
     "video_frame": "Samples frames from the video at uniform intervals and runs ELA + AI detection on each one.",
-    "audio_spectrogram": "Computes spectral features with librosa to detect synthetic-voice artifacts and unnatural frequency distributions.",
-    "llm_text": "Text LLM (qwen2.5:3b). Classifies whether the input text was likely AI-generated based on stylistic and structural cues.",
+    "audio_spectrogram": "Computes spectral features to detect synthetic-voice artifacts and unnatural frequency distributions.",
+    "llm_text": "Text LLM. Classifies whether the input text was likely AI-generated based on stylistic and structural cues.",
 }
 
 

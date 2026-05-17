@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { review } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
+import { Skeleton } from "../components/ui/Skeleton";
+import { toast } from "../components/ui/Toast";
 
 const VERDICT_OPTIONS = ["authentic", "suspicious", "likely_fake", "fake", "inconclusive"] as const;
 
@@ -35,9 +37,14 @@ export default function ReviewQueuePage() {
   const overrideMutation = useMutation({
     mutationFn: ({ id, verdict, reason }: { id: string; verdict: string; reason: string }) =>
       review.override(id, { verdict, reason }),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["review-queue"] });
       setPendingId(null);
+      toast.success(`Verdict overridden to ${vars.verdict}`);
+    },
+    onError: () => {
+      setPendingId(null);
+      toast.error("Override failed");
     },
   });
 
@@ -54,7 +61,25 @@ export default function ReviewQueuePage() {
         </p>
       </div>
 
-      {isLoading && <div className="text-gray-500 text-sm">Loading…</div>}
+      {isLoading && (
+        <div className="space-y-3 animate-fade-in">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-lg p-4 flex gap-4">
+              <Skeleton className="w-24 h-24 rounded shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-3 w-1/4" />
+                <Skeleton className="h-12 w-full mt-2" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-7 w-20 rounded" />
+                  <Skeleton className="h-7 w-20 rounded" />
+                  <Skeleton className="h-7 w-20 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {error && <div className="text-red-600 text-sm">Failed to load queue.</div>}
 
       <div className="space-y-3">
@@ -117,7 +142,13 @@ export default function ReviewQueuePage() {
           );
         })}
         {data && data.length === 0 && !isLoading && (
-          <div className="text-gray-500 text-sm">Queue empty. Nothing to review.</div>
+          <div className="text-center py-20 animate-fade-in">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 mb-3 text-3xl">
+              ✓
+            </div>
+            <p className="text-sm text-gray-700 font-medium">Queue empty</p>
+            <p className="text-xs text-gray-400 mt-1">Nothing to review right now</p>
+          </div>
         )}
       </div>
     </div>

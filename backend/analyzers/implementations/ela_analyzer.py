@@ -62,7 +62,7 @@ class ELAAnalyzer(BaseAnalyzer):
         }
 
         if is_lossless_source:
-            evidence["note"] = "lossless source (PNG/WebP/etc) — ELA heuristics unreliable"
+            evidence["note"] = "lossless source (PNG/WebP/etc) - ELA heuristics unreliable"
             return AnalysisOutput(confidence=0.5, verdict="inconclusive", evidence=evidence)
 
         if uniformity_ratio < 0.3 and mean_error < 5.0:

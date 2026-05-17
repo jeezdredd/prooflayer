@@ -1,0 +1,20 @@
+# Per-project deploy metadata.
+# Lives at /srv/<project>/shared/deploy.toml on the server.
+#
+# Two project types:
+#   - django:  native gunicorn + systemd + Caddy reverse_proxy
+#   - compose: docker-compose project (e.g. ProofLayer)
+
+# ===== Example: generic Django app =====
+type        = "django"
+repo        = "https://github.com/jeezdredd/django-hello.git"
+branch      = "main"
+settings    = "config.settings.prod"
+healthcheck = "https://hello.prooflayer.cloud/healthz"
+
+# ===== Example: ProofLayer (compose) =====
+# type        = "compose"
+# repo        = "https://github.com/jeezdredd/prooflayer.git"
+# branch      = "main"
+# settings    = ""
+# healthcheck = "https://api.prooflayer.cloud/api/v1/auth/health/"

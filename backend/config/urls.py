@@ -5,6 +5,8 @@ from django.conf.urls.static import static
 from django.http import JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
+from api.system_views import SystemStatusView
+
 
 def health(request):
     return JsonResponse({"status": "ok"})
@@ -19,6 +21,7 @@ urlpatterns = [
     path("api/v1/provenance/", include("provenance.urls")),
     path("api/v1/factcheck/", include("factcheck.urls")),
     path("api/v1/auth/health/", health),
+    path("api/v1/system/status/", SystemStatusView.as_view(), name="system-status"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 import type { PaginatedResponse, SubmissionListItem } from "../types";
+import { Skeleton } from "./ui/Skeleton";
 
 interface SubmissionTableProps {
   data: PaginatedResponse<SubmissionListItem> | undefined;
@@ -9,14 +10,27 @@ interface SubmissionTableProps {
   onPageChange: (page: number) => void;
 }
 
-const VERDICT_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  authentic: { bg: "bg-green-100", text: "text-green-800", label: "Authentic" },
-  suspicious: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Suspicious" },
-  likely_fake: { bg: "bg-orange-100", text: "text-orange-800", label: "Likely Fake" },
-  fake: { bg: "bg-red-100", text: "text-red-800", label: "Fake" },
-  needs_review: { bg: "bg-purple-100", text: "text-purple-800", label: "Needs Review" },
-  inconclusive: { bg: "bg-gray-100", text: "text-gray-800", label: "Inconclusive" },
+const VERDICT_TONE: Record<string, { color: string; label: string }> = {
+  authentic: { color: "text-signal-sage", label: "Authentic" },
+  suspicious: { color: "text-signal-amber", label: "Suspicious" },
+  likely_fake: { color: "text-signal-blood", label: "Likely Fake" },
+  fake: { color: "text-signal-blood", label: "Fake" },
+  needs_review: { color: "text-signal-violet", label: "Needs Review" },
+  inconclusive: { color: "text-ink-300", label: "Inconclusive" },
 };
+
+const STATUS_TONE: Record<string, string> = {
+  completed: "text-signal-sage",
+  processing: "text-signal-amber",
+  pending: "text-signal-amber",
+  failed: "text-signal-blood",
+};
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}K`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}M`;
+}
 
 export default function SubmissionTable({ data, isLoading, page, onPageChange }: SubmissionTableProps) {
   const navigate = useNavigate();
@@ -25,79 +39,134 @@ export default function SubmissionTable({ data, isLoading, page, onPageChange }:
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+      <div className="case-card crop-marks animate-fade-in">
+        <div className="px-4 py-3 border-b border-ink-700">
+          <Skeleton className="h-3 w-32" />
+        </div>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="border-b border-ink-800 last:border-0 px-4 py-3 flex items-center gap-4">
+            <Skeleton className="w-12 h-12" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-2/5" />
+              <Skeleton className="h-2 w-1/4" />
+            </div>
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ))}
       </div>
     );
   }
 
   if (!data || data.results.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400 text-sm">
-        No submissions found.
+      <div className="case-card crop-marks py-20 text-center animate-fade-in">
+        <div className="font-display text-5xl text-ink-300 mb-2">∅</div>
+        <p className="label-mono text-ink-200">Registry empty</p>
+        <p className="font-mono text-[11px] text-ink-500 mt-2">
+          Submit a file to seed the dossier.
+        </p>
       </div>
     );
   }
 
   return (
     <div>
-      <div className="space-y-2">
-        {data.results.map((sub) => {
-          const verdict = VERDICT_STYLES[sub.final_verdict] || VERDICT_STYLES.inconclusive;
+      <div className="case-card crop-marks">
+        {/* Header row */}
+        <div className="grid grid-cols-[40px_1fr_120px_80px_80px_120px] gap-4 px-4 py-3 border-b border-ink-700 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">
+          <span>#</span>
+          <span>File · Hash</span>
+          <span>Date</span>
+          <span>Size</span>
+          <span className="text-right">Score</span>
+          <span className="text-right">Verdict</span>
+        </div>
+
+        {data.results.map((sub, idx) => {
+          const tone = VERDICT_TONE[sub.final_verdict] || VERDICT_TONE.inconclusive;
+          const statusColor = STATUS_TONE[sub.status] || "text-ink-400";
+          const isComplete = sub.status === "completed";
           return (
             <div
               key={sub.id}
               onClick={() => navigate(`/results/${sub.id}`)}
-              className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-200 cursor-pointer hover:border-gray-300 transition-colors"
+              className="grid grid-cols-[40px_1fr_120px_80px_80px_120px] gap-4 px-4 py-3 border-b border-ink-800 last:border-0 cursor-pointer hover:bg-ink-850 transition-colors group items-center"
             >
-              {sub.thumbnail_url ? (
-                <img
-                  src={sub.thumbnail_url}
-                  alt={sub.original_filename}
-                  className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 bg-gray-100 rounded-lg flex-shrink-0" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{sub.original_filename}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {new Date(sub.created_at).toLocaleDateString()} &middot; {(sub.file_size / 1024).toFixed(0)} KB
-                </p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                {sub.final_score !== null && (
-                  <span className="text-sm font-semibold text-gray-700">
-                    {(sub.final_score * 100).toFixed(0)}%
-                  </span>
+              <span className="font-mono text-[10px] text-ink-500 ticker">
+                {String((page - 1) * pageSize + idx + 1).padStart(3, "0")}
+              </span>
+              <div className="flex items-center gap-3 min-w-0">
+                {sub.thumbnail_url ? (
+                  <img
+                    src={sub.thumbnail_url}
+                    alt=""
+                    className="w-10 h-10 object-cover border border-ink-700 grayscale group-hover:grayscale-0 transition-all"
+                  />
+                ) : (
+                  <div className="w-10 h-10 border border-ink-700 bg-ink-900 flex items-center justify-center font-mono text-[9px] text-ink-500">
+                    {sub.mime_type?.split("/")[1]?.slice(0, 4).toUpperCase() || "FILE"}
+                  </div>
                 )}
-                <span className={clsx("text-xs px-2 py-1 rounded-full font-medium", verdict.bg, verdict.text)}>
-                  {sub.status === "completed" ? verdict.label : sub.status}
-                </span>
+                <div className="min-w-0">
+                  <div className="font-mono text-xs text-ink-100 truncate group-hover:text-signal-amber transition-colors">
+                    {sub.original_filename}
+                  </div>
+                  <div className="font-mono text-[9px] text-ink-500 mt-0.5 ticker">
+                    {sub.id.slice(0, 8).toUpperCase()}
+                  </div>
+                </div>
               </div>
+              <span className="font-mono text-[10px] text-ink-400 ticker">
+                {new Date(sub.created_at).toISOString().slice(0, 10)}
+              </span>
+              <span className="font-mono text-[10px] text-ink-400 ticker">
+                {formatSize(sub.file_size)}
+              </span>
+              <span
+                className={clsx(
+                  "font-mono text-xs text-right ticker",
+                  isComplete ? tone.color : statusColor,
+                )}
+              >
+                {isComplete && sub.final_score !== null
+                  ? `${Math.round(sub.final_score * 100)}%`
+                  : "-"}
+              </span>
+              <span className="text-right">
+                <span
+                  className={clsx(
+                    "badge",
+                    isComplete ? tone.color : statusColor,
+                    "border-current",
+                  )}
+                >
+                  {isComplete ? tone.label : sub.status}
+                </span>
+              </span>
             </div>
           );
         })}
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6">
+        <div className="flex items-center justify-between mt-4 font-mono text-[10px] uppercase tracking-[0.14em]">
           <button
             onClick={() => onPageChange(page - 1)}
             disabled={page === 1}
-            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40"
+            className="text-ink-400 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            &larr; Previous
+            ← Prev
           </button>
-          <span className="text-sm text-gray-400">
-            Page {page} of {totalPages}
+          <span className="text-ink-500 ticker">
+            Page {String(page).padStart(2, "0")} / {String(totalPages).padStart(2, "0")} · {data.count} total
           </span>
           <button
             onClick={() => onPageChange(page + 1)}
             disabled={page === totalPages}
-            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40"
+            className="text-ink-400 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Next &rarr;
+            Next →
           </button>
         </div>
       )}

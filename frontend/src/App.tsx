@@ -15,6 +15,8 @@ import CommunityFakesPage from "./pages/CommunityFakesPage";
 import ComparePage from "./pages/ComparePage";
 import EmbedPage from "./pages/EmbedPage";
 import ReviewQueuePage from "./pages/ReviewQueuePage";
+import StatusPage from "./pages/StatusPage";
+import { ToastContainer } from "./components/ui/Toast";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +46,7 @@ function AppRoutes() {
           <Route path="/review" element={<ReviewQueuePage />} />
           <Route path="/results/:id" element={<ResultPage />} />
           <Route path="/factcheck" element={<FactCheckPage />} />
+          <Route path="/status" element={<StatusPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -56,6 +59,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AppRoutes />
+        <ToastContainer />
       </BrowserRouter>
     </QueryClientProvider>
   );

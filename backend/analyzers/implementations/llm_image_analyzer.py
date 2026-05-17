@@ -66,15 +66,15 @@ def _parse_vision_response(raw: str) -> tuple[str, float, str]:
 LLM_IMAGE_PROMPT = """You are an expert forensic image analyst specializing in detecting AI-generated images.
 
 Carefully examine this image and analyze:
-1. Lighting consistency — does light source make physical sense everywhere?
-2. Texture coherence — skin, hair, fabric, backgrounds look natural or overly smooth/repetitive?
-3. Fine details — fingers, teeth, eyes, ears, text — AI often fails these
-4. Background — blurry, warped, inconsistent patterns?
-5. Overall aesthetic — too perfect, dreamlike, uncanny valley?
+1. Lighting consistency - does light source make physical sense everywhere?
+2. Texture coherence - skin, hair, fabric, backgrounds look natural or overly smooth/repetitive?
+3. Fine details - fingers, teeth, eyes, ears, text - AI often fails these
+4. Background - blurry, warped, inconsistent patterns?
+5. Overall aesthetic - too perfect, dreamlike, uncanny valley?
 
 Respond ONLY with JSON. The reasoning field is REQUIRED and must contain at least 2 full sentences describing the specific artifacts you observed (or did not observe). Do not return empty reasoning.
 
-{"verdict": "ai_generated|human_photo|uncertain", "confidence": 0.0-1.0, "reasoning": "2-3 full sentences explaining the specific visual evidence — what you actually see in this image, not generic statements"}"""
+{"verdict": "ai_generated|human_photo|uncertain", "confidence": 0.0-1.0, "reasoning": "2-3 full sentences explaining the specific visual evidence - what you actually see in this image, not generic statements"}"""
 
 
 class LLMImageAnalyzer(BaseAnalyzer):
@@ -121,7 +121,7 @@ class LLMImageAnalyzer(BaseAnalyzer):
             return AnalysisOutput(
                 confidence=llm_confidence,
                 verdict=verdict,
-                evidence={"llm_verdict": llm_verdict, "reasoning": reasoning, "model": vision_model},
+                evidence={"llm_verdict": llm_verdict, "reasoning": reasoning},
             )
         except Exception as exc:
             logger.warning("LLM vision analysis failed: %s", exc)

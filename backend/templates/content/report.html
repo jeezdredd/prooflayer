@@ -106,7 +106,7 @@
       </tr>
       <tr>
         <td><div class="field-label">File Size</div><div class="field-value">{{ submission.file_size|filesizeformat }}</div></td>
-        <td><div class="field-label">SHA-256</div><div class="field-value">{{ submission.sha256_hash|default:"—" }}</div></td>
+        <td><div class="field-label">SHA-256</div><div class="field-value">{{ submission.sha256_hash|default:"-" }}</div></td>
       </tr>
       <tr>
         <td><div class="field-label">Submitted</div><div class="field-value">{{ submission.created_at|date:"Y-m-d H:i" }} UTC</div></td>
@@ -139,7 +139,7 @@
 
   {% if provenance_results %}
   <div class="section">
-    <div class="section-title">Provenance — Origin Tracking</div>
+    <div class="section-title">Provenance - Origin Tracking</div>
     {% for p in provenance_results %}
     <div class="provenance-item">
       <div class="provenance-source">{{ p.source_type }}</div>
@@ -153,7 +153,7 @@
 
   {% if factcheck and factcheck.claims %}
   <div class="section">
-    <div class="section-title">Fact-Check — Claim Analysis</div>
+    <div class="section-title">Fact-Check - Claim Analysis</div>
     <div style="margin-bottom: 10px; font-size: 11px; color: #6b7280;">Overall: <strong>{{ factcheck.overall_verdict|upper }}</strong> · {{ factcheck.claims_count }} claim{{ factcheck.claims_count|pluralize }} analyzed</div>
     {% for claim in factcheck.claims %}
     <div class="claim-item">

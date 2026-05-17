@@ -16,18 +16,34 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Your submission history</p>
+    <div className="animate-rise">
+      <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <span className="label-mono">Service / 02</span>
+          <h1 className="font-display text-6xl text-ink-50 leading-none mt-3">
+            Case <span className="italic text-signal-amber">Registry</span>
+          </h1>
+          <p className="text-ink-400 mt-3 max-w-xl leading-relaxed">
+            All evidence files submitted under your clearance, with verdicts and forensic scores.
+          </p>
+        </div>
+        {data && (
+          <div className="text-right">
+            <div className="font-display text-5xl text-ink-50 ticker">{data.count}</div>
+            <div className="label-mono mt-1">Total Submissions</div>
+          </div>
+        )}
       </div>
+
       <DashboardFilters onChange={handleFiltersChange} />
-      <SubmissionTable
-        data={data}
-        isLoading={isLoading}
-        page={page}
-        onPageChange={setPage}
-      />
+      <div className="mt-6">
+        <SubmissionTable
+          data={data}
+          isLoading={isLoading}
+          page={page}
+          onPageChange={setPage}
+        />
+      </div>
     </div>
   );
 }

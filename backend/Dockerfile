@@ -31,7 +31,11 @@ RUN uv pip install --system --no-cache \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     -r /tmp/pyproject.toml
 
-RUN python -m spacy download en_core_web_sm
+RUN for i in 1 2 3; do \
+      uv pip install --system --no-cache \
+        https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl \
+      && break || sleep 5; \
+    done
 
 COPY backend/ /app/
 

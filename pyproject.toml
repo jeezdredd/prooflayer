@@ -2,7 +2,7 @@
 name = "prooflayer"
 version = "0.1.0"
 description = "Content verification SaaS platform"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "django>=5.1,<5.2",
     "djangorestframework>=3.15,<3.16",
