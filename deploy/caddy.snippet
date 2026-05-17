@@ -1,14 +1,11 @@
 # Caddy snippet for ProofLayer.
-# Rendered/symlinked to /etc/caddy/sites/prooflayer.caddy on server.
-# Caddy is the on-host reverse proxy; Cloudflare Tunnel forwards public traffic
-# to Caddy at 127.0.0.1:80. `tls internal` issues a self-signed cert that
-# Cloudflare's origin checks accept; public TLS is terminated at Cloudflare edge.
+# Cloudflare Tunnel forwards public traffic to Caddy at http://localhost:80.
+# TLS termination happens at Cloudflare edge - we serve plain HTTP locally.
 
-# ===== Frontend (SPA, built with Vite + served by nginx in container) =====
-prooflayer.cloud {
+# ===== Frontend (SPA, nginx in container) =====
+http://prooflayer.cloud {
     encode zstd gzip
     reverse_proxy 127.0.0.1:8080
-    tls internal
     log {
         output file /var/log/caddy/prooflayer-fe.log
         format json
@@ -16,16 +13,14 @@ prooflayer.cloud {
 }
 
 # ===== Backend API =====
-api.prooflayer.cloud {
+http://api.prooflayer.cloud {
     encode zstd gzip
 
-    # Django collected static, served by Caddy directly to skip gunicorn
     handle_path /static/* {
         root * /srv/prooflayer/shared/static
         file_server
     }
 
-    # User-uploaded media (or proxy to MinIO/Cloudflare R2 in future)
     handle_path /media/* {
         root * /srv/prooflayer/shared/media
         file_server
@@ -36,7 +31,6 @@ api.prooflayer.cloud {
         header_up X-Real-IP {remote_host}
     }
 
-    tls internal
     log {
         output file /var/log/caddy/prooflayer-api.log
         format json
@@ -44,11 +38,9 @@ api.prooflayer.cloud {
 }
 
 # ===== Flower (Celery monitor) =====
-# Basic auth - generate hash via: caddy hash-password
-flower.prooflayer.cloud {
-    basicauth {
+http://flower.prooflayer.cloud {
+    basic_auth {
         seb0107 $2a$14$PsfqneOWJlDVlyDlXMWwfe86O/IedTtpjiVA3klHdPRLIubgAPF/e
     }
     reverse_proxy 127.0.0.1:5555
-    tls internal
 }
