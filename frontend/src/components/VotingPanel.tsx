@@ -1,4 +1,6 @@
 import clsx from "clsx";
+import { motion } from "motion/react";
+import { Check, X, HelpCircle } from "lucide-react";
 import { useVoteStats, useCastVote } from "../hooks/useCrowdsource";
 import { toast } from "./ui/Toast";
 
@@ -8,9 +10,9 @@ interface VotingPanelProps {
 }
 
 const VOTE_OPTIONS = [
-  { value: "real", label: "Real", color: "green" },
-  { value: "fake", label: "Fake", color: "red" },
-  { value: "uncertain", label: "Uncertain", color: "gray" },
+  { value: "real", label: "Real", Icon: Check, accent: "sage" },
+  { value: "fake", label: "Fake", Icon: X, accent: "blood" },
+  { value: "uncertain", label: "Uncertain", Icon: HelpCircle, accent: "amber" },
 ] as const;
 
 export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps) {
@@ -24,28 +26,41 @@ export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps)
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 mt-4">
+    <div className="case-card crop-marks mt-4 p-6">
       {fileUrl && (
-        <div className="mb-4 flex justify-center">
+        <div className="mb-5 flex justify-center">
           <img
             src={fileUrl}
             alt="Submission"
-            className="max-h-64 max-w-full rounded-lg object-contain border border-gray-100"
+            className="max-h-72 max-w-full rounded-sm object-contain border border-white/10 bg-ink-950/40"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
           />
         </div>
       )}
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-gray-700">Community Verdict</h4>
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <span className="w-1.5 h-1.5 rounded-full bg-signal-cyan pulse-dot" />
+          <span className="label-mono">Community Verdict</span>
+        </div>
         {stats && (
-          <span className="text-xs text-gray-400">{stats.total} vote{stats.total !== 1 ? "s" : ""}</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 ticker">
+            {stats.total} vote{stats.total !== 1 ? "s" : ""}
+          </span>
         )}
       </div>
-      <div className="flex gap-3">
-        {VOTE_OPTIONS.map(({ value, label, color }) => {
+      <div className="grid grid-cols-3 gap-3">
+        {VOTE_OPTIONS.map(({ value, label, Icon, accent }) => {
           const isActive = stats?.user_vote === value;
+          const activeRing =
+            accent === "sage" ? "ring-signal-sage text-signal-sage bg-signal-sage/10" :
+            accent === "blood" ? "ring-signal-blood text-signal-blood bg-signal-blood/10" :
+            "ring-signal-amber text-signal-amber bg-signal-amber/10";
           return (
-            <button
+            <motion.button
               key={value}
+              whileTap={{ scale: 0.97 }}
               onClick={() =>
                 castVote(
                   { submission: submissionId, value },
@@ -57,19 +72,16 @@ export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps)
               }
               disabled={isPending}
               className={clsx(
-                "flex-1 flex flex-col items-center gap-1 py-3 rounded-lg border-2 transition-colors text-sm font-medium",
-                {
-                  "border-green-500 bg-green-50 text-green-700": isActive && color === "green",
-                  "border-red-500 bg-red-50 text-red-700": isActive && color === "red",
-                  "border-gray-500 bg-gray-100 text-gray-700": isActive && color === "gray",
-                  "border-gray-200 bg-white text-gray-600 hover:border-gray-400": !isActive,
-                  "opacity-50 cursor-not-allowed": isPending,
-                }
+                "flex flex-col items-center gap-2 py-4 rounded-sm transition-all font-mono text-[11px] uppercase tracking-[0.14em]",
+                "ring-1",
+                isActive ? activeRing : "ring-white/10 bg-white/[0.02] text-ink-300 hover:ring-white/25 hover:text-ink-100",
+                isPending && "opacity-50 cursor-not-allowed",
               )}
             >
+              <Icon size={16} strokeWidth={1.5} />
               <span>{label}</span>
-              <span className="text-xs font-normal text-gray-500">{counts[value]}</span>
-            </button>
+              <span className="font-display text-2xl text-current ticker leading-none">{counts[value]}</span>
+            </motion.button>
           );
         })}
       </div>

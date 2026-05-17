@@ -10,8 +10,8 @@ from django.conf import settings
 
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 
-MAX_VISION_DIM = 1024
-VISION_JPEG_QUALITY = 88
+MAX_VISION_DIM = 672
+VISION_JPEG_QUALITY = 82
 
 logger = logging.getLogger(__name__)
 

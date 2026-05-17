@@ -37,6 +37,14 @@ http://api.prooflayer.cloud {
     }
 }
 
+# ===== Media (MinIO public-read bucket) =====
+http://media.prooflayer.cloud {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:9000 {
+        header_up Host {upstream_hostport}
+    }
+}
+
 # ===== Flower (Celery monitor) =====
 http://flower.prooflayer.cloud {
     basic_auth {

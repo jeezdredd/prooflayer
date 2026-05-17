@@ -131,6 +131,8 @@ services:
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9000:9000"
     volumes:
       - minio_data:/data
     environment:

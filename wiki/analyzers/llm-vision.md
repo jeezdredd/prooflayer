@@ -14,22 +14,25 @@ Multimodal LLM examines image and returns structured verdict + reasoning. Probes
 
 ## Model selection
 
-Reads `settings.OLLAMA_VISION_MODEL` (env-driven). Current dev: `qwen2.5vl:3b`.
+Reads `settings.OLLAMA_VISION_MODEL` (env-driven).
 
-| Model | Size | Notes |
-|-------|------|-------|
-| `qwen2.5vl:3b` | 3.2 GB | Default. Fits 12GB Docker comfortably. |
-| `qwen2.5vl:7b` | 6.0 GB | Better quality but OOMs alongside text LLM on 12GB. Pulled but not active. |
-| `moondream` | 1.7 GB | Original default. Lower fidelity. Still pulled. |
-| `llava:7b` | 4.7 GB | Fallback in code default if env unset. |
+**Prod (homelab ubuntu-dev, no GPU yet)**: `moondream` - 1.7GB, fastest CPU inference (~15-20s vs 60-80s for qwen2.5vl:3b).
+**Dev (mac)**: `qwen2.5vl:3b` - better quality, slower.
+
+| Model | Size | CPU latency | Notes |
+|-------|------|-------------|-------|
+| `moondream` | 1.7 GB | 15-20s | **active prod** - smallest, lossy but fast |
+| `qwen2.5vl:3b` | 3.2 GB | 60-80s | dev default, better reasoning |
+| `qwen2.5vl:7b` | 6.0 GB | OOMs 12GB / 3-5s GPU | wait for ROCm |
+| `llava:7b` | 4.7 GB | 90s+ | code default if env unset |
 
 Config: see [[infrastructure/env-vars]].
 
 ## Encoding
 
 ```python
-MAX_VISION_DIM = 1024
-VISION_JPEG_QUALITY = 88
+MAX_VISION_DIM = 672           # was 1024, lowered for CPU speed
+VISION_JPEG_QUALITY = 82       # was 88, lowered for fewer tokens
 
 img = Image.open(file_path).convert("RGB")
 img.thumbnail((1024, 1024))  # preserve aspect
