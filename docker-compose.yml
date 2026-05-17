@@ -61,7 +61,9 @@ services:
       celery -A config.celery worker
       --loglevel=info
       -Q default,ml,reports
-      --concurrency=2
+      --concurrency=1
+      --max-tasks-per-child=4
+      --max-memory-per-child=2500000
     volumes:
       - ./backend:/app
       - media_data:/app/media
@@ -72,8 +74,10 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
-      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-moondream}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}
       - HF_TOKEN=${HF_TOKEN:-}
+      - PYTORCH_NO_CUDA_MEMORY_CACHING=1
+      - OMP_NUM_THREADS=2
     depends_on:
       db:
         condition: service_healthy
@@ -116,6 +120,9 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_KEEP_ALIVE=2m
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 15s
@@ -131,7 +138,7 @@ services:
     restart: "no"
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b && ollama pull moondream"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b && ollama pull qwen2.5vl:3b"]
     volumes:
       - ollama_data:/root/.ollama
 
@@ -140,6 +147,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     command: celery -A config.celery flower --port=5555
+    volumes:
+      - ./backend:/app
     ports:
       - "5555:5555"
     environment:
