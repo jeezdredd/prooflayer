@@ -128,10 +128,10 @@ EOF
         # Atomic swap (compose is already pointing at $RELEASE)
         ln -sfn "$RELEASE" "${PROJ_ROOT}/current"
 
-        # Caddy snippet (one-time setup expected, idempotent reload)
+        # Caddy snippet (one-time setup expected, idempotent restart)
         if [[ -f "$RELEASE/deploy/caddy.snippet" ]]; then
             sudo cp "$RELEASE/deploy/caddy.snippet" "/etc/caddy/sites/${PROJECT}.caddy"
-            sudo systemctl reload caddy
+            sudo systemctl restart caddy
         fi
         ;;
 
