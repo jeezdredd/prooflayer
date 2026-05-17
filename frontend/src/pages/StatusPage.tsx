@@ -165,7 +165,7 @@ export default function StatusPage() {
         <span className="text-ink-700">·</span>
         <span>Public endpoint</span>
         <span className="text-ink-700">·</span>
-        <a href="/api/v1/system/status/" className="hover:text-signal-amber transition-colors">
+        <a href="https://api.prooflayer.cloud/api/v1/system/status/" className="hover:text-signal-amber transition-colors">
           GET /api/v1/system/status/
         </a>
       </div>

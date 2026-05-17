@@ -214,7 +214,7 @@ export default function LandingPage() {
                     →
                   </motion.span>
                 </MagneticBtn>
-                <a href="/api/schema/swagger-ui/" className="btn-ghost">
+                <a href="https://api.prooflayer.cloud/api/docs/" className="btn-ghost">
                   API Reference
                 </a>
                 <div className="flex items-center gap-2 ml-2 text-[11px] font-mono text-ink-500">
@@ -514,7 +514,7 @@ export default function LandingPage() {
         <div className="max-w-[1280px] mx-auto px-6 lg:px-10 flex flex-wrap items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">
           <span>© ProofLayer Lab - {new Date().getFullYear()}</span>
           <div className="flex gap-6">
-            <a href="/api/schema/swagger-ui/" className="hover:text-signal-amber transition-colors">API</a>
+            <a href="https://api.prooflayer.cloud/api/docs/" className="hover:text-signal-amber transition-colors">API</a>
             <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors">Source</a>
             <span className="text-iris">Confidence ≠ Certainty</span>
           </div>
