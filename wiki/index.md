@@ -19,6 +19,7 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[services/frontend]] - React + Vite
 - [[services/flower]] - celery monitoring
 - [[services/auth-email]] - JWT auth + email verification (Gmail SMTP)
+- [[services/visit-tracking]] - Discord webhook notify on visit (IP + geo)
 
 ## Detection strategy
 

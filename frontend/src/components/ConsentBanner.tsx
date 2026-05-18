@@ -30,8 +30,10 @@ export default function ConsentBanner() {
             <div className="flex-1">
               <div className="label-mono mb-1.5">Cookies</div>
               <p className="text-xs text-ink-300 leading-relaxed">
-                ProofLayer uses a single strictly-necessary cookie (<span className="font-mono text-ink-200">prooflayer_refresh</span>)
-                to keep you signed in. It is httpOnly, secure, SameSite=Lax. No tracking, no analytics, no third parties.
+                ProofLayer uses a strictly-necessary cookie (<span className="font-mono text-ink-200">prooflayer_refresh</span>)
+                to keep you signed in (httpOnly, Secure, SameSite=Lax). For ops monitoring we log your IP and
+                approximate country/city via <span className="font-mono text-ink-200">ip-api.com</span>. No third-party
+                tracking, no analytics SDKs, no ad cookies.
               </p>
               <div className="flex gap-2 mt-3">
                 <button
