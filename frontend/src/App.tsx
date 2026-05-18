@@ -18,6 +18,7 @@ import ReviewQueuePage from "./pages/ReviewQueuePage";
 import StatusPage from "./pages/StatusPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import { ToastContainer } from "./components/ui/Toast";
+import ConsentBanner from "./components/ConsentBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ export default function App() {
       <BrowserRouter>
         <AppRoutes />
         <ToastContainer />
+        <ConsentBanner />
       </BrowserRouter>
     </QueryClientProvider>
   );

@@ -14,11 +14,14 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
   const handleClick = async () => {
     setLoading(true);
     try {
-      const tokens = localStorage.getItem("tokens");
-      const access = tokens ? JSON.parse(tokens).access : null;
+      const { getAccessToken } = await import("../api/client");
+      const access = getAccessToken();
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/content/submissions/${submissionId}/report.pdf`,
-        { headers: access ? { Authorization: `Bearer ${access}` } : {} }
+        {
+          headers: access ? { Authorization: `Bearer ${access}` } : {},
+          credentials: "include",
+        }
       );
       if (!res.ok) throw new Error("Failed");
       const blob = await res.blob();

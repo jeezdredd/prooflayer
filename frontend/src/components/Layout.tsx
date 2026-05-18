@@ -178,7 +178,13 @@ export default function Layout() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const { auth } = await import("../api/endpoints");
+      await auth.logout();
+    } catch {
+      // ignore
+    }
     logout();
     navigate("/login");
   };

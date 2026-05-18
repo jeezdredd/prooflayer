@@ -81,6 +81,47 @@ Frontend `ProtectedRoute requireVerified`: wraps gated routes in `App.tsx`. Unve
 Wrapped: `/upload`, `/compare`, `/review`, `/factcheck`.
 Open to authed-but-unverified: `/dashboard`, `/community-fakes`, `/embed`, `/results/:id`, `/status`.
 
+## Cookie-based refresh token (security)
+
+Refresh token sits in **httpOnly Secure SameSite=Lax cookie**, not localStorage. XSS cannot exfiltrate it. Access token (15 min TTL) sits in `sessionStorage` + in-memory zustand.
+
+Cookie attrs:
+| Attr | Value | Why |
+|------|-------|-----|
+| `name` | `prooflayer_refresh` | scoped name |
+| `httpOnly` | `True` | JS cannot read |
+| `secure` | `True` (prod) | HTTPS only |
+| `samesite` | `Lax` | blocks CSRF on POST cross-site, allows top-level GET nav |
+| `path` | `/api/v1/auth/` | only auth endpoints see it |
+| `max_age` | 7 days | matches `REFRESH_TOKEN_LIFETIME` |
+
+Backend views (`backend/users/views.py`):
+- `CookieTokenObtainPairView` - login, moves `refresh` from JSON body into Set-Cookie
+- `CookieTokenRefreshView` - reads refresh from cookie, returns new access + rotates cookie
+- `LogoutView` - blacklists refresh, clears cookie
+- `RegisterView` - sets cookie on signup
+
+Frontend (`frontend/src/api/client.ts`):
+- `withCredentials: true` on every axios call
+- Access token in `sessionStorage` (`access` key) + zustand memory
+- 401 interceptor calls `POST /auth/refresh/` (cookie auto-sent), retries
+
+JWT blacklist app enabled (`rest_framework_simplejwt.token_blacklist`). `BLACKLIST_AFTER_ROTATION=True` means stolen old refresh tokens cannot be reused after rotation; logout actively blacklists.
+
+### Env vars
+
+```
+REFRESH_COOKIE_DOMAIN=  # empty = host-only (recommended)
+REFRESH_COOKIE_SECURE=true  # false in dev (localhost http)
+REFRESH_COOKIE_SAMESITE=Lax  # Strict breaks email-link nav
+```
+
+Dev override: `dev.py` sets `REFRESH_COOKIE_SECURE=False` + `CORS_ALLOW_CREDENTIALS=True`.
+
+### CORS
+
+`CORS_ALLOW_CREDENTIALS=True` required so browsers attach cookie cross-origin (`prooflayer.cloud` -> `api.prooflayer.cloud`). Frontend axios must also set `withCredentials: true`.
+
 ## See also
 
 - [[users-model]]

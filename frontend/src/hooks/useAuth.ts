@@ -4,13 +4,13 @@ import { auth } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 
 export function useLogin() {
-  const { setUser, setTokens } = useAuthStore();
+  const { setUser, setAccess } = useAuthStore();
   const navigate = useNavigate();
 
   return useMutation({
     mutationFn: (data: { email: string; password: string }) => auth.login(data),
     onSuccess: async (res) => {
-      setTokens(res.data.access, res.data.refresh);
+      setAccess(res.data.access);
       const me = await auth.me();
       setUser(me.data);
       navigate("/upload");
@@ -19,14 +19,14 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  const { setUser, setTokens } = useAuthStore();
+  const { setUser, setAccess } = useAuthStore();
   const navigate = useNavigate();
 
   return useMutation({
     mutationFn: (data: { email: string; username: string; password: string; password_confirm: string }) =>
       auth.register(data),
     onSuccess: (res) => {
-      setTokens(res.data.tokens.access, res.data.tokens.refresh);
+      setAccess(res.data.access);
       setUser(res.data.user);
       navigate("/upload");
     },

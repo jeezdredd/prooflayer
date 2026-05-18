@@ -30,6 +30,8 @@ if DATABASE_URL:
     }
 
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+REFRESH_COOKIE_SECURE = False
 
 try:
     import debug_toolbar  # noqa: F401

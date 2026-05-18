@@ -1,6 +1,5 @@
 import client from "./client";
 import type {
-  AuthResponse,
   FactCheckResult,
   PaginatedResponse,
   ProvenanceResult,
@@ -14,13 +13,14 @@ import type {
 
 export const auth = {
   register: (data: { email: string; username: string; password: string; password_confirm: string }) =>
-    client.post<AuthResponse>("/auth/register/", data),
+    client.post<{ user: User; access: string }>("/auth/register/", data),
 
   login: (data: { email: string; password: string }) =>
-    client.post<{ access: string; refresh: string }>("/auth/login/", data),
+    client.post<{ access: string }>("/auth/login/", data),
 
-  refresh: (refresh: string) =>
-    client.post<{ access: string; refresh?: string }>("/auth/refresh/", { refresh }),
+  refresh: () => client.post<{ access: string }>("/auth/refresh/", {}),
+
+  logout: () => client.post<{ detail: string }>("/auth/logout/", {}),
 
   me: () => client.get<User>("/auth/me/"),
 

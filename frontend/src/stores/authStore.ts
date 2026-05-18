@@ -1,20 +1,21 @@
 import { create } from "zustand";
 import type { User } from "../types";
+import { setAccessToken, getAccessToken } from "../api/client";
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   setUser: (user: User) => void;
-  setTokens: (access: string, refresh: string) => void;
+  setAccess: (access: string) => void;
   logout: () => void;
   hydrate: () => void;
 }
 
 function loadFromStorage(): Pick<AuthState, "user" | "isAuthenticated"> {
   try {
-    const tokens = localStorage.getItem("tokens");
+    const access = getAccessToken();
     const userStr = localStorage.getItem("user");
-    if (tokens && userStr) {
+    if (access && userStr) {
       return { user: JSON.parse(userStr), isAuthenticated: true };
     }
   } catch {
@@ -31,12 +32,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, isAuthenticated: true });
   },
 
-  setTokens: (access, refresh) => {
-    localStorage.setItem("tokens", JSON.stringify({ access, refresh }));
+  setAccess: (access) => {
+    setAccessToken(access);
+    set({ isAuthenticated: true });
   },
 
   logout: () => {
-    localStorage.removeItem("tokens");
+    setAccessToken(null);
     localStorage.removeItem("user");
     set({ user: null, isAuthenticated: false });
   },

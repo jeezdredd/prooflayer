@@ -1,14 +1,39 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import EmailVerificationToken
 from .serializers import RegisterSerializer, UserSerializer
 from .tasks import send_verification_email
 
 User = get_user_model()
+
+
+def _set_refresh_cookie(response, refresh: str) -> None:
+    response.set_cookie(
+        key=settings.REFRESH_COOKIE_NAME,
+        value=refresh,
+        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
+        httponly=True,
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+        path=settings.REFRESH_COOKIE_PATH,
+        domain=settings.REFRESH_COOKIE_DOMAIN,
+    )
+
+
+def _clear_refresh_cookie(response) -> None:
+    response.delete_cookie(
+        key=settings.REFRESH_COOKIE_NAME,
+        path=settings.REFRESH_COOKIE_PATH,
+        domain=settings.REFRESH_COOKIE_DOMAIN,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+    )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -21,16 +46,54 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
         send_verification_email.delay(user.id)
         refresh = RefreshToken.for_user(user)
-        return Response(
+        response = Response(
             {
                 "user": UserSerializer(user).data,
-                "tokens": {
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                },
+                "access": str(refresh.access_token),
             },
             status=status.HTTP_201_CREATED,
         )
+        _set_refresh_cookie(response, str(refresh))
+        return response
+
+
+class CookieTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        refresh = response.data.pop("refresh", None)
+        if refresh:
+            _set_refresh_cookie(response, refresh)
+        return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
+        if not refresh:
+            return Response({"detail": "refresh cookie missing"}, status=status.HTTP_401_UNAUTHORIZED)
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        data["refresh"] = refresh
+        request._full_data = data
+        response = super().post(request, *args, **kwargs)
+        new_refresh = response.data.pop("refresh", None)
+        if new_refresh:
+            _set_refresh_cookie(response, new_refresh)
+        return response
+
+
+class LogoutView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        refresh = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
+        if refresh:
+            try:
+                RefreshToken(refresh).blacklist()
+            except (TokenError, InvalidToken):
+                pass
+        response = Response({"detail": "logged out"})
+        _clear_refresh_cookie(response)
+        return response
 
 
 class MeView(generics.RetrieveUpdateAPIView):
