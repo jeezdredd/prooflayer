@@ -185,6 +185,8 @@
   },
   "active": "5cfabb7bfd467835",
   "lastOpenFiles": [
+    "services/visit-tracking.md",
+    "concepts/perceptual-provenance.md",
     "services/auth-email.md",
     "infrastructure/media-domain.md",
     "log.md",
