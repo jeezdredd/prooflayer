@@ -151,6 +151,19 @@ TINEYE_API_KEY = os.environ.get("TINEYE_API_KEY", "")
 GOOGLE_VISION_KEY = os.environ.get("GOOGLE_VISION_KEY", "")
 GOOGLE_FACT_CHECK_KEY = os.environ.get("GOOGLE_FACT_CHECK_KEY", "")
 
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "ProofLayer <noreply@prooflayer.cloud>")
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend"
+)
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
 if SENTRY_DSN:
     import sentry_sdk

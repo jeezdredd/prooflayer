@@ -16,6 +16,7 @@ import ComparePage from "./pages/ComparePage";
 import EmbedPage from "./pages/EmbedPage";
 import ReviewQueuePage from "./pages/ReviewQueuePage";
 import StatusPage from "./pages/StatusPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import { ToastContainer } from "./components/ui/Toast";
 
 const queryClient = new QueryClient({
@@ -36,6 +37,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/upload" element={<UploadPage />} />

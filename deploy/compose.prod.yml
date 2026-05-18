@@ -68,6 +68,14 @@ services:
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
       - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME:-prooflayer-media}
       - AWS_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_CUSTOM_DOMAIN=${AWS_S3_CUSTOM_DOMAIN:-}
+      - EMAIL_HOST=${EMAIL_HOST:-}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-true}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-ProofLayer <noreply@prooflayer.cloud>}
+      - FRONTEND_URL=${FRONTEND_URL:-https://prooflayer.cloud}
       - SENTRY_DSN=${SENTRY_DSN:-}
     depends_on:
       db:
@@ -103,6 +111,14 @@ services:
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
       - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME:-prooflayer-media}
       - AWS_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_S3_CUSTOM_DOMAIN=${AWS_S3_CUSTOM_DOMAIN:-}
+      - EMAIL_HOST=${EMAIL_HOST:-}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-true}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-ProofLayer <noreply@prooflayer.cloud>}
+      - FRONTEND_URL=${FRONTEND_URL:-https://prooflayer.cloud}
       - OMP_NUM_THREADS=4
     depends_on:
       db:

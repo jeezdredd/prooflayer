@@ -25,6 +25,12 @@ export const auth = {
   me: () => client.get<User>("/auth/me/"),
 
   updateMe: (data: Partial<User>) => client.patch<User>("/auth/me/", data),
+
+  verifyEmail: (token: string) =>
+    client.post<{ detail: string; email?: string }>("/auth/verify-email/", { token }),
+
+  resendVerification: () =>
+    client.post<{ detail: string }>("/auth/resend-verification/", {}),
 };
 
 export const content = {

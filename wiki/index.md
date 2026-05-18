@@ -18,6 +18,7 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[services/minio]] - S3-compatible blob store
 - [[services/frontend]] - React + Vite
 - [[services/flower]] - celery monitoring
+- [[services/auth-email]] - JWT auth + email verification (Gmail SMTP)
 
 ## Analyzers (7 total)
 

@@ -8,6 +8,7 @@ import {
   Code2, Activity, Shield, LogOut, Home, Menu, X,
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
+import EmailVerifyBanner from "./EmailVerifyBanner";
 
 interface NavItem {
   to: string;
@@ -234,6 +235,7 @@ export default function Layout() {
       {/* MAIN */}
       <main className="lg:pl-[240px] relative z-10">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-10 lg:py-14">
+          <EmailVerifyBanner />
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
