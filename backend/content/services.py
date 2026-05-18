@@ -1,8 +1,12 @@
 import hashlib
 import io
+import logging
 
 import imagehash
-from PIL import Image, ExifTags
+import numpy as np
+from PIL import ExifTags, Image
+
+logger = logging.getLogger(__name__)
 
 
 def compute_sha256(file):
@@ -84,18 +88,78 @@ def check_known_fake(sha256_hash):
     return KnownFakeHash.objects.filter(sha256_hash=sha256_hash).exists()
 
 
+def _phash_to_signed(h: imagehash.ImageHash) -> int:
+    v = int(str(h), 16)
+    if v > 2**63 - 1:
+        v -= 2**64
+    return v
+
+
 def compute_perceptual_hashes(file_path):
+    """Return dict with phash, dhash, pdq_hash, pdq_quality, clip_embedding."""
+    out = {
+        "phash": None,
+        "dhash": None,
+        "pdq_hash": "",
+        "pdq_quality": None,
+        "clip_embedding": None,
+    }
     try:
-        img = Image.open(file_path)
-        ph = int(str(imagehash.phash(img)), 16)
-        dh = int(str(imagehash.dhash(img)), 16)
-        if ph > 2**63 - 1:
-            ph -= 2**64
-        if dh > 2**63 - 1:
-            dh -= 2**64
-        return ph, dh
-    except Exception:
-        return None, None
+        img = Image.open(file_path).convert("RGB")
+        out["phash"] = _phash_to_signed(imagehash.phash(img))
+        out["dhash"] = _phash_to_signed(imagehash.dhash(img))
+    except Exception as e:
+        logger.warning("phash/dhash failed: %s", e)
+        return out
+
+    try:
+        import pdqhash
+
+        arr = np.array(img)
+        bits, quality = pdqhash.compute(arr)
+        out["pdq_hash"] = _bits_to_hex(bits)
+        out["pdq_quality"] = int(quality)
+    except Exception as e:
+        logger.warning("pdq compute failed: %s", e)
+
+    try:
+        out["clip_embedding"] = compute_clip_embedding(img)
+    except Exception as e:
+        logger.warning("clip embed failed: %s", e)
+
+    return out
+
+
+def _bits_to_hex(bits) -> str:
+    bit_str = "".join("1" if b else "0" for b in bits)
+    pad = (-len(bit_str)) % 4
+    bit_str += "0" * pad
+    return f"{int(bit_str, 2):0{len(bit_str)//4}x}"
+
+
+_CLIP_STATE = {"processor": None, "model": None, "device": "cpu"}
+
+
+def _load_clip():
+    if _CLIP_STATE["model"] is not None:
+        return _CLIP_STATE
+    from transformers import CLIPModel, CLIPProcessor
+
+    name = "openai/clip-vit-base-patch32"
+    _CLIP_STATE["processor"] = CLIPProcessor.from_pretrained(name)
+    _CLIP_STATE["model"] = CLIPModel.from_pretrained(name).eval()
+    return _CLIP_STATE
+
+
+def compute_clip_embedding(img: Image.Image):
+    import torch
+
+    state = _load_clip()
+    inputs = state["processor"](images=img, return_tensors="pt")
+    with torch.no_grad():
+        feats = state["model"].get_image_features(**inputs)
+        feats = feats / feats.norm(p=2, dim=-1, keepdim=True)
+    return feats[0].cpu().numpy().tolist()
 
 
 CACHE_TTL_DAYS = 14
@@ -103,7 +167,9 @@ CACHE_TTL_DAYS = 14
 
 def find_cached_result(sha256_hash, exclude_id):
     from datetime import timedelta
+
     from django.utils import timezone
+
     from .models import Submission
     cutoff = timezone.now() - timedelta(days=CACHE_TTL_DAYS)
     return (

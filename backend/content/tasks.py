@@ -93,11 +93,28 @@ def process_submission(self, submission_id):
             submission.is_known_fake = is_fake
 
             _set_status(submission, "Computing perceptual hashes...")
-            ph, dh = compute_perceptual_hashes(path)
-            submission.phash = ph
-            submission.dhash = dh
+            hashes = compute_perceptual_hashes(path)
+            submission.phash = hashes["phash"]
+            submission.dhash = hashes["dhash"]
+            submission.pdq_hash = hashes["pdq_hash"]
+            submission.pdq_quality = hashes["pdq_quality"]
+            if hashes["clip_embedding"] is not None:
+                submission.clip_embedding = hashes["clip_embedding"]
 
-        submission.save(update_fields=["sha256_hash", "metadata", "thumbnail", "is_known_fake", "phash", "dhash"])
+            if not submission.is_known_fake:
+                from provenance.services import check_perceptual_known_fake
+                submission.is_known_fake = check_perceptual_known_fake(submission)
+
+        submission.save(update_fields=[
+            "sha256_hash", "metadata", "thumbnail", "is_known_fake",
+            "phash", "dhash", "pdq_hash", "pdq_quality", "clip_embedding",
+        ])
+
+        try:
+            from provenance.services import scan_provenance
+            scan_provenance(submission)
+        except Exception:
+            logger.exception("provenance scan failed for %s", submission.id)
 
         _set_status(submission, "Starting analyzers...")
         from analyzers.tasks import dispatch_analysis

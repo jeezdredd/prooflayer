@@ -2,6 +2,9 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from pgvector.django import HnswIndex, VectorField
+
+CLIP_EMBED_DIM = 512
 
 
 class Submission(models.Model):
@@ -36,6 +39,9 @@ class Submission(models.Model):
     is_known_fake = models.BooleanField(default=False)
     phash = models.BigIntegerField(null=True, blank=True, db_index=True)
     dhash = models.BigIntegerField(null=True, blank=True, db_index=True)
+    pdq_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    pdq_quality = models.PositiveSmallIntegerField(null=True, blank=True)
+    clip_embedding = VectorField(dimensions=CLIP_EMBED_DIM, null=True, blank=True)
     approved_for_training = models.BooleanField(default=False, db_index=True)
     verified_label = models.CharField(
         max_length=10,
@@ -48,6 +54,15 @@ class Submission(models.Model):
     class Meta:
         db_table = "submissions"
         ordering = ["-created_at"]
+        indexes = [
+            HnswIndex(
+                name="submissions_clip_hnsw",
+                fields=["clip_embedding"],
+                m=16,
+                ef_construction=64,
+                opclasses=["vector_cosine_ops"],
+            ),
+        ]
 
     def __str__(self):
         return f"{self.original_filename} ({self.status})"
@@ -55,6 +70,9 @@ class Submission(models.Model):
 
 class KnownFakeHash(models.Model):
     sha256_hash = models.CharField(max_length=64, unique=True, db_index=True)
+    phash = models.BigIntegerField(null=True, blank=True, db_index=True)
+    dhash = models.BigIntegerField(null=True, blank=True, db_index=True)
+    pdq_hash = models.CharField(max_length=64, blank=True, db_index=True)
     source = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     added_at = models.DateTimeField(auto_now_add=True)

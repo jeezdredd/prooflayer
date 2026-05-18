@@ -32,9 +32,14 @@ dependencies = [
     "pydyf<0.8",
     "flower>=2.0,<3.0",
     "boto3>=1.35,<2.0",
+    "pgvector>=0.3,<1.0",
+    "pdqhash>=0.2,<1.0",
 ]
 
 [project.optional-dependencies]
+c2pa = [
+    "c2pa-python>=0.6,<1.0",
+]
 dev = [
     "pytest>=8.3,<9.0",
     "pytest-django>=4.9,<5.0",

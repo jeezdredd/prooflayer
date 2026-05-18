@@ -20,6 +20,11 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[services/flower]] - celery monitoring
 - [[services/auth-email]] - JWT auth + email verification (Gmail SMTP)
 
+## Detection strategy
+
+- [[concepts/detection-strategy-2026]] - 8-week rebuild plan (parent)
+- [[concepts/perceptual-provenance]] - Week 1: phash + PDQ + CLIP + C2PA + pgvector
+
 ## Analyzers (7 total)
 
 - [[analyzers/_index]] - pipeline overview

@@ -1,7 +1,8 @@
 ---
 type: research-synthesis
 created: 2026-05-14
-status: action-plan
+updated: 2026-05-18
+status: week-1-in-progress
 ---
 
 # 2026 Detection Strategy (rebuild plan)

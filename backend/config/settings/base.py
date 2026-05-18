@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "provenance",
     "factcheck",
     "drf_spectacular",
+    "pgvector.django",
 ]
 
 MIDDLEWARE = [
