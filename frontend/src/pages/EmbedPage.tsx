@@ -63,7 +63,7 @@ export default function EmbedPage() {
               type="text"
               value={sha}
               onChange={(e) => setSha(e.target.value.trim())}
-              className="mt-1 w-full bg-ink-950/70 border border-ink-700 px-3 py-2 text-xs font-mono text-ink-100 focus:outline-none focus:border-iris transition"
+              className="mt-1 w-full bg-ink-900 border border-ink-700 px-3 py-2 text-xs font-mono text-ink-100 focus:outline-none focus:border-iris transition"
               placeholder="64-char hex"
             />
           </label>
@@ -94,9 +94,17 @@ export default function EmbedPage() {
         </div>
 
         <div>
-          <div className="label-mono mb-2">Live preview</div>
-          <div className="case-card p-6 min-h-[120px] flex items-center justify-center animate-fade-in-up">
-            <div ref={previewRef} />
+          <div className="label-mono mb-2">Live preview <span className="text-ink-500 normal-case tracking-normal">- how third-party sites render it</span></div>
+          <div className="border border-ink-700 rounded-sm overflow-hidden animate-fade-in-up">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 border-b border-ink-700">
+              <span className="w-2 h-2 rounded-full bg-ink-700" />
+              <span className="w-2 h-2 rounded-full bg-ink-700" />
+              <span className="w-2 h-2 rounded-full bg-ink-700" />
+              <span className="font-mono text-[9px] text-ink-500 ml-2">third-party-site.com</span>
+            </div>
+            <div className="bg-[#f7f8fb] p-6 min-h-[120px] flex items-center justify-center">
+              <div ref={previewRef} />
+            </div>
           </div>
           <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">
             Tip: paste a real SHA-256 from your dashboard to see it light up.

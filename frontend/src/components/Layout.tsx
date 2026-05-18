@@ -94,10 +94,10 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
-                  <span className={clsx("text-ink-700", isActive && "text-signal-amber")}>
+                  <span className={clsx("text-ink-400", isActive && "text-signal-amber")}>
                     <Icon size={16} strokeWidth={1.5} />
                   </span>
-                  <span className="text-ink-700 mr-1">{item.code}</span>
+                  <span className="text-ink-500 mr-1 tabular-nums">{item.code}</span>
                   <span>{item.label}</span>
                 </>
               )}
@@ -127,7 +127,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                   />
                 )}
                 <Shield size={16} strokeWidth={1.5} />
-                <span className="text-ink-700 mr-1">08</span>
+                <span className="text-ink-500 mr-1 tabular-nums">08</span>
                 <span>Review</span>
               </>
             )}
