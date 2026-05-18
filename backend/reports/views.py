@@ -2,12 +2,15 @@ from django.db import IntegrityError
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
+from users.permissions import IsVerifiedUser
+
 from .models import Report
 from .serializers import ReportCreateSerializer, ReportListSerializer
 
 
 class ReportCreateView(generics.CreateAPIView):
     serializer_class = ReportCreateSerializer
+    permission_classes = [IsVerifiedUser]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

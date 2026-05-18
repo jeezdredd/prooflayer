@@ -8,10 +8,10 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 const SOURCE_COLORS: Record<string, string> = {
-  phash_match: "bg-blue-50 text-blue-700 border-blue-200",
-  tineye: "bg-purple-50 text-purple-700 border-purple-200",
-  google_vision: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  c2pa: "bg-green-50 text-green-700 border-green-200",
+  phash_match: "bg-iris/10 text-iris-light border-iris/40",
+  tineye: "bg-signal-violet/10 text-signal-violet border-signal-violet/40",
+  google_vision: "bg-iris/10 text-iris-light border-iris/40",
+  c2pa: "bg-sage-500/10 text-sage-300 border-sage-500/40",
 };
 
 interface ProvenancePanelProps {
@@ -23,45 +23,45 @@ export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) 
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mt-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Provenance</h4>
-        <p className="text-sm text-gray-400">Checking sources...</p>
+      <div className="case-card p-6 mt-4">
+        <h4 className="label-mono mb-3">Provenance</h4>
+        <p className="font-mono text-xs text-ink-500">Checking sources...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 mt-4">
-      <h4 className="text-sm font-semibold text-gray-700 mb-3">Provenance</h4>
+    <div className="case-card p-6 mt-4">
+      <h4 className="label-mono mb-3">Provenance</h4>
 
       {!results || results.length === 0 ? (
-        <p className="text-sm text-gray-400">No matches found in external sources.</p>
+        <p className="font-mono text-xs text-ink-500">No matches found in external sources.</p>
       ) : (
         <div className="space-y-3">
           {results.map((r) => (
-            <div key={r.id} className="flex items-start justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div key={r.id} className="flex items-start justify-between gap-3 p-3 bg-ink-950/60 border border-ink-800">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full border font-medium ${SOURCE_COLORS[r.source_type] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}
+                    className={`font-mono text-[10px] uppercase tracking-[0.12em] px-2 py-0.5 border ${SOURCE_COLORS[r.source_type] ?? "bg-ink-900 text-ink-300 border-ink-700"}`}
                   >
                     {SOURCE_LABELS[r.source_type] ?? r.source_type}
                   </span>
                   {r.similarity_score !== null && (
-                    <span className="text-xs text-gray-500">
+                    <span className="font-mono text-[10px] text-ink-500 tabular-nums">
                       {(r.similarity_score * 100).toFixed(0)}% match
                     </span>
                   )}
                 </div>
                 {r.title && (
-                  <p className="text-sm text-gray-700 truncate">{r.title}</p>
+                  <p className="text-sm text-ink-200 truncate">{r.title}</p>
                 )}
                 {r.source_url && (
                   <a
                     href={r.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline truncate block"
+                    className="text-xs text-iris hover:text-iris-light truncate block transition"
                   >
                     {r.source_url}
                   </a>

@@ -40,15 +40,17 @@ function AppRoutes() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-          <Route path="/upload" element={<UploadPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/community-fakes" element={<CommunityFakesPage />} />
-          <Route path="/compare" element={<ComparePage />} />
           <Route path="/embed" element={<EmbedPage />} />
-          <Route path="/review" element={<ReviewQueuePage />} />
           <Route path="/results/:id" element={<ResultPage />} />
-          <Route path="/factcheck" element={<FactCheckPage />} />
           <Route path="/status" element={<StatusPage />} />
+          <Route element={<ProtectedRoute requireVerified />}>
+            <Route path="/upload" element={<UploadPage />} />
+            <Route path="/compare" element={<ComparePage />} />
+            <Route path="/review" element={<ReviewQueuePage />} />
+            <Route path="/factcheck" element={<FactCheckPage />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

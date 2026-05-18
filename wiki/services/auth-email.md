@@ -57,6 +57,30 @@ When `EMAIL_HOST` is empty, `EMAIL_BACKEND` falls back to `console.EmailBackend`
 
 Gmail SMTP relays via `smtp.gmail.com:587 STARTTLS`. Daily send cap ~500/day on free, 2000 on Workspace - fine for capstone.
 
+## Verification gating
+
+Backend `users.permissions.IsVerifiedUser` (`backend/users/permissions.py`):
+```python
+class IsVerifiedUser(BasePermission):
+    message = "Email verification required."
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and getattr(u, "is_verified", False))
+```
+
+Gated endpoints (require `is_verified=True`, return 403 otherwise):
+- `POST /api/v1/content/submissions/` (upload) - `SubmissionViewSet.get_permissions` swaps on action
+- `POST /api/v1/factcheck/` - `FactCheckView`
+- `POST /api/v1/crowdsource/vote/` - `VoteCreateView`
+- `POST /api/v1/reports/` - `ReportCreateView`
+
+Read endpoints (`/auth/me`, list/retrieve submissions, status, embed widget) stay on `IsAuthenticated` / `AllowAny`.
+
+Frontend `ProtectedRoute requireVerified`: wraps gated routes in `App.tsx`. Unverified user sees [[VerifyGate]] panel instead of `<Navigate>` redirect. Verified users hit page as normal.
+
+Wrapped: `/upload`, `/compare`, `/review`, `/factcheck`.
+Open to authed-but-unverified: `/dashboard`, `/community-fakes`, `/embed`, `/results/:id`, `/status`.
+
 ## See also
 
 - [[users-model]]

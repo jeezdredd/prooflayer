@@ -1,7 +1,9 @@
 from django.http import HttpResponse
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+
+from users.permissions import IsVerifiedUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -50,6 +52,11 @@ class SubmissionViewSet(
         if self.action == "create":
             return [UploadRateThrottle()]
         return super().get_throttles()
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsVerifiedUser()]
+        return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
         file = request.FILES.get("file")

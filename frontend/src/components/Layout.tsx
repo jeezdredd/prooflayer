@@ -90,7 +90,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                   {isActive && (
                     <motion.span
                       layoutId="nav-indicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-5 bg-signal-amber"
+                      className="absolute left-0 inset-y-1 w-[2px] bg-signal-amber rounded-r-sm"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -122,7 +122,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                 {isActive && (
                   <motion.span
                     layoutId="nav-indicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-5 bg-signal-violet"
+                    className="absolute left-0 inset-y-1 w-[2px] bg-signal-violet rounded-r-sm"
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}

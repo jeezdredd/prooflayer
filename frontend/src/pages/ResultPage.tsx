@@ -40,7 +40,7 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
     <button
       onClick={handleClick}
       disabled={loading}
-      className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
+      className="font-mono text-[10px] uppercase tracking-[0.14em] border border-iris/60 text-iris hover:bg-iris/10 px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5"
     >
       {loading ? "…" : "↓"} PDF Report
     </button>
@@ -61,7 +61,7 @@ export default function ResultPage() {
             <Skeleton className="h-8 w-24 rounded-lg" />
           </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+        <div className="case-card p-6 space-y-4">
           <div className="flex items-start justify-between">
             <div className="space-y-2 flex-1">
               <Skeleton className="h-5 w-2/5" />
@@ -77,7 +77,7 @@ export default function ResultPage() {
               <Skeleton className="h-3 w-3/4" />
             </div>
           </div>
-          <div className="space-y-3 pt-4 border-t border-gray-100">
+          <div className="space-y-3 pt-4 border-t border-ink-800">
             <Skeleton className="h-4 w-1/3" />
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center gap-3 pl-10">
@@ -97,8 +97,8 @@ export default function ResultPage() {
   if (isError || !submission) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500">Submission not found.</p>
-        <Link to="/upload" className="mt-2 text-blue-600 hover:underline text-sm">
+        <p className="text-ink-400 font-mono text-sm">Submission not found.</p>
+        <Link to="/upload" className="mt-2 inline-block text-iris hover:text-iris-light underline text-sm">
           Go back to upload
         </Link>
       </div>
@@ -108,12 +108,12 @@ export default function ResultPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
+        <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em]">
+          <Link to="/dashboard" className="text-ink-400 hover:text-ink-100 transition">
             &larr; Dashboard
           </Link>
-          <span className="text-gray-300">/</span>
-          <Link to="/upload" className="text-sm text-blue-600 hover:underline">
+          <span className="text-ink-700">/</span>
+          <Link to="/upload" className="text-iris hover:text-iris-light transition">
             Verify another
           </Link>
         </div>

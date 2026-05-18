@@ -24,11 +24,14 @@ export default function VerifyEmailPage() {
     }
     auth
       .verifyEmail(token)
-      .then((res) => {
+      .then(async (res) => {
         setStatus("ok");
         setMessage(res.data.detail);
-        if (user && res.data.email && user.email === res.data.email) {
-          setUser({ ...user, is_verified: true });
+        try {
+          const me = await auth.me();
+          setUser(me.data);
+        } catch {
+          if (user) setUser({ ...user, is_verified: true });
         }
       })
       .catch((err) => {

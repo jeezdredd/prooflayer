@@ -33,28 +33,28 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
   }
 
   if (submitted) {
-    return <span className="text-xs text-gray-400">Report submitted</span>;
+    return <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">Report submitted</span>;
   }
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+        className="font-mono text-[10px] uppercase tracking-[0.14em] border border-ink-700 text-ink-400 hover:border-signal-blood hover:text-signal-blood px-3 py-1.5 transition"
       >
         Report
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Report submission</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="case-card crop-marks p-6 w-full max-w-sm">
+            <h3 className="font-display text-xl text-white mb-4">Report submission</h3>
             <div className="mb-3">
-              <label className="text-xs text-gray-500 mb-1 block">Reason</label>
+              <label className="label-mono block mb-1">Reason</label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                className="w-full bg-ink-950/70 border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 focus:outline-none focus:border-iris transition"
               >
                 {REASONS.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -62,25 +62,25 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
               </select>
             </div>
             <div className="mb-4">
-              <label className="text-xs text-gray-500 mb-1 block">Details (optional)</label>
+              <label className="label-mono block mb-1">Details (optional)</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none"
+                className="w-full bg-ink-950/70 border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 resize-none focus:outline-none focus:border-iris transition placeholder:text-ink-500"
               />
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setOpen(false)}
-                className="flex-1 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+                className="flex-1 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-300 border border-ink-700 hover:bg-ink-800 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isPending}
-                className="flex-1 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50"
+                className="flex-1 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-signal-blood border border-signal-blood/60 hover:bg-signal-blood/10 disabled:opacity-50 transition"
               >
                 Submit
               </button>

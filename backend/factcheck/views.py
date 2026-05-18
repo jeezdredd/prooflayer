@@ -1,13 +1,14 @@
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from users.permissions import IsVerifiedUser
 
 from .services import analyze_text
 
 
 class FactCheckView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsVerifiedUser]
 
     def post(self, request):
         text = request.data.get("text", "").strip()
