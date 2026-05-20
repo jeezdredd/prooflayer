@@ -37,4 +37,4 @@ app.conf.task_routes = {
     "analyzers.tasks.aggregate_verdicts": {"queue": "default"},
 }
 
-app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports"])
+app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports", "api"])
