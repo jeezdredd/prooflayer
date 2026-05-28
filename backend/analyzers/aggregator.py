@@ -40,18 +40,10 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     final_score = weighted_score / total_weight if total_weight > 0 else 0.5
 
     confident_decisive = [r for r in decisive_results if r.confidence >= CORROBORATION_CONFIDENCE_FLOOR]
-    confident_verdicts = {r.verdict for r in confident_decisive}
     fake_voters = [r for r in confident_decisive if r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS)]
     authentic_voters = [r for r in confident_decisive if r.verdict == AnalysisResult.Verdict.AUTHENTIC]
 
-    has_disagreement = (
-        len(confident_verdicts) > 1
-        and AnalysisResult.Verdict.AUTHENTIC in confident_verdicts
-        and (
-            AnalysisResult.Verdict.FAKE in confident_verdicts
-            or AnalysisResult.Verdict.SUSPICIOUS in confident_verdicts
-        )
-    )
+    has_disagreement = len(fake_voters) >= 2 and len(authentic_voters) >= 2
 
     if has_disagreement:
         return round(final_score, 4), "needs_review"
@@ -68,12 +60,12 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
 
 
 def _band(score: float) -> str:
-    if score < 0.25:
+    if score < 0.35:
         return "authentic"
-    if score < 0.45:
+    if score < 0.5:
         return "suspicious"
-    if score < 0.55:
+    if score < 0.6:
         return "inconclusive"
-    if score < 0.78:
+    if score < 0.75:
         return "likely_fake"
     return "fake"

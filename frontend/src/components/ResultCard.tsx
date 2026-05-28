@@ -7,10 +7,10 @@ interface ResultCardProps {
 }
 
 const VERDICT_TONE: Record<string, { color: string; label: string; ring: string }> = {
-  authentic: { color: "text-signal-sage", ring: "border-signal-sage/40", label: "Authentic" },
+  authentic: { color: "text-signal-sage", ring: "border-signal-sage/40", label: "REAL" },
   suspicious: { color: "text-signal-amber", ring: "border-signal-amber/40", label: "Suspicious" },
-  likely_fake: { color: "text-signal-blood", ring: "border-signal-blood/40", label: "Likely Fake" },
-  fake: { color: "text-signal-blood", ring: "border-signal-blood/60", label: "Fake" },
+  likely_fake: { color: "text-signal-blood", ring: "border-signal-blood/40", label: "Likely AI" },
+  fake: { color: "text-signal-blood", ring: "border-signal-blood/60", label: "AI" },
   needs_review: { color: "text-signal-violet", ring: "border-signal-violet/40", label: "Needs Review" },
   inconclusive: { color: "text-ink-300", ring: "border-ink-600", label: "Inconclusive" },
 };

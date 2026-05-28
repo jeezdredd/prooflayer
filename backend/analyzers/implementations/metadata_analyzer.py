@@ -26,6 +26,9 @@ AI_TOOL_SIGNATURES = [
 
 EXIF_SOFTWARE_FIELDS = ["Software", "ProcessingSoftware", "Creator", "CreatorTool"]
 
+CAMERA_SIGNATURE_FIELDS = ["Make", "Model"]
+CAMERA_CAPTURE_FIELDS = ["ExposureTime", "FNumber", "ISOSpeedRatings", "FocalLength", "LensModel", "LensMake"]
+
 
 class MetadataAnalyzer(BaseAnalyzer):
     name = "metadata"
@@ -54,7 +57,11 @@ class MetadataAnalyzer(BaseAnalyzer):
         if evidence["metadata_presence"]["stripped"]:
             flags.append("metadata_stripped")
 
-        strong_flags = [f for f in flags if f != "metadata_stripped"]
+        evidence["camera"] = self._check_camera_signature(metadata)
+        if evidence["camera"]["has_camera_signature"]:
+            flags.append("camera_signature")
+
+        strong_flags = [f for f in flags if f not in ("metadata_stripped", "camera_signature")]
 
         if "ai_tool_signature" in flags:
             confidence = 0.9
@@ -62,21 +69,24 @@ class MetadataAnalyzer(BaseAnalyzer):
         elif len(strong_flags) >= 2:
             confidence = 0.8
             verdict = "suspicious"
+        elif "camera_signature" in flags and len(strong_flags) == 0:
+            confidence = 0.85
+            verdict = "authentic"
         elif len(strong_flags) == 1 and "metadata_stripped" in flags:
-            confidence = 0.7
+            confidence = 0.55
             verdict = "suspicious"
         elif len(strong_flags) == 1:
             confidence = 0.6
             verdict = "suspicious"
         elif "metadata_stripped" in flags:
-            confidence = 0.5
+            confidence = 0.4
             verdict = "inconclusive"
         elif metadata.get("exif"):
-            confidence = 0.8
+            confidence = 0.7
             verdict = "authentic"
         else:
-            confidence = 0.5
-            verdict = "authentic"
+            confidence = 0.4
+            verdict = "inconclusive"
 
         evidence["flags"] = flags
         return AnalysisOutput(confidence=confidence, verdict=verdict, evidence=evidence)
@@ -165,6 +175,24 @@ class MetadataAnalyzer(BaseAnalyzer):
             except ValueError:
                 continue
         return None
+
+    def _check_camera_signature(self, metadata: dict) -> dict:
+        exif = metadata.get("exif", {})
+        result = {"has_camera_signature": False, "make": None, "model": None, "capture_fields_present": 0, "details": None}
+        if not isinstance(exif, dict) or not exif:
+            return result
+        make = exif.get("Make")
+        model = exif.get("Model")
+        if isinstance(make, str):
+            result["make"] = make.strip()
+        if isinstance(model, str):
+            result["model"] = model.strip()
+        capture_count = sum(1 for f in CAMERA_CAPTURE_FIELDS if exif.get(f))
+        result["capture_fields_present"] = capture_count
+        if (result["make"] and result["model"]) and capture_count >= 2:
+            result["has_camera_signature"] = True
+            result["details"] = f"Camera EXIF present: {result['make']} {result['model']} (+{capture_count} capture fields)"
+        return result
 
     def _check_metadata_presence(self, metadata: dict) -> dict:
         exif = metadata.get("exif", {})

@@ -32,17 +32,8 @@ VERDICT_CONFIDENCE = {
     "uncertain": 0.5,
 }
 
-VERDICT_CONFIDENCE_WEAK = {
-    "ai_generated": 0.4,
-    "human_photo": 0.4,
-    "uncertain": 0.45,
-}
-
-VERDICT_FALLBACK_REASONING = {
-    "ai_generated": "Model flagged the image as AI-generated but did not return detailed reasoning. Treat as low-confidence signal.",
-    "human_photo": "Model flagged the image as authentic but did not return detailed reasoning. Treat as low-confidence signal.",
-    "uncertain": "Model could not commit to a verdict and returned no detailed reasoning.",
-}
+WEAK_REASONING_CONFIDENCE = 0.35
+WEAK_REASONING_FALLBACK = "Model returned a verdict without detailed reasoning. Downgraded to uncertain pending corroboration from other analyzers."
 
 MIN_REASONING_LEN = 20
 
@@ -58,8 +49,7 @@ def _parse_vision_response(raw: str) -> tuple[str, float, str]:
             if verdict in VERDICT_CONFIDENCE:
                 if len(reasoning) >= MIN_REASONING_LEN:
                     return verdict, VERDICT_CONFIDENCE[verdict], reasoning
-                synth = VERDICT_FALLBACK_REASONING[verdict]
-                return verdict, VERDICT_CONFIDENCE_WEAK[verdict], synth
+                return "uncertain", WEAK_REASONING_CONFIDENCE, WEAK_REASONING_FALLBACK
         except (json.JSONDecodeError, ValueError, TypeError):
             pass
 
