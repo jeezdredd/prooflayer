@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -12,6 +13,21 @@ from .serializers import RegisterSerializer, UserSerializer
 from .tasks import send_verification_email
 
 User = get_user_model()
+
+
+class RegisterThrottle(AnonRateThrottle):
+    scope = "register"
+    rate = "5/hour"
+
+
+class ResendVerificationThrottle(UserRateThrottle):
+    scope = "resend_verification"
+    rate = "5/hour"
+
+
+class LoginThrottle(AnonRateThrottle):
+    scope = "login"
+    rate = "20/hour"
 
 
 def _set_refresh_cookie(response, refresh: str) -> None:
@@ -39,6 +55,7 @@ def _clear_refresh_cookie(response) -> None:
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (RegisterThrottle,)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -58,6 +75,8 @@ class RegisterView(generics.CreateAPIView):
 
 
 class CookieTokenObtainPairView(TokenObtainPairView):
+    throttle_classes = (LoginThrottle,)
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         refresh = response.data.pop("refresh", None)
@@ -125,6 +144,8 @@ class VerifyEmailView(APIView):
 
 
 class ResendVerificationView(APIView):
+    throttle_classes = (ResendVerificationThrottle,)
+
     def post(self, request):
         user = request.user
         if user.is_verified:

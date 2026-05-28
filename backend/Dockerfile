@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi8 \
     shared-mime-info \
     fonts-liberation \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv

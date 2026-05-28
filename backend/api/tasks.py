@@ -1,8 +1,16 @@
+import gzip
+import io
 import logging
+import os
+import subprocess
+from datetime import timedelta
+from urllib.parse import urlparse
 
+import boto3
 import requests
 from celery import shared_task
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -79,3 +87,76 @@ def notify_visit(ip: str, path: str, referrer: str, user_agent: str) -> str:
     except Exception as exc:
         logger.warning("discord webhook failed: %s", exc)
         raise
+
+
+BACKUP_BUCKET = "prooflayer-backups"
+BACKUP_RETENTION_DAYS = 14
+
+
+def _s3_client():
+    return boto3.client(
+        "s3",
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        endpoint_url=getattr(settings, "AWS_S3_ENDPOINT_URL", None),
+        region_name=getattr(settings, "AWS_S3_REGION_NAME", "us-east-1"),
+        config=boto3.session.Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+    )
+
+
+def _ensure_bucket(client, bucket: str) -> None:
+    try:
+        client.head_bucket(Bucket=bucket)
+    except Exception:
+        try:
+            client.create_bucket(Bucket=bucket)
+        except Exception as exc:
+            logger.warning("create_bucket %s failed: %s", bucket, exc)
+
+
+@shared_task(queue="default", soft_time_limit=600, time_limit=900)
+def backup_postgres() -> str:
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        return "no_db_url"
+    parsed = urlparse(db_url)
+    env = dict(os.environ)
+    env["PGPASSWORD"] = parsed.password or ""
+    cmd = [
+        "pg_dump", "--no-owner", "--no-acl", "--format=plain",
+        "-h", parsed.hostname or "db",
+        "-p", str(parsed.port or 5432),
+        "-U", parsed.username or "prooflayer",
+        parsed.path.lstrip("/"),
+    ]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, env=env, timeout=600)
+    except FileNotFoundError:
+        logger.error("pg_dump binary missing in worker image")
+        return "no_pg_dump"
+    if proc.returncode != 0:
+        logger.error("pg_dump failed rc=%s err=%s", proc.returncode, proc.stderr[:500])
+        return "dump_failed"
+
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+        gz.write(proc.stdout)
+    buf.seek(0)
+
+    ts = timezone.now().strftime("%Y%m%dT%H%M%SZ")
+    key = f"daily/prooflayer-{ts}.sql.gz"
+    client = _s3_client()
+    _ensure_bucket(client, BACKUP_BUCKET)
+    client.put_object(Bucket=BACKUP_BUCKET, Key=key, Body=buf.read(), ContentType="application/gzip")
+
+    cutoff = timezone.now() - timedelta(days=BACKUP_RETENTION_DAYS)
+    try:
+        listed = client.list_objects_v2(Bucket=BACKUP_BUCKET, Prefix="daily/").get("Contents", [])
+        for obj in listed:
+            if obj["LastModified"] < cutoff:
+                client.delete_object(Bucket=BACKUP_BUCKET, Key=obj["Key"])
+    except Exception as exc:
+        logger.warning("retention sweep failed: %s", exc)
+
+    logger.info("postgres backup uploaded: %s (%d bytes)", key, len(proc.stdout))
+    return key

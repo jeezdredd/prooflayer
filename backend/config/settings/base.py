@@ -106,6 +106,9 @@ REST_FRAMEWORK = {
         "anon": "20/hour",
         "user": "500/hour",
         "upload": "30/hour",
+        "register": "5/hour",
+        "login": "20/hour",
+        "resend_verification": "5/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -177,13 +180,23 @@ EMAIL_BACKEND = (
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT", "production")
+SENTRY_RELEASE = os.environ.get("SENTRY_RELEASE", "")
 if SENTRY_DSN:
     import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.redis import RedisIntegration
+
     sentry_sdk.init(
         dsn=SENTRY_DSN,
-        traces_sample_rate=0.2,
-        profiles_sample_rate=0.1,
+        environment=SENTRY_ENVIRONMENT,
+        release=SENTRY_RELEASE or None,
+        integrations=[DjangoIntegration(), CeleryIntegration(), RedisIntegration()],
+        traces_sample_rate=0.1,
+        profiles_sample_rate=0.0,
         send_default_pii=False,
+        attach_stacktrace=True,
     )
 
 LOGGING = {

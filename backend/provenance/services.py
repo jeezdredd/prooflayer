@@ -196,8 +196,8 @@ def run_clip_neighbor_lookup(submission):
     for n in neighbours:
         r = ProvenanceResult.objects.create(
             submission=submission,
-            source_type=ProvenanceResult.SourceType.PHASH_MATCH,
-            title=f"semantic-near: {n['filename']}",
+            source_type=ProvenanceResult.SourceType.CLIP_NEIGHBOUR,
+            title=n["filename"],
             similarity_score=n["similarity"],
             raw_data={"submission_id": n["id"], "cosine_distance": n["distance"], "verdict": n["verdict"], "method": "clip_cosine"},
         )

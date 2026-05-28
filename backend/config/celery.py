@@ -1,6 +1,7 @@
 import os
 
 from celery import Celery
+from celery.schedules import crontab
 from kombu import Exchange, Queue
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
@@ -38,3 +39,11 @@ app.conf.task_routes = {
 }
 
 app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports", "api"])
+
+app.conf.beat_schedule = {
+    "nightly-postgres-backup": {
+        "task": "api.tasks.backup_postgres",
+        "schedule": crontab(hour=3, minute=15),
+        "options": {"queue": "default"},
+    },
+}

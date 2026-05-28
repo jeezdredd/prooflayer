@@ -6,6 +6,7 @@ from django.db import models
 class ProvenanceResult(models.Model):
     class SourceType(models.TextChoices):
         PHASH_MATCH = "phash_match", "pHash Match"
+        CLIP_NEIGHBOUR = "clip_neighbour", "CLIP Semantic Neighbour"
         TINEYE = "tineye", "TinEye"
         GOOGLE_VISION = "google_vision", "Google Vision"
         C2PA = "c2pa", "C2PA"

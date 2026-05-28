@@ -81,6 +81,8 @@ services:
       - REFRESH_COOKIE_SAMESITE=${REFRESH_COOKIE_SAMESITE:-Lax}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
+      - SENTRY_RELEASE=${SENTRY_RELEASE:-}
     depends_on:
       db:
         condition: service_healthy
@@ -94,6 +96,8 @@ services:
     restart: unless-stopped
     command: >
       celery -A config.celery worker
+      --beat
+      --schedule=/tmp/celerybeat-schedule
       --loglevel=info
       -Q default,ml,reports
       --concurrency=2
@@ -124,6 +128,9 @@ services:
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-ProofLayer <noreply@prooflayer.cloud>}
       - FRONTEND_URL=${FRONTEND_URL:-https://prooflayer.cloud}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-production}
+      - SENTRY_RELEASE=${SENTRY_RELEASE:-}
       - OMP_NUM_THREADS=4
     depends_on:
       db:

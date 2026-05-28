@@ -20,7 +20,14 @@ def _probe_db() -> dict[str, Any]:
         with connection.cursor() as cur:
             cur.execute("SELECT 1")
             cur.fetchone()
-        return {"status": "ok", "latency_ms": round((time.perf_counter() - start) * 1000, 1)}
+            cur.execute("SELECT extversion FROM pg_extension WHERE extname='vector'")
+            row = cur.fetchone()
+            pgvector = row[0] if row else None
+        return {
+            "status": "ok",
+            "latency_ms": round((time.perf_counter() - start) * 1000, 1),
+            "pgvector": pgvector or "missing",
+        }
     except Exception as exc:
         return {"status": "down", "error": str(exc)[:120]}
 

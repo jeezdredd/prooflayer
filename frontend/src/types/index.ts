@@ -101,7 +101,7 @@ export interface Report {
 
 export interface ProvenanceResult {
   id: string;
-  source_type: "phash_match" | "tineye" | "google_vision" | "c2pa";
+  source_type: "phash_match" | "clip_neighbour" | "tineye" | "google_vision" | "c2pa";
   source_url: string;
   title: string;
   similarity_score: number | null;
