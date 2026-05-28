@@ -137,20 +137,23 @@ class AIImageDetector(BaseAnalyzer):
             "classifiers": per_model,
         }
 
-        if ai_avg > 0.75 or (ai_avg > 0.6 and agreement >= 2):
-            confidence = 0.9
-            verdict = "fake"
-        elif ai_avg > 0.55 or (ai_max > 0.7 and agreement >= 1):
-            confidence = 0.7
-            verdict = "suspicious"
-        elif ai_avg < 0.25:
+        unanimous_fake = agreement == len(ok_results)
+        unanimous_real = all(p < 0.4 for p in ai_probs)
+
+        if ai_avg >= 0.85 and unanimous_fake:
             confidence = 0.85
+            verdict = "fake"
+        elif ai_avg >= 0.7 and unanimous_fake:
+            confidence = 0.65
+            verdict = "suspicious"
+        elif unanimous_real and ai_avg < 0.2:
+            confidence = 0.8
             verdict = "authentic"
-        elif ai_avg < 0.4:
-            confidence = 0.7
+        elif unanimous_real and ai_avg < 0.35:
+            confidence = 0.6
             verdict = "authentic"
         else:
-            confidence = 0.5
+            confidence = 0.4
             verdict = "inconclusive"
 
         return AnalysisOutput(confidence=confidence, verdict=verdict, evidence=evidence)

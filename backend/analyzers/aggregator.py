@@ -31,7 +31,7 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     total_weight = 0.0
     weighted_score = 0.0
 
-    for result in valid_results:
+    for result in decisive_results:
         effective_weight = result.analyzer.weight * result.confidence
         base_score = VERDICT_SCORES.get(result.verdict, 0.5)
         weighted_score += base_score * effective_weight

@@ -67,18 +67,19 @@ def _parse_vision_response(raw: str) -> tuple[str, float, str]:
         return "human_photo", 0.55, raw[:500]
     return "model_failure", 0.0, raw[:500]
 
-LLM_IMAGE_PROMPT = """You are an expert forensic image analyst specializing in detecting AI-generated images.
+LLM_IMAGE_PROMPT = """You are a cautious forensic image analyst. Your default assumption is that the image is a real photograph. You will ONLY mark it as AI-generated if you can point to concrete, specific visual defects that are CLEARLY visible in this exact image. Generic descriptions of what AI images "usually" look like are NOT acceptable evidence.
 
-Carefully examine this image and analyze:
-1. Lighting consistency - does light source make physical sense everywhere?
-2. Texture coherence - skin, hair, fabric, backgrounds look natural or overly smooth/repetitive?
-3. Fine details - fingers, teeth, eyes, ears, text - AI often fails these
-4. Background - blurry, warped, inconsistent patterns?
-5. Overall aesthetic - too perfect, dreamlike, uncanny valley?
+Rules:
+- If you cannot describe a SPECIFIC pixel-level defect you actually see (e.g. "the left hand has six fingers", "the text on the sign reads 'AURESTHURT' which is not a word", "the left earring is a sphere while the right is a cube"), the verdict MUST be human_photo or uncertain.
+- Famous people, professional studio lighting, smooth skin from makeup, blurry backgrounds from shallow depth of field, and perfect composition are NORMAL in real photography. None of these alone are evidence of AI.
+- If the image is low-resolution, compressed, or has heavy JPEG artifacts, that is NOT evidence of AI - it is just bad compression. Verdict should be uncertain.
+- Stylised photography (fashion, portrait, advertising) is NOT AI by default.
+- The word "uncanny" is NOT evidence. The word "too perfect" is NOT evidence. The word "overly smooth" is NOT evidence unless you specify which region and what the specific defect is.
 
-Respond ONLY with JSON. The reasoning field is REQUIRED and must contain at least 2 full sentences describing the specific artifacts you observed (or did not observe). Do not return empty reasoning.
+Respond ONLY with JSON in this exact shape:
+{"verdict": "ai_generated|human_photo|uncertain", "confidence": 0.0-1.0, "reasoning": "Either describe SPECIFIC visible defects with their location in the frame, or state that no concrete defects are visible and the image looks like a normal photograph."}
 
-{"verdict": "ai_generated|human_photo|uncertain", "confidence": 0.0-1.0, "reasoning": "2-3 full sentences explaining the specific visual evidence - what you actually see in this image, not generic statements"}"""
+If unsure, choose uncertain. Being wrong on a real photo is worse than being wrong on an AI image."""
 
 
 class LLMImageAnalyzer(BaseAnalyzer):
