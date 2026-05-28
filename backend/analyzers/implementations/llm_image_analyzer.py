@@ -32,6 +32,17 @@ VERDICT_CONFIDENCE = {
     "uncertain": 0.5,
 }
 
+VERDICT_CONFIDENCE_WEAK = {
+    "ai_generated": 0.4,
+    "human_photo": 0.4,
+    "uncertain": 0.45,
+}
+
+VERDICT_FALLBACK_REASONING = {
+    "ai_generated": "Model flagged the image as AI-generated but did not return detailed reasoning. Treat as low-confidence signal.",
+    "human_photo": "Model flagged the image as authentic but did not return detailed reasoning. Treat as low-confidence signal.",
+    "uncertain": "Model could not commit to a verdict and returned no detailed reasoning.",
+}
 
 MIN_REASONING_LEN = 20
 
@@ -44,8 +55,11 @@ def _parse_vision_response(raw: str) -> tuple[str, float, str]:
             data = json.loads(match.group(0))
             verdict = str(data.get("verdict", "uncertain")).lower()
             reasoning = str(data.get("reasoning", "")).strip()
-            if verdict in VERDICT_CONFIDENCE and len(reasoning) >= MIN_REASONING_LEN:
-                return verdict, VERDICT_CONFIDENCE[verdict], reasoning
+            if verdict in VERDICT_CONFIDENCE:
+                if len(reasoning) >= MIN_REASONING_LEN:
+                    return verdict, VERDICT_CONFIDENCE[verdict], reasoning
+                synth = VERDICT_FALLBACK_REASONING[verdict]
+                return verdict, VERDICT_CONFIDENCE_WEAK[verdict], synth
         except (json.JSONDecodeError, ValueError, TypeError):
             pass
 
@@ -58,9 +72,9 @@ def _parse_vision_response(raw: str) -> tuple[str, float, str]:
     has_human = any(s in text for s in human_signals)
 
     if has_ai and not has_human and len(text) >= MIN_REASONING_LEN:
-        return "ai_generated", 0.6, raw[:500]
+        return "ai_generated", 0.55, raw[:500]
     if has_human and not has_ai and len(text) >= MIN_REASONING_LEN:
-        return "human_photo", 0.6, raw[:500]
+        return "human_photo", 0.55, raw[:500]
     return "model_failure", 0.0, raw[:500]
 
 LLM_IMAGE_PROMPT = """You are an expert forensic image analyst specializing in detecting AI-generated images.

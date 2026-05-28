@@ -8,6 +8,15 @@ VERDICT_SCORES = {
     AnalysisResult.Verdict.INCONCLUSIVE: 0.5,
 }
 
+DECISIVE_VERDICTS = {
+    AnalysisResult.Verdict.AUTHENTIC,
+    AnalysisResult.Verdict.SUSPICIOUS,
+    AnalysisResult.Verdict.FAKE,
+}
+
+CORROBORATION_CONFIDENCE_FLOOR = 0.55
+MIN_CORROBORATING_FOR_FAKE = 2
+
 
 def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     valid_results = [r for r in results if r.verdict != AnalysisResult.Verdict.ERROR]
@@ -15,7 +24,7 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     if not valid_results:
         return 0.5, "inconclusive"
 
-    decisive_results = [r for r in valid_results if r.verdict != AnalysisResult.Verdict.INCONCLUSIVE]
+    decisive_results = [r for r in valid_results if r.verdict in DECISIVE_VERDICTS]
     if not decisive_results:
         return 0.5, "inconclusive"
 
@@ -30,8 +39,11 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
 
     final_score = weighted_score / total_weight if total_weight > 0 else 0.5
 
-    confident_results = [r for r in valid_results if r.confidence >= 0.6]
-    confident_verdicts = {r.verdict for r in confident_results}
+    confident_decisive = [r for r in decisive_results if r.confidence >= CORROBORATION_CONFIDENCE_FLOOR]
+    confident_verdicts = {r.verdict for r in confident_decisive}
+    fake_voters = [r for r in confident_decisive if r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS)]
+    authentic_voters = [r for r in confident_decisive if r.verdict == AnalysisResult.Verdict.AUTHENTIC]
+
     has_disagreement = (
         len(confident_verdicts) > 1
         and AnalysisResult.Verdict.AUTHENTIC in confident_verdicts
@@ -42,16 +54,26 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     )
 
     if has_disagreement:
-        final_verdict = "needs_review"
-    elif final_score < 0.3:
-        final_verdict = "authentic"
-    elif final_score < 0.45:
-        final_verdict = "suspicious"
-    elif final_score < 0.55:
-        final_verdict = "inconclusive"
-    elif final_score < 0.7:
-        final_verdict = "likely_fake"
-    else:
-        final_verdict = "fake"
+        return round(final_score, 4), "needs_review"
 
-    return round(final_score, 4), final_verdict
+    raw_verdict = _band(final_score)
+
+    if raw_verdict in ("fake", "likely_fake") and len(fake_voters) < MIN_CORROBORATING_FOR_FAKE:
+        raw_verdict = "suspicious" if raw_verdict == "fake" else "inconclusive"
+
+    if raw_verdict == "authentic" and len(authentic_voters) < 1:
+        raw_verdict = "inconclusive"
+
+    return round(final_score, 4), raw_verdict
+
+
+def _band(score: float) -> str:
+    if score < 0.25:
+        return "authentic"
+    if score < 0.45:
+        return "suspicious"
+    if score < 0.55:
+        return "inconclusive"
+    if score < 0.78:
+        return "likely_fake"
+    return "fake"

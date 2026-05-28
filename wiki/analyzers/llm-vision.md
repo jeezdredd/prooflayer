@@ -70,6 +70,9 @@ Response forced to JSON via Ollama `format: "json"`:
    - `human_signals`: "real photo", "authentic photo", "genuine photo", "human photo", "not ai-generated", "natural photograph", "real photograph", "looks authentic", "looks real"
 3. If neither matches with sufficient text -> `model_failure`
 
+> [!key-insight] Empty reasoning fallback
+> moondream sometimes returns valid JSON `verdict` with empty `reasoning`. As of commit *, the parser now accepts these as weak signal (confidence 0.4 instead of 0.6) with a synthesised reasoning string, rather than dropping to `model_failure`. Stops the analyzer from contributing zero weight to the ensemble when the model has actually decided.
+
 Confidence map:
 
 ```python
