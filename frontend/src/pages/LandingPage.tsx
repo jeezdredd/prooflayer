@@ -480,7 +480,7 @@ export default function LandingPage() {
             </div>
             <pre className="font-mono text-[13px] text-ink-100 p-6 leading-relaxed overflow-x-auto bg-ink-950/80">
 <span className="text-ink-500">{"<!-- one line, anywhere -->"}</span>{"\n"}
-<span className="text-signal-violet">{"<script"}</span> <span className="text-signal-cyan">src</span>=<span className="text-signal-amber">"https://prooflayer.app/widget.js"</span><span className="text-signal-violet">{"></script>"}</span>{"\n"}
+<span className="text-signal-violet">{"<script"}</span> <span className="text-signal-cyan">src</span>=<span className="text-signal-amber">"https://prooflayer.cloud/widget.js"</span><span className="text-signal-violet">{"></script>"}</span>{"\n"}
 <span className="text-signal-violet">{"<div"}</span> <span className="text-signal-cyan">data-prooflayer-sha256</span>=<span className="text-signal-amber">"7a3f2c..."</span><span className="text-signal-violet">{"></div>"}</span>
             </pre>
           </motion.div>

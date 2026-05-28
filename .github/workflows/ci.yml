@@ -97,5 +97,5 @@ jobs:
       - name: Build
         working-directory: frontend
         env:
-          VITE_API_URL: https://api.prooflayer.app/api/v1
+          VITE_API_URL: https://api.prooflayer.cloud/api/v1
         run: pnpm build

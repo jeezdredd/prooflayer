@@ -80,7 +80,7 @@ export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) 
                       to={`/results/${neighbourId}`}
                       className="text-xs text-iris hover:text-iris-light transition font-mono"
                     >
-                      view neighbour ->
+                      view neighbour &rarr;
                     </Link>
                   )}
                   {r.source_url && (

@@ -1,6 +1,6 @@
 (function () {
   var script = document.currentScript;
-  var API_BASE = (script && script.getAttribute("data-api")) || "https://prooflayer.app/api/v1";
+  var API_BASE = (script && script.getAttribute("data-api")) || "https://api.prooflayer.cloud/api/v1";
 
   var VERDICT_CONFIG = {
     authentic:    { label: "Verified Authentic", color: "#16a34a", bg: "#dcfce7", icon: "\u2713" },
@@ -32,8 +32,8 @@
         var cfg = VERDICT_CONFIG[verdict] || VERDICT_CONFIG.unknown;
         var score = data.score != null ? " (" + Math.round(data.score * 100) + "% fake)" : "";
         var link = data.submission_id
-          ? "https://prooflayer.app/results/" + data.submission_id
-          : "https://prooflayer.app";
+          ? "https://prooflayer.cloud/results/" + data.submission_id
+          : "https://prooflayer.cloud";
 
         applyStyle(el, cfg.color, cfg.bg);
         el.innerHTML =

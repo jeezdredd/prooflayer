@@ -66,7 +66,7 @@ export default function LoginPage() {
                 required
                 autoFocus
                 className="input-forensic"
-                placeholder="agent@prooflayer.app"
+                placeholder="agent@prooflayer.cloud"
               />
             </motion.div>
             <motion.div variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}>
