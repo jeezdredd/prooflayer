@@ -28,6 +28,14 @@ ANALYZERS = [
         "timeout": 120,
     },
     {
+        "name": "siglip_detector",
+        "analyzer_class": "analyzers.implementations.siglip_detector.SigLIPDetector",
+        "version": "1.0.0",
+        "weight": 2.0,
+        "queue": "ml",
+        "timeout": 180,
+    },
+    {
         "name": "video_frame",
         "analyzer_class": "analyzers.implementations.video_analyzer.VideoFrameAnalyzer",
         "version": "1.0.0",
