@@ -36,6 +36,14 @@ ANALYZERS = [
         "timeout": 180,
     },
     {
+        "name": "community_forensics",
+        "analyzer_class": "analyzers.implementations.community_forensics.CommunityForensicsDetector",
+        "version": "1.0.0",
+        "weight": 3.0,
+        "queue": "ml",
+        "timeout": 180,
+    },
+    {
         "name": "video_frame",
         "analyzer_class": "analyzers.implementations.video_analyzer.VideoFrameAnalyzer",
         "version": "1.0.0",

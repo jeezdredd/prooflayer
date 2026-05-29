@@ -34,6 +34,7 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[analyzers/ela]] - error level analysis (image splicing)
 - [[analyzers/ai-ensemble]] - HF classifier vote (dima806 + umm-maybe)
 - [[analyzers/siglip-detector]] - SigLIP-base binary classifier (Apache-2.0)
+- [[analyzers/community-forensics]] - ViT-S/16 trained on 4803 generators (NeurIPS 2024, MIT)
 - [[analyzers/llm-vision]] - multimodal LLM (qwen2.5vl)
 - [[analyzers/video-frames]] - uniform-sampled frames -> ensemble
 - [[analyzers/audio-spectrogram]] - librosa spectral features
