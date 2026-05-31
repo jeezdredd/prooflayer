@@ -7,3 +7,11 @@ export function useDashboard(params: Record<string, string>) {
     queryFn: () => content.list(params).then((r) => r.data),
   });
 }
+
+export function useDashboardStats() {
+  return useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => content.stats().then((r) => r.data),
+    staleTime: 30_000,
+  });
+}

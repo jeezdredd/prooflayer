@@ -1,3 +1,4 @@
+from django.db.models import Count, Avg
 from django.http import HttpResponse
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
@@ -110,6 +111,26 @@ class SubmissionViewSet(
         if instance.thumbnail:
             instance.thumbnail.delete(save=False)
         instance.delete()
+
+    @action(detail=False, methods=["get"], url_path="stats", permission_classes=[IsAuthenticated])
+    def stats(self, request):
+        qs = Submission.objects.filter(user=request.user)
+        total = qs.count()
+        by_verdict = dict(
+            qs.exclude(final_verdict="")
+            .values_list("final_verdict")
+            .annotate(c=Count("id"))
+        )
+        by_status = dict(qs.values_list("status").annotate(c=Count("id")))
+        avg_score = qs.filter(status="completed", final_score__isnull=False).aggregate(a=Avg("final_score"))["a"]
+        known_fake_hits = qs.filter(is_known_fake=True).count()
+        return Response({
+            "total": total,
+            "by_verdict": by_verdict,
+            "by_status": by_status,
+            "avg_score": round(avg_score, 4) if avg_score is not None else None,
+            "known_fake_hits": known_fake_hits,
+        })
 
 
 REVIEW_VERDICTS = ("needs_review", "inconclusive")

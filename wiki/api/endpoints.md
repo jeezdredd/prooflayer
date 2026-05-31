@@ -22,6 +22,7 @@ GET  /api/v1/auth/health/           -> { status: "ok" }
 ```
 GET    /api/v1/content/submissions/                      list (paginated, filterable)
 POST   /api/v1/content/submissions/                      multipart upload -> Submission
+GET    /api/v1/content/submissions/stats/                {total, by_verdict, by_status, avg_score, known_fake_hits}
 GET    /api/v1/content/submissions/{id}/                 detail w/ analysis_results + similar
 DELETE /api/v1/content/submissions/{id}/                 (if allowed)
 POST   /api/v1/content/submissions/{id}/override/        staff VerdictOverride

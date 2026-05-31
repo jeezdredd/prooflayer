@@ -56,6 +56,15 @@ export const content = {
     client.get<Submission[]>(`/content/submissions/compare/`, { params: { ids: ids.join(",") } }),
 
   delete: (id: string) => client.delete(`/content/submissions/${id}/`),
+
+  stats: () =>
+    client.get<{
+      total: number;
+      by_verdict: Record<string, number>;
+      by_status: Record<string, number>;
+      avg_score: number | null;
+      known_fake_hits: number;
+    }>(`/content/submissions/stats/`),
 };
 
 export const crowdsource = {

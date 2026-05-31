@@ -143,3 +143,47 @@ class TestSubmissionDelete:
         url = reverse("submission-detail", kwargs={"id": sub.id})
         response = self.client.delete(url)
         assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestSubmissionStats:
+    def setup_method(self):
+        self.client = APIClient()
+        self.user = UserFactory()
+        self.client.force_authenticate(user=self.user)
+        self.url = "/api/v1/content/submissions/stats/"
+
+    def test_empty(self):
+        response = self.client.get(self.url)
+        assert response.status_code == 200
+        assert response.data["total"] == 0
+        assert response.data["by_verdict"] == {}
+        assert response.data["avg_score"] is None
+        assert response.data["known_fake_hits"] == 0
+
+    def test_breakdown(self):
+        SubmissionFactory(user=self.user, status="completed", final_verdict="authentic", final_score=0.1)
+        SubmissionFactory(user=self.user, status="completed", final_verdict="fake", final_score=0.9)
+        SubmissionFactory(user=self.user, status="completed", final_verdict="fake", final_score=0.85, is_known_fake=True)
+        SubmissionFactory(user=self.user, status="processing")
+        response = self.client.get(self.url)
+        assert response.status_code == 200
+        assert response.data["total"] == 4
+        assert response.data["by_verdict"]["fake"] == 2
+        assert response.data["by_verdict"]["authentic"] == 1
+        assert response.data["by_status"]["completed"] == 3
+        assert response.data["by_status"]["processing"] == 1
+        assert response.data["known_fake_hits"] == 1
+        assert 0.6 < response.data["avg_score"] < 0.7
+
+    def test_excludes_other_users(self):
+        SubmissionFactory(status="completed", final_verdict="fake")
+        SubmissionFactory(user=self.user, status="completed", final_verdict="authentic")
+        response = self.client.get(self.url)
+        assert response.data["total"] == 1
+        assert response.data["by_verdict"] == {"authentic": 1}
+
+    def test_unauth(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(self.url)
+        assert response.status_code == 401
