@@ -120,6 +120,17 @@ export default function ResultCard({ submission }: ResultCardProps) {
         </div>
       )}
 
+      {/* Image preview */}
+      {submission.file_url && submission.mime_type?.startsWith("image/") && (
+        <div className="px-6 py-4 border-b border-ink-700">
+          <img
+            src={submission.file_url}
+            alt={submission.original_filename}
+            className="max-h-96 max-w-full object-contain border border-ink-700"
+          />
+        </div>
+      )}
+
       {/* Pipeline */}
       <div className="px-6 py-6">
         <AnalyzerTimeline submission={submission} />

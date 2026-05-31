@@ -102,12 +102,20 @@ export default function SubmissionTable({ data, isLoading, page, onPageChange }:
                     src={sub.thumbnail_url}
                     alt=""
                     className="w-10 h-10 object-cover border border-ink-700 grayscale group-hover:grayscale-0 transition-all"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = "none";
+                      const fallback = target.nextElementSibling as HTMLElement | null;
+                      if (fallback) fallback.style.display = "flex";
+                    }}
                   />
-                ) : (
-                  <div className="w-10 h-10 border border-ink-700 bg-ink-900 flex items-center justify-center font-mono text-[9px] text-ink-500">
-                    {sub.mime_type?.split("/")[1]?.slice(0, 4).toUpperCase() || "FILE"}
-                  </div>
-                )}
+                ) : null}
+                <div
+                  className="w-10 h-10 border border-ink-700 bg-ink-900 flex items-center justify-center font-mono text-[9px] text-ink-500"
+                  style={{ display: sub.thumbnail_url ? "none" : "flex" }}
+                >
+                  {sub.mime_type?.split("/")[1]?.slice(0, 4).toUpperCase() || "FILE"}
+                </div>
                 <div className="min-w-0">
                   <div className="font-mono text-xs text-ink-100 truncate group-hover:text-signal-amber transition-colors">
                     {sub.original_filename}
