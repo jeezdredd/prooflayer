@@ -35,7 +35,7 @@ class CommunityForensicsDetector(BaseAnalyzer):
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
         try:
-            image = Image.open(file_path).convert("RGB")
+            image = Image.open(file_path).convert("RGB").resize((384, 384))
         except Exception as exc:
             return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": f"cannot open image: {exc}"})
 
