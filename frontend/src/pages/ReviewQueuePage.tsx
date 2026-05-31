@@ -89,10 +89,26 @@ export default function ReviewQueuePage() {
           const isPending = pendingId === item.id && overrideMutation.isPending;
           return (
             <div key={item.id} className="case-card p-4 flex gap-4">
-              <div className="w-24 h-24 bg-ink-900 border border-ink-800 overflow-hidden flex-shrink-0">
+              <div className="w-24 h-24 bg-ink-900 border border-ink-800 overflow-hidden flex-shrink-0 flex items-center justify-center">
                 {item.thumbnail_url ? (
-                  <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={item.thumbnail_url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = "none";
+                      const fallback = target.nextElementSibling as HTMLElement | null;
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
                 ) : null}
+                <div
+                  className="w-full h-full items-center justify-center font-mono text-[9px] text-ink-500"
+                  style={{ display: item.thumbnail_url ? "none" : "flex" }}
+                >
+                  FILE
+                </div>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-2">

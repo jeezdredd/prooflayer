@@ -41,6 +41,9 @@
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active,
   textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active,
   select:-webkit-autofill {
     -webkit-box-shadow: 0 0 0 1000px var(--ink-900) inset !important;
     -webkit-text-fill-color: var(--ink-100) !important;

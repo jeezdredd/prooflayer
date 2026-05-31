@@ -128,3 +128,43 @@ class TestAggregate:
         )
         score, _ = aggregate([r1, r2])
         assert score < 0.4
+
+    def test_community_forensics_priority_override(self):
+        cf_config = AnalyzerConfigFactory(name="community_forensics", weight=3.0)
+        npr_config = AnalyzerConfigFactory(name="npr_detector", weight=2.5)
+        meta_config = AnalyzerConfigFactory(name="metadata", weight=2.5)
+        from content.tests.factories import SubmissionFactory
+        sub = SubmissionFactory()
+        r_cf = AnalysisResultFactory(
+            submission=sub, analyzer=cf_config,
+            confidence=0.85, verdict=AnalysisResult.Verdict.FAKE,
+            evidence={"ai_probability": 0.95},
+        )
+        r_npr = AnalysisResultFactory(
+            submission=sub, analyzer=npr_config,
+            confidence=0.65, verdict=AnalysisResult.Verdict.SUSPICIOUS,
+        )
+        r_meta = AnalysisResultFactory(
+            submission=sub, analyzer=meta_config,
+            confidence=0.6, verdict=AnalysisResult.Verdict.AUTHENTIC,
+        )
+        score, verdict = aggregate([r_cf, r_npr, r_meta])
+        assert verdict == "fake"
+        assert score >= 0.85
+
+    def test_cf_priority_requires_peer_agreement(self):
+        cf_config = AnalyzerConfigFactory(name="community_forensics", weight=3.0)
+        meta_config = AnalyzerConfigFactory(name="metadata", weight=2.5)
+        from content.tests.factories import SubmissionFactory
+        sub = SubmissionFactory()
+        r_cf = AnalysisResultFactory(
+            submission=sub, analyzer=cf_config,
+            confidence=0.85, verdict=AnalysisResult.Verdict.FAKE,
+            evidence={"ai_probability": 0.96},
+        )
+        r_meta = AnalysisResultFactory(
+            submission=sub, analyzer=meta_config,
+            confidence=0.8, verdict=AnalysisResult.Verdict.AUTHENTIC,
+        )
+        score, verdict = aggregate([r_cf, r_meta])
+        assert verdict != "fake"

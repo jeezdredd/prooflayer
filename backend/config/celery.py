@@ -46,4 +46,10 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=3, minute=15),
         "options": {"queue": "default"},
     },
+    "weekly-image-retrain": {
+        "task": "analyzers.tasks.run_weekly_retrain",
+        "schedule": crontab(hour=3, minute=0, day_of_week=0),
+        "args": ("image",),
+        "options": {"queue": "ml"},
+    },
 }

@@ -53,3 +53,28 @@ class AnalysisResult(models.Model):
 
     def __str__(self):
         return f"{self.analyzer.name}: {self.verdict} ({self.confidence:.2f})"
+
+
+class RetrainRun(models.Model):
+    class Status(models.TextChoices):
+        STARTED = "started"
+        SUCCESS = "success"
+        SKIPPED = "skipped"
+        FAILED = "failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    media_type = models.CharField(max_length=20, default="image")
+    samples_used = models.PositiveIntegerField(default=0)
+    epochs = models.PositiveIntegerField(default=3)
+    hf_revision = models.CharField(max_length=120, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.STARTED)
+    error = models.TextField(blank=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "retrain_runs"
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.media_type} {self.status} {self.started_at:%Y-%m-%d}"

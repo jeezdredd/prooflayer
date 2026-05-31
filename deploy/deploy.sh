@@ -58,6 +58,10 @@ case "$TYPE" in
         ln -sfn "$SHARED/venv" "$RELEASE/venv"
         ln -sfn "$SHARED/media" "$RELEASE/media"
 
+        # Ensure caddy can read media files written by gunicorn (different uid)
+        mkdir -p "$SHARED/media"
+        chmod -R o+rX "$SHARED/media" 2>/dev/null || true
+
         # Source env for management commands
         set -a; . "$SHARED/.env"; set +a
 

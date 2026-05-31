@@ -14,8 +14,27 @@ DECISIVE_VERDICTS = {
     AnalysisResult.Verdict.FAKE,
 }
 
-CORROBORATION_CONFIDENCE_FLOOR = 0.55
+CORROBORATION_CONFIDENCE_FLOOR = 0.5
 MIN_CORROBORATING_FOR_FAKE = 2
+CF_PRIORITY_THRESHOLD = 0.92
+CF_PRIORITY_PEERS = {"npr_detector", "siglip_detector"}
+
+
+def _community_forensics_priority(decisive_results) -> bool:
+    cf = next(
+        (r for r in decisive_results if r.analyzer.name == "community_forensics" and r.verdict == AnalysisResult.Verdict.FAKE),
+        None,
+    )
+    if cf is None:
+        return False
+    ai_prob = (cf.evidence or {}).get("ai_probability", 0.0)
+    if ai_prob < CF_PRIORITY_THRESHOLD:
+        return False
+    return any(
+        r.analyzer.name in CF_PRIORITY_PEERS
+        and r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS)
+        for r in decisive_results
+    )
 
 
 def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
@@ -38,6 +57,9 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
         total_weight += effective_weight
 
     final_score = weighted_score / total_weight if total_weight > 0 else 0.5
+
+    if _community_forensics_priority(decisive_results):
+        return round(max(final_score, 0.85), 4), "fake"
 
     confident_decisive = [r for r in decisive_results if r.confidence >= CORROBORATION_CONFIDENCE_FLOOR]
     fake_voters = [r for r in confident_decisive if r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS)]

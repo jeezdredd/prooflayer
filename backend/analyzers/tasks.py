@@ -143,3 +143,90 @@ def aggregate_verdicts(result_ids, submission_id):
 
     from provenance.tasks import run_provenance_check
     run_provenance_check.delay(submission_id)
+
+
+@shared_task(name="analyzers.tasks.run_weekly_retrain")
+def run_weekly_retrain(media_type: str = "image"):
+    from datetime import timedelta
+    from django.conf import settings
+    from django.core.management import call_command
+    from django.utils import timezone
+    from io import StringIO
+
+    from content.models import Submission
+    from .models import RetrainRun
+
+    min_samples = getattr(settings, "RETRAIN_MIN_NEW_SAMPLES", 50)
+    media_types_map = {
+        "image": ["image/jpeg", "image/png", "image/webp"],
+        "video": ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"],
+        "audio": ["audio/mpeg", "audio/wav", "audio/ogg", "audio/flac"],
+    }
+    mimes = media_types_map.get(media_type, media_types_map["image"])
+
+    last_success = (
+        RetrainRun.objects.filter(media_type=media_type, status=RetrainRun.Status.SUCCESS)
+        .order_by("-finished_at")
+        .first()
+    )
+    since = last_success.finished_at if last_success and last_success.finished_at else timezone.now() - timedelta(days=365)
+
+    qs = Submission.objects.filter(
+        approved_for_training=True,
+        verified_label__in=["real", "fake"],
+        mime_type__in=mimes,
+        status="completed",
+        created_at__gte=since,
+    )
+    samples = qs.count()
+
+    run = RetrainRun.objects.create(media_type=media_type, samples_used=samples, status=RetrainRun.Status.STARTED)
+
+    if samples < min_samples:
+        run.status = RetrainRun.Status.SKIPPED
+        run.error = f"only {samples} new approved samples, need {min_samples}"
+        run.finished_at = timezone.now()
+        run.save(update_fields=["status", "error", "finished_at"])
+        logger.info("retrain skipped: %s", run.error)
+        _notify_retrain(run)
+        return str(run.id)
+
+    buf = StringIO()
+    try:
+        call_command("retrain_detector", media_type=media_type, epochs=run.epochs, stdout=buf)
+        run.hf_revision = buf.getvalue().splitlines()[-1][:120] if buf.getvalue() else ""
+        run.status = RetrainRun.Status.SUCCESS
+    except Exception as exc:
+        run.status = RetrainRun.Status.FAILED
+        run.error = str(exc)[:2000]
+        logger.exception("retrain failed")
+
+    run.finished_at = timezone.now()
+    run.save(update_fields=["hf_revision", "status", "error", "finished_at"])
+    _notify_retrain(run)
+    return str(run.id)
+
+
+def _notify_retrain(run):
+    from django.conf import settings
+    import requests
+
+    url = getattr(settings, "DISCORD_WEBHOOK_URL", "")
+    if not url:
+        return
+    color = {"success": 5763719, "skipped": 16776960, "failed": 15548997}.get(run.status, 8421504)
+    payload = {
+        "embeds": [{
+            "title": f"Retrain {run.status}: {run.media_type}",
+            "color": color,
+            "fields": [
+                {"name": "Samples", "value": str(run.samples_used), "inline": True},
+                {"name": "HF rev", "value": run.hf_revision or "-", "inline": True},
+                {"name": "Error", "value": (run.error or "-")[:1000], "inline": False},
+            ],
+        }],
+    }
+    try:
+        requests.post(url, json=payload, timeout=5)
+    except Exception as exc:
+        logger.warning("retrain notify failed: %s", exc)

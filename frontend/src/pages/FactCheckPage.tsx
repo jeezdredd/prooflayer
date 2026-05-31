@@ -72,7 +72,7 @@ export default function FactCheckPage() {
           placeholder="Paste article text, news excerpt, or any text with factual claims…"
           rows={8}
           maxLength={10000}
-          className="w-full px-5 py-4 bg-ink-950/70 font-mono text-sm text-ink-100 resize-y focus:outline-none border-0 placeholder:text-ink-500"
+          className="w-full px-5 py-4 bg-ink-950/95 font-mono text-sm text-ink-100 resize-y focus:outline-none border-0 placeholder:text-ink-500"
         />
 
         <div className="flex items-center justify-between px-6 py-3 border-t border-ink-700 gap-3 flex-wrap">
