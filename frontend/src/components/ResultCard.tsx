@@ -127,6 +127,9 @@ export default function ResultCard({ submission }: ResultCardProps) {
             src={submission.file_url}
             alt={submission.original_filename}
             className="max-h-96 max-w-full object-contain border border-ink-700"
+            onError={(e) => {
+              e.currentTarget.parentElement?.style.setProperty("display", "none");
+            }}
           />
         </div>
       )}

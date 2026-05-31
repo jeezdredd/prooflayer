@@ -110,6 +110,12 @@ def _probe_storage() -> dict[str, Any]:
 
 
 def _client_ip(request) -> str:
+    cf = request.META.get("HTTP_CF_CONNECTING_IP", "")
+    if cf:
+        return cf.strip()
+    real = request.META.get("HTTP_X_REAL_IP", "")
+    if real:
+        return real.strip()
     xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
     if xff:
         return xff.split(",")[0].strip()
