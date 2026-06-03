@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import UploadForm from "../components/UploadForm";
@@ -18,6 +18,12 @@ export default function UploadPage() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const isComplete = submission?.status === "completed" || submission?.status === "failed";
+
+  useEffect(() => {
+    if (submissionId && status === "processing") {
+      navigate(`/results/${submissionId}`);
+    }
+  }, [submissionId, status, navigate]);
 
   const handleFileSelect = (file: File) => {
     reset();

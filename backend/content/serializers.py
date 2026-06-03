@@ -10,6 +10,9 @@ ANALYZER_DESCRIPTIONS = {
     "video_frame": "Samples frames from the video at uniform intervals and runs ELA + AI detection on each one.",
     "audio_spectrogram": "Computes spectral features to detect synthetic-voice artifacts and unnatural frequency distributions.",
     "llm_text": "Text LLM. Classifies whether the input text was likely AI-generated based on stylistic and structural cues.",
+    "community_forensics": "Community Forensics ViT-S/16 trained on 2.7M images from 4803 generators (NeurIPS 2024). Outputs a continuous AI probability score. Strongest signal for photorealistic deepfakes and diffusion-generated faces.",
+    "npr_detector": "NPR (Noise Pattern Residual) ViT detector. Analyzes high-frequency noise patterns left by camera sensors vs generative models. Effective against GAN and diffusion outputs that look clean to the eye but carry generator fingerprints.",
+    "siglip_detector": "SigLIP-based semantic coherence detector. Measures whether image regions are semantically consistent with each other. Inpainting, face swaps, and localized edits often produce regions with mismatched semantic context.",
 }
 
 
