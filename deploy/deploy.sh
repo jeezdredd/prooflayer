@@ -88,7 +88,7 @@ EnvironmentFile=/srv/${PROJECT}/shared/.env
 ExecStart=/srv/${PROJECT}/shared/venv/bin/gunicorn \\
     --bind unix:${SOCK} \\
     --workers 3 \\
-    --worker-class gthread --threads 2 \\
+--worker-class gthread --threads 2 \\
     --timeout 120 \\
     --access-logfile - --error-logfile - \\
     ${SETTINGS%.*}.wsgi:application
