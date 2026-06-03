@@ -300,8 +300,10 @@ export default function AnalyzerTimeline({ submission }: { submission: Submissio
 
   const doneCount = steps.filter((s) => s.state === "done").length;
   const skippedCount = steps.filter((s) => s.state === "skipped").length;
+  const errorCount = steps.filter((s) => s.result?.verdict === "error").length;
   const totalCount = steps.length;
   const isProcessing = submission.status === "processing" || submission.status === "pending";
+  const hasIncompleteResults = !isProcessing && (skippedCount > 0 || errorCount > 0);
 
   const totalWeight = steps.reduce((acc, s) => acc + (ANALYZER_WEIGHTS[s.name] || 5), 0);
   const doneWeight = steps
@@ -354,6 +356,16 @@ export default function AnalyzerTimeline({ submission }: { submission: Submissio
         <div className="mb-6 flex items-center gap-3 px-3 py-2 border-l-2 border-signal-amber bg-signal-amber/5">
           <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
           <span className="font-mono text-[11px] text-ink-200">{submission.status_message}</span>
+        </div>
+      )}
+
+      {/* Incomplete results warning */}
+      {hasIncompleteResults && (
+        <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-amber/60 bg-signal-amber/5">
+          <span className="mt-0.5 text-signal-amber text-[13px]">⚠</span>
+          <span className="font-mono text-[11px] text-ink-300 leading-relaxed">
+            Some analyzers did not complete ({skippedCount > 0 && `${skippedCount} skipped`}{skippedCount > 0 && errorCount > 0 && ", "}{errorCount > 0 && `${errorCount} failed`}). Final verdict may be inaccurate.
+          </span>
         </div>
       )}
 
