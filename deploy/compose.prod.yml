@@ -102,7 +102,7 @@ services:
       -Q default,ml,reports
       --concurrency=2
       --max-tasks-per-child=8
-      --max-memory-per-child=4000000
+      --max-memory-per-child=10000000
     volumes:
       - media_data:/app/media
     environment:

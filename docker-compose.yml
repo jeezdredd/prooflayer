@@ -62,8 +62,8 @@ services:
       --loglevel=info
       -Q default,ml,reports
       --concurrency=1
-      --max-tasks-per-child=4
-      --max-memory-per-child=2500000
+      --max-tasks-per-child=50
+      --max-memory-per-child=10000000
     volumes:
       - ./backend:/app
       - media_data:/app/media

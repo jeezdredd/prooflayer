@@ -41,7 +41,7 @@ class CommunityForensicsDetector(BaseAnalyzer):
 
         try:
             model, processor = _load()
-            inputs = processor(images=image, return_tensors="pt")
+            inputs = processor(images=image, return_tensors="pt", do_resize=False)
             with torch.no_grad():
                 outputs = model(**inputs)
                 logits = outputs.logits.squeeze()
