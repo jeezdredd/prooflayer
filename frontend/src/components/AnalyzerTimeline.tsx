@@ -97,7 +97,9 @@ function buildSteps(submission: Submission): Step[] {
     const msg = (submission.status_message || "").toLowerCase();
     const msgMatchIdx = msg
       ? sources.findIndex(
-          (s) => msg.includes(s.name.toLowerCase()) || msg.includes(s.name.replace(/_/g, " ").toLowerCase())
+          (s) =>
+            s.state === "pending" &&
+            (msg.includes(s.name.toLowerCase()) || msg.includes(s.name.replace(/_/g, " ").toLowerCase()))
         )
       : -1;
     const targetIdx = msgMatchIdx >= 0 ? msgMatchIdx : sources.findIndex((s) => s.state === "pending");
