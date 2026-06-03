@@ -85,6 +85,11 @@ export const provenance = {
     client.get<ProvenanceResult[]>(`/provenance/${submissionId}/`),
 };
 
+export const feedback = {
+  submit: (data: { category: string; message: string; contact_email?: string }) =>
+    client.post<{ detail: string; id: string }>("/system/feedback/", data),
+};
+
 export const factcheck = {
   check: (text: string) =>
     client.post<FactCheckResult>("/factcheck/check/", { text }),

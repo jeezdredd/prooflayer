@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from django.http import JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
-from api.system_views import RecordVisitView, SystemStatusView
+from api.system_views import RecordVisitView, SystemStatusView, FeedbackView
 
 
 def health(request):
@@ -23,6 +23,7 @@ urlpatterns = [
     path("api/v1/auth/health/", health),
     path("api/v1/system/status/", SystemStatusView.as_view(), name="system-status"),
     path("api/v1/system/visit/", RecordVisitView.as_view(), name="system-visit"),
+    path("api/v1/system/feedback/", FeedbackView.as_view(), name="system-feedback"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),

@@ -6,10 +6,12 @@ import redis
 import requests
 from django.conf import settings
 from django.db import connection
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
+
+from api.models import Feedback
 
 PROBE_TIMEOUT = 2.0
 
@@ -155,6 +157,64 @@ class RecordVisitView(APIView):
         from api.tasks import notify_visit
         notify_visit.delay(ip=ip, path=path, referrer=referrer, user_agent=ua)
         return Response({"detail": "queued"}, status=202)
+
+
+FEEDBACK_DISCORD_COLORS = {
+    "accuracy": 0xF97316,
+    "ux": 0x6366F1,
+    "performance": 0xEAB308,
+    "feature_request": 0x22C55E,
+    "bug": 0xEF4444,
+    "other": 0x6B7280,
+}
+
+
+class FeedbackThrottle(UserRateThrottle):
+    rate = "5/hour"
+
+
+class FeedbackView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [FeedbackThrottle]
+
+    def post(self, request):
+        category = request.data.get("category", "other")
+        message = (request.data.get("message") or "").strip()
+        contact_email = (request.data.get("contact_email") or "").strip()
+
+        if not message or len(message) < 10:
+            return Response({"detail": "Message too short."}, status=400)
+
+        if category not in Feedback.Category.values:
+            category = "other"
+
+        fb = Feedback.objects.create(
+            category=category,
+            message=message[:4000],
+            contact_email=contact_email[:254],
+            user=request.user,
+        )
+
+        webhook = getattr(settings, "DISCORD_WEBHOOK_URL", "")
+        if webhook:
+            label = dict(Feedback.Category.choices).get(category, category)
+            color = FEEDBACK_DISCORD_COLORS.get(category, 0x6B7280)
+            embed = {
+                "title": f"Feedback: {label}",
+                "description": message[:2000],
+                "color": color,
+                "fields": [
+                    {"name": "User", "value": str(request.user.email), "inline": True},
+                    {"name": "Contact", "value": contact_email or "-", "inline": True},
+                    {"name": "ID", "value": str(fb.id)[:8], "inline": True},
+                ],
+            }
+            try:
+                requests.post(webhook, json={"username": "ProofLayer Feedback", "embeds": [embed]}, timeout=4)
+            except Exception:
+                pass
+
+        return Response({"detail": "Feedback received. Thank you.", "id": str(fb.id)}, status=201)
 
 
 class SystemStatusView(APIView):

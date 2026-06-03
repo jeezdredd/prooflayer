@@ -152,6 +152,56 @@ class TestAggregate:
         assert verdict == "fake"
         assert score >= 0.85
 
+    def test_probabilistic_voter_uses_raw_ai_prob(self):
+        cf_config = AnalyzerConfigFactory(name="community_forensics", weight=1.0)
+        from content.tests.factories import SubmissionFactory
+        sub = SubmissionFactory()
+        r = AnalysisResultFactory(
+            submission=sub, analyzer=cf_config,
+            confidence=0.85, verdict=AnalysisResult.Verdict.FAKE,
+            evidence={"ai_probability": 0.7},
+        )
+        score, _ = aggregate([r])
+        assert abs(score - 0.7) < 0.001
+
+    def test_mixed_voters_weighted_correctly(self):
+        cf_config = AnalyzerConfigFactory(name="community_forensics", weight=3.0)
+        ela_config = AnalyzerConfigFactory(name="ela", weight=1.0)
+        from content.tests.factories import SubmissionFactory
+        sub = SubmissionFactory()
+        r_cf = AnalysisResultFactory(
+            submission=sub, analyzer=cf_config,
+            confidence=0.85, verdict=AnalysisResult.Verdict.FAKE,
+            evidence={"ai_probability": 0.8},
+        )
+        r_ela = AnalysisResultFactory(
+            submission=sub, analyzer=ela_config,
+            confidence=0.7, verdict=AnalysisResult.Verdict.AUTHENTIC,
+            evidence={},
+        )
+        score, _ = aggregate([r_cf, r_ela])
+        expected = (0.8 * 3.0 + 0.0 * 1.0 * 0.7) / (3.0 + 1.0 * 0.7)
+        assert abs(score - expected) < 0.005
+
+    def test_priority_override_still_fires_after_refactor(self):
+        cf_config = AnalyzerConfigFactory(name="community_forensics", weight=3.0)
+        siglip_config = AnalyzerConfigFactory(name="siglip_detector", weight=1.5)
+        from content.tests.factories import SubmissionFactory
+        sub = SubmissionFactory()
+        r_cf = AnalysisResultFactory(
+            submission=sub, analyzer=cf_config,
+            confidence=0.85, verdict=AnalysisResult.Verdict.FAKE,
+            evidence={"ai_probability": 0.94},
+        )
+        r_siglip = AnalysisResultFactory(
+            submission=sub, analyzer=siglip_config,
+            confidence=0.65, verdict=AnalysisResult.Verdict.FAKE,
+            evidence={"ai_probability": 0.78},
+        )
+        score, verdict = aggregate([r_cf, r_siglip])
+        assert verdict == "fake"
+        assert score >= 0.85
+
     def test_cf_priority_requires_peer_agreement(self):
         cf_config = AnalyzerConfigFactory(name="community_forensics", weight=3.0)
         meta_config = AnalyzerConfigFactory(name="metadata", weight=2.5)

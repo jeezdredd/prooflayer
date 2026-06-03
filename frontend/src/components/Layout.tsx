@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
+import { FeedbackModal, FeedbackTrigger } from "./FeedbackModal";
 
 interface NavItem {
   to: string;
@@ -177,6 +178,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -237,6 +239,9 @@ export default function Layout() {
           </>
         )}
       </AnimatePresence>
+
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      {!feedbackOpen && <FeedbackTrigger onClick={() => setFeedbackOpen(true)} />}
 
       {/* MAIN */}
       <main className="lg:pl-[240px] relative z-10">

@@ -1,6 +1,5 @@
 from .models import AnalysisResult
 
-
 VERDICT_SCORES = {
     AnalysisResult.Verdict.AUTHENTIC: 0.0,
     AnalysisResult.Verdict.SUSPICIOUS: 0.5,
@@ -14,10 +13,21 @@ DECISIVE_VERDICTS = {
     AnalysisResult.Verdict.FAKE,
 }
 
+PROBABILISTIC_ANALYZERS = {"community_forensics", "npr_detector", "siglip_detector", "llm_vision"}
+
 CORROBORATION_CONFIDENCE_FLOOR = 0.5
 MIN_CORROBORATING_FOR_FAKE = 2
 CF_PRIORITY_THRESHOLD = 0.92
 CF_PRIORITY_PEERS = {"npr_detector", "siglip_detector"}
+
+
+def _get_ai_probability(result) -> float | None:
+    if result.analyzer.name not in PROBABILISTIC_ANALYZERS:
+        return None
+    ai_prob = (result.evidence or {}).get("ai_probability")
+    if ai_prob is None:
+        return None
+    return float(ai_prob)
 
 
 def _community_forensics_priority(decisive_results) -> bool:
@@ -39,7 +49,6 @@ def _community_forensics_priority(decisive_results) -> bool:
 
 def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     valid_results = [r for r in results if r.verdict != AnalysisResult.Verdict.ERROR]
-
     if not valid_results:
         return 0.5, "inconclusive"
 
@@ -51,9 +60,14 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     weighted_score = 0.0
 
     for result in decisive_results:
-        effective_weight = result.analyzer.weight * result.confidence
-        base_score = VERDICT_SCORES.get(result.verdict, 0.5)
-        weighted_score += base_score * effective_weight
+        ai_prob = _get_ai_probability(result)
+        if ai_prob is not None:
+            effective_weight = result.analyzer.weight
+            weighted_score += ai_prob * effective_weight
+        else:
+            effective_weight = result.analyzer.weight * result.confidence
+            base_score = VERDICT_SCORES.get(result.verdict, 0.5)
+            weighted_score += base_score * effective_weight
         total_weight += effective_weight
 
     final_score = weighted_score / total_weight if total_weight > 0 else 0.5
@@ -61,12 +75,25 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     if _community_forensics_priority(decisive_results):
         return round(max(final_score, 0.85), 4), "fake"
 
-    confident_decisive = [r for r in decisive_results if r.confidence >= CORROBORATION_CONFIDENCE_FLOOR]
-    fake_voters = [r for r in confident_decisive if r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS)]
-    authentic_voters = [r for r in confident_decisive if r.verdict == AnalysisResult.Verdict.AUTHENTIC]
+    fake_voters = []
+    authentic_voters = []
+    for r in decisive_results:
+        ai_prob = _get_ai_probability(r)
+        if ai_prob is not None:
+            prob_conf = abs(ai_prob - 0.5) * 2
+            if prob_conf >= CORROBORATION_CONFIDENCE_FLOOR:
+                if ai_prob >= 0.5:
+                    fake_voters.append(r)
+                else:
+                    authentic_voters.append(r)
+        else:
+            if r.confidence >= CORROBORATION_CONFIDENCE_FLOOR:
+                if r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS):
+                    fake_voters.append(r)
+                elif r.verdict == AnalysisResult.Verdict.AUTHENTIC:
+                    authentic_voters.append(r)
 
     has_disagreement = len(fake_voters) >= 2 and len(authentic_voters) >= 2
-
     if has_disagreement:
         return round(final_score, 4), "needs_review"
 
