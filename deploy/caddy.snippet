@@ -40,6 +40,7 @@ http://api.prooflayer.cloud {
 # ===== Media (MinIO public-read bucket) =====
 http://media.prooflayer.cloud {
     encode zstd gzip
+    rewrite * /prooflayer-media{path}
     reverse_proxy 127.0.0.1:9000 {
         header_up Host {upstream_hostport}
     }
