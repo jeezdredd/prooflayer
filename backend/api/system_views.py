@@ -217,6 +217,24 @@ class FeedbackView(APIView):
         return Response({"detail": "Feedback received. Thank you.", "id": str(fb.id)}, status=201)
 
 
+def _last_retrain() -> dict | None:
+    try:
+        from analyzers.models import RetrainRun
+        run = RetrainRun.objects.filter(status=RetrainRun.Status.SUCCESS).order_by("-finished_at").first()
+        if run is None:
+            return None
+        return {
+            "started_at": run.started_at.isoformat(),
+            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+            "status": run.status,
+            "samples_used": run.samples_used,
+            "hf_revision": run.hf_revision or None,
+            "media_type": run.media_type,
+        }
+    except Exception:
+        return None
+
+
 class SystemStatusView(APIView):
     permission_classes = [AllowAny]
 
@@ -234,4 +252,5 @@ class SystemStatusView(APIView):
             "overall": "operational" if all_ok else "degraded",
             "checked_at": time.time(),
             "services": services,
+            "last_retrain": _last_retrain(),
         })

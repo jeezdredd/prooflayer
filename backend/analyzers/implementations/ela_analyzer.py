@@ -1,4 +1,6 @@
 import io
+import os
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -51,6 +53,8 @@ class ELAAnalyzer(BaseAnalyzer):
             block_mean = mean_error
             uniformity_ratio = 0.0
 
+        heatmap_url = self._save_heatmap(diff, metadata)
+
         evidence = {
             "mean_error": round(mean_error, 3),
             "max_error": round(max_error, 3),
@@ -60,6 +64,8 @@ class ELAAnalyzer(BaseAnalyzer):
             "uniformity_ratio": round(uniformity_ratio, 4),
             "source_format": source_format,
         }
+        if heatmap_url:
+            evidence["heatmap_url"] = heatmap_url
 
         if is_lossless_source:
             evidence["note"] = "lossless source (PNG/WebP/etc) - ELA heuristics unreliable"
@@ -79,3 +85,28 @@ class ELAAnalyzer(BaseAnalyzer):
             verdict = "inconclusive"
 
         return AnalysisOutput(confidence=confidence, verdict=verdict, evidence=evidence)
+
+    def _save_heatmap(self, diff: np.ndarray, metadata: dict) -> str | None:
+        submission_id = metadata.get("submission_id")
+        if not submission_id:
+            return None
+        try:
+            from django.conf import settings
+            ela_dir = Path(settings.MEDIA_ROOT) / "ela"
+            ela_dir.mkdir(parents=True, exist_ok=True)
+            gray = np.mean(diff, axis=2)
+            max_val = gray.max()
+            if max_val > 0:
+                normalized = (gray / max_val * 255).astype(np.uint8)
+            else:
+                normalized = gray.astype(np.uint8)
+            red = np.zeros((*normalized.shape, 3), dtype=np.uint8)
+            red[:, :, 0] = normalized
+            red[:, :, 1] = (normalized * 0.3).astype(np.uint8)
+            heatmap_img = Image.fromarray(red, "RGB")
+            out_path = ela_dir / f"{submission_id}.jpg"
+            heatmap_img.save(str(out_path), format="JPEG", quality=85)
+            media_url = getattr(settings, "MEDIA_URL", "/media/")
+            return f"{media_url.rstrip('/')}/ela/{submission_id}.jpg"
+        except Exception:
+            return None

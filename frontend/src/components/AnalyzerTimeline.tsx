@@ -240,13 +240,56 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                   Evidence
                 </div>
                 <pre className="font-mono text-[11px] text-ink-200 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                  {JSON.stringify(step.result.evidence, null, 2)}
+                  {JSON.stringify(
+                    Object.fromEntries(
+                      Object.entries(step.result.evidence).filter(([k]) => k !== "heatmap_url")
+                    ),
+                    null, 2
+                  )}
                 </pre>
               </div>
+            )}
+            {typeof step.result?.evidence?.heatmap_url === "string" && (
+              <ELAHeatmapOverlay heatmapUrl={step.result.evidence.heatmap_url} />
             )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
+  const [opacity, setOpacity] = useState(60);
+  const apiBase = import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "";
+  const fullUrl = heatmapUrl.startsWith("http") ? heatmapUrl : `${apiBase}${heatmapUrl}`;
+
+  return (
+    <div className="mt-3 bg-ink-950 border border-ink-700 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">ELA Heatmap</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[9px] text-ink-600">opacity</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={opacity}
+            onChange={(e) => setOpacity(Number(e.target.value))}
+            className="w-20 accent-signal-amber"
+          />
+          <span className="font-mono text-[9px] text-ink-400 w-8">{opacity}%</span>
+        </div>
+      </div>
+      <img
+        src={fullUrl}
+        alt="ELA heatmap"
+        className="max-h-72 max-w-full object-contain border border-ink-700"
+        style={{ opacity: opacity / 100 }}
+      />
+      <p className="font-mono text-[9px] text-ink-600 mt-2">
+        Bright red = high error level = possible manipulation. Uniform areas suggest authentic regions.
+      </p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 ---
 type: index
 created: 2026-05-14
+updated: 2026-06-03
 ---
 
 # Analyzer Pipeline
@@ -22,18 +23,23 @@ Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue,
 
 ## Roster
 
-| # | Name | Class | MIME | Queue | Weight | Notes |
-|---|------|-------|------|-------|--------|-------|
-| 01 | [[analyzers/metadata]] | `MetadataAnalyzer` | image | default | low | EXIF/XMP signatures |
-| 02 | [[analyzers/ela]] | `ELAAnalyzer` | image | default | low | JPEG splice detection |
-| 03 | [[analyzers/ai-ensemble]] | `AIImageDetector` | image | ml | high | 2-model HF vote |
-| 04 | [[analyzers/llm-vision]] | `LLMImageAnalyzer` | image | ml | high | Vision LLM examines |
-| 05 | [[analyzers/video-frames]] | `VideoFrameAnalyzer` | video | ml | high | Sample frames -> ensemble |
-| 06 | [[analyzers/audio-spectrogram]] | `AudioAnalyzer` | audio | default | mid | Spectral artifact check |
-| 07 | [[analyzers/llm-text]] | `LLMTextAnalyzer` | text | ml | mid | AI authorship classifier |
+| # | Name | Type | MIME | Queue | Weight | Notes |
+|---|------|------|------|-------|--------|-------|
+| 01 | [[analyzers/metadata]] | rule-based | image | default | 1.0 | EXIF/XMP signatures |
+| 02 | [[analyzers/ela]] | rule-based | image | default | 1.0 | JPEG splice detection |
+| 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.0** | ViT-S/16 NeurIPS 2024, main authority |
+| 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | **1.5** | SigLIP binary classifier |
+| 05 | [[analyzers/npr-detector]] | **probabilistic** | image | ml | **2.5** | ViT deepfake detector, corroborator |
+| 06 | [[analyzers/llm-vision]] | rule-based | image | ml | 2.0 | Vision LLM examines |
+| 07 | [[analyzers/video-frames]] | mixed | video | ml | 2.0 | Sample frames -> image ensemble |
+| 08 | [[analyzers/audio-spectrogram]] | rule-based | audio | default | 1.0 | Spectral artifact check |
+| 09 | [[analyzers/llm-text]] | rule-based | text | ml | 1.5 | AI authorship classifier |
 
-> [!gap] Multi-modal video
-> Video MIME currently routes ONLY to [[analyzers/video-frames]]. Audio track is NOT extracted -> [[analyzers/audio-spectrogram]] skipped. Metadata also skipped. Gap to close later.
+**Probabilistic** analyzers emit `evidence["ai_probability"]` and contribute raw probability to aggregation.  
+**Rule-based** analyzers emit verdict + confidence; aggregator uses `VERDICT_SCORES` mapping.
+
+> [!deprecated] [[analyzers/ai-ensemble]] (dima806 + umm-maybe) dropped 2026-05-31.  
+> Replaced by CommunityForensics + NPR detector. See [[concepts/detection-strategy-2026]].
 
 ## Dispatch
 
@@ -47,15 +53,20 @@ Each `run_analyzer` task:
 4. Pulls file from MinIO (`storage_utils.local_file`)
 5. Calls `analyzer.analyze(...)`
 6. Creates [[models/AnalysisResult]] row
-7. Excepts -> creates row with verdict=error
+7. Excepts -> creates row with `verdict=error`
 
 ## Source files
 
 `backend/analyzers/implementations/`:
 - `metadata_analyzer.py`
 - `ela_analyzer.py`
-- `clip_detector.py` (AI ensemble; legacy class name from earlier CLIP experiments)
+- `community_forensics.py`
+- `siglip_detector.py`
+- `npr_detector.py`
 - `llm_image_analyzer.py`
 - `video_analyzer.py`
 - `audio_analyzer.py`
 - `llm_analyzer.py` (text)
+
+> [!gap] Multi-modal video
+> Video MIME routes to [[analyzers/video-frames]] only. Audio track not extracted -> audio-spectrogram skipped. Gap to close post-diploma.

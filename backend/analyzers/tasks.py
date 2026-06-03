@@ -82,8 +82,10 @@ def run_analyzer(self, submission_id, config_id):
         submission.status_message = status_msg
         submission.save(update_fields=["status_message"])
 
+        meta = dict(submission.metadata or {})
+        meta["submission_id"] = str(submission_id)
         with local_file(submission.file) as path:
-            output = analyzer.analyze(path, submission.metadata)
+            output = analyzer.analyze(path, meta)
         execution_time = time.time() - start_time
 
         result = AnalysisResult.objects.create(

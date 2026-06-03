@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Activity, Database, Zap, Cpu, Brain, HardDrive } from "lucide-react";
+import { Activity, Database, Zap, Cpu, Brain, HardDrive, RefreshCw } from "lucide-react";
 import client from "../api/client";
 
 interface ServiceProbe {
@@ -18,10 +18,20 @@ interface ServiceProbe {
   reason?: string;
 }
 
+interface RetrainInfo {
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  samples_used: number;
+  hf_revision: string | null;
+  media_type: string;
+}
+
 interface SystemStatus {
   overall: "operational" | "degraded";
   checked_at: number;
   services: Record<string, ServiceProbe>;
+  last_retrain: RetrainInfo | null;
 }
 
 const SERVICE_META: Record<string, { label: string; desc: string; Icon: typeof Activity }> = {
@@ -64,6 +74,7 @@ export default function StatusPage() {
 
   const services = data?.services || {};
   const overall = data?.overall;
+  const lastRetrain = data?.last_retrain;
 
   return (
     <div className="max-w-3xl">
@@ -159,6 +170,46 @@ export default function StatusPage() {
           })}
         </div>
       </div>
+
+      <motion.div
+        className="mt-6 case-card"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.5 }}
+      >
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-white/5">
+          <RefreshCw size={14} strokeWidth={1.5} className="text-signal-amber/70" />
+          <span className="label-mono">Model Updates</span>
+        </div>
+        <div className="px-6 py-5">
+          {lastRetrain ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div>
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">Last Retrain</div>
+                <div className="font-mono text-xs text-ink-100">
+                  {new Date(lastRetrain.started_at).toLocaleDateString()}
+                </div>
+              </div>
+              <div>
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">Samples</div>
+                <div className="font-mono text-xs text-ink-100">{lastRetrain.samples_used}</div>
+              </div>
+              <div>
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">Type</div>
+                <div className="font-mono text-xs text-ink-100">{lastRetrain.media_type}</div>
+              </div>
+              <div>
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">HF Revision</div>
+                <div className="font-mono text-xs text-ink-100 truncate" title={lastRetrain.hf_revision || ""}>
+                  {lastRetrain.hf_revision ? lastRetrain.hf_revision.slice(0, 10) : "n/a"}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <span className="font-mono text-[11px] text-ink-500">No successful retrains yet.</span>
+          )}
+        </div>
+      </motion.div>
 
       <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 flex items-center gap-3">
         <span>Auto-refresh · 5s</span>
