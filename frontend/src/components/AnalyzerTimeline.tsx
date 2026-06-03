@@ -10,6 +10,9 @@ const ANALYZER_LABELS: Record<string, string> = {
   video_frame: "Video Frame Analysis",
   audio_spectrogram: "Audio Spectrogram",
   llm_text: "Text LLM",
+  community_forensics: "Community Forensics · ViT",
+  npr_detector: "NPR Detector · ViT",
+  siglip_detector: "SigLIP Detector",
 };
 
 const ANALYZER_CODE: Record<string, string> = {
@@ -20,6 +23,9 @@ const ANALYZER_CODE: Record<string, string> = {
   video_frame: "VID",
   audio_spectrogram: "AUD",
   llm_text: "TXT",
+  community_forensics: "CF",
+  npr_detector: "NPR",
+  siglip_detector: "SIGL",
 };
 
 const ANALYZER_WEIGHTS: Record<string, number> = {
@@ -30,6 +36,22 @@ const ANALYZER_WEIGHTS: Record<string, number> = {
   video_frame: 30,
   audio_spectrogram: 8,
   llm_text: 6,
+  community_forensics: 20,
+  npr_detector: 15,
+  siglip_detector: 15,
+};
+
+const ANALYZER_ETA_SECS: Record<string, number> = {
+  metadata: 3,
+  ela: 5,
+  community_forensics: 60,
+  llm_vision: 45,
+  video_frame: 40,
+  audio_spectrogram: 15,
+  llm_text: 20,
+  npr_detector: 30,
+  siglip_detector: 25,
+  ai_detector: 25,
 };
 
 const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }> = {
@@ -72,8 +94,14 @@ function buildSteps(submission: Submission): Step[] {
   }
 
   if (isProcessing) {
-    const firstPendingIdx = sources.findIndex((s) => s.state === "pending");
-    if (firstPendingIdx >= 0) sources[firstPendingIdx].state = "running";
+    const msg = (submission.status_message || "").toLowerCase();
+    const msgMatchIdx = msg
+      ? sources.findIndex(
+          (s) => msg.includes(s.name.toLowerCase()) || msg.includes(s.name.replace(/_/g, " ").toLowerCase())
+        )
+      : -1;
+    const targetIdx = msgMatchIdx >= 0 ? msgMatchIdx : sources.findIndex((s) => s.state === "pending");
+    if (targetIdx >= 0) sources[targetIdx].state = "running";
   }
 
   return sources;
@@ -130,7 +158,7 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
   const verdict = step.result?.verdict || "";
   const tone = VERDICT_TONE[verdict] || VERDICT_TONE.inconclusive;
   const elapsed = useElapsed(step.state === "running");
-  const expectedSecs = ANALYZER_WEIGHTS[step.name] || 5;
+  const expectedSecs = ANALYZER_ETA_SECS[step.name] || 15;
 
   return (
     <div className={clsx("relative flex gap-4 animate-fade-in-up", !isLast && "pb-5")}>
@@ -215,7 +243,9 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                 <span className="text-signal-amber animate-pulse-soft">
                   {elapsed < expectedSecs
                     ? `${(expectedSecs - elapsed).toFixed(1)}s remaining`
-                    : `still working… ${elapsed.toFixed(0)}s elapsed`}
+                    : elapsed > expectedSecs * 2
+                    ? `loading model... ${elapsed.toFixed(0)}s`
+                    : `still working... ${elapsed.toFixed(0)}s`}
                 </span>
               </div>
             </div>
@@ -313,7 +343,7 @@ export default function AnalyzerTimeline({ submission }: { submission: Submissio
 
   const remainingSecs = steps
     .filter((s) => s.state === "pending" || s.state === "running")
-    .reduce((acc, s) => acc + (ANALYZER_WEIGHTS[s.name] || 5), 0);
+    .reduce((acc, s) => acc + (ANALYZER_ETA_SECS[s.name] || 15), 0);
 
   return (
     <div>
@@ -352,10 +382,16 @@ export default function AnalyzerTimeline({ submission }: { submission: Submissio
       </div>
 
       {/* Status message */}
-      {isProcessing && submission.status_message && (
+      {isProcessing && (
         <div className="mb-6 flex items-center gap-3 px-3 py-2 border-l-2 border-signal-amber bg-signal-amber/5">
           <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
-          <span className="font-mono text-[11px] text-ink-200">{submission.status_message}</span>
+          <span className="font-mono text-[11px] text-ink-200">
+            {(() => {
+              const running = steps.find((s) => s.state === "running");
+              if (running) return `Running ${ANALYZER_LABELS[running.name] || running.name}...`;
+              return submission.status_message || "Processing...";
+            })()}
+          </span>
         </div>
       )}
 

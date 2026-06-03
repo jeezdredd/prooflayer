@@ -126,7 +126,8 @@ export default function ResultCard({ submission }: ResultCardProps) {
           <img
             src={submission.file_url}
             alt={submission.original_filename}
-            className="max-h-96 max-w-full object-contain border border-ink-700"
+            className="max-h-64 max-w-full object-contain border border-ink-700"
+            loading="lazy"
             onError={(e) => {
               e.currentTarget.parentElement?.style.setProperty("display", "none");
             }}

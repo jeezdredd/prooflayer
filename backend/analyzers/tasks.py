@@ -20,6 +20,9 @@ ANALYZER_STATUS_MESSAGES = {
     "video_frame": "Extracting and analyzing video frames...",
     "audio_spectrogram": "Analyzing audio spectrogram...",
     "llm_text": "Analyzing text with AI...",
+    "community_forensics": "Running Community Forensics ViT...",
+    "npr_detector": "Running NPR ViT detector...",
+    "siglip_detector": "Running SigLIP detector...",
 }
 
 
