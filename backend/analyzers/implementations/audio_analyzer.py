@@ -74,10 +74,12 @@ class AudioSpectrogramAnalyzer(BaseAnalyzer):
         evidence["spectral_entropy"] = round(spectral_entropy, 4)
         if spectral_entropy > 9.5:
             flags.append("unnaturally_high_spectral_entropy")
+        elif spectral_entropy < 8.2:
+            flags.append("suspiciously_clean_spectrum")
 
         noise_floor = float(np.percentile(np.abs(y), 5))
         evidence["noise_floor"] = round(noise_floor, 8)
-        if noise_floor < 1e-5:
+        if noise_floor < 5e-5:
             flags.append("near_zero_noise_floor")
 
         evidence["flags"] = flags

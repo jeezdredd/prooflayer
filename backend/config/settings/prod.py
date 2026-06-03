@@ -38,7 +38,7 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", "")
 AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "")
-AWS_DEFAULT_ACL = "private"
+AWS_DEFAULT_ACL = "public-read"
 AWS_S3_FILE_OVERWRITE = False
 
 if AWS_STORAGE_BUCKET_NAME:
@@ -46,7 +46,8 @@ if AWS_STORAGE_BUCKET_NAME:
         "bucket_name": AWS_STORAGE_BUCKET_NAME,
         "region_name": AWS_S3_REGION_NAME,
         "custom_domain": AWS_S3_CUSTOM_DOMAIN or None,
-        "default_acl": AWS_DEFAULT_ACL,
+        "default_acl": "public-read",
+        "querystring_auth": False,
         "file_overwrite": False,
         "addressing_style": "path",
         "signature_version": "s3v4",
