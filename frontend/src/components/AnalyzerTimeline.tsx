@@ -58,8 +58,8 @@ const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }>
   authentic: { color: "text-signal-sage", bg: "bg-signal-sage/10 border-signal-sage/30", label: "Authentic" },
   suspicious: { color: "text-signal-amber", bg: "bg-signal-amber/10 border-signal-amber/30", label: "Suspicious" },
   fake: { color: "text-signal-blood", bg: "bg-signal-blood/10 border-signal-blood/30", label: "Fake" },
-  inconclusive: { color: "text-ink-300", bg: "bg-ink-800 border-ink-600", label: "Inconclusive" },
-  error: { color: "text-ink-400", bg: "bg-ink-800 border-ink-600", label: "Error" },
+  inconclusive: { color: "text-ink-400", bg: "bg-ink-800 border-ink-500", label: "Inconclusive" },
+  error: { color: "text-signal-blood/70", bg: "bg-signal-blood/5 border-signal-blood/30", label: "Error" },
 };
 
 interface Step {
@@ -125,7 +125,7 @@ function StateMarker({ state, verdict }: { state: Step["state"]; verdict: string
   if (state === "done") {
     const tone = VERDICT_TONE[verdict] || VERDICT_TONE.inconclusive;
     const sym =
-      verdict === "authentic" ? "✓" : verdict === "fake" || verdict === "suspicious" ? "!" : "·";
+      verdict === "authentic" ? "✓" : verdict === "fake" || verdict === "suspicious" ? "!" : verdict === "error" ? "×" : "-";
     return (
       <div className={clsx("w-7 h-7 border flex items-center justify-center text-sm font-bold animate-check-pop", tone.color, tone.bg)}>
         {sym}
@@ -271,7 +271,7 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                 <div className="absolute top-2 right-2 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-600">
                   Evidence
                 </div>
-                <pre className="font-mono text-[11px] text-ink-200 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                <pre className="font-mono text-[11px] text-ink-200 overflow-x-auto overflow-y-auto max-h-52 whitespace-pre-wrap leading-relaxed">
                   {JSON.stringify(
                     Object.fromEntries(
                       Object.entries(step.result.evidence).filter(([k]) => k !== "heatmap_url")
