@@ -45,7 +45,11 @@ class CommunityForensicsDetector(BaseAnalyzer):
             with torch.no_grad():
                 outputs = model(**inputs)
                 logits = outputs.logits.squeeze()
-                ai_prob = float(torch.sigmoid(logits).item())
+                if logits.dim() == 0:
+                    ai_prob = float(torch.sigmoid(logits).item())
+                else:
+                    probs = torch.softmax(logits, dim=-1)
+                    ai_prob = float(probs[-1].item())
         except Exception as exc:
             logger.warning("community_forensics inference failed: %s", exc)
             return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": str(exc)})

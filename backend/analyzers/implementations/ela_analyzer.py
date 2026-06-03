@@ -1,8 +1,8 @@
 import io
-import os
-from pathlib import Path
 
 import numpy as np
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from PIL import Image
 
 from analyzers.base import AnalysisOutput, BaseAnalyzer
@@ -91,22 +91,20 @@ class ELAAnalyzer(BaseAnalyzer):
         if not submission_id:
             return None
         try:
-            from django.conf import settings
-            ela_dir = Path(settings.MEDIA_ROOT) / "ela"
-            ela_dir.mkdir(parents=True, exist_ok=True)
             gray = np.mean(diff, axis=2)
             max_val = gray.max()
-            if max_val > 0:
-                normalized = (gray / max_val * 255).astype(np.uint8)
-            else:
-                normalized = gray.astype(np.uint8)
+            normalized = (gray / max_val * 255).astype(np.uint8) if max_val > 0 else gray.astype(np.uint8)
             red = np.zeros((*normalized.shape, 3), dtype=np.uint8)
             red[:, :, 0] = normalized
             red[:, :, 1] = (normalized * 0.3).astype(np.uint8)
             heatmap_img = Image.fromarray(red, "RGB")
-            out_path = ela_dir / f"{submission_id}.jpg"
-            heatmap_img.save(str(out_path), format="JPEG", quality=85)
-            media_url = getattr(settings, "MEDIA_URL", "/media/")
-            return f"{media_url.rstrip('/')}/ela/{submission_id}.jpg"
+            buf = io.BytesIO()
+            heatmap_img.save(buf, format="JPEG", quality=85)
+            buf.seek(0)
+            storage_path = f"ela/{submission_id}.jpg"
+            if default_storage.exists(storage_path):
+                default_storage.delete(storage_path)
+            saved_path = default_storage.save(storage_path, ContentFile(buf.read()))
+            return default_storage.url(saved_path)
         except Exception:
             return None
