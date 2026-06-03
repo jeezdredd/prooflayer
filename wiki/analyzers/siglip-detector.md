@@ -6,7 +6,7 @@ source: backend/analyzers/implementations/siglip_detector.py
 
 # SigLIP Deepfake Detector
 
-Binary classifier built on SigLIP-base backbone. Standalone signal-quality detector — `siglip_detector` analyzer.
+Binary classifier built on SigLIP-base backbone. Standalone signal-quality detector - `siglip_detector` analyzer.
 
 ## Model
 
@@ -26,7 +26,7 @@ ai_prob <  0.30  -> authentic, conf 0.65
 else             -> inconclusive, conf 0.4
 ```
 
-Conservative on both sides: refuses to commit between 0.30 and 0.70. Pairs well with the existing `ai_detector` ensemble (dima806 + umm-maybe) — together they form the multi-voter corroboration the aggregator now requires for `fake` verdict.
+Conservative on both sides: refuses to commit between 0.30 and 0.70. Pairs well with the existing `ai_detector` ensemble (dima806 + umm-maybe) - together they form the multi-voter corroboration the aggregator now requires for `fake` verdict.
 
 ## Weight in registry
 
@@ -49,7 +49,7 @@ Module-level singleton (`_state`) lazy-loaded on first inference. ~360 MB reside
 }
 ```
 
-Label keys vary by model card — `_ai_probability` aggregates by substring match (fake/ai/synthetic vs real/human/authentic).
+Label keys vary by model card - `_ai_probability` aggregates by substring match (fake/ai/synthetic vs real/human/authentic).
 
 ## See also
 
