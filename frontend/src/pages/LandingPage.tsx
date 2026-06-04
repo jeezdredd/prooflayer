@@ -1,31 +1,63 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { motion, useMotionValue, useSpring, useTransform, useInView, animate } from "motion/react";
-import { Tag, ScanLine, Cpu, Eye, Film, AudioLines, Type, Sparkles } from "lucide-react";
+import {
+  Tag, ScanLine, Eye, Film, AudioLines, Type, Sparkles,
+  Brain, Fingerprint, Focus, History, SearchCheck, Globe, Users2,
+} from "lucide-react";
 import ShaderBackground from "../components/ui/ShaderBackground";
 import { useAuthStore } from "../stores/authStore";
 
 const ANALYZERS = [
-  { code: "01", name: "Metadata · EXIF", desc: "Reads camera signatures, editing-tool fingerprints, GPS, timestamp drift.", Icon: Tag },
-  { code: "02", name: "Error Level Analysis", desc: "Re-saves at fixed JPEG quality, surfaces splice and paste regions.", Icon: ScanLine },
-  { code: "03", name: "AI Image Ensemble", desc: "Three independent classifiers vote on synthetic likelihood.", Icon: Cpu },
-  { code: "04", name: "Vision LLM", desc: "Multimodal model examines lighting, texture, fingers, eyes, uncanny valley.", Icon: Eye },
-  { code: "05", name: "Video Frame Sampler", desc: "Uniform-interval frames pass through ELA + AI ensemble. Aggregated ratio.", Icon: Film },
-  { code: "06", name: "Audio Spectrogram", desc: "Spectral features detect synthetic-voice frequency artifacts.", Icon: AudioLines },
-  { code: "07", name: "Text LLM", desc: "Classifies AI authorship from stylistic and structural cues.", Icon: Type },
+  { code: "01", name: "Metadata · EXIF", desc: "Reads camera signatures, editing-tool fingerprints, GPS coords, timestamp drift. Missing fields are as telling as present ones.", Icon: Tag },
+  { code: "02", name: "Error Level Analysis", desc: "Re-saves at fixed JPEG quality, compares pixel-level residuals. Spliced or pasted regions show elevated error bands.", Icon: ScanLine },
+  { code: "03", name: "Community Forensics ViT", desc: "ViT-S/16 trained on 2.7 M images from 4 803 generators (NeurIPS 2024). Strongest signal for photorealistic deepfakes and diffusion faces.", Icon: Brain },
+  { code: "04", name: "NPR ViT Detector", desc: "Noise Pattern Residual detector. High-frequency camera sensor noise vs generator fingerprints - catches clean-looking GAN and diffusion outputs.", Icon: Fingerprint },
+  { code: "05", name: "SigLIP Coherence", desc: "Semantic consistency across image regions. Inpainting, face swaps, and localized edits produce mismatched semantic context that SigLIP surfaces.", Icon: Focus },
+  { code: "06", name: "Vision LLM", desc: "Multimodal model examines lighting consistency, texture coherence, fine details - fingers, eyes, reflections, uncanny-valley artifacts.", Icon: Eye },
+  { code: "07", name: "Video Frame Sampler", desc: "Uniform-interval frames pass through ELA + AI ensemble independently. Aggregated verdict weighted by per-frame confidence.", Icon: Film },
+  { code: "08", name: "Audio Spectrogram", desc: "Spectral features and frequency distribution detect synthetic-voice artifacts and unnatural patterns left by vocoders.", Icon: AudioLines },
+  { code: "09", name: "Text LLM", desc: "Classifies AI authorship from stylistic and structural cues - perplexity distribution, sentence rhythm, discourse markers.", Icon: Type },
+];
+
+const FEATURES = [
+  {
+    Icon: History,
+    title: "Results Archive",
+    desc: "Every submission is persisted with its full evidence bundle. Browse, filter, and re-examine past verifications.",
+    accent: "text-signal-cyan",
+  },
+  {
+    Icon: SearchCheck,
+    title: "Fact-Check Engine",
+    desc: "Cross-reference extracted claims against live web sources. Get linked evidence for or against each assertion.",
+    accent: "text-signal-amber",
+  },
+  {
+    Icon: Globe,
+    title: "Provenance Trail",
+    desc: "Reverse-image search and origin detection. Find prior uses of the file, track publication history.",
+    accent: "text-signal-violet",
+  },
+  {
+    Icon: Users2,
+    title: "Community Layer",
+    desc: "Crowdsource votes run alongside machine verdicts. Human signal supplements the ensemble where models disagree.",
+    accent: "text-signal-sage",
+  },
 ];
 
 const NUMBERS = [
-  { v: "07", l: "Independent analyzers" },
+  { v: "09", l: "Active analyzers" },
   { v: "≈4s", l: "Median image verdict" },
   { v: "500MB", l: "Max upload" },
-  { v: "JWT", l: "End-to-end auth" },
+  { v: "REST", l: "Open API" },
 ];
 
 const PRINCIPLES = [
-  { kw: "Forensic", body: "We treat every submission like an evidence file. Crop marks. Case IDs. Provenance trails.", accent: "violet" },
-  { kw: "Transparent", body: "No black-box scores. Each analyzer publishes raw JSON evidence beside its verdict.", accent: "cyan" },
-  { kw: "Skeptical", body: "If two methods disagree, we surface that. Inconclusive is a valid answer.", accent: "amber" },
+  { kw: "Forensic", body: "Every submission treated like an evidence file. Crop marks. Case IDs. Provenance trails.", accent: "violet" },
+  { kw: "Transparent", body: "No black-box scores. Each analyzer publishes raw JSON evidence alongside its verdict.", accent: "cyan" },
+  { kw: "Skeptical", body: "If two methods disagree, we surface that. Inconclusive is a valid answer - not a failure.", accent: "amber" },
 ];
 
 function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
@@ -196,7 +228,7 @@ export default function LandingPage() {
                 className="mt-10 text-lg text-ink-200 max-w-xl leading-relaxed"
               >
                 ProofLayer is a forensic verification lab for synthetic media.
-                Seven independent analyzers cross-examine every file -
+                Nine independent analyzers cross-examine every file -
                 and publish their evidence, not just their verdicts.
               </motion.p>
 
@@ -206,7 +238,7 @@ export default function LandingPage() {
                 className="mt-10 flex flex-wrap items-center gap-3"
               >
                 <MagneticBtn to={authedCta} className="btn-forensic group text-sm">
-                  <span>{user ? "Submit Evidence" : "Submit Evidence"}</span>
+                  <span>Submit Evidence</span>
                   <motion.span
                     animate={{ x: [0, 4, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
@@ -254,16 +286,16 @@ export default function LandingPage() {
 
                   <div className="flex items-end gap-3 mb-6">
                     <div className="font-display text-[6.5rem] leading-none text-signal-blood ticker">
-                      <CountUp value={82} />
+                      <CountUp value={87} />
                     </div>
                     <div className="font-display text-3xl text-ink-500 mb-3">%</div>
                   </div>
 
                   <div className="space-y-2.5 mb-5">
                     {[
-                      { l: "AI-3 ENSEMBLE", v: "fake", c: "text-signal-blood", n: "0.91" },
+                      { l: "CF-VIT", v: "fake", c: "text-signal-blood", n: "0.91" },
+                      { l: "NPR-VIT", v: "fake", c: "text-signal-blood", n: "0.87" },
                       { l: "ELA", v: "suspicious", c: "text-signal-amber", n: "0.62" },
-                      { l: "VLM", v: "fake", c: "text-signal-blood", n: "0.88" },
                       { l: "META", v: "stripped", c: "text-ink-400", n: "-" },
                     ].map((r, i) => (
                       <motion.div
@@ -283,7 +315,7 @@ export default function LandingPage() {
                   </div>
                   <div className="dot-divider mb-3" />
                   <div className="flex items-center justify-between font-mono text-[10px] text-ink-500">
-                    <span>Aggregated · weighted</span>
+                    <span>Aggregated · weighted ensemble</span>
                     <span className="signal-amber">Reviewed by humans</span>
                   </div>
                 </div>
@@ -369,14 +401,14 @@ export default function LandingPage() {
                 The Pipeline
               </div>
               <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
-                Seven witnesses<span className="italic text-iris">,</span>
+                Nine witnesses<span className="italic text-iris">,</span>
                 <br />
                 one verdict.
               </h2>
             </div>
             <p className="max-w-md text-ink-200 leading-relaxed">
               Each analyzer operates independently. We aggregate by weighted confidence -
-              never by majority vote. Disagreement is escalated, not silenced.
+              never majority vote. Disagreement is escalated, not silenced.
             </p>
           </motion.div>
 
@@ -431,13 +463,71 @@ export default function LandingPage() {
                 More to come.
               </div>
               <div className="col-span-6 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500 pt-2">
-                C2PA · audio deepfake · OCR
+                C2PA · audio deepfake · browser extension
               </div>
             </motion.div>
           </motion.div>
         </section>
 
-        {/* WIDGET */}
+        {/* FEATURES BEYOND UPLOAD */}
+        <section className="pb-28">
+          <motion.div
+            className="mb-14"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="label-mono mb-3 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-signal-fuchsia rounded-full pulse-dot" />
+              Beyond the Upload
+            </div>
+            <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
+              A full <span className="italic text-iris">forensic</span>
+              <br />
+              workspace.
+            </h2>
+          </motion.div>
+
+          <motion.div
+            className="grid md:grid-cols-2 gap-px bg-[var(--line-strong)] border border-[var(--line-strong)]"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+          >
+            {FEATURES.map((f) => {
+              const Icon = f.Icon;
+              return (
+                <motion.div
+                  key={f.title}
+                  variants={fadeUp}
+                  transition={{ duration: 0.6 }}
+                  whileHover="hover"
+                  className="bg-ink-950 p-8 group cursor-default"
+                >
+                  <motion.div
+                    className={`${f.accent} mb-5`}
+                    variants={{ hover: { scale: 1.1, x: 2 } }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <Icon size={28} strokeWidth={1.5} />
+                  </motion.div>
+                  <motion.div
+                    className="font-display text-3xl text-ink-50 mb-3"
+                    variants={{ hover: { x: 4 } }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    {f.title}
+                  </motion.div>
+                  <p className="text-sm text-ink-300 leading-relaxed">{f.desc}</p>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </section>
+
+        {/* EMBED WIDGET */}
         <section className="pb-28 grid lg:grid-cols-2 gap-14 items-center">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -455,7 +545,7 @@ export default function LandingPage() {
               on any page.
             </h2>
             <p className="text-ink-200 leading-relaxed max-w-md mb-8">
-              One script tag. Real-time verdict, fed by your submission's SHA-256.
+              One script tag. Real-time verdict fed by your submission's SHA-256.
               Public CORS, no API key required.
             </p>
             <MagneticBtn to={user ? "/embed" : "/register"} className="btn-forensic">
