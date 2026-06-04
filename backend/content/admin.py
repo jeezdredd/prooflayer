@@ -36,48 +36,62 @@ class SubmissionAdmin(ModelAdmin):
     actions = [approve_as_real, approve_as_fake, revoke_training_approval]
     list_per_page = 50
 
+    _BADGE_STYLE = (
+        "display:inline-block;padding:2px 8px;border-radius:4px;"
+        "font-size:11px;font-weight:600;letter-spacing:.03em;white-space:nowrap;"
+    )
+
     @admin.display(description="Status", ordering="status")
     def status_badge(self, obj):
         colors = {
-            "completed": ("bg-green-100 text-green-800", "completed"),
-            "failed": ("bg-red-100 text-red-800", "failed"),
-            "processing": ("bg-yellow-100 text-yellow-800", "processing"),
-            "pending": ("bg-gray-100 text-gray-600", "pending"),
+            "completed": "#14532d;color:#86efac",
+            "failed": "#7f1d1d;color:#fca5a5",
+            "processing": "#78350f;color:#fcd34d",
+            "pending": "#1f2937;color:#9ca3af",
         }
-        cls, label = colors.get(obj.status, ("bg-gray-100 text-gray-600", obj.status))
+        style = colors.get(obj.status, "#1f2937;color:#9ca3af")
         return format_html(
-            '<span class="px-2 py-0.5 rounded text-xs font-medium {}">{}</span>',
-            cls, label,
+            '<span style="{}background:{}">{}</span>',
+            self._BADGE_STYLE, style, obj.status,
         )
 
     @admin.display(description="Verdict", ordering="final_verdict")
     def verdict_badge(self, obj):
         if not obj.final_verdict:
-            return format_html('<span class="text-gray-400 text-xs">-</span>')
+            return format_html('<span style="color:#6b7280;font-size:11px">-</span>')
         colors = {
-            "authentic": ("bg-green-100 text-green-800", "AUTHENTIC"),
-            "likely_authentic": ("bg-green-50 text-green-700", "LIKELY AUTHENTIC"),
-            "suspicious": ("bg-yellow-100 text-yellow-800", "SUSPICIOUS"),
-            "likely_fake": ("bg-orange-100 text-orange-800", "LIKELY FAKE"),
-            "fake": ("bg-red-100 text-red-800", "FAKE"),
-            "inconclusive": ("bg-gray-100 text-gray-600", "INCONCLUSIVE"),
+            "authentic": "#14532d;color:#86efac",
+            "likely_authentic": "#166534;color:#bbf7d0",
+            "suspicious": "#78350f;color:#fcd34d",
+            "likely_fake": "#7c2d12;color:#fdba74",
+            "fake": "#7f1d1d;color:#fca5a5",
+            "inconclusive": "#1f2937;color:#9ca3af",
         }
-        cls, label = colors.get(obj.final_verdict, ("bg-gray-100 text-gray-600", obj.final_verdict.upper()))
+        style = colors.get(obj.final_verdict, "#1f2937;color:#9ca3af")
+        labels = {
+            "authentic": "AUTHENTIC",
+            "likely_authentic": "LIKELY AUTH",
+            "suspicious": "SUSPICIOUS",
+            "likely_fake": "LIKELY FAKE",
+            "fake": "FAKE",
+            "inconclusive": "INCONCLUSIVE",
+        }
+        label = labels.get(obj.final_verdict, obj.final_verdict.upper())
         score = f" {obj.final_score:.0%}" if obj.final_score is not None else ""
         return format_html(
-            '<span class="px-2 py-0.5 rounded text-xs font-medium {}">{}{}</span>',
-            cls, label, score,
+            '<span style="{}background:{}">{}{}</span>',
+            self._BADGE_STYLE, style, label, score,
         )
 
     @admin.display(description="Training label", ordering="verified_label")
     def training_badge(self, obj):
         if not obj.approved_for_training:
-            return format_html('<span class="text-gray-400 text-xs">not approved</span>')
+            return format_html('<span style="color:#6b7280;font-size:11px">not approved</span>')
         label = obj.verified_label or "approved"
-        cls = "bg-green-100 text-green-800" if label == "real" else "bg-red-100 text-red-800"
+        style = "#14532d;color:#86efac" if label == "real" else "#7f1d1d;color:#fca5a5"
         return format_html(
-            '<span class="px-2 py-0.5 rounded text-xs font-medium {}">{}</span>',
-            cls, label.upper(),
+            '<span style="{}background:{}">{}</span>',
+            self._BADGE_STYLE, style, label.upper(),
         )
 
 
