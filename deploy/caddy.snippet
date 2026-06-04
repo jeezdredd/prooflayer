@@ -16,16 +16,6 @@ http://prooflayer.cloud {
 http://api.prooflayer.cloud {
     encode zstd gzip
 
-    handle_path /static/* {
-        root * /srv/prooflayer/shared/static
-        file_server
-    }
-
-    handle_path /media/* {
-        root * /srv/prooflayer/shared/media
-        file_server
-    }
-
     reverse_proxy 127.0.0.1:8000 {
         header_up X-Forwarded-Proto https
         header_up X-Real-IP {remote_host}
