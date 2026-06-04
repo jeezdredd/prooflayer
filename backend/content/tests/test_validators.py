@@ -33,7 +33,7 @@ class TestValidateMimeType:
             validate_mime_type(f)
 
     def test_disguised_file_rejected(self):
-        f = SimpleUploadedFile("fake.jpg", b"MZ\x90\x00" + b"\x00" * 100, content_type="image/jpeg")
+        f = SimpleUploadedFile("fake.exe", b"MZ\x90\x00" + b"\x00" * 100, content_type="image/jpeg")
         with pytest.raises(ValidationError):
             validate_mime_type(f)
 

@@ -15,7 +15,7 @@ from .factories import SubmissionFactory
 class TestSubmissionCreate:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
         self.url = reverse("submission-list")
 
@@ -52,7 +52,7 @@ class TestSubmissionCreate:
 class TestSubmissionList:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
         self.url = reverse("submission-list")
 
@@ -74,7 +74,7 @@ class TestSubmissionList:
 class TestSubmissionDetail:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
 
     def test_retrieve_own(self):
@@ -95,7 +95,7 @@ class TestSubmissionDetail:
 class TestSubmissionListFilters:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
         self.url = reverse("submission-list")
 
@@ -128,7 +128,7 @@ class TestSubmissionListFilters:
 class TestSubmissionDelete:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
 
     def test_delete_own(self):
@@ -149,7 +149,7 @@ class TestSubmissionDelete:
 class TestSubmissionStats:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
         self.url = "/api/v1/content/submissions/stats/"
 

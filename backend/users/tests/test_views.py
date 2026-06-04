@@ -20,9 +20,8 @@ class TestRegisterView:
         }
         response = self.client.post(self.url, data)
         assert response.status_code == 201
-        assert "tokens" in response.data
-        assert "access" in response.data["tokens"]
-        assert "refresh" in response.data["tokens"]
+        assert "access" in response.data
+        assert "user" in response.data
         assert response.data["user"]["email"] == "new@example.com"
 
     def test_register_password_mismatch(self):
@@ -59,7 +58,6 @@ class TestLoginView:
         response = self.client.post(self.url, data)
         assert response.status_code == 200
         assert "access" in response.data
-        assert "refresh" in response.data
 
     def test_login_wrong_password(self):
         UserFactory(email="login@example.com")

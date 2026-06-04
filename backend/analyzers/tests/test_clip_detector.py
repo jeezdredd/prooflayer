@@ -102,7 +102,7 @@ class TestAIImageDetector:
         mock_ext.from_pretrained.return_value = e
         out = AIImageDetector().analyze(photographic_image_path, {})
         assert out.verdict == "fake"
-        assert out.evidence["ensemble_size"] == 3
+        assert out.evidence["ensemble_size"] == 2
 
     def test_low_ensemble_returns_authentic(self, mock_ext, mock_mod, photographic_image_path):
         m, e = _mk_mock_for_label(ai_prob=0.05)
@@ -116,5 +116,5 @@ class TestAIImageDetector:
         mock_mod.from_pretrained.return_value = m
         mock_ext.from_pretrained.return_value = e
         out = AIImageDetector().analyze(photographic_image_path, {})
-        assert "models" in out.evidence
-        assert len(out.evidence["models"]) == 3
+        assert "classifiers" in out.evidence
+        assert len(out.evidence["classifiers"]) == 2

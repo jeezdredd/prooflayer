@@ -2,13 +2,24 @@ import io
 import pytest
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
-from rest_framework.test import APIClient
 
+from config.celery import app as celery_app
 from users.tests.factories import UserFactory
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _celery_eager():
+    celery_app.conf.update(
+        task_always_eager=True,
+        task_eager_propagates=True,
+        result_backend="cache+memory://",
+        broker_url="memory://",
+    )
 
 
 @pytest.fixture
 def api_client():
+    from rest_framework.test import APIClient
     return APIClient()
 
 

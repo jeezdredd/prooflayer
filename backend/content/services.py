@@ -199,7 +199,7 @@ def clone_analysis_results(source_submission, target_submission):
             confidence=result.confidence,
             verdict=result.verdict,
             evidence=result.evidence,
-            execution_time=result.execution_time or 0.0,
+            execution_time=0.0,
         )
 
 

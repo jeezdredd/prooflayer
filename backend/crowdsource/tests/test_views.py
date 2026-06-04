@@ -11,7 +11,7 @@ from users.tests.factories import UserFactory
 class TestVoteCreate:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
         self.url = reverse("vote-create")
 
@@ -43,7 +43,7 @@ class TestVoteCreate:
 class TestVoteStats:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
 
     def test_stats_correct_counts(self):

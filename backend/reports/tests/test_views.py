@@ -12,7 +12,7 @@ from .factories import ReportFactory
 class TestReportCreate:
     def setup_method(self):
         self.client = APIClient()
-        self.user = UserFactory()
+        self.user = UserFactory(is_verified=True)
         self.client.force_authenticate(user=self.user)
         self.url = reverse("report-create")
 

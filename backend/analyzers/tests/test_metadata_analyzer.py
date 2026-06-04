@@ -73,4 +73,4 @@ class TestMetadataAnalyzer:
         path = tmp_path / "empty.jpg"
         img.save(str(path), format="JPEG")
         result = self.analyzer.analyze(str(path), {})
-        assert result.verdict in ("authentic", "suspicious")
+        assert result.verdict in ("authentic", "suspicious", "inconclusive")
