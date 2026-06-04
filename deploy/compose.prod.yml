@@ -48,7 +48,7 @@ services:
         exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --worker-class gthread --threads 2 --timeout 120 --access-logfile - --error-logfile -
     volumes:
       - media_data:/app/media
-      - static_data:/app/staticfiles
+      - /srv/prooflayer/shared/static:/app/staticfiles
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -229,6 +229,5 @@ services:
 volumes:
   postgres_data:
   media_data:
-  static_data:
   ollama_data:
   minio_data:

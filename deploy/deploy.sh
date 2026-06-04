@@ -123,6 +123,10 @@ EOF
         ln -sfn "$SHARED/.env" "$RELEASE/deploy/.env"
         cd "$RELEASE/deploy"
 
+        # Ensure shared dirs exist for bind mounts
+        mkdir -p "$SHARED/static" "$SHARED/media"
+        chmod -R o+rX "$SHARED/static" 2>/dev/null || true
+
         log "docker compose build"
         docker compose -f compose.prod.yml --env-file "$SHARED/.env" build
 
