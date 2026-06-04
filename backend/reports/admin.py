@@ -1,10 +1,11 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from .models import Report
 
 
 @admin.register(Report)
-class ReportAdmin(admin.ModelAdmin):
+class ReportAdmin(ModelAdmin):
     list_display = ("id", "reporter", "submission", "reason", "status", "created_at")
     list_filter = ("status", "reason")
     search_fields = ("description",)

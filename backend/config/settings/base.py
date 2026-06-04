@@ -7,6 +7,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-dev-key-change-in-production")
 
 INSTALLED_APPS = [
+    "unfold",
+    "unfold.contrib.filters",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -231,3 +233,62 @@ LOGGING = {
 }
 
 DATABASES = {}
+
+UNFOLD = {
+    "SITE_TITLE": "ProofLayer Admin",
+    "SITE_HEADER": "ProofLayer",
+    "SITE_URL": "/",
+    "SITE_SYMBOL": "verified",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": False,
+    "COLORS": {
+        "font": {
+            "subtle-light": "107 114 128",
+            "subtle-dark": "156 163 175",
+            "default-light": "75 85 99",
+            "default-dark": "209 213 219",
+            "important-light": "17 24 39",
+            "important-dark": "243 244 246",
+        },
+        "primary": {
+            "50": "240 239 255",
+            "100": "220 218 255",
+            "200": "189 185 255",
+            "300": "152 145 255",
+            "400": "123 108 246",
+            "500": "99 82 234",
+            "600": "83 62 220",
+            "700": "68 48 190",
+            "800": "55 38 156",
+            "900": "44 30 124",
+            "950": "26 16 80",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "Content",
+                "items": [
+                    {"title": "Submissions", "icon": "folder_open", "link": "/admin/content/submission/"},
+                    {"title": "Known Fakes", "icon": "block", "link": "/admin/content/knownfakehash/"},
+                ],
+            },
+            {
+                "title": "Analysis",
+                "items": [
+                    {"title": "Analysis Results", "icon": "analytics", "link": "/admin/analyzers/analysisresult/"},
+                    {"title": "Analyzer Config", "icon": "settings", "link": "/admin/analyzers/analyzerconfig/"},
+                    {"title": "Retrain Runs", "icon": "model_training", "link": "/admin/analyzers/retrainrun/"},
+                ],
+            },
+            {
+                "title": "Users",
+                "items": [
+                    {"title": "Users", "icon": "person", "link": "/admin/users/user/"},
+                ],
+            },
+        ],
+    },
+}
