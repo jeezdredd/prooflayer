@@ -9,40 +9,40 @@ import ShaderBackground from "../components/ui/ShaderBackground";
 import { useAuthStore } from "../stores/authStore";
 
 const ANALYZERS = [
-  { code: "01", name: "Metadata · EXIF", desc: "Reads camera signatures, editing-tool fingerprints, GPS coords, timestamp drift. Missing fields are as telling as present ones.", Icon: Tag },
-  { code: "02", name: "Error Level Analysis", desc: "Re-saves at fixed JPEG quality, compares pixel-level residuals. Spliced or pasted regions show elevated error bands.", Icon: ScanLine },
-  { code: "03", name: "Community Forensics ViT", desc: "ViT-S/16 trained on 2.7 M images from 4 803 generators (NeurIPS 2024). Strongest signal for photorealistic deepfakes and diffusion faces.", Icon: Brain },
-  { code: "04", name: "NPR ViT Detector", desc: "Noise Pattern Residual detector. High-frequency camera sensor noise vs generator fingerprints - catches clean-looking GAN and diffusion outputs.", Icon: Fingerprint },
-  { code: "05", name: "SigLIP Coherence", desc: "Semantic consistency across image regions. Inpainting, face swaps, and localized edits produce mismatched semantic context that SigLIP surfaces.", Icon: Focus },
-  { code: "06", name: "Vision LLM", desc: "Multimodal model examines lighting consistency, texture coherence, fine details - fingers, eyes, reflections, uncanny-valley artifacts.", Icon: Eye },
-  { code: "07", name: "Video Frame Sampler", desc: "Uniform-interval frames pass through ELA + AI ensemble independently. Aggregated verdict weighted by per-frame confidence.", Icon: Film },
-  { code: "08", name: "Audio Spectrogram", desc: "Spectral features and frequency distribution detect synthetic-voice artifacts and unnatural patterns left by vocoders.", Icon: AudioLines },
-  { code: "09", name: "Text LLM", desc: "Classifies AI authorship from stylistic and structural cues - perplexity distribution, sentence rhythm, discourse markers.", Icon: Type },
+  { code: "01", name: "Metadata · EXIF", desc: "Camera signatures, editing fingerprints, GPS, timestamps. Missing fields are as telling as present ones.", Icon: Tag },
+  { code: "02", name: "Error Level Analysis", desc: "Re-saves at fixed JPEG quality, compares residuals. Spliced regions show elevated error bands.", Icon: ScanLine },
+  { code: "03", name: "Community Forensics ViT", desc: "ViT-S/16 on 2.7M images from 4803 generators. Strong signal for diffusion faces and deepfakes.", Icon: Brain },
+  { code: "04", name: "NPR ViT Detector", desc: "Camera sensor noise vs generator fingerprints. Catches clean GAN and diffusion outputs.", Icon: Fingerprint },
+  { code: "05", name: "SigLIP Coherence", desc: "Semantic consistency check. Inpainting and face swaps produce mismatched context.", Icon: Focus },
+  { code: "06", name: "Vision LLM", desc: "Examines lighting, textures, fingers, eyes, reflections, uncanny-valley artifacts.", Icon: Eye },
+  { code: "07", name: "Video Frame Sampler", desc: "Frames pass through ELA + AI ensemble. Verdict weighted by per-frame confidence.", Icon: Film },
+  { code: "08", name: "Audio Spectrogram", desc: "Spectral features detect vocoder artifacts and synthetic-voice patterns.", Icon: AudioLines },
+  { code: "09", name: "Text LLM", desc: "AI authorship from perplexity, sentence rhythm, and discourse markers.", Icon: Type },
 ];
 
 const FEATURES = [
   {
     Icon: History,
     title: "Results Archive",
-    desc: "Every submission is persisted with its full evidence bundle. Browse, filter, and re-examine past verifications.",
+    desc: "Every submission stored with full evidence. Browse, filter, re-examine.",
     accent: "text-signal-cyan",
   },
   {
     Icon: SearchCheck,
     title: "Fact-Check Engine",
-    desc: "Cross-reference extracted claims against live web sources. Get linked evidence for or against each assertion.",
+    desc: "Cross-reference claims against live sources. Linked evidence per assertion.",
     accent: "text-signal-amber",
   },
   {
     Icon: Globe,
     title: "Provenance Trail",
-    desc: "Reverse-image search and origin detection. Find prior uses of the file, track publication history.",
+    desc: "Reverse-image search and origin detection. Track publication history.",
     accent: "text-signal-violet",
   },
   {
     Icon: Users2,
     title: "Community Layer",
-    desc: "Crowdsource votes run alongside machine verdicts. Human signal supplements the ensemble where models disagree.",
+    desc: "Crowdsource votes alongside machine verdicts. Human signal where models disagree.",
     accent: "text-signal-sage",
   },
 ];
@@ -227,9 +227,8 @@ export default function LandingPage() {
                 transition={{ duration: 0.6 }}
                 className="mt-10 text-lg text-ink-200 max-w-xl leading-relaxed"
               >
-                ProofLayer is a forensic verification lab for synthetic media.
-                Nine independent analyzers cross-examine every file -
-                and publish their evidence, not just their verdicts.
+                Forensic verification lab for synthetic media.
+                Nine analyzers cross-examine every file and publish evidence, not just verdicts.
               </motion.p>
 
               <motion.div
@@ -427,42 +426,42 @@ export default function LandingPage() {
                   variants={fadeUp}
                   transition={{ duration: 0.6 }}
                   whileHover="hover"
-                  className="grid grid-cols-12 gap-6 py-7 cursor-default group"
+                  className="grid grid-cols-[auto_auto_1fr] md:grid-cols-12 gap-3 md:gap-6 py-6 cursor-default group"
                 >
-                  <div className="col-span-1 font-mono text-xs text-ink-500 ticker pt-1">
+                  <div className="font-mono text-xs text-ink-500 ticker pt-1 md:col-span-1">
                     {String(i + 1).padStart(2, "0")}
                   </div>
                   <motion.div
-                    className="col-span-1 text-signal-amber/70 flex items-start pt-1"
+                    className="text-signal-amber/70 flex items-start pt-1 md:col-span-1"
                     variants={{ hover: { color: "var(--signal-amber)", scale: 1.15 } }}
                     transition={{ type: "spring", stiffness: 300 }}
                   >
-                    <Icon size={22} strokeWidth={1.5} />
+                    <Icon size={18} strokeWidth={1.5} />
                   </motion.div>
                   <motion.div
-                    className="col-span-4 font-display text-2xl lg:text-3xl text-ink-50 leading-tight"
+                    className="font-display text-xl md:text-2xl lg:text-3xl text-ink-50 leading-tight md:col-span-4"
                     variants={{ hover: { x: 6 } }}
                     transition={{ type: "spring", stiffness: 300 }}
                   >
                     {a.name}
                   </motion.div>
-                  <p className="col-span-6 text-sm text-ink-300 leading-relaxed">{a.desc}</p>
+                  <p className="col-span-3 md:col-span-6 text-sm text-ink-300 leading-relaxed mt-1 md:mt-0">{a.desc}</p>
                 </motion.div>
               );
             })}
             <motion.div
               variants={fadeUp}
               transition={{ duration: 0.6 }}
-              className="grid grid-cols-12 gap-6 py-7"
+              className="grid grid-cols-[auto_auto_1fr] md:grid-cols-12 gap-3 md:gap-6 py-6"
             >
-              <div className="col-span-1" />
-              <div className="col-span-1 text-signal-violet/70 flex items-start pt-1">
-                <Sparkles size={22} strokeWidth={1.5} />
+              <div className="w-6 md:col-span-1" />
+              <div className="text-signal-violet/70 flex items-start pt-1 md:col-span-1">
+                <Sparkles size={18} strokeWidth={1.5} />
               </div>
-              <div className="col-span-4 font-display text-2xl lg:text-3xl italic text-ink-300 leading-tight">
+              <div className="font-display text-xl md:text-2xl lg:text-3xl italic text-ink-300 leading-tight md:col-span-4">
                 More to come.
               </div>
-              <div className="col-span-6 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500 pt-2">
+              <div className="col-span-3 md:col-span-6 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500 pt-2 mt-1 md:mt-0">
                 C2PA · audio deepfake · browser extension
               </div>
             </motion.div>
@@ -504,14 +503,14 @@ export default function LandingPage() {
                   variants={fadeUp}
                   transition={{ duration: 0.6 }}
                   whileHover="hover"
-                  className="bg-ink-950 p-8 group cursor-default"
+                  className="bg-ink-950 p-6 sm:p-8 group cursor-default"
                 >
                   <motion.div
-                    className={`${f.accent} mb-5`}
+                    className={`${f.accent} mb-4`}
                     variants={{ hover: { scale: 1.1, x: 2 } }}
                     transition={{ type: "spring", stiffness: 300 }}
                   >
-                    <Icon size={28} strokeWidth={1.5} />
+                    <Icon size={20} strokeWidth={1.5} />
                   </motion.div>
                   <motion.div
                     className="font-display text-3xl text-ink-50 mb-3"

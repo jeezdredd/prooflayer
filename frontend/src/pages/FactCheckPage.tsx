@@ -46,12 +46,11 @@ export default function FactCheckPage() {
     <div className="max-w-3xl animate-rise">
       <div className="mb-8">
         <span className="label-mono">Service / 03</span>
-        <h1 className="font-display text-6xl text-ink-50 leading-none mt-3">
+        <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none mt-3">
           Fact <span className="italic text-signal-amber">Check</span>
         </h1>
         <p className="text-ink-400 mt-3 leading-relaxed max-w-xl">
-          Paste an article excerpt or any text. Pipeline extracts claims via spaCy NER + LLM,
-          then cross-references each against Google Fact Check Tools.
+          Paste text. NER + LLM extract claims, cross-referenced against Google Fact Check.
         </p>
       </div>
 

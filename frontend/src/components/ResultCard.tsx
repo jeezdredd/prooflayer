@@ -42,7 +42,7 @@ export default function ResultCard({ submission }: ResultCardProps) {
     <article className="case-card crop-marks animate-rise">
       {/* Header strip: case ID, timestamp, verdict */}
       <header className="flex items-stretch border-b border-ink-700">
-        <div className="flex-1 px-6 py-5">
+        <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex items-center gap-3 mb-3">
             <span className="label-mono">Evidence File</span>
             <span className="font-mono text-[10px] text-ink-500">/</span>
@@ -50,7 +50,7 @@ export default function ResultCard({ submission }: ResultCardProps) {
               {submission.id.slice(0, 8).toUpperCase()}
             </span>
           </div>
-          <h2 className="font-display text-3xl text-ink-50 leading-tight break-all">
+          <h2 className="font-display text-2xl sm:text-3xl text-ink-50 leading-tight break-all">
             {submission.original_filename}
           </h2>
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-ink-400">
@@ -62,16 +62,16 @@ export default function ResultCard({ submission }: ResultCardProps) {
 
         <div className="reg-tick" />
 
-        <div className="px-6 py-5 flex flex-col items-end justify-between min-w-[200px]">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 flex flex-col items-end justify-between min-w-[110px] sm:min-w-[180px]">
           <span className={clsx("badge", verdict.color, verdict.ring)}>
             <span className="w-1 h-1 bg-current rounded-full" />
             {verdict.label}
           </span>
           {score !== null && score !== undefined && (
             <div className="text-right mt-2">
-              <div className={clsx("font-display text-6xl leading-none ticker", scoreColor(score))}>
+              <div className={clsx("font-display text-5xl sm:text-6xl leading-none ticker", scoreColor(score))}>
                 {Math.round(score * 100)}
-                <span className="text-2xl text-ink-400">%</span>
+                <span className="text-xl sm:text-2xl text-ink-400">%</span>
               </div>
               <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mt-1">
                 Fake probability

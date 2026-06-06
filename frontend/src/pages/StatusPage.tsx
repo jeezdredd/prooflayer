@@ -35,12 +35,12 @@ interface SystemStatus {
 }
 
 const SERVICE_META: Record<string, { label: string; desc: string; Icon: typeof Activity }> = {
-  api: { label: "API", desc: "Django REST gateway. Auth, content, analyzer routes.", Icon: Activity },
-  database: { label: "Database", desc: "PostgreSQL. Submissions, users, verdicts.", Icon: Database },
-  redis: { label: "Redis", desc: "Broker for Celery + cache.", Icon: Zap },
+  api: { label: "API", desc: "Django REST gateway.", Icon: Activity },
+  database: { label: "Database", desc: "PostgreSQL.", Icon: Database },
+  redis: { label: "Redis", desc: "Celery broker + cache.", Icon: Zap },
   celery: { label: "Workers", desc: "Background analyzer pool.", Icon: Cpu },
-  ollama: { label: "Vision LLM", desc: "Local inference server. Vision + text models.", Icon: Brain },
-  storage: { label: "Object Store", desc: "S3-compatible blob store for uploads.", Icon: HardDrive },
+  ollama: { label: "Vision LLM", desc: "Local inference - vision + text.", Icon: Brain },
+  storage: { label: "Object Store", desc: "S3 blob store.", Icon: HardDrive },
 };
 
 const ORDER = ["api", "database", "redis", "celery", "ollama", "storage"];
@@ -87,7 +87,7 @@ export default function StatusPage() {
           <span className="w-1.5 h-1.5 bg-signal-cyan rounded-full pulse-dot" />
           System / Status
         </div>
-        <h1 className="font-display text-6xl text-ink-50 leading-none">
+        <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none">
           {overall === "operational" ? (
             <>
               All systems <span className="italic text-signal-sage">operational</span>.
@@ -103,7 +103,7 @@ export default function StatusPage() {
           )}
         </h1>
         <p className="text-ink-300 mt-3 max-w-xl leading-relaxed">
-          Real-time health of every component. Probed every 5 seconds.
+          Real-time component health. Probed every 5s.
         </p>
       </motion.div>
 
@@ -129,7 +129,7 @@ export default function StatusPage() {
                 className="grid grid-cols-12 gap-4 px-6 py-5 items-center"
               >
                 <div className="col-span-1 text-signal-amber/70">
-                  <Icon size={20} strokeWidth={1.5} />
+                  <Icon size={18} strokeWidth={1.5} />
                 </div>
                 <div className="col-span-4">
                   <div className="font-display text-xl text-ink-50 leading-tight">{meta.label}</div>

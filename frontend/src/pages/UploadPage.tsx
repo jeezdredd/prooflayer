@@ -47,11 +47,11 @@ export default function UploadPage() {
           <span className="w-1.5 h-1.5 bg-signal-amber rounded-full pulse-dot" />
           Service / 01
         </div>
-        <h1 className="font-display text-7xl text-ink-50 leading-[0.95] mt-4">
+        <h1 className="font-display text-[clamp(2.5rem,7vw,4.5rem)] text-ink-50 leading-[0.95] mt-4">
           Verify <span className="italic text-iris">Content</span>.
         </h1>
         <p className="text-ink-400 mt-4 max-w-xl leading-relaxed">
-          Submit any image, video, audio, or text. Seven analyzers will examine in parallel and publish their evidence.
+          Submit image, video, audio, or text. Nine analyzers run in parallel.
         </p>
       </motion.div>
 

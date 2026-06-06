@@ -30,11 +30,11 @@ export default function DashboardPage() {
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
         <div>
           <span className="label-mono">Service / 02</span>
-          <h1 className="font-display text-6xl text-ink-50 leading-none mt-3">
+          <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none mt-3">
             Case <span className="italic text-signal-amber">Registry</span>
           </h1>
           <p className="text-ink-400 mt-3 max-w-xl leading-relaxed">
-            All evidence files submitted under your clearance, with verdicts and forensic scores.
+            All submissions with verdicts and forensic scores.
           </p>
         </div>
         {data && (

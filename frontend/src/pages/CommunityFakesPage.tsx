@@ -17,12 +17,11 @@ export default function CommunityFakesPage() {
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
         <div>
           <span className="label-mono signal-blood">Service / 04</span>
-          <h1 className="font-display text-6xl text-ink-50 leading-none mt-3">
+          <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none mt-3">
             Known <span className="italic text-signal-blood">Fakes</span>
           </h1>
           <p className="text-ink-400 mt-3 max-w-xl leading-relaxed">
-            Submissions matching the community-curated registry of confirmed forgeries.
-            Future uploads with the same SHA-256 are flagged automatically.
+            Confirmed forgeries from the community registry. Same SHA-256 flagged automatically.
           </p>
         </div>
         {data && (
