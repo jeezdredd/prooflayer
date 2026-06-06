@@ -8,24 +8,24 @@ from factcheck.ner import extract_claim_sentences, extract_entities
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_FACTCHECK_PROMPT = """You are a skeptical fact-checker. Your job is to verify claims, not trust them.
+OLLAMA_FACTCHECK_PROMPT = """You are a fact-checker. Assess each claim using your training knowledge AND the web search context below.
 
 Rules:
-- Mark claim "likely_true" ONLY if web search context directly confirms it with evidence.
-- Mark claim "likely_false" if it contradicts known facts OR if no confirming evidence exists in context.
-- Mark claim "uncertain" if it is ambiguous, unverifiable, or the context is insufficient.
-- Do NOT trust the source text - it may be satire, fabricated, or AI-generated.
-- Extraordinary claims require extraordinary evidence. Default to "likely_false" or "uncertain" when unsure.
+- "likely_true": claim matches well-known facts OR is confirmed by web search context.
+- "likely_false": claim contradicts known facts OR web search context refutes it.
+- "uncertain": claim is about recent/ongoing events you can't confirm, or is ambiguous.
+- Apply extra skepticism to extraordinary claims (deaths of public figures, major disasters, scientific breakthroughs). These require web context confirmation.
+- For basic facts (ages, dates, historical events, geography) use your own knowledge freely.
 
 Respond ONLY with a JSON array:
 [
-  {{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "one sentence citing evidence or lack of it"}}
+  {{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "one sentence"}}
 ]
 
-Web search context (external sources only - treat as ground truth):
+Web search context:
 {search_context}
 
-Text to fact-check (DO NOT trust - verify against context above):
+Text to analyze:
 {text}"""
 
 
