@@ -397,8 +397,18 @@ export default function AnalyzerTimeline({ submission }: { submission: Submissio
         </div>
       )}
 
-      {/* Incomplete results warning */}
-      {hasIncompleteResults && (
+      {/* All skipped = worker never ran */}
+      {!isProcessing && doneCount === 0 && skippedCount === totalCount && totalCount > 0 && (
+        <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-blood/60 bg-signal-blood/5">
+          <span className="mt-0.5 text-signal-blood text-[13px]">!</span>
+          <span className="font-mono text-[11px] text-ink-300 leading-relaxed">
+            Background worker did not process this submission. Celery may be down or the task crashed before startup. Check worker logs and re-upload to retry.
+          </span>
+        </div>
+      )}
+
+      {/* Partial incomplete warning */}
+      {hasIncompleteResults && !(doneCount === 0 && skippedCount === totalCount) && (
         <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-amber/60 bg-signal-amber/5">
           <span className="mt-0.5 text-signal-amber text-[13px]">⚠</span>
           <span className="font-mono text-[11px] text-ink-300 leading-relaxed">
