@@ -5,7 +5,7 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 SECRET_KEY = os.environ["SECRET_KEY"]
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "*").split(",") if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()] or [".prooflayer.cloud", "localhost"]
 
 parsed = urllib.parse.urlparse(os.environ["DATABASE_URL"])
 DATABASES = {
@@ -24,6 +24,8 @@ _cors_raw = os.environ.get("CORS_ALLOWED_ORIGINS", "")
 CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_raw.split(",") if o.strip()]
 CORS_ALLOW_ALL_ORIGINS = not CORS_ALLOWED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()] or ["https://*.prooflayer.cloud"]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "false").lower() == "true"
