@@ -54,7 +54,8 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full bg-ink-950/70 border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 focus:outline-none focus:border-iris transition"
+                className="w-full border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 focus:outline-none focus:border-iris transition appearance-none"
+                style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
               >
                 {REASONS.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -67,7 +68,8 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full bg-ink-950/70 border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 resize-none focus:outline-none focus:border-iris transition placeholder:text-ink-500"
+                className="w-full border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 resize-none focus:outline-none focus:border-iris transition placeholder:text-ink-500 appearance-none"
+                style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
               />
             </div>
             <div className="flex gap-2">
