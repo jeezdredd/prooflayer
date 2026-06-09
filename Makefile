@@ -17,8 +17,8 @@ help:
 	@echo "  make logs              tail logs (all services)"
 	@echo "  make ps                show running containers"
 	@echo "  make build             rebuild backend/frontend images"
-	@echo "  make seed              run seed_demo_data + seed_known_fakes
-  make seed-server       run seed commands on remote server"
+	@echo "  make seed              run seed_demo_data + seed_known_fakes"
+	@echo "  make seed-server       run seed commands on remote server"
 	@echo "  make sh                shell into backend container"
 	@echo "  make fe-sh             shell into frontend container"
 	@echo ""
