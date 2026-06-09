@@ -39,6 +39,7 @@ http://media.prooflayer.cloud {
 # ===== Django Admin =====
 http://admin.prooflayer.cloud {
     encode zstd gzip
+    rewrite * /admin{path}
     reverse_proxy 127.0.0.1:8000 {
         header_up X-Forwarded-Proto https
         header_up X-Real-IP {remote_host}
