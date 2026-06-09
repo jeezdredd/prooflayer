@@ -30,6 +30,26 @@ def _get_nlp():
     return _NLP
 
 
+def _split_compound(sentence: str) -> list[str]:
+    parts = re.split(r"\s+and\s+|\s+but\s+", sentence, flags=re.IGNORECASE)
+    if len(parts) <= 1:
+        return [sentence]
+    subject = ""
+    first = parts[0].strip()
+    result = [first]
+    words = first.split()
+    for i, w in enumerate(words):
+        if w[0].isupper() and i == 0:
+            subject = w
+    for part in parts[1:]:
+        part = part.strip()
+        if part and part[0].islower() and subject:
+            part = subject + " " + part
+        if len(part) >= 15:
+            result.append(part)
+    return result
+
+
 def extract_claim_sentences(text: str, max_claims: int = 8) -> list[str]:
     if not text or not text.strip():
         return []
@@ -39,7 +59,7 @@ def extract_claim_sentences(text: str, max_claims: int = 8) -> list[str]:
         return _regex_split(text, max_claims)
 
     doc = nlp(text[:5000])
-    candidates = []
+    raw_sentences = []
     for sent in doc.sents:
         sent_text = sent.text.strip()
         if len(sent_text) < 20 or len(sent_text) > 500:
@@ -47,10 +67,16 @@ def extract_claim_sentences(text: str, max_claims: int = 8) -> list[str]:
         ents = [e for e in sent.ents if e.label_ in CLAIM_ENTITY_TYPES]
         has_number = any(t.like_num for t in sent)
         if ents or has_number:
-            candidates.append((sent_text, len(ents) + (1 if has_number else 0)))
+            raw_sentences.append((sent_text, len(ents) + (1 if has_number else 0)))
 
-    candidates.sort(key=lambda x: x[1], reverse=True)
-    return [c[0] for c in candidates[:max_claims]]
+    raw_sentences.sort(key=lambda x: x[1], reverse=True)
+    candidates = []
+    for sent_text, _ in raw_sentences:
+        for atomic in _split_compound(sent_text):
+            if atomic not in candidates:
+                candidates.append(atomic)
+
+    return candidates[:max_claims]
 
 
 def _regex_split(text: str, max_claims: int) -> list[str]:
