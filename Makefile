@@ -6,7 +6,7 @@ SERVER_FALLBACK ?= seb0107@192.168.8.112
 
 .PHONY: help dev down logs ps build seed sh fe-sh \
         deploy-server deploy-bootstrap deploy-cf deploy-redeploy \
-        wiki
+        seed-server wiki
 
 help:
 	@echo "ProofLayer Makefile"
@@ -17,7 +17,8 @@ help:
 	@echo "  make logs              tail logs (all services)"
 	@echo "  make ps                show running containers"
 	@echo "  make build             rebuild backend/frontend images"
-	@echo "  make seed              run seed_demo_data + seed_known_fakes"
+	@echo "  make seed              run seed_demo_data + seed_known_fakes
+  make seed-server       run seed commands on remote server"
 	@echo "  make sh                shell into backend container"
 	@echo "  make fe-sh             shell into frontend container"
 	@echo ""
@@ -77,6 +78,10 @@ deploy-server:
 
 deploy-redeploy:
 	$(SSH) "/srv/_platform/deploy.sh prooflayer"
+
+seed-server:
+	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_demo_data"
+	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_known_fakes"
 
 wiki:
 	@open "wiki" 2>/dev/null || echo "wiki/ dir at $(PWD)/wiki - open as Obsidian vault"

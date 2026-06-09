@@ -36,6 +36,15 @@ http://media.prooflayer.cloud {
     }
 }
 
+# ===== Django Admin =====
+http://admin.prooflayer.cloud {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8000 {
+        header_up X-Forwarded-Proto https
+        header_up X-Real-IP {remote_host}
+    }
+}
+
 # ===== Flower (Celery monitor) =====
 http://flower.prooflayer.cloud {
     basic_auth {
