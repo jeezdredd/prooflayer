@@ -72,7 +72,7 @@ export default function FactCheckPage() {
           rows={8}
           maxLength={10000}
           className="w-full px-5 py-4 font-mono text-sm text-ink-100 resize-y focus:outline-none border-0 placeholder:text-ink-500 appearance-none"
-          style={{ background: "var(--ink-950, #050608)", colorScheme: "dark" }}
+          style={{ background: "transparent", colorScheme: "dark" }}
         />
 
         <div className="flex items-center justify-between px-6 py-3 border-t border-ink-700 gap-3 flex-wrap">

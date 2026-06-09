@@ -8,16 +8,21 @@ from factcheck.ner import extract_claim_sentences, extract_entities
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_FACTCHECK_PROMPT = """You are a fact-checker. Assess each claim using your training knowledge AND the web search context below.
+OLLAMA_FACTCHECK_PROMPT = """You are a fact-checker. Extract every individual factual claim from the text and assess each one.
 
-Rules:
-- "likely_true": claim matches well-known facts OR is confirmed by web search context.
-- "likely_false": claim contradicts known facts OR web search context refutes it.
-- "uncertain": claim is about recent/ongoing events you can't confirm, or is ambiguous.
-- Apply extra skepticism to extraordinary claims (deaths of public figures, major disasters, scientific breakthroughs). These require web context confirmation.
-- For basic facts (ages, dates, historical events, geography) use your own knowledge freely.
+Step 1 - Split compound sentences into atomic claims. One claim = one verifiable fact.
+Example: "Tower built in 1889 and located in Berlin" becomes TWO claims:
+  - "The Eiffel Tower was completed in 1889"
+  - "The Eiffel Tower is located in Berlin"
 
-Respond ONLY with a JSON array:
+Step 2 - Assess each atomic claim independently:
+- "likely_true": matches well-known facts OR confirmed by web search context.
+- "likely_false": contradicts known facts OR web search context refutes it.
+- "uncertain": recent/ongoing events you cannot confirm, or genuinely ambiguous.
+- Extra skepticism for extraordinary claims (deaths, disasters, breakthroughs): require web confirmation.
+- For basic facts (dates, geography, historical events) use your knowledge freely.
+
+Respond ONLY with a JSON array - one object per atomic claim:
 [
   {{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "one sentence"}}
 ]

@@ -15,11 +15,10 @@ const VERDICT_TONE: Record<string, { color: string; label: string; ring: string 
   inconclusive: { color: "text-ink-300", ring: "border-ink-600", label: "Inconclusive" },
 };
 
-function scoreColor(score: number) {
-  if (score < 0.3) return "text-signal-sage";
-  if (score < 0.5) return "text-signal-amber";
-  if (score < 0.7) return "text-signal-amber";
-  return "text-signal-blood";
+function riskLevel(score: number): { label: string; color: string } {
+  if (score < 0.35) return { label: "LOW", color: "text-signal-sage" };
+  if (score < 0.65) return { label: "MED", color: "text-signal-amber" };
+  return { label: "HIGH", color: "text-signal-blood" };
 }
 
 function shortHash(hash: string | undefined) {
@@ -69,12 +68,11 @@ export default function ResultCard({ submission }: ResultCardProps) {
           </span>
           {score !== null && score !== undefined && (
             <div className="text-right mt-2">
-              <div className={clsx("font-display text-5xl sm:text-6xl leading-none ticker", scoreColor(score))}>
-                {Math.round(score * 100)}
-                <span className="text-xl sm:text-2xl text-ink-400">%</span>
+              <div className={clsx("font-display text-4xl sm:text-5xl leading-none ticker", riskLevel(score).color)}>
+                {riskLevel(score).label}
               </div>
               <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mt-1">
-                Fake probability
+                {Math.round(score * 100)}% · Risk level
               </div>
             </div>
           )}
