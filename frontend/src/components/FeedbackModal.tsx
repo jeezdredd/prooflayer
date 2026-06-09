@@ -112,7 +112,8 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-ink-900 border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 focus:outline-none focus:border-iris transition"
+                    className="w-full border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 focus:outline-none focus:border-iris transition appearance-none"
+                  style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c.value} value={c.value}>{c.label}</option>
@@ -129,7 +130,8 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                     onChange={(e) => setMessage(e.target.value)}
                     rows={4}
                     placeholder="Describe the issue or suggestion..."
-                    className="w-full bg-ink-900/95 border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 placeholder:text-ink-600 focus:outline-none focus:border-iris transition resize-none"
+                    className="w-full border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 placeholder:text-ink-600 focus:outline-none focus:border-iris transition resize-none appearance-none"
+                    style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
                   />
                   <div className="flex justify-between mt-0.5">
                     {error ? (
@@ -152,7 +154,8 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full bg-ink-900 border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 placeholder:text-ink-600 focus:outline-none focus:border-iris transition"
+                    className="w-full border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 placeholder:text-ink-600 focus:outline-none focus:border-iris transition appearance-none"
+                    style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
                   />
                 </div>
 

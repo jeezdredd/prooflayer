@@ -105,6 +105,7 @@ services:
       --max-memory-per-child=10000000
     volumes:
       - media_data:/app/media
+      - hf_cache:/root/.cache/huggingface
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.prod
       - SECRET_KEY=${SECRET_KEY}
@@ -232,3 +233,4 @@ volumes:
   static_data:
   ollama_data:
   minio_data:
+  hf_cache:
