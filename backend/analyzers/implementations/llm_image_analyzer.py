@@ -33,7 +33,6 @@ VERDICT_CONFIDENCE = {
 }
 
 WEAK_REASONING_CONFIDENCE = 0.35
-WEAK_REASONING_FALLBACK = "Model returned a verdict without detailed reasoning. Downgraded to uncertain pending corroboration from other analyzers."
 
 MIN_REASONING_LEN = 20
 
@@ -49,7 +48,8 @@ def _parse_vision_response(raw: str) -> tuple[str, float, str]:
             if verdict in VERDICT_CONFIDENCE:
                 if len(reasoning) >= MIN_REASONING_LEN:
                     return verdict, VERDICT_CONFIDENCE[verdict], reasoning
-                return "uncertain", WEAK_REASONING_CONFIDENCE, WEAK_REASONING_FALLBACK
+                model_text = reasoning or "(no reasoning provided)"
+                return "uncertain", WEAK_REASONING_CONFIDENCE, f"No specific artifacts identified. Model said: \"{model_text}\". Score downgraded; other analyzers take precedence."
         except (json.JSONDecodeError, ValueError, TypeError):
             pass
 
