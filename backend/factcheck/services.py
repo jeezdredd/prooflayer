@@ -8,30 +8,21 @@ from factcheck.ner import extract_claim_sentences, extract_entities
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_FACTCHECK_PROMPT = """You are a fact-checker. Extract every individual factual claim from the text and assess each one.
+OLLAMA_ASSESS_PROMPT = """Assess each factual claim listed below. Use web context if helpful.
 
-Step 1 - Split compound sentences into atomic claims. One claim = one verifiable fact.
-Example: "Tower built in 1889 and located in Berlin" becomes TWO claims:
-  - "The Eiffel Tower was completed in 1889"
-  - "The Eiffel Tower is located in Berlin"
+Rules:
+- "likely_true": matches well-known facts or confirmed by web context.
+- "likely_false": contradicts known facts or refuted by web context.
+- "uncertain": recent/ongoing or genuinely ambiguous.
 
-Step 2 - Assess each atomic claim independently:
-- "likely_true": matches well-known facts OR confirmed by web search context.
-- "likely_false": contradicts known facts OR web search context refutes it.
-- "uncertain": recent/ongoing events you cannot confirm, or genuinely ambiguous.
-- Extra skepticism for extraordinary claims (deaths, disasters, breakthroughs): require web confirmation.
-- For basic facts (dates, geography, historical events) use your knowledge freely.
-
-Respond ONLY with a JSON array - one object per atomic claim:
-[
-  {{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "one sentence"}}
-]
-
-Web search context:
+Web context:
 {search_context}
 
-Text to analyze:
-{text}"""
+Claims to assess (assess ALL of them, in order):
+{claims_list}
+
+Respond ONLY with a JSON array, one object per claim, same order as above:
+[{{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "one sentence"}}]"""
 
 
 def search_web(query, max_results=5):
@@ -56,13 +47,16 @@ def analyze_with_ollama(text):
     model = getattr(settings, "OLLAMA_MODEL", "qwen2.5:3b")
 
     candidate_claims = extract_claim_sentences(text, max_claims=8)
-    focused_text = "\n".join(candidate_claims) if candidate_claims else text[:2000]
-    search_query = " ".join(candidate_claims[:2])[:200] if candidate_claims else text[:200]
+    if not candidate_claims:
+        return _fallback_sentence_split(text)
+
+    search_query = " ".join(candidate_claims[:2])[:200]
     search_context = search_web(search_query)
 
-    prompt = OLLAMA_FACTCHECK_PROMPT.format(
+    claims_list = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(candidate_claims))
+    prompt = OLLAMA_ASSESS_PROMPT.format(
         search_context=search_context or "No search results available.",
-        text=focused_text[:2000],
+        claims_list=claims_list,
     )
 
     try:
@@ -83,7 +77,7 @@ def analyze_with_ollama(text):
         raise ValueError(f"Unexpected type: {type(parsed)}")
     except Exception as exc:
         logger.warning("Ollama factcheck failed: %s", exc)
-        return _fallback_sentence_split(text)
+        return [{"claim": c, "assessment": "uncertain", "explanation": "LLM unavailable"} for c in candidate_claims]
 
 
 def _fallback_sentence_split(text):

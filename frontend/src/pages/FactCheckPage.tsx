@@ -99,6 +99,40 @@ export default function FactCheckPage() {
         </div>
       </form>
 
+      {isPending && (
+        <div className="mt-6 case-card crop-marks p-6 animate-fade-in">
+          <div className="flex items-center gap-3 mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
+            <span className="label-mono text-signal-amber">Pipeline Running</span>
+          </div>
+          <div className="space-y-3">
+            {[
+              "Extracting named entities via spaCy NER",
+              "Splitting compound sentences into atomic claims",
+              "Fetching web context via DuckDuckGo",
+              "Assessing claims with qwen2.5:3b",
+              "Cross-referencing Google Fact Check API",
+            ].map((step, i) => (
+              <div key={i} className="flex items-center gap-3" style={{ animationDelay: `${i * 0.18}s` }}>
+                <span className="font-mono text-[10px] text-ink-600 w-5 shrink-0">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div className="flex-1 h-px bg-ink-800 relative overflow-hidden">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-signal-amber/40"
+                    style={{
+                      width: "40%",
+                      animation: `scan 1.8s ease-in-out ${i * 0.18}s infinite`,
+                    }}
+                  />
+                </div>
+                <span className="font-mono text-[10px] text-ink-500 text-right">{step}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isError && (
         <div className="mt-4 p-4 border border-signal-blood bg-signal-blood/5 flex items-center gap-3 animate-fade-in">
           <span className="w-5 h-5 border border-signal-blood text-signal-blood text-[10px] font-bold flex items-center justify-center">!</span>
