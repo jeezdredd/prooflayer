@@ -82,6 +82,7 @@ deploy-redeploy:
 seed-server:
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_demo_data"
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_known_fakes"
+	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_users"
 
 wiki:
 	@open "wiki" 2>/dev/null || echo "wiki/ dir at $(PWD)/wiki - open as Obsidian vault"
