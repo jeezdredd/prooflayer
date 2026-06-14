@@ -10,7 +10,11 @@ from content.tasks import process_submission
 
 User = get_user_model()
 
-SAMPLES_ROOT = Path(__file__).resolve().parents[6] / "samples" / "labeled"
+_base = Path(__file__).resolve()
+SAMPLES_ROOT = next(
+    (p / "samples" / "labeled" for p in _base.parents if (p / "samples").exists()),
+    _base.parents[3] / "samples" / "labeled",
+)
 
 LABEL_MAP = {
     "real": "real",
