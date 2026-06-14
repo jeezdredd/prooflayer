@@ -49,6 +49,7 @@ services:
     volumes:
       - media_data:/app/media
       - static_data:/app/staticfiles
+      - /srv/prooflayer/shared/samples:/app/samples:ro
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -106,6 +107,7 @@ services:
     volumes:
       - media_data:/app/media
       - hf_cache:/root/.cache/huggingface
+      - /srv/prooflayer/shared/samples:/app/samples:ro
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.prod
       - SECRET_KEY=${SECRET_KEY}
