@@ -86,19 +86,31 @@ def generate(api_key: str, out_dir: Path, count: int, delay: float):
 
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash-preview-image-generation",
+                model="imagen-3.0-generate-002",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_modalities=["image"],
+                    number_of_images=1,
                 ),
             )
-            for part in response.candidates[0].content.parts:
-                if part.inline_data:
-                    with open(out_path, "wb") as f:
-                        f.write(part.inline_data.data)
-                    print(f"  [{i+1}/{count}] saved {out_path.name}")
-                    generated += 1
-                    break
+            saved = False
+            if hasattr(response, "generated_images") and response.generated_images:
+                img = response.generated_images[0]
+                with open(out_path, "wb") as f:
+                    f.write(img.image.image_bytes)
+                saved = True
+            elif response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, "inline_data") and part.inline_data:
+                        with open(out_path, "wb") as f:
+                            f.write(part.inline_data.data)
+                        saved = True
+                        break
+            if saved:
+                print(f"  [{i+1}/{count}] saved {out_path.name}")
+                generated += 1
+            else:
+                print(f"  [{i+1}/{count}] no image in response")
         except Exception as exc:
             print(f"  [{i+1}/{count}] error: {exc}")
             errors += 1
