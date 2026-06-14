@@ -150,6 +150,21 @@ def aggregate_verdicts(result_ids, submission_id):
     run_provenance_check.delay(submission_id)
 
 
+@shared_task(name="analyzers.tasks.rescue_stuck_submissions")
+def rescue_stuck_submissions():
+    from django.utils import timezone
+    from datetime import timedelta
+
+    cutoff = timezone.now() - timedelta(minutes=10)
+    stuck = Submission.objects.filter(status=Submission.Status.PROCESSING, updated_at__lt=cutoff)
+    count = stuck.count()
+    if count:
+        logger.warning("Rescuing %d stuck submissions", count)
+        for sub in stuck:
+            aggregate_verdicts.delay([], str(sub.id))
+    return count
+
+
 @shared_task(name="analyzers.tasks.run_weekly_retrain")
 def run_weekly_retrain(media_type: str = "image"):
     from datetime import timedelta

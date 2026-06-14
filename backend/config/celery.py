@@ -52,4 +52,9 @@ app.conf.beat_schedule = {
         "args": ("image",),
         "options": {"queue": "ml"},
     },
+    "rescue-stuck-submissions": {
+        "task": "analyzers.tasks.rescue_stuck_submissions",
+        "schedule": 300,
+        "options": {"queue": "default"},
+    },
 }
