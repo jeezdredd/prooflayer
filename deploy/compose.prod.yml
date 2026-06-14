@@ -101,7 +101,7 @@ services:
       --schedule=/tmp/celerybeat-schedule
       --loglevel=info
       -Q default,ml,reports
-      --concurrency=2
+      --concurrency=4
       --max-tasks-per-child=8
       --max-memory-per-child=10000000
     volumes:
