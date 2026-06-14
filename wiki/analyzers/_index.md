@@ -1,7 +1,7 @@
 ---
 type: index
 created: 2026-05-14
-updated: 2026-06-03
+updated: 2026-06-14
 ---
 
 # Analyzer Pipeline
@@ -25,18 +25,24 @@ Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue,
 
 | # | Name | Type | MIME | Queue | Weight | Notes |
 |---|------|------|------|-------|--------|-------|
-| 01 | [[analyzers/metadata]] | rule-based | image | default | 1.0 | EXIF/XMP signatures |
+| 01 | [[analyzers/metadata]] | rule-based | image | default | 2.5 | EXIF/XMP signatures |
 | 02 | [[analyzers/ela]] | rule-based | image | default | 1.0 | JPEG splice detection |
 | 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.0** | ViT-S/16 NeurIPS 2024, main authority |
-| 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | **1.5** | SigLIP binary classifier |
-| 05 | [[analyzers/npr-detector]] | **probabilistic** | image | ml | **2.5** | ViT deepfake detector, corroborator |
-| 06 | [[analyzers/llm-vision]] | rule-based | image | ml | 2.0 | Vision LLM examines |
+| 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | **2.0** | ViT deepfake classifier (raised from 1.5) |
+| 05 | [[analyzers/npr-detector]] | **probabilistic** | image | ml | **1.5** | ViT deepfake detector (lowered from 2.5 - GAN-trained, blind to diffusion) |
+| 06 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | LLaVA 7B vision analysis |
 | 07 | [[analyzers/video-frames]] | mixed | video | ml | 2.0 | Sample frames -> image ensemble |
-| 08 | [[analyzers/audio-spectrogram]] | rule-based | audio | default | 1.0 | Spectral artifact check |
-| 09 | [[analyzers/llm-text]] | rule-based | text | ml | 1.5 | AI authorship classifier |
+| 08 | [[analyzers/audio-spectrogram]] | rule-based | audio | default | 2.0 | Spectral artifact check |
+| 09 | [[analyzers/llm-text]] | rule-based | text | ml | 2.5 | AI authorship classifier |
 
-**Probabilistic** analyzers emit `evidence["ai_probability"]` and contribute raw probability to aggregation.  
+**Probabilistic** analyzers emit `evidence["ai_probability"]` and contribute raw probability to aggregation even when verdict is `inconclusive`.  
 **Rule-based** analyzers emit verdict + confidence; aggregator uses `VERDICT_SCORES` mapping.
+
+> [!change] 2026-06-14 Aggregator: probabilistic-always scoring
+> CF, NPR, SigLIP now contribute to weighted sum from `valid_results` regardless of verdict. Previously `inconclusive` results were excluded - Gemini images scored `authentic` because only NPR (ai_prob=0.01) was in `decisive_results` while CF (ai_prob=0.40) and SigLIP (ai_prob=0.64) were silently dropped.
+
+> [!change] 2026-06-14 `authentic_edited` verdict
+> Aggregator emits `authentic_edited` when `final_score < 0.30` (no AI signal) but ELA or metadata returns `suspicious`/`fake`. Frontend shows "REAL · EDITED" banner with explanation.
 
 > [!deprecated] [[analyzers/ai-ensemble]] (dima806 + umm-maybe) dropped 2026-05-31.  
 > Replaced by CommunityForensics + NPR detector. See [[concepts/detection-strategy-2026]].

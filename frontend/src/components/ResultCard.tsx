@@ -6,8 +6,9 @@ interface ResultCardProps {
   submission: Submission;
 }
 
-const VERDICT_TONE: Record<string, { color: string; label: string; ring: string }> = {
+const VERDICT_TONE: Record<string, { color: string; label: string; ring: string; sub?: string }> = {
   authentic: { color: "text-signal-sage", ring: "border-signal-sage/40", label: "REAL" },
+  authentic_edited: { color: "text-signal-amber", ring: "border-signal-amber/40", label: "REAL · EDITED", sub: "Image appears genuine but shows signs of digital editing or compositing." },
   suspicious: { color: "text-signal-amber", ring: "border-signal-amber/40", label: "Suspicious" },
   likely_fake: { color: "text-signal-blood", ring: "border-signal-blood/40", label: "Likely AI" },
   fake: { color: "text-signal-blood", ring: "border-signal-blood/60", label: "AI" },
@@ -86,6 +87,13 @@ export default function ResultCard({ submission }: ResultCardProps) {
           )}
         </div>
       </header>
+
+      {verdict.sub && (
+        <div className="px-6 py-2.5 border-b border-ink-700 bg-signal-amber/5 flex items-center gap-2.5">
+          <span className="w-1 h-1 rounded-full bg-signal-amber shrink-0" />
+          <span className="font-mono text-[11px] text-signal-amber">{verdict.sub}</span>
+        </div>
+      )}
 
       {/* Score bar */}
       {score !== null && score !== undefined && (

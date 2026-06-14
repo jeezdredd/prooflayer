@@ -14,11 +14,13 @@ DECISIVE_VERDICTS = {
 }
 
 PROBABILISTIC_ANALYZERS = {"community_forensics", "npr_detector", "siglip_detector", "llm_vision"}
+MANIPULATION_ANALYZERS = {"ela", "metadata"}
 
 CORROBORATION_CONFIDENCE_FLOOR = 0.5
 MIN_CORROBORATING_FOR_FAKE = 2
 CF_PRIORITY_THRESHOLD = 0.92
 CF_PRIORITY_PEERS = {"npr_detector", "siglip_detector"}
+AUTHENTIC_EDITED_AI_CEIL = 0.30
 
 
 def _get_ai_probability(result) -> float | None:
@@ -30,9 +32,9 @@ def _get_ai_probability(result) -> float | None:
     return float(ai_prob)
 
 
-def _community_forensics_priority(decisive_results) -> bool:
+def _community_forensics_priority(all_results) -> bool:
     cf = next(
-        (r for r in decisive_results if r.analyzer.name == "community_forensics" and r.verdict == AnalysisResult.Verdict.FAKE),
+        (r for r in all_results if r.analyzer.name == "community_forensics"),
         None,
     )
     if cf is None:
@@ -43,8 +45,17 @@ def _community_forensics_priority(decisive_results) -> bool:
     return any(
         r.analyzer.name in CF_PRIORITY_PEERS
         and r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS)
-        for r in decisive_results
+        for r in all_results
     )
+
+
+def _has_manipulation_signal(valid_results) -> bool:
+    for r in valid_results:
+        if r.analyzer.name not in MANIPULATION_ANALYZERS:
+            continue
+        if r.verdict in (AnalysisResult.Verdict.SUSPICIOUS, AnalysisResult.Verdict.FAKE):
+            return True
+    return False
 
 
 def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
@@ -53,31 +64,37 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
         return 0.5, "inconclusive"
 
     decisive_results = [r for r in valid_results if r.verdict in DECISIVE_VERDICTS]
-    if not decisive_results:
-        return 0.5, "inconclusive"
 
     total_weight = 0.0
     weighted_score = 0.0
 
-    for result in decisive_results:
+    prob_results = [r for r in valid_results if r.analyzer.name in PROBABILISTIC_ANALYZERS]
+    prob_names = {r.analyzer.name for r in prob_results}
+    non_prob_decisive = [r for r in decisive_results if r.analyzer.name not in PROBABILISTIC_ANALYZERS]
+
+    for result in prob_results:
         ai_prob = _get_ai_probability(result)
         if ai_prob is not None:
-            effective_weight = result.analyzer.weight
-            weighted_score += ai_prob * effective_weight
-        else:
-            effective_weight = result.analyzer.weight * result.confidence
-            base_score = VERDICT_SCORES.get(result.verdict, 0.5)
-            weighted_score += base_score * effective_weight
+            weighted_score += ai_prob * result.analyzer.weight
+            total_weight += result.analyzer.weight
+
+    for result in non_prob_decisive:
+        effective_weight = result.analyzer.weight * result.confidence
+        base_score = VERDICT_SCORES.get(result.verdict, 0.5)
+        weighted_score += base_score * effective_weight
         total_weight += effective_weight
 
-    final_score = weighted_score / total_weight if total_weight > 0 else 0.5
+    if total_weight == 0:
+        return 0.5, "inconclusive"
 
-    if _community_forensics_priority(decisive_results):
+    final_score = weighted_score / total_weight
+
+    if _community_forensics_priority(valid_results):
         return round(max(final_score, 0.85), 4), "fake"
 
     fake_voters = []
     authentic_voters = []
-    for r in decisive_results:
+    for r in valid_results:
         ai_prob = _get_ai_probability(r)
         if ai_prob is not None:
             prob_conf = abs(ai_prob - 0.5) * 2
@@ -86,7 +103,7 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
                     fake_voters.append(r)
                 else:
                     authentic_voters.append(r)
-        else:
+        elif r.verdict in DECISIVE_VERDICTS:
             if r.confidence >= CORROBORATION_CONFIDENCE_FLOOR:
                 if r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS):
                     fake_voters.append(r)
@@ -102,8 +119,12 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     if raw_verdict in ("fake", "likely_fake") and len(fake_voters) < MIN_CORROBORATING_FOR_FAKE:
         raw_verdict = "suspicious" if raw_verdict == "fake" else "inconclusive"
 
-    if raw_verdict == "authentic" and len(authentic_voters) < 1:
+    if raw_verdict == "authentic" and len(authentic_voters) < 1 and total_weight > 0:
         raw_verdict = "inconclusive"
+
+    if raw_verdict in ("authentic", "inconclusive") and final_score < AUTHENTIC_EDITED_AI_CEIL:
+        if _has_manipulation_signal(valid_results):
+            return round(final_score, 4), "authentic_edited"
 
     return round(final_score, 4), raw_verdict
 

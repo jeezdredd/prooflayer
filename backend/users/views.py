@@ -144,6 +144,7 @@ class VerifyEmailView(APIView):
 
 
 class ResendVerificationView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
     throttle_classes = (ResendVerificationThrottle,)
 
     def post(self, request):
