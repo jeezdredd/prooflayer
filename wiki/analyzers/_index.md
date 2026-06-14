@@ -51,6 +51,9 @@ Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue,
 
 `analyzers/tasks.py:dispatch_analysis` builds a Celery `chord(group(run_analyzer for each config))` -> `aggregate_verdicts` callback. See [[concepts/submission-pipeline]].
 
+> [!note] Chord loss on worker restart
+> If the worker restarts mid-chord, Redis chord state is lost and `aggregate_verdicts` never fires. `rescue_stuck_submissions` beat task (every 300s) detects submissions stuck in `processing` for >10 min and force-calls `aggregate_verdicts` on them.
+
 Each `run_analyzer` task:
 
 1. Loads class via `analyzers/registry.py:load_analyzer_class`
