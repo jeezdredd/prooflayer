@@ -1,60 +1,76 @@
 #!/usr/bin/env python3
 """
-Download AI-generated images from HuggingFace for detection training.
-Requires: pip install datasets pillow
+Download AI-generated images from DiffusionDB (HuggingFace) for detection training.
+Downloads zip parts directly - no loading script needed.
 
-Sources:
-- poloclub/diffusiondb  (Stable Diffusion, CC0) - 1k/10k/100k subsets
-- Usage: python3 scripts/download_ai_dataset.py --out dataset/hf --count 500
+Each part-XXXXXX.zip = ~1000 Stable Diffusion images (PNG).
+Requires: pip install huggingface_hub pillow
+
+Usage:
+  python3 scripts/download_ai_dataset.py --out dataset/hf --count 500
+  python3 scripts/download_ai_dataset.py --out dataset/hf --count 2000 --parts 2
 """
 
 import argparse
-import os
+import io
+import zipfile
 from pathlib import Path
 
 
-DIFFUSIONDB_SUBSETS = {
-    1000: "large_random_1k",
-    10000: "large_random_10k",
-    100000: "large_random_100k",
-}
+REPO_ID = "poloclub/diffusiondb"
+IMAGES_PER_PART = 1000
 
 
-def download_diffusiondb(out_dir: Path, count: int):
+def download_parts(out_dir: Path, count: int, parts: int):
     try:
-        from datasets import load_dataset
+        from huggingface_hub import hf_hub_download
+        from PIL import Image
     except ImportError:
-        print("Install: pip install datasets")
+        print("Install: pip install huggingface_hub pillow")
         return
-
-    subset = "large_random_1k"
-    for threshold, name in sorted(DIFFUSIONDB_SUBSETS.items()):
-        if count <= threshold:
-            subset = name
-            break
-
-    print(f"Downloading DiffusionDB subset: {subset} (up to {count} images)")
-    ds = load_dataset("poloclub/diffusiondb", subset, split="train", trust_remote_code=True)
 
     ai_dir = out_dir / "ai_generated"
     ai_dir.mkdir(parents=True, exist_ok=True)
 
     saved = 0
-    for i, item in enumerate(ds):
+    needed_parts = min(parts, (count + IMAGES_PER_PART - 1) // IMAGES_PER_PART)
+
+    for part_num in range(1, needed_parts + 1):
         if saved >= count:
             break
-        img = item.get("image")
-        if img is None:
+        filename = f"diffusiondb-large-part-1/part-{part_num:06d}.zip"
+        print(f"Downloading {filename} ...")
+        try:
+            zip_path = hf_hub_download(
+                repo_id=REPO_ID,
+                filename=filename,
+                repo_type="dataset",
+            )
+        except Exception as e:
+            print(f"  Failed to download part {part_num}: {e}")
             continue
-        out_path = ai_dir / f"diffusiondb_{i:05d}.jpg"
-        if out_path.exists():
-            print(f"  skip {out_path.name}")
-            saved += 1
-            continue
-        img.save(out_path, "JPEG", quality=92)
-        saved += 1
-        if saved % 50 == 0:
-            print(f"  {saved}/{count} saved")
+
+        print(f"  Extracting images from part {part_num} ...")
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            img_names = [n for n in zf.namelist() if n.lower().endswith((".png", ".jpg", ".webp"))]
+            for name in img_names:
+                if saved >= count:
+                    break
+                stem = Path(name).stem
+                out_path = ai_dir / f"diffusiondb_{part_num:03d}_{stem}.jpg"
+                if out_path.exists():
+                    saved += 1
+                    continue
+                data = zf.read(name)
+                try:
+                    img = Image.open(io.BytesIO(data)).convert("RGB")
+                    img.save(out_path, "JPEG", quality=92)
+                    saved += 1
+                    if saved % 100 == 0:
+                        print(f"  {saved}/{count} saved")
+                except Exception:
+                    out_path.write_bytes(data)
+                    saved += 1
 
     print(f"\nDone. Saved {saved} images -> {ai_dir.resolve()}")
     print("\nNext steps:")
@@ -65,7 +81,8 @@ def download_diffusiondb(out_dir: Path, count: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default="dataset/hf", help="Output directory")
-    parser.add_argument("--count", type=int, default=500, help="Images to save")
+    parser.add_argument("--count", type=int, default=500, help="Max images to save")
+    parser.add_argument("--parts", type=int, default=5, help="Max zip parts to download")
     args = parser.parse_args()
 
-    download_diffusiondb(Path(args.out), args.count)
+    download_parts(Path(args.out), args.count, args.parts)
