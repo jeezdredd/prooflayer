@@ -59,7 +59,17 @@ PROMPTS = [
 ]
 
 
-MODEL = "imagen-4.0-fast-generate-001"
+MODEL = "gemini-2.5-flash-image"
+
+
+def _save_from_gemini_response(response, out_path: Path) -> bool:
+    for candidate in response.candidates or []:
+        for part in candidate.content.parts or []:
+            if hasattr(part, "inline_data") and part.inline_data:
+                with open(out_path, "wb") as f:
+                    f.write(part.inline_data.data)
+                return True
+    return False
 
 
 def generate(api_key: str, out_dir: Path, count: int, delay: float, model: str = MODEL):
@@ -79,8 +89,9 @@ def generate(api_key: str, out_dir: Path, count: int, delay: float, model: str =
     generated = 0
     errors = 0
     prompt_pool = PROMPTS * ((count // len(PROMPTS)) + 1)
+    is_imagen = model.startswith("imagen")
 
-    print(f"Using model: {model}")
+    print(f"Using model: {model} ({'Imagen API' if is_imagen else 'Gemini API'})")
 
     for i, prompt in enumerate(prompt_pool[:count]):
         out_path = ai_dir / f"gemini_{i:04d}.jpg"
@@ -90,19 +101,30 @@ def generate(api_key: str, out_dir: Path, count: int, delay: float, model: str =
             continue
 
         try:
-            response = client.models.generate_images(
-                model=model,
-                prompt=prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=1,
-                    output_mime_type="image/jpeg",
-                ),
-            )
             saved = False
-            if response.generated_images:
-                with open(out_path, "wb") as f:
-                    f.write(response.generated_images[0].image.image_bytes)
-                saved = True
+            if is_imagen:
+                response = client.models.generate_images(
+                    model=model,
+                    prompt=prompt,
+                    config=types.GenerateImagesConfig(
+                        number_of_images=1,
+                        output_mime_type="image/jpeg",
+                    ),
+                )
+                if response.generated_images:
+                    with open(out_path, "wb") as f:
+                        f.write(response.generated_images[0].image.image_bytes)
+                    saved = True
+            else:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_modalities=["IMAGE", "TEXT"],
+                    ),
+                )
+                saved = _save_from_gemini_response(response, out_path)
+
             if saved:
                 print(f"  [{i+1}/{count}] saved {out_path.name}")
                 generated += 1
