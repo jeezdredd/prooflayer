@@ -85,27 +85,20 @@ def generate(api_key: str, out_dir: Path, count: int, delay: float):
             continue
 
         try:
-            response = client.models.generate_content(
+            response = client.models.generate_images(
                 model="imagen-3.0-generate-002",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_modalities=["image"],
+                prompt=prompt,
+                config=types.GenerateImagesConfig(
                     number_of_images=1,
+                    output_mime_type="image/jpeg",
                 ),
             )
             saved = False
-            if hasattr(response, "generated_images") and response.generated_images:
+            if response.generated_images:
                 img = response.generated_images[0]
                 with open(out_path, "wb") as f:
                     f.write(img.image.image_bytes)
                 saved = True
-            elif response.candidates:
-                for part in response.candidates[0].content.parts:
-                    if hasattr(part, "inline_data") and part.inline_data:
-                        with open(out_path, "wb") as f:
-                            f.write(part.inline_data.data)
-                        saved = True
-                        break
             if saved:
                 print(f"  [{i+1}/{count}] saved {out_path.name}")
                 generated += 1
