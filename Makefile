@@ -1,7 +1,7 @@
 # ProofLayer top-level Makefile.
 # Most commands assume Docker Compose v2 (`docker compose ...`).
 
-SERVER ?= seb0107@ubuntu-dev.local
+SERVER ?= seb0107@ubuntu-dev.tailee46a3.ts.net
 SERVER_FALLBACK ?= seb0107@192.168.8.112
 
 .PHONY: help dev down logs ps build seed sh fe-sh \
