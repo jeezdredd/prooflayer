@@ -59,7 +59,10 @@ PROMPTS = [
 ]
 
 
-def generate(api_key: str, out_dir: Path, count: int, delay: float):
+MODEL = "imagen-4.0-fast-generate-001"
+
+
+def generate(api_key: str, out_dir: Path, count: int, delay: float, model: str = MODEL):
     try:
         from google import genai
         from google.genai import types
@@ -77,6 +80,8 @@ def generate(api_key: str, out_dir: Path, count: int, delay: float):
     errors = 0
     prompt_pool = PROMPTS * ((count // len(PROMPTS)) + 1)
 
+    print(f"Using model: {model}")
+
     for i, prompt in enumerate(prompt_pool[:count]):
         out_path = ai_dir / f"gemini_{i:04d}.jpg"
         if out_path.exists():
@@ -86,7 +91,7 @@ def generate(api_key: str, out_dir: Path, count: int, delay: float):
 
         try:
             response = client.models.generate_images(
-                model="imagen-3.0-generate-002",
+                model=model,
                 prompt=prompt,
                 config=types.GenerateImagesConfig(
                     number_of_images=1,
@@ -95,9 +100,8 @@ def generate(api_key: str, out_dir: Path, count: int, delay: float):
             )
             saved = False
             if response.generated_images:
-                img = response.generated_images[0]
                 with open(out_path, "wb") as f:
-                    f.write(img.image.image_bytes)
+                    f.write(response.generated_images[0].image.image_bytes)
                 saved = True
             if saved:
                 print(f"  [{i+1}/{count}] saved {out_path.name}")
@@ -123,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("--out", default="dataset/gemini", help="Output directory")
     parser.add_argument("--count", type=int, default=100, help="Images to generate")
     parser.add_argument("--delay", type=float, default=0.5, help="Seconds between requests")
+    parser.add_argument("--model", default=MODEL, help="Model ID (default: imagen-4.0-fast-generate-001)")
     args = parser.parse_args()
 
     api_key = os.environ.get("GEMINI_API_KEY", "")
@@ -130,4 +135,4 @@ if __name__ == "__main__":
         print("Set GEMINI_API_KEY env var. Get free key at https://aistudio.google.com/apikey")
         exit(1)
 
-    generate(api_key, Path(args.out), args.count, args.delay)
+    generate(api_key, Path(args.out), args.count, args.delay, args.model)
