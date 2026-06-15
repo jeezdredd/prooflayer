@@ -65,27 +65,32 @@ class Command(BaseCommand):
             os.makedirs(os.path.join(dataset_dir, "real"), exist_ok=True)
             os.makedirs(os.path.join(dataset_dir, "fake"), exist_ok=True)
 
+            from content.storage_utils import local_file
+
             copied = 0
             for submission in qs:
-                if not submission.file or not os.path.exists(submission.file.path):
+                if not submission.file:
                     continue
 
-                src = submission.file.path
                 dst_dir = os.path.join(dataset_dir, submission.verified_label)
+                try:
+                    with local_file(submission.file) as src:
+                        if media_type == "image":
+                            dst = os.path.join(dst_dir, f"{submission.id}.jpg")
+                            shutil.copy2(src, dst)
+                            copied += 1
 
-                if media_type == "image":
-                    dst = os.path.join(dst_dir, f"{submission.id}.jpg")
-                    shutil.copy2(src, dst)
-                    copied += 1
+                        elif media_type == "video":
+                            extracted = self._extract_frames(src, dst_dir, str(submission.id), submission.verified_label)
+                            copied += extracted
 
-                elif media_type == "video":
-                    extracted = self._extract_frames(src, dst_dir, str(submission.id), submission.verified_label)
-                    copied += extracted
-
-                elif media_type == "audio":
-                    spec_path = self._audio_to_spectrogram(src, dst_dir, str(submission.id))
-                    if spec_path:
-                        copied += 1
+                        elif media_type == "audio":
+                            spec_path = self._audio_to_spectrogram(src, dst_dir, str(submission.id))
+                            if spec_path:
+                                copied += 1
+                except Exception as exc:
+                    self.stderr.write(f"Skipping {submission.id}: {exc}")
+                    continue
 
             self.stdout.write(f"Prepared {copied} training samples in {dataset_dir}")
 
