@@ -62,6 +62,7 @@ function AppRoutes() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/refund" element={<RefundPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -70,7 +71,6 @@ function AppRoutes() {
             <Route path="/results/:id" element={<ResultPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/credits" element={<CreditsPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/feed" element={<FeedPage />} />
             <Route path="/feed/:id" element={<FeedDetailPage />} />
             <Route element={<ProtectedRoute requireVerified />}>

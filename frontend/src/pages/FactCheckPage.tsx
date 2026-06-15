@@ -2,6 +2,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { useFactCheck } from "../hooks/useFactCheck";
 import type { FactCheckResult } from "../types";
+import SubscriptionGate from "../components/SubscriptionGate";
 
 const VERDICT_TONE: Record<string, { color: string; label: string }> = {
   mostly_accurate: { color: "text-signal-sage", label: "Mostly Accurate" },
@@ -28,7 +29,7 @@ const SAMPLE_PROMPTS = [
   "ChatGPT was released by OpenAI in November 2022 and reached 100 million users in two months.",
 ];
 
-export default function FactCheckPage() {
+function FactCheckPageInner() {
   const [text, setText] = useState("");
   const [result, setResult] = useState<FactCheckResult | null>(null);
   const { mutate: check, isPending, isError } = useFactCheck();
@@ -195,4 +196,8 @@ export default function FactCheckPage() {
       )}
     </div>
   );
+}
+
+export default function FactCheckPage() {
+  return <SubscriptionGate feature="Fact Check"><FactCheckPageInner /></SubscriptionGate>;
 }

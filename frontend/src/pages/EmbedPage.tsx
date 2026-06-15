@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import SubscriptionGate from "../components/SubscriptionGate";
 
 const DEFAULT_SHA = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -11,7 +12,7 @@ function buildSnippet(sha: string, apiBase: string, widgetSrc: string) {
 ></script>`;
 }
 
-export default function EmbedPage() {
+function EmbedPageInner() {
   const [sha, setSha] = useState(DEFAULT_SHA);
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
@@ -113,4 +114,8 @@ export default function EmbedPage() {
       </div>
     </div>
   );
+}
+
+export default function EmbedPage() {
+  return <SubscriptionGate feature="Widget embed"><EmbedPageInner /></SubscriptionGate>;
 }

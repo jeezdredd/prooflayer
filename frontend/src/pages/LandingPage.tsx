@@ -600,12 +600,18 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-[var(--line)] py-8 relative z-10">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-10 flex flex-wrap items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">
-          <span>© ProofLayer Lab - {new Date().getFullYear()}</span>
-          <div className="flex gap-6">
-            <a href="https://api.prooflayer.cloud/api/docs/" className="hover:text-signal-amber transition-colors">API</a>
-            <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors">Source</a>
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-10 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <span>© ProofLayer Lab - {new Date().getFullYear()}</span>
             <span className="text-iris">Confidence ≠ Certainty</span>
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <a href="/pricing" className="hover:text-signal-amber transition-colors">Pricing</a>
+            <a href="https://api.prooflayer.cloud/api/docs/" className="hover:text-signal-amber transition-colors">API Docs</a>
+            <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors">Source</a>
+            <a href="/terms" className="hover:text-ink-300 transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-ink-300 transition-colors">Privacy</a>
+            <a href="/refund" className="hover:text-ink-300 transition-colors">Refund Policy</a>
           </div>
         </div>
       </footer>

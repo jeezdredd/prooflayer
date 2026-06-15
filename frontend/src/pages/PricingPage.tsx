@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Check, Zap, Building2, GraduationCap } from "lucide-react";
+import { Check, Zap, Building2, GraduationCap, Crown, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { billing } from "../api/endpoints";
 import { toast } from "../components/ui/Toast";
+import { useAuthStore } from "../stores/authStore";
 
 const TIERS = [
   {
@@ -31,7 +33,7 @@ const TIERS = [
     price: "$12",
     period: "/ month",
     description: "For journalists, researchers, and power users.",
-    Icon: Zap,
+    Icon: Crown,
     color: "border-iris/50",
     headerColor: "text-iris",
     features: [
@@ -94,10 +96,12 @@ const TIERS = [
 export default function PricingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const { isAuthenticated } = useAuthStore();
 
   const { data: sub } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => billing.subscription().then((r) => r.data),
+    enabled: isAuthenticated,
   });
 
   const handleCheckout = async () => {
@@ -131,9 +135,27 @@ export default function PricingPage() {
 
   return (
     <div>
+      {!isAuthenticated && (
+        <div className="flex items-center justify-between mb-10 pb-6 border-b border-white/5">
+          <Link to="/" className="font-display text-2xl text-ink-50 leading-none">
+            Proof<span className="italic text-iris">Layer</span>
+          </Link>
+          <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.14em]">
+            <Link to="/login" className="text-ink-400 hover:text-ink-100 transition">Login</Link>
+            <Link to="/register" className="bg-iris hover:bg-iris-light text-white px-4 py-2 transition">
+              Get Started
+            </Link>
+          </div>
+        </div>
+      )}
+      {isAuthenticated && (
+        <Link to="/dashboard" className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400 hover:text-ink-100 transition mb-8">
+          <ArrowLeft size={13} strokeWidth={1.5} /> Dashboard
+        </Link>
+      )}
       <div className="mb-10">
         <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-600 mb-3">
-          Billing / Plans
+          Plans
         </div>
         <h1 className="font-display text-3xl text-ink-50 mb-2">Pricing</h1>
         <p className="text-ink-400 text-sm max-w-xl">

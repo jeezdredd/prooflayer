@@ -6,6 +6,7 @@ import { ArrowLeftRight } from "lucide-react";
 import { content } from "../api/endpoints";
 import { useDashboard } from "../hooks/useDashboard";
 import type { AnalysisResult, Submission, SubmissionListItem } from "../types/index";
+import SubscriptionGate from "../components/SubscriptionGate";
 
 const VERDICT_COLOR: Record<string, string> = {
   authentic: "text-sage-300 border-sage-500/40 bg-sage-500/10",
@@ -151,7 +152,7 @@ function ComparisonCard({ submission, isBetter }: { submission: Submission; isBe
   );
 }
 
-export default function ComparePage() {
+function ComparePageInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("date");
@@ -440,4 +441,8 @@ export default function ComparePage() {
 
     </div>
   );
+}
+
+export default function ComparePage() {
+  return <SubscriptionGate feature="Compare tool"><ComparePageInner /></SubscriptionGate>;
 }
