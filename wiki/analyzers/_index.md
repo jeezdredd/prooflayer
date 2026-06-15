@@ -29,7 +29,7 @@ Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue,
 | 02 | [[analyzers/ela]] | rule-based | image | default | 1.0 | JPEG splice detection |
 | 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.0** | ViT-S/16 NeurIPS 2024, main authority |
 | 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | **2.0** | ViT deepfake classifier (raised from 1.5) |
-| 05 | [[analyzers/npr-detector]] | **probabilistic** | image | ml | **1.5** | ViT deepfake detector (lowered from 2.5 - GAN-trained, blind to diffusion) |
+| 05 | [[analyzers/npr-detector]] | **probabilistic** | image | ml | **0.5** | ViT deepfake detector (lowered from 1.5 - GAN-trained, blind to diffusion) |
 | 06 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | LLaVA 7B vision analysis |
 | 07 | [[analyzers/video-frames]] | mixed | video | ml | 2.0 | Sample frames -> image ensemble |
 | 08 | [[analyzers/audio-spectrogram]] | rule-based | audio | default | 2.0 | Spectral artifact check |

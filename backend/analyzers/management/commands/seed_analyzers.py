@@ -31,7 +31,7 @@ ANALYZERS = [
         "name": "npr_detector",
         "analyzer_class": "analyzers.implementations.npr_detector.NPRDetector",
         "version": "1.0.0",
-        "weight": 1.5,
+        "weight": 0.5,
         "queue": "ml",
         "timeout": 180,
     },
