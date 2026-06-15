@@ -17,6 +17,7 @@ import ComparePage from "./pages/ComparePage";
 import EmbedPage from "./pages/EmbedPage";
 import ReviewQueuePage from "./pages/ReviewQueuePage";
 import StatusPage from "./pages/StatusPage";
+import CreditsPage from "./pages/CreditsPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import { ToastContainer } from "./components/ui/Toast";
 import ConsentBanner from "./components/ConsentBanner";
@@ -48,6 +49,7 @@ function AppRoutes() {
           <Route path="/embed" element={<EmbedPage />} />
           <Route path="/results/:id" element={<ResultPage />} />
           <Route path="/status" element={<StatusPage />} />
+          <Route path="/credits" element={<CreditsPage />} />
           <Route element={<ProtectedRoute requireVerified />}>
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/compare" element={<ComparePage />} />

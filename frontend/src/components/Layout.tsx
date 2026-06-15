@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import {
   Upload, LayoutDashboard, ScrollText, Users, GitCompareArrows,
-  Code2, Activity, Shield, LogOut, Home, Menu, X,
+  Code2, Activity, Shield, LogOut, Home, Menu, X, Layers,
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
@@ -26,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/compare", label: "Compare", code: "05", Icon: GitCompareArrows },
   { to: "/embed", label: "Embed", code: "06", Icon: Code2 },
   { to: "/status", label: "Status", code: "07", Icon: Activity },
+  { to: "/credits", label: "Credits", code: "08", Icon: Layers },
 ];
 
 function Time() {
@@ -128,7 +129,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                   />
                 )}
                 <Shield size={16} strokeWidth={1.5} />
-                <span className="text-ink-500 mr-1 tabular-nums">08</span>
+                <span className="text-ink-500 mr-1 tabular-nums">09</span>
                 <span>Review</span>
               </>
             )}
