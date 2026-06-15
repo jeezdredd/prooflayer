@@ -26,6 +26,9 @@ const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
 const FeedPage = lazy(() => import("./pages/FeedPage"));
 const FeedDetailPage = lazy(() => import("./pages/FeedDetailPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const RefundPage = lazy(() => import("./pages/RefundPage"));
 
 function PageLoader() {
   return (
@@ -56,6 +59,9 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/refund" element={<RefundPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
