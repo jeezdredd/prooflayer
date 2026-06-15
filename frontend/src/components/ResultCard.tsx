@@ -3,69 +3,95 @@ import { useEffect, useRef, useState } from "react";
 import type { Submission } from "../types";
 import AnalyzerTimeline from "./AnalyzerTimeline";
 
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&";
+const CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 function DecryptText({ text }: { text: string }) {
   const [display, setDisplay] = useState(text);
-  const frameRef = useRef<number>(0);
   const iterRef = useRef(0);
 
   useEffect(() => {
     iterRef.current = 0;
     const interval = setInterval(() => {
-      iterRef.current += 1;
+      iterRef.current += 2;
       setDisplay(
         text
           .split("")
           .map((char, i) => {
-            if (char === " " || char === "." || char === "_" || char === "-") return char;
+            if (char === " " || char === "." || char === "_" || char === "-" || char === "/") return char;
             if (i < iterRef.current) return char;
             return CHARS[Math.floor(Math.random() * CHARS.length)];
           })
           .join("")
       );
       if (iterRef.current >= text.length) clearInterval(interval);
-    }, 30);
-    return () => {
-      clearInterval(interval);
-      cancelAnimationFrame(frameRef.current);
-    };
+    }, 40);
+    return () => clearInterval(interval);
   }, [text]);
 
-  return <span className="font-mono tracking-tight">{display}</span>;
+  return <span>{display}</span>;
 }
 
 const BAR_COUNT = 32;
-const BASE_HEIGHTS = Array.from({ length: BAR_COUNT }, (_, i) => Math.sin(i * 0.4) * 20 + 30);
+const IDLE_HEIGHTS = Array.from({ length: BAR_COUNT }, (_, i) => Math.sin(i * 0.4) * 15 + 20);
 
 function AudioVisualizer({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [barHeights, setBarHeights] = useState(BASE_HEIGHTS);
-  const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [barHeights, setBarHeights] = useState(IDLE_HEIGHTS);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const rafRef = useRef<number>(0);
 
-  useEffect(() => {
-    if (playing) {
-      animRef.current = setInterval(() => {
-        setBarHeights(
-          BASE_HEIGHTS.map((base) => base + Math.random() * 40)
-        );
-      }, 100);
-    } else {
-      if (animRef.current) clearInterval(animRef.current);
-      setBarHeights(BASE_HEIGHTS);
+  const startVisualizer = () => {
+    if (!audioRef.current) return;
+    if (!ctxRef.current) {
+      const ctx = new AudioContext();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 128;
+      const source = ctx.createMediaElementSource(audioRef.current);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      ctxRef.current = ctx;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
     }
-    return () => { if (animRef.current) clearInterval(animRef.current); };
-  }, [playing]);
+    const analyser = analyserRef.current!;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const draw = () => {
+      analyser.getByteFrequencyData(data);
+      const step = Math.floor(data.length / BAR_COUNT);
+      setBarHeights(
+        Array.from({ length: BAR_COUNT }, (_, i) => {
+          const val = data[i * step] ?? 0;
+          return Math.max(8, (val / 255) * 100);
+        })
+      );
+      rafRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+  };
+
+  const stopVisualizer = () => {
+    cancelAnimationFrame(rafRef.current);
+    setBarHeights(IDLE_HEIGHTS);
+  };
 
   const toggle = () => {
     if (!audioRef.current) return;
-    if (playing) audioRef.current.pause();
-    else audioRef.current.play();
+    if (playing) {
+      audioRef.current.pause();
+      stopVisualizer();
+    } else {
+      audioRef.current.play();
+      startVisualizer();
+    }
     setPlaying((p) => !p);
   };
+
+  useEffect(() => () => { cancelAnimationFrame(rafRef.current); ctxRef.current?.close(); }, []);
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
@@ -79,15 +105,15 @@ function AudioVisualizer({ src }: { src: string }) {
           setProgress((audioRef.current.currentTime / (audioRef.current.duration || 1)) * 100);
         }}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-        onEnded={() => setPlaying(false)}
+        onEnded={() => { setPlaying(false); stopVisualizer(); }}
       />
 
-      <div className="flex items-end gap-px h-12 justify-center">
+      <div className="flex items-end gap-px h-12">
         {barHeights.map((h, i) => (
           <div
             key={i}
-            className={clsx("w-1.5 rounded-sm", playing ? "bg-signal-amber" : "bg-ink-600")}
-            style={{ height: `${Math.round(h)}%`, transition: "height 100ms ease-out, background-color 300ms" }}
+            className={clsx("flex-1 rounded-sm", playing ? "bg-signal-amber" : "bg-ink-700")}
+            style={{ height: `${h}%`, transition: playing ? "height 80ms ease-out" : "height 300ms ease-out, background-color 300ms" }}
           />
         ))}
       </div>
@@ -114,7 +140,7 @@ function AudioVisualizer({ src }: { src: string }) {
             audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * (audioRef.current.duration || 0);
           }}
         >
-          <div className="absolute inset-y-0 left-0 bg-signal-amber" style={{ width: `${progress}%` }} />
+          <div className="absolute inset-y-0 left-0 bg-signal-amber transition-none" style={{ width: `${progress}%` }} />
         </div>
         <span className="font-mono text-[10px] text-ink-500 tabular-nums shrink-0">{fmt(duration)}</span>
       </div>

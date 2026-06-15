@@ -45,17 +45,17 @@ const ANALYZER_WEIGHTS: Record<string, number> = {
 };
 
 const ANALYZER_ETA_SECS: Record<string, number> = {
-  metadata: 3,
-  ela: 5,
-  community_forensics: 60,
-  llm_vision: 45,
-  video_frame: 40,
-  audio_spectrogram: 15,
-  llm_text: 20,
-  npr_detector: 30,
-  siglip_detector: 25,
-  ai_detector: 25,
-  custom_detector: 20,
+  metadata: 2,
+  ela: 3,
+  community_forensics: 15,
+  llm_vision: 35,
+  video_frame: 35,
+  audio_spectrogram: 10,
+  llm_text: 15,
+  npr_detector: 15,
+  siglip_detector: 15,
+  ai_detector: 20,
+  custom_detector: 15,
 };
 
 const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }> = {
@@ -352,9 +352,10 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
     .reduce((acc, s) => acc + (ANALYZER_WEIGHTS[s.name] || 5), 0);
   const overallPct = totalWeight > 0 ? Math.min(100, (doneWeight / totalWeight) * 100) : 0;
 
-  const remainingSecs = steps
+  const pendingEtas = steps
     .filter((s) => s.state === "pending" || s.state === "running")
-    .reduce((acc, s) => acc + (ANALYZER_ETA_SECS[s.name] || 15), 0);
+    .map((s) => ANALYZER_ETA_SECS[s.name] || 15);
+  const remainingSecs = pendingEtas.length > 0 ? Math.max(...pendingEtas) : 0;
 
   return (
     <div>
