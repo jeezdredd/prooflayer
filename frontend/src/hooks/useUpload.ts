@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { content } from "../api/endpoints";
 import { useUploadStore } from "../stores/uploadStore";
+import { toast } from "../components/ui/Toast";
 
 export function useUploadFile() {
   const { setProgress, setSubmissionId, setStatus, setError } = useUploadStore();
@@ -14,8 +16,17 @@ export function useUploadFile() {
       setSubmissionId(res.data.id);
       setStatus("processing");
     },
-    onError: (err: Error) => {
-      setError(err.message);
+    onError: (err: unknown) => {
+      if (err instanceof AxiosError && err.response?.status === 402) {
+        const code = err.response.data?.code;
+        if (code === "upload_limit_reached") {
+          const msg = "Monthly upload limit reached. Upgrade to Pro for more.";
+          setError(msg);
+          toast.error(msg);
+          return;
+        }
+      }
+      setError(err instanceof Error ? err.message : "Upload failed");
     },
   });
 }

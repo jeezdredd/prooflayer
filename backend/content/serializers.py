@@ -53,6 +53,61 @@ class SubmissionListSerializer(serializers.ModelSerializer):
         return None
 
 
+class UploaderProfileSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    avatar_url = serializers.SerializerMethodField()
+    date_joined = serializers.DateTimeField()
+
+    def get_avatar_url(self, obj):
+        request = self.context.get("request")
+        if obj.avatar:
+            if request:
+                return request.build_absolute_uri(obj.avatar.url)
+            return obj.avatar.url
+        return None
+
+
+class PublicSubmissionSerializer(serializers.ModelSerializer):
+    thumbnail_url = serializers.SerializerMethodField()
+    uploader = serializers.SerializerMethodField()
+    analysis_results = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Submission
+        fields = (
+            "id",
+            "original_filename",
+            "mime_type",
+            "file_size",
+            "final_score",
+            "final_verdict",
+            "is_known_fake",
+            "thumbnail_url",
+            "uploader",
+            "analysis_results",
+            "created_at",
+        )
+
+    def get_thumbnail_url(self, obj):
+        request = self.context.get("request")
+        if obj.thumbnail:
+            if request:
+                return request.build_absolute_uri(obj.thumbnail.url)
+            return obj.thumbnail.url
+        return None
+
+    def get_uploader(self, obj):
+        return {
+            "username": obj.user.username,
+            "date_joined": obj.user.date_joined.isoformat(),
+            "avatar_url": None,
+        }
+
+    def get_analysis_results(self, obj):
+        from analyzers.serializers import AnalysisResultSerializer
+        return AnalysisResultSerializer(obj.analysis_results.all(), many=True).data
+
+
 class SubmissionDetailSerializer(serializers.ModelSerializer):
     analysis_results = serializers.SerializerMethodField()
     similar_submissions = serializers.SerializerMethodField()
@@ -73,6 +128,7 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "final_score",
             "final_verdict",
             "is_known_fake",
+            "is_public",
             "phash",
             "dhash",
             "file_url",

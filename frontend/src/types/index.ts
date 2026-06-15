@@ -47,6 +47,7 @@ export interface Submission {
   final_score: number | null;
   final_verdict: string;
   is_known_fake: boolean;
+  is_public: boolean;
   file_url: string | null;
   analysis_results: AnalysisResult[];
   expected_analyzers: ExpectedAnalyzer[];
@@ -125,4 +126,38 @@ export interface FactCheckResult {
   claims_count: number;
   overall_verdict: "mostly_accurate" | "mixed" | "misleading" | "no_claims";
   claims: FactCheckClaim[];
+}
+
+export interface UploaderProfile {
+  username: string;
+  date_joined: string;
+  avatar_url: string | null;
+}
+
+export interface PublicSubmission {
+  id: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  final_score: number | null;
+  final_verdict: string;
+  is_known_fake: boolean;
+  thumbnail_url: string | null;
+  uploader: UploaderProfile;
+  analysis_results: AnalysisResult[];
+  created_at: string;
+}
+
+export interface SubscriptionInfo {
+  tier: "free" | "pro" | "education" | "enterprise";
+  status: "active" | "past_due" | "cancelled" | "trialing";
+  uploads_used: number;
+  uploads_limit: number;
+  can_use_vlm: boolean;
+  can_download_pdf: boolean;
+  can_compare: boolean;
+  can_embed: boolean;
+  can_api: boolean;
+  stripe_subscription_id: string;
+  current_period_end: string | null;
 }

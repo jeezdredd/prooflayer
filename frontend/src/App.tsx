@@ -23,6 +23,9 @@ const ReviewQueuePage = lazy(() => import("./pages/ReviewQueuePage"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
 const CreditsPage = lazy(() => import("./pages/CreditsPage"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
+const PricingPage = lazy(() => import("./pages/PricingPage"));
+const FeedPage = lazy(() => import("./pages/FeedPage"));
+const FeedDetailPage = lazy(() => import("./pages/FeedDetailPage"));
 
 function PageLoader() {
   return (
@@ -61,6 +64,9 @@ function AppRoutes() {
             <Route path="/results/:id" element={<ResultPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/credits" element={<CreditsPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/feed" element={<FeedPage />} />
+            <Route path="/feed/:id" element={<FeedDetailPage />} />
             <Route element={<ProtectedRoute requireVerified />}>
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/compare" element={<ComparePage />} />

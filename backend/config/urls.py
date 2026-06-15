@@ -20,6 +20,7 @@ urlpatterns = [
     path("api/v1/reports/", include("reports.urls")),
     path("api/v1/provenance/", include("provenance.urls")),
     path("api/v1/factcheck/", include("factcheck.urls")),
+    path("api/v1/billing/", include("billing.urls")),
     path("api/v1/auth/health/", health),
     path("api/v1/system/status/", SystemStatusView.as_view(), name="system-status"),
     path("api/v1/system/visit/", RecordVisitView.as_view(), name="system-visit"),

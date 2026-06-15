@@ -60,6 +60,21 @@ class SubmissionViewSet(
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
+        from billing.models import get_or_create_subscription, uploads_this_month
+        sub = get_or_create_subscription(request.user)
+        used = uploads_this_month(request.user)
+        if used >= sub.uploads_per_month:
+            return Response(
+                {
+                    "detail": f"Monthly upload limit reached ({sub.uploads_per_month} uploads). Upgrade to Pro for more.",
+                    "code": "upload_limit_reached",
+                    "limit": sub.uploads_per_month,
+                    "used": used,
+                    "tier": sub.tier,
+                },
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
         file = request.FILES.get("file")
         if not file:
             return Response({"file": ["No file provided."]}, status=status.HTTP_400_BAD_REQUEST)
@@ -81,6 +96,15 @@ class SubmissionViewSet(
         serializer = SubmissionCreateSerializer(submission)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["post"], url_path="toggle-public")
+    def toggle_public(self, request, id=None):
+        submission = self.get_object()
+        if submission.status != "completed":
+            return Response({"detail": "Only completed submissions can be made public."}, status=status.HTTP_400_BAD_REQUEST)
+        submission.is_public = not submission.is_public
+        submission.save(update_fields=["is_public"])
+        return Response({"is_public": submission.is_public})
+
     @action(detail=False, methods=["get"], url_path="compare")
     def compare(self, request):
         ids = (request.query_params.get("ids") or "").split(",")
@@ -96,6 +120,10 @@ class SubmissionViewSet(
 
     @action(detail=True, methods=["get"], url_path="report.pdf")
     def report_pdf(self, request, id=None):
+        from billing.models import get_or_create_subscription
+        sub = get_or_create_subscription(request.user)
+        if not sub.can_download_pdf:
+            return Response({"detail": "PDF reports require Pro subscription.", "code": "upgrade_required"}, status=status.HTTP_402_PAYMENT_REQUIRED)
         submission = self.get_object()
         if submission.status != "completed":
             return Response({"detail": "Report available only for completed submissions."}, status=status.HTTP_400_BAD_REQUEST)
@@ -184,6 +212,35 @@ class VerdictOverrideView(APIView):
             VerdictOverrideSerializer(submission.verdict_overrides.first()).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class PublicFeedView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get_serializer_class(self):
+        from .serializers import PublicSubmissionSerializer
+        return PublicSubmissionSerializer
+
+    def get_queryset(self):
+        return (
+            Submission.objects.filter(is_public=True, status=Submission.Status.COMPLETED)
+            .select_related("user")
+            .order_by("-created_at")[:100]
+        )
+
+
+class PublicSubmissionDetailView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    lookup_field = "id"
+
+    def get_serializer_class(self):
+        from .serializers import PublicSubmissionSerializer
+        return PublicSubmissionSerializer
+
+    def get_queryset(self):
+        return Submission.objects.filter(is_public=True, status=Submission.Status.COMPLETED).select_related("user")
 
 
 class WidgetEmbedView(APIView):

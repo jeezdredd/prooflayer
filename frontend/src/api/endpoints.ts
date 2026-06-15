@@ -3,9 +3,11 @@ import type {
   FactCheckResult,
   PaginatedResponse,
   ProvenanceResult,
+  PublicSubmission,
   Report,
   Submission,
   SubmissionListItem,
+  SubscriptionInfo,
   User,
   Vote,
   VoteStats,
@@ -104,3 +106,18 @@ export const review = {
   override: (id: string, data: { verdict: string; reason: string }) =>
     client.post(`/content/review/${id}/override/`, data),
 };
+
+export const feed = {
+  list: (params?: Record<string, string>) =>
+    client.get<PaginatedResponse<PublicSubmission>>("/content/feed/", { params }),
+  detail: (id: string) => client.get<PublicSubmission>(`/content/feed/${id}/`),
+};
+
+export const billing = {
+  subscription: () => client.get<SubscriptionInfo>("/billing/subscription/"),
+  checkout: () => client.post<{ url: string }>("/billing/checkout/", {}),
+  portal: () => client.post<{ url: string }>("/billing/portal/", {}),
+};
+
+export const togglePublic = (id: string) =>
+  client.post<{ is_public: boolean }>(`/content/submissions/${id}/toggle_public/`, {});

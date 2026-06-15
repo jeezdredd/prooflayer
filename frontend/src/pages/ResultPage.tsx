@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSubmissionDetail } from "../hooks/useUpload";
 import { useSubmissionWS } from "../hooks/useSubmissionWS";
 import ResultCard from "../components/ResultCard";
@@ -8,6 +9,7 @@ import ReportButton from "../components/ReportButton";
 import ProvenancePanel from "../components/ProvenancePanel";
 import { Skeleton, SkeletonText } from "../components/ui/Skeleton";
 import { toast } from "../components/ui/Toast";
+import { togglePublic } from "../api/endpoints";
 
 function DownloadReportButton({ submissionId }: { submissionId: string }) {
   const [loading, setLoading] = useState(false);
@@ -47,6 +49,40 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
       className="font-mono text-[10px] uppercase tracking-[0.14em] border border-iris/60 text-iris hover:bg-iris/10 px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5"
     >
       {loading ? "…" : "↓"} PDF Report
+    </button>
+  );
+}
+
+function TogglePublicButton({ submissionId, isPublic }: { submissionId: string; isPublic: boolean }) {
+  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleToggle = async () => {
+    setLoading(true);
+    try {
+      const res = await togglePublic(submissionId);
+      queryClient.setQueryData(["submission", submissionId], (old: Record<string, unknown> | undefined) =>
+        old ? { ...old, is_public: res.data.is_public } : old
+      );
+      toast.success(res.data.is_public ? "Submission is now public" : "Submission set to private");
+    } catch {
+      toast.error("Failed to update visibility");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleToggle}
+      disabled={loading}
+      className={`font-mono text-[10px] uppercase tracking-[0.14em] border px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5 ${
+        isPublic
+          ? "border-signal-sage/60 text-signal-sage hover:bg-signal-sage/10"
+          : "border-ink-600 text-ink-400 hover:border-ink-400 hover:text-ink-200"
+      }`}
+    >
+      {loading ? "..." : isPublic ? "⬤ Public" : "○ Private"}
     </button>
   );
 }
@@ -130,6 +166,7 @@ export default function ResultPage() {
         )}
         {submission.status === "completed" && (
           <div className="flex items-center gap-2">
+            <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />
             <DownloadReportButton submissionId={submission.id} />
             <ReportButton submissionId={submission.id} />
           </div>

@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "pgvector.django",
     "channels",
+    "billing",
 ]
 
 MIDDLEWARE = [
@@ -190,6 +191,11 @@ EMAIL_BACKEND = (
     else "django.core.mail.backends.console.EmailBackend"
 )
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRO_PRICE_ID = os.environ.get("STRIPE_PRO_PRICE_ID", "")
 
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
 SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT", "production")
