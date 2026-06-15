@@ -247,6 +247,79 @@ export default function ComparePage() {
         </p>
       </div>
 
+      {ready && compareQuery.isLoading && (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin w-5 h-5 border-2 border-iris border-t-transparent rounded-full" />
+        </div>
+      )}
+
+      {ready && compareQuery.isError && (
+        <div className="text-center py-10 font-mono text-sm text-signal-blood">
+          Failed to load comparison.
+        </div>
+      )}
+
+      {pair && pair.length === 2 && (
+        <div className="space-y-4">
+          {diffScore != null && (
+            <div className="px-4 py-3 bg-iris/10 border border-iris/40 font-mono text-sm text-iris-light flex items-center justify-between">
+              <span>Score difference</span>
+              <span className="font-bold tabular-nums">{diffScore.toFixed(0)} pts</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pair.map((sub, idx) => (
+              <ComparisonCard
+                key={sub.id}
+                submission={sub}
+                isBetter={(key) => getBetter(key)(idx)}
+              />
+            ))}
+          </div>
+
+          <div className="case-card crop-marks px-5 py-4">
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-4">Quick Summary</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">More Authentic</p>
+                <p className="font-mono text-xs text-ink-100">
+                  {pair[0].final_score != null && pair[1].final_score != null
+                    ? pair[0].final_score < pair[1].final_score
+                      ? pair[0].original_filename
+                      : pair[1].original_filename
+                    : "-"}
+                </p>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">Higher Confidence</p>
+                <p className="font-mono text-xs text-ink-100">
+                  {avgConfidence(pair[0].analysis_results) >= avgConfidence(pair[1].analysis_results)
+                    ? pair[0].original_filename
+                    : pair[1].original_filename}
+                </p>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">More Complete</p>
+                <p className="font-mono text-xs text-ink-100">
+                  {analyzersRun(pair[0]) >= analyzersRun(pair[1])
+                    ? pair[0].original_filename
+                    : pair[1].original_filename}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!ready && (
+        <div className="py-12 text-center font-mono text-xs uppercase tracking-[0.14em] text-ink-500 border border-dashed border-ink-700">
+          {selected.length === 0
+            ? "Select two submissions below to compare."
+            : `${selected.length} of 2 selected - pick one more.`}
+        </div>
+      )}
+
       <div className="case-card crop-marks">
         <div className="px-4 py-3 border-b border-ink-700 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex items-center gap-2 flex-1">
@@ -365,78 +438,6 @@ export default function ComparePage() {
         )}
       </div>
 
-      {ready && compareQuery.isLoading && (
-        <div className="flex items-center justify-center py-16">
-          <div className="animate-spin w-5 h-5 border-2 border-iris border-t-transparent rounded-full" />
-        </div>
-      )}
-
-      {ready && compareQuery.isError && (
-        <div className="text-center py-10 font-mono text-sm text-signal-blood">
-          Failed to load comparison.
-        </div>
-      )}
-
-      {pair && pair.length === 2 && (
-        <div className="space-y-4">
-          {diffScore != null && (
-            <div className="px-4 py-3 bg-iris/10 border border-iris/40 font-mono text-sm text-iris-light flex items-center justify-between">
-              <span>Score difference</span>
-              <span className="font-bold tabular-nums">{diffScore.toFixed(0)} pts</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {pair.map((sub, idx) => (
-              <ComparisonCard
-                key={sub.id}
-                submission={sub}
-                isBetter={(key) => getBetter(key)(idx)}
-              />
-            ))}
-          </div>
-
-          <div className="case-card crop-marks px-5 py-4">
-            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-4">Quick Summary</div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">More Authentic</p>
-                <p className="font-mono text-xs text-ink-100">
-                  {pair[0].final_score != null && pair[1].final_score != null
-                    ? pair[0].final_score < pair[1].final_score
-                      ? pair[0].original_filename
-                      : pair[1].original_filename
-                    : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">Higher Confidence</p>
-                <p className="font-mono text-xs text-ink-100">
-                  {avgConfidence(pair[0].analysis_results) >= avgConfidence(pair[1].analysis_results)
-                    ? pair[0].original_filename
-                    : pair[1].original_filename}
-                </p>
-              </div>
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">More Complete</p>
-                <p className="font-mono text-xs text-ink-100">
-                  {analyzersRun(pair[0]) >= analyzersRun(pair[1])
-                    ? pair[0].original_filename
-                    : pair[1].original_filename}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!ready && (
-        <div className="py-12 text-center font-mono text-xs uppercase tracking-[0.14em] text-ink-500 border border-dashed border-ink-700">
-          {selected.length === 0
-            ? "Select two submissions above to compare."
-            : `${selected.length} of 2 selected - pick one more.`}
-        </div>
-      )}
     </div>
   );
 }

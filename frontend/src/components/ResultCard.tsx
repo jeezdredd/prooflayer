@@ -1,6 +1,126 @@
 import clsx from "clsx";
+import { useEffect, useRef, useState } from "react";
 import type { Submission } from "../types";
 import AnalyzerTimeline from "./AnalyzerTimeline";
+
+const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&";
+
+function DecryptText({ text }: { text: string }) {
+  const [display, setDisplay] = useState(text);
+  const frameRef = useRef<number>(0);
+  const iterRef = useRef(0);
+
+  useEffect(() => {
+    iterRef.current = 0;
+    const interval = setInterval(() => {
+      iterRef.current += 1;
+      setDisplay(
+        text
+          .split("")
+          .map((char, i) => {
+            if (char === " " || char === "." || char === "_" || char === "-") return char;
+            if (i < iterRef.current) return char;
+            return CHARS[Math.floor(Math.random() * CHARS.length)];
+          })
+          .join("")
+      );
+      if (iterRef.current >= text.length) clearInterval(interval);
+    }, 30);
+    return () => {
+      clearInterval(interval);
+      cancelAnimationFrame(frameRef.current);
+    };
+  }, [text]);
+
+  return <span className="font-mono tracking-tight">{display}</span>;
+}
+
+const BAR_COUNT = 32;
+const BASE_HEIGHTS = Array.from({ length: BAR_COUNT }, (_, i) => Math.sin(i * 0.4) * 20 + 30);
+
+function AudioVisualizer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [barHeights, setBarHeights] = useState(BASE_HEIGHTS);
+  const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (playing) {
+      animRef.current = setInterval(() => {
+        setBarHeights(
+          BASE_HEIGHTS.map((base) => base + Math.random() * 40)
+        );
+      }, 100);
+    } else {
+      if (animRef.current) clearInterval(animRef.current);
+      setBarHeights(BASE_HEIGHTS);
+    }
+    return () => { if (animRef.current) clearInterval(animRef.current); };
+  }, [playing]);
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) audioRef.current.pause();
+    else audioRef.current.play();
+    setPlaying((p) => !p);
+  };
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+  return (
+    <div className="space-y-3">
+      <audio
+        ref={audioRef}
+        src={src}
+        onTimeUpdate={() => {
+          if (!audioRef.current) return;
+          setProgress((audioRef.current.currentTime / (audioRef.current.duration || 1)) * 100);
+        }}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onEnded={() => setPlaying(false)}
+      />
+
+      <div className="flex items-end gap-px h-12 justify-center">
+        {barHeights.map((h, i) => (
+          <div
+            key={i}
+            className={clsx("w-1.5 rounded-sm", playing ? "bg-signal-amber" : "bg-ink-600")}
+            style={{ height: `${Math.round(h)}%`, transition: "height 100ms ease-out, background-color 300ms" }}
+          />
+        ))}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggle}
+          className="w-8 h-8 border border-ink-600 hover:border-signal-amber flex items-center justify-center text-ink-300 hover:text-signal-amber transition shrink-0"
+        >
+          {playing ? (
+            <span className="flex gap-0.5">
+              <span className="w-1 h-3 bg-current" />
+              <span className="w-1 h-3 bg-current" />
+            </span>
+          ) : (
+            <span className="w-0 h-0 border-t-4 border-b-4 border-l-8 border-transparent border-l-current ml-0.5" />
+          )}
+        </button>
+        <div
+          className="flex-1 relative h-1 bg-ink-800 cursor-pointer"
+          onClick={(e) => {
+            if (!audioRef.current) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * (audioRef.current.duration || 0);
+          }}
+        >
+          <div className="absolute inset-y-0 left-0 bg-signal-amber" style={{ width: `${progress}%` }} />
+        </div>
+        <span className="font-mono text-[10px] text-ink-500 tabular-nums shrink-0">{fmt(duration)}</span>
+      </div>
+    </div>
+  );
+}
 
 interface ResultCardProps {
   submission: Submission;
@@ -52,7 +172,7 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
             </span>
           </div>
           <h2 className="font-display text-2xl sm:text-3xl text-ink-50 leading-tight break-all">
-            {submission.original_filename}
+            <DecryptText text={submission.original_filename} />
           </h2>
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-ink-400">
             <span><span className="text-ink-600">type:</span> {submission.mime_type || "unknown"}</span>
@@ -139,6 +259,14 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
               e.currentTarget.parentElement?.style.setProperty("display", "none");
             }}
           />
+        </div>
+      )}
+
+      {/* Audio player */}
+      {submission.file_url && submission.mime_type?.startsWith("audio/") && (
+        <div className="px-6 py-4 border-b border-ink-700">
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-3">Audio File</div>
+          <AudioVisualizer src={submission.file_url} />
         </div>
       )}
 
