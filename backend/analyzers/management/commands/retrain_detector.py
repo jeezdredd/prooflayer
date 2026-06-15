@@ -101,6 +101,10 @@ class Command(BaseCommand):
             tmp_model_dir = os.path.join(tmpdir, "model_output")
             self._finetune(dataset_dir, tmp_model_dir, options["epochs"])
 
+            if not os.path.exists(tmp_model_dir):
+                self.stderr.write("Fine-tune produced no output. Aborting save.")
+                return
+
             if os.path.exists(persistent_model_dir):
                 shutil.rmtree(persistent_model_dir)
             os.makedirs(os.path.dirname(persistent_model_dir), exist_ok=True)
