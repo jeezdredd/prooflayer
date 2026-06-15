@@ -32,6 +32,7 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock* /tmp/
 RUN uv pip install --system --no-cache \
+    --index-strategy unsafe-best-match \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     -r /tmp/pyproject.toml
 
