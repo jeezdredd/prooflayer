@@ -66,10 +66,11 @@ class CustomDetector(BaseAnalyzer):
             gc.collect()
 
         source = _state["loaded_path"] or FALLBACK_MODEL
+        retrained = source != FALLBACK_MODEL
         evidence = {
-            "model": os.path.basename(source) if os.path.isdir(source) else source,
+            "model": "prooflayer-retrained" if retrained else FALLBACK_MODEL,
             "ai_probability": round(ai_prob, 4),
-            "retrained": source != FALLBACK_MODEL,
+            "retrained": retrained,
         }
 
         if ai_prob >= 0.85:
