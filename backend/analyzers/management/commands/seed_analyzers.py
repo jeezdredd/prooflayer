@@ -8,6 +8,20 @@ from analyzers.models import AnalyzerConfig
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 
+_FALLBACK_VERSIONS = {
+    "analyzers.implementations.metadata_analyzer": "1.4.0",
+    "analyzers.implementations.ela_analyzer": "1.4.0",
+    "analyzers.implementations.siglip_detector": "1.1.0",
+    "analyzers.implementations.npr_detector": "1.1.0",
+    "analyzers.implementations.community_forensics": "1.3.0",
+    "analyzers.implementations.video_analyzer": "1.2.0",
+    "analyzers.implementations.llm_analyzer": "1.1.0",
+    "analyzers.implementations.audio_analyzer": "1.2.0",
+    "analyzers.implementations.llm_image_analyzer": "1.7.0",
+    "analyzers.implementations.custom_detector": "1.0.0",
+}
+
+
 def _git_version(module_path: str) -> str:
     rel_file = module_path.replace(".", "/") + ".py"
     abs_file = os.path.join(BASE_DIR, rel_file)
@@ -18,9 +32,11 @@ def _git_version(module_path: str) -> str:
             cwd=BASE_DIR,
         )
         count = len([l for l in result.stdout.strip().splitlines() if l])
-        return f"1.{max(count - 1, 0)}.0"
+        if count > 0:
+            return f"1.{max(count - 1, 0)}.0"
     except Exception:
-        return "1.0.0"
+        pass
+    return _FALLBACK_VERSIONS.get(module_path, "1.0.0")
 
 
 ANALYZERS = [
