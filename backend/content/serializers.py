@@ -13,6 +13,7 @@ ANALYZER_DESCRIPTIONS = {
     "community_forensics": "Community Forensics ViT-S/16 trained on 2.7M images from 4803 generators (NeurIPS 2024). Outputs a continuous AI probability score. Strongest signal for photorealistic deepfakes and diffusion-generated faces.",
     "npr_detector": "NPR (Noise Pattern Residual) ViT detector. Analyzes high-frequency noise patterns left by camera sensors vs generative models. Effective against GAN and diffusion outputs that look clean to the eye but carry generator fingerprints.",
     "siglip_detector": "SigLIP-based semantic coherence detector. Measures whether image regions are semantically consistent with each other. Inpainting, face swaps, and localized edits often produce regions with mismatched semantic context.",
+    "custom_detector": "ProofLayer proprietary detector. Fine-tuned on verified real/fake submissions collected by the ProofLayer community. Improves with every retrain cycle as more labeled data is approved.",
 }
 
 

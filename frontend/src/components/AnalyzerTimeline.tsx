@@ -13,6 +13,7 @@ const ANALYZER_LABELS: Record<string, string> = {
   community_forensics: "Community Forensics · ViT",
   npr_detector: "NPR Detector · ViT",
   siglip_detector: "SigLIP Detector",
+  custom_detector: "ProofLayer Detector",
 };
 
 const ANALYZER_CODE: Record<string, string> = {
@@ -26,6 +27,7 @@ const ANALYZER_CODE: Record<string, string> = {
   community_forensics: "CF",
   npr_detector: "NPR",
   siglip_detector: "SIGL",
+  custom_detector: "PL",
 };
 
 const ANALYZER_WEIGHTS: Record<string, number> = {
@@ -39,6 +41,7 @@ const ANALYZER_WEIGHTS: Record<string, number> = {
   community_forensics: 20,
   npr_detector: 15,
   siglip_detector: 15,
+  custom_detector: 20,
 };
 
 const ANALYZER_ETA_SECS: Record<string, number> = {
@@ -52,6 +55,7 @@ const ANALYZER_ETA_SECS: Record<string, number> = {
   npr_detector: 30,
   siglip_detector: 25,
   ai_detector: 25,
+  custom_detector: 20,
 };
 
 const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }> = {
