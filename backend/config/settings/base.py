@@ -7,6 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-dev-key-change-in-production")
 
 INSTALLED_APPS = [
+    "daphne",
     "unfold",
     "unfold.contrib.filters",
     "django.contrib.admin",
@@ -30,6 +31,7 @@ INSTALLED_APPS = [
     "factcheck",
     "drf_spectacular",
     "pgvector.django",
+    "channels",
 ]
 
 MIDDLEWARE = [
@@ -63,6 +65,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379/0")]},
+    }
+}
 
 AUTH_USER_MODEL = "users.User"
 

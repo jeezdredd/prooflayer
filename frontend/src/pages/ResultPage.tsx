@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useSubmissionDetail } from "../hooks/useUpload";
+import { useSubmissionWS } from "../hooks/useSubmissionWS";
 import ResultCard from "../components/ResultCard";
 import VotingPanel from "../components/VotingPanel";
 import ReportButton from "../components/ReportButton";
@@ -53,6 +54,7 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
   const { data: submission, isLoading, isError } = useSubmissionDetail(id || null);
+  const { connected } = useSubmissionWS(id);
 
   if (isLoading) {
     return (
@@ -120,6 +122,12 @@ export default function ResultPage() {
             Verify another
           </Link>
         </div>
+        {submission.status === "processing" && connected && (
+          <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-signal-sage">
+            <span className="w-1.5 h-1.5 rounded-full bg-signal-sage pulse-dot" />
+            Live
+          </span>
+        )}
         {submission.status === "completed" && (
           <div className="flex items-center gap-2">
             <DownloadReportButton submissionId={submission.id} />

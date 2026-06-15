@@ -30,7 +30,7 @@ export function useSubmissionDetail(id: string | null) {
       if (data && (data.status === "completed" || data.status === "failed")) {
         return false;
       }
-      return 1500;
+      return 3000;
     },
   });
 }

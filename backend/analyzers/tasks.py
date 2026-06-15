@@ -1,7 +1,9 @@
 import logging
 import time
 
+from asgiref.sync import async_to_sync
 from celery import chord, group, shared_task
+from channels.layers import get_channel_layer
 
 from content.models import Submission
 from content.storage_utils import local_file
@@ -11,6 +13,26 @@ from .models import AnalyzerConfig, AnalysisResult
 from .registry import load_analyzer_class
 
 logger = logging.getLogger(__name__)
+
+
+def _publish_status(submission_id, status_message, status=None, final_score=None, final_verdict=None):
+    channel_layer = get_channel_layer()
+    if channel_layer is None:
+        return
+    payload = {"type": "status", "status_message": status_message}
+    if status is not None:
+        payload["status"] = status
+    if final_score is not None:
+        payload["final_score"] = final_score
+    if final_verdict is not None:
+        payload["final_verdict"] = final_verdict
+    try:
+        async_to_sync(channel_layer.group_send)(
+            f"submission_{submission_id}",
+            {"type": "submission.update", "payload": payload},
+        )
+    except Exception as exc:
+        logger.debug("WS publish failed (non-critical): %s", exc)
 
 ANALYZER_STATUS_MESSAGES = {
     "metadata": "Analyzing metadata and EXIF...",
@@ -45,6 +67,7 @@ def dispatch_analysis(submission_id):
 
     submission.status_message = "Starting analyzers..."
     submission.save(update_fields=["status_message"])
+    _publish_status(submission_id, "Starting analyzers...")
 
     tasks = []
     for config in configs:
@@ -84,6 +107,7 @@ def run_analyzer(self, submission_id, config_id):
         status_msg = ANALYZER_STATUS_MESSAGES.get(config.name, f"Running {config.name}...")
         submission.status_message = status_msg
         submission.save(update_fields=["status_message"])
+        _publish_status(submission_id, status_msg)
 
         meta = dict(submission.metadata or {})
         meta["submission_id"] = str(submission_id)
@@ -127,6 +151,7 @@ def aggregate_verdicts(result_ids, submission_id):
 
     submission.status_message = "Aggregating results..."
     submission.save(update_fields=["status_message"])
+    _publish_status(submission_id, "Aggregating results...")
 
     results = list(submission.analysis_results.select_related("analyzer").all())
 
@@ -141,6 +166,12 @@ def aggregate_verdicts(result_ids, submission_id):
     submission.status = Submission.Status.COMPLETED
     submission.status_message = ""
     submission.save(update_fields=["final_score", "final_verdict", "status", "status_message"])
+    _publish_status(
+        submission_id, "",
+        status="completed",
+        final_score=float(submission.final_score),
+        final_verdict=submission.final_verdict,
+    )
     logger.info(
         "Submission %s completed: score=%.4f verdict=%s",
         submission_id, submission.final_score, submission.final_verdict,

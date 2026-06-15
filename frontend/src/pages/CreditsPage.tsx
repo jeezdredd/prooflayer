@@ -1,8 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { ExternalLink, Activity, Database, Zap, Cpu, Brain, HardDrive } from "lucide-react";
-import { useAuthStore } from "../stores/authStore";
-import client from "../api/client";
+import { ExternalLink } from "lucide-react";
 
 interface Credit {
   name: string;
@@ -33,9 +30,10 @@ const BACKEND: Credit[] = [
   { name: "Redis", href: "https://redis.io", note: "Broker + cache", icon: "redis" },
   { name: "PostgreSQL + pgvector", href: "https://github.com/pgvector/pgvector", note: "DB with vector search", icon: "postgresql" },
   { name: "MinIO", href: "https://min.io", note: "S3-compatible object store", icon: "minio" },
-  { name: "Gunicorn", href: "https://gunicorn.org", note: "WSGI server" },
+  { name: "Gunicorn / Daphne", href: "https://gunicorn.org", note: "WSGI/ASGI server" },
   { name: "boto3", href: "https://boto3.amazonaws.com/v1/documentation/api/latest/index.html", note: "S3 client" },
-  { name: "spaCy", href: "https://spacy.io", note: "NLP - NER for fact-check", icon: "spacy" },
+  { name: "spaCy", href: "https://spacy.io", note: "NLP - NER for fact-check" },
+  { name: "Django Channels", href: "https://channels.readthedocs.io", note: "WebSocket + ASGI" },
 ];
 
 const ML: Credit[] = [
@@ -152,144 +150,7 @@ function CreditCard({ item, delay }: { item: Credit; delay: number }) {
   );
 }
 
-interface ServiceProbe {
-  status: "ok" | "down" | "skip";
-  latency_ms?: number;
-  error?: string;
-  workers?: number;
-  active_tasks?: number;
-  loaded_models?: string[];
-  available_models?: string[];
-  reason?: string;
-}
-
-interface SystemStatus {
-  overall: string;
-  checked_at: number;
-  services: Record<string, ServiceProbe>;
-  last_retrain: {
-    started_at: string;
-    status: string;
-    samples_used: number;
-    media_type: string;
-    hf_revision: string | null;
-  } | null;
-}
-
-const SERVICE_META: Record<string, { label: string; Icon: typeof Activity }> = {
-  api: { label: "API", Icon: Activity },
-  database: { label: "Database", Icon: Database },
-  redis: { label: "Redis", Icon: Zap },
-  celery: { label: "Workers", Icon: Cpu },
-  ollama: { label: "Vision LLM", Icon: Brain },
-  storage: { label: "Object Store", Icon: HardDrive },
-};
-
-function AdminPanel() {
-  const { data, isLoading } = useQuery<SystemStatus>({
-    queryKey: ["system-status-credits"],
-    queryFn: () => client.get("/system/status/").then((r) => r.data),
-    refetchInterval: 10000,
-    staleTime: 0,
-  });
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.2 }}
-      className="mt-12"
-    >
-      <div className="label-mono mb-4 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 bg-signal-violet rounded-full pulse-dot" />
-        Admin / Live System
-      </div>
-
-      <div className="case-card">
-        <div className="flex items-center justify-between px-6 py-3 border-b border-white/5">
-          <span className="label-mono">Service Probes</span>
-          <span className="font-mono text-[10px] text-ink-500">
-            {data ? `overall: ${data.overall}` : "loading..."}
-          </span>
-        </div>
-        <div className="divide-y divide-white/5">
-          {Object.entries(SERVICE_META).map(([key, meta]) => {
-            const probe = data?.services[key];
-            const Icon = meta.Icon;
-            return (
-              <div key={key} className="grid grid-cols-12 gap-3 px-6 py-4 items-center">
-                <div className="col-span-1 text-signal-amber/60">
-                  <Icon size={16} strokeWidth={1.5} />
-                </div>
-                <div className="col-span-3">
-                  <div className="font-display text-base text-ink-100">{meta.label}</div>
-                  <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-600 mt-0.5">{key}</div>
-                </div>
-                <div className="col-span-6 font-mono text-[10px] text-ink-400">
-                  {isLoading || !probe ? (
-                    <span className="text-ink-600">probing...</span>
-                  ) : probe.status === "ok" ? (
-                    <span>
-                      {probe.latency_ms != null && `${probe.latency_ms} ms`}
-                      {probe.workers != null && ` · ${probe.workers}w · ${probe.active_tasks} active`}
-                      {probe.loaded_models && probe.loaded_models.length > 0 && ` · ${probe.loaded_models.join(", ")}`}
-                      {probe.available_models && probe.loaded_models?.length === 0 && ` · idle`}
-                    </span>
-                  ) : probe.status === "skip" ? (
-                    <span className="text-ink-600">{probe.reason || "skipped"}</span>
-                  ) : (
-                    <span className="text-signal-blood">{probe.error || "unreachable"}</span>
-                  )}
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <span className={`font-mono text-[9px] uppercase tracking-[0.16em] px-2 py-0.5 rounded-sm ${
-                    probe?.status === "ok"
-                      ? "text-signal-sage bg-signal-sage/10"
-                      : probe?.status === "down"
-                      ? "text-signal-blood bg-signal-blood/10"
-                      : "text-ink-500 bg-white/5"
-                  }`}>
-                    {probe?.status ?? "-"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {data?.last_retrain && (
-        <div className="mt-4 case-card px-6 py-5">
-          <div className="label-mono mb-3">Last Retrain</div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">Date</div>
-              <div className="font-mono text-xs text-ink-100">
-                {new Date(data.last_retrain.started_at).toLocaleDateString()}
-              </div>
-            </div>
-            <div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">Type</div>
-              <div className="font-mono text-xs text-ink-100">{data.last_retrain.media_type}</div>
-            </div>
-            <div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">Samples</div>
-              <div className="font-mono text-xs text-ink-100">{data.last_retrain.samples_used}</div>
-            </div>
-            <div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">Status</div>
-              <div className="font-mono text-xs text-ink-100">{data.last_retrain.status}</div>
-            </div>
-          </div>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
 export default function CreditsPage() {
-  const { user } = useAuthStore();
-
   return (
     <div className="max-w-5xl">
       <motion.div
@@ -321,8 +182,6 @@ export default function CreditsPage() {
           </div>
         ))}
       </div>
-
-      {user?.is_staff && <AdminPanel />}
 
       <div className="mt-10 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600">
         ProofLayer is open-source. Contributions welcome.
