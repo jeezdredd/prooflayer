@@ -7,16 +7,15 @@ from django.core.management.base import BaseCommand
 
 logger = logging.getLogger(__name__)
 
+RETRAIN_MODEL_DIR = os.environ.get(
+    "RETRAIN_MODEL_DIR",
+    "/root/.cache/huggingface/prooflayer-retrained",
+)
+
 MEDIA_TYPES = {
     "image": ["image/jpeg", "image/png", "image/webp"],
     "video": ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"],
     "audio": ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/mp4"],
-}
-
-HF_REPO = {
-    "image": "jeezdredd/prooflayer-image-detector",
-    "video": "jeezdredd/prooflayer-video-detector",
-    "audio": "jeezdredd/prooflayer-audio-detector",
 }
 
 BASE_MODELS = {
@@ -33,8 +32,6 @@ class Command(BaseCommand):
         parser.add_argument("--media-type", choices=["image", "video", "audio"], default="image")
         parser.add_argument("--epochs", type=int, default=3)
         parser.add_argument("--min-samples", type=int, default=10)
-        parser.add_argument("--hf-token", type=str, default=os.environ.get("HF_TOKEN", ""))
-        parser.add_argument("--no-push", action="store_true", help="Skip push to HuggingFace Hub")
         parser.add_argument("--use-cifake", action="store_true", help="Include CIFAKE base dataset")
 
     def handle(self, *args, **options):
@@ -59,6 +56,8 @@ class Command(BaseCommand):
                 f"Use --min-samples to lower threshold."
             )
             return
+
+        persistent_model_dir = os.path.join(RETRAIN_MODEL_DIR, media_type)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dataset_dir = os.path.join(tmpdir, "dataset")
@@ -99,16 +98,14 @@ class Command(BaseCommand):
                 self._load_cifake(dataset_dir)
 
             self.stdout.write(f"Starting fine-tune ({options['epochs']} epochs)...")
-            model_dir = os.path.join(tmpdir, "model_output")
-            self._finetune(dataset_dir, model_dir, options["epochs"])
+            tmp_model_dir = os.path.join(tmpdir, "model_output")
+            self._finetune(dataset_dir, tmp_model_dir, options["epochs"])
 
-            if not options["no_push"] and options["hf_token"]:
-                self.stdout.write(f"Pushing to {HF_REPO[media_type]}...")
-                self._push_to_hub(model_dir, HF_REPO[media_type], options["hf_token"])
-                self.stdout.write(self.style.SUCCESS(f"Done. Model at {HF_REPO[media_type]}"))
-            else:
-                self.stdout.write(f"Model saved locally: {model_dir}")
-                self.stdout.write("Use --hf-token to push or --no-push intentional")
+            if os.path.exists(persistent_model_dir):
+                shutil.rmtree(persistent_model_dir)
+            os.makedirs(os.path.dirname(persistent_model_dir), exist_ok=True)
+            shutil.copytree(tmp_model_dir, persistent_model_dir)
+            self.stdout.write(self.style.SUCCESS(f"Model saved to {persistent_model_dir}"))
 
     def _extract_frames(self, video_path, dst_dir, submission_id, label):
         try:
@@ -304,9 +301,3 @@ class Command(BaseCommand):
         feature_extractor.save_pretrained(output_dir)
         self.stdout.write(self.style.SUCCESS(f"Model saved to {output_dir}"))
 
-    def _push_to_hub(self, model_dir, repo_id, token):
-        from transformers import AutoModelForImageClassification, AutoFeatureExtractor
-        model = AutoModelForImageClassification.from_pretrained(model_dir)
-        fe = AutoFeatureExtractor.from_pretrained(model_dir)
-        model.push_to_hub(repo_id, token=token)
-        fe.push_to_hub(repo_id, token=token)

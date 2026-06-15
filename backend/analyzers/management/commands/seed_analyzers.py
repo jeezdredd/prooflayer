@@ -75,6 +75,14 @@ ANALYZERS = [
         "queue": "ml",
         "timeout": 300,
     },
+    {
+        "name": "custom_detector",
+        "analyzer_class": "analyzers.implementations.custom_detector.CustomDetector",
+        "version": "1.0.0",
+        "weight": 3.5,
+        "queue": "ml",
+        "timeout": 180,
+    },
 ]
 
 
