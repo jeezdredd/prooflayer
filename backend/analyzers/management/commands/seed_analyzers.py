@@ -1,12 +1,32 @@
+import os
+import subprocess
+
 from django.core.management.base import BaseCommand
 
 from analyzers.models import AnalyzerConfig
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+
+def _git_version(module_path: str) -> str:
+    rel_file = module_path.replace(".", "/") + ".py"
+    abs_file = os.path.join(BASE_DIR, rel_file)
+    try:
+        result = subprocess.run(
+            ["git", "log", "--oneline", "--", abs_file],
+            capture_output=True, text=True,
+            cwd=BASE_DIR,
+        )
+        count = len([l for l in result.stdout.strip().splitlines() if l])
+        return f"1.{max(count - 1, 0)}.0"
+    except Exception:
+        return "1.0.0"
+
 
 ANALYZERS = [
     {
         "name": "metadata",
         "analyzer_class": "analyzers.implementations.metadata_analyzer.MetadataAnalyzer",
-        "version": "1.0.0",
         "weight": 2.5,
         "queue": "default",
         "timeout": 60,
@@ -14,7 +34,6 @@ ANALYZERS = [
     {
         "name": "ela",
         "analyzer_class": "analyzers.implementations.ela_analyzer.ELAAnalyzer",
-        "version": "1.0.0",
         "weight": 1.0,
         "queue": "default",
         "timeout": 60,
@@ -22,7 +41,6 @@ ANALYZERS = [
     {
         "name": "siglip_detector",
         "analyzer_class": "analyzers.implementations.siglip_detector.SigLIPDetector",
-        "version": "1.0.0",
         "weight": 2.0,
         "queue": "ml",
         "timeout": 180,
@@ -30,7 +48,6 @@ ANALYZERS = [
     {
         "name": "npr_detector",
         "analyzer_class": "analyzers.implementations.npr_detector.NPRDetector",
-        "version": "1.0.0",
         "weight": 0.5,
         "queue": "ml",
         "timeout": 180,
@@ -38,7 +55,6 @@ ANALYZERS = [
     {
         "name": "community_forensics",
         "analyzer_class": "analyzers.implementations.community_forensics.CommunityForensicsDetector",
-        "version": "1.0.0",
         "weight": 3.0,
         "queue": "ml",
         "timeout": 180,
@@ -46,7 +62,6 @@ ANALYZERS = [
     {
         "name": "video_frame",
         "analyzer_class": "analyzers.implementations.video_analyzer.VideoFrameAnalyzer",
-        "version": "1.0.0",
         "weight": 2.0,
         "queue": "ml",
         "timeout": 300,
@@ -54,7 +69,6 @@ ANALYZERS = [
     {
         "name": "llm_text",
         "analyzer_class": "analyzers.implementations.llm_analyzer.LLMTextAnalyzer",
-        "version": "1.0.0",
         "weight": 2.5,
         "queue": "ml",
         "timeout": 180,
@@ -62,7 +76,6 @@ ANALYZERS = [
     {
         "name": "audio_spectrogram",
         "analyzer_class": "analyzers.implementations.audio_analyzer.AudioSpectrogramAnalyzer",
-        "version": "1.0.0",
         "weight": 2.0,
         "queue": "ml",
         "timeout": 120,
@@ -70,7 +83,6 @@ ANALYZERS = [
     {
         "name": "llm_vision",
         "analyzer_class": "analyzers.implementations.llm_image_analyzer.LLMImageAnalyzer",
-        "version": "1.0.0",
         "weight": 1.5,
         "queue": "ml",
         "timeout": 300,
@@ -78,7 +90,6 @@ ANALYZERS = [
     {
         "name": "custom_detector",
         "analyzer_class": "analyzers.implementations.custom_detector.CustomDetector",
-        "version": "1.0.0",
         "weight": 3.5,
         "queue": "ml",
         "timeout": 180,
@@ -92,9 +103,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         active_names = {a["name"] for a in ANALYZERS}
         for analyzer_data in ANALYZERS:
+            module_path = analyzer_data["analyzer_class"].rsplit(".", 1)[0]
+            data = {**analyzer_data, "version": _git_version(module_path)}
             obj, created = AnalyzerConfig.objects.update_or_create(
-                name=analyzer_data["name"],
-                defaults=analyzer_data,
+                name=data["name"],
+                defaults=data,
             )
             status = "Created" if created else "Updated"
             self.stdout.write(f"{status}: {obj.name} v{obj.version}")
