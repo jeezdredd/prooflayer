@@ -251,12 +251,15 @@ class Command(BaseCommand):
         def make_dataset(items):
             def gen():
                 for item in items:
-                    img = PILImage.open(item["image_path"]).convert("RGB")
-                    inputs = feature_extractor(images=img, return_tensors="pt")
-                    yield {
-                        "pixel_values": inputs["pixel_values"].squeeze(0),
-                        "label": item["label"],
-                    }
+                    try:
+                        img = PILImage.open(item["image_path"]).convert("RGB")
+                        inputs = feature_extractor(images=img, return_tensors="pt")
+                        yield {
+                            "pixel_values": inputs["pixel_values"].squeeze(0),
+                            "label": item["label"],
+                        }
+                    except Exception:
+                        pass
             return list(gen())
 
         train_data = make_dataset(train_samples)
