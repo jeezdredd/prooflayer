@@ -16,6 +16,7 @@ const BACKOFF = [1000, 2000, 5000, 10000];
 export function useSubmissionWS(submissionId: string | null | undefined) {
   const queryClient = useQueryClient();
   const [connected, setConnected] = useState(false);
+  const [runningAnalyzers, setRunningAnalyzers] = useState<Set<string>>(new Set());
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -26,6 +27,7 @@ export function useSubmissionWS(submissionId: string | null | undefined) {
 
     stoppedRef.current = false;
     retryRef.current = 0;
+    setRunningAnalyzers(new Set());
 
     function connect() {
       if (stoppedRef.current) return;
@@ -43,6 +45,25 @@ export function useSubmissionWS(submissionId: string | null | undefined) {
       ws.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data as string);
+
+          if (data.event === "analyzer_start" && data.analyzer) {
+            setRunningAnalyzers((prev) => {
+              const next = new Set(prev);
+              next.add(data.analyzer);
+              return next;
+            });
+            return;
+          }
+
+          if (data.event === "analyzer_done" && data.analyzer) {
+            setRunningAnalyzers((prev) => {
+              const next = new Set(prev);
+              next.delete(data.analyzer);
+              return next;
+            });
+            return;
+          }
+
           queryClient.setQueryData(["submission", submissionId], (old: Record<string, unknown> | undefined) => {
             if (!old) return old;
             return {
@@ -53,8 +74,10 @@ export function useSubmissionWS(submissionId: string | null | undefined) {
               ...(data.final_verdict !== undefined && { final_verdict: data.final_verdict }),
             };
           });
+
           if (data.status === "completed" || data.status === "failed") {
             stoppedRef.current = true;
+            setRunningAnalyzers(new Set());
             ws.close();
             queryClient.invalidateQueries({ queryKey: ["submission", submissionId] });
           }
@@ -84,8 +107,9 @@ export function useSubmissionWS(submissionId: string | null | undefined) {
       if (timerRef.current) clearTimeout(timerRef.current);
       wsRef.current?.close();
       setConnected(false);
+      setRunningAnalyzers(new Set());
     };
   }, [submissionId, queryClient]);
 
-  return { connected };
+  return { connected, runningAnalyzers };
 }

@@ -69,7 +69,7 @@ interface Step {
   state: "done" | "running" | "pending" | "skipped";
 }
 
-function buildSteps(submission: Submission): Step[] {
+function buildSteps(submission: Submission, runningAnalyzers?: Set<string>): Step[] {
   const expected: ExpectedAnalyzer[] = submission.expected_analyzers || [];
   const isProcessing = submission.status === "processing" || submission.status === "pending";
   const isFailed = submission.status === "failed";
@@ -78,8 +78,13 @@ function buildSteps(submission: Submission): Step[] {
     const result = submission.analysis_results.find((r) => r.analyzer_name === a.name);
     let state: Step["state"];
     if (result) state = "done";
-    else if (isProcessing) state = "pending";
-    else if (isFailed) state = "skipped";
+    else if (isProcessing) {
+      if (runningAnalyzers && runningAnalyzers.size > 0) {
+        state = runningAnalyzers.has(a.name) ? "running" : "pending";
+      } else {
+        state = "pending";
+      }
+    } else if (isFailed) state = "skipped";
     else state = "skipped";
     return { name: a.name, description: a.description, result, state };
   });
@@ -93,7 +98,7 @@ function buildSteps(submission: Submission): Step[] {
     }));
   }
 
-  if (isProcessing) {
+  if (isProcessing && (!runningAnalyzers || runningAnalyzers.size === 0)) {
     const msg = (submission.status_message || "").toLowerCase();
     const msgMatchIdx = msg
       ? sources.findIndex(
@@ -326,8 +331,8 @@ function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
   );
 }
 
-export default function AnalyzerTimeline({ submission }: { submission: Submission }) {
-  const steps = buildSteps(submission);
+export default function AnalyzerTimeline({ submission, runningAnalyzers }: { submission: Submission; runningAnalyzers?: Set<string> }) {
+  const steps = buildSteps(submission, runningAnalyzers);
   if (steps.length === 0) return null;
 
   const doneCount = steps.filter((s) => s.state === "done").length;
@@ -385,15 +390,36 @@ export default function AnalyzerTimeline({ submission }: { submission: Submissio
 
       {/* Status message */}
       {isProcessing && (
-        <div className="mb-6 flex items-center gap-3 px-3 py-2 border-l-2 border-signal-amber bg-signal-amber/5">
-          <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
-          <span className="font-mono text-[11px] text-ink-200">
-            {(() => {
-              const running = steps.find((s) => s.state === "running");
-              if (running) return `Running ${ANALYZER_LABELS[running.name] || running.name}...`;
-              return submission.status_message || "Processing...";
-            })()}
-          </span>
+        <div className="mb-6 px-3 py-2 border-l-2 border-signal-amber bg-signal-amber/5">
+          {(() => {
+            const running = steps.filter((s) => s.state === "running");
+            if (running.length > 1) {
+              return (
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {running.map((s) => (
+                    <span key={s.name} className="flex items-center gap-1.5 font-mono text-[11px] text-ink-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
+                      {ANALYZER_LABELS[s.name] || s.name}
+                    </span>
+                  ))}
+                </div>
+              );
+            }
+            if (running.length === 1) {
+              return (
+                <span className="flex items-center gap-2 font-mono text-[11px] text-ink-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
+                  Running {ANALYZER_LABELS[running[0].name] || running[0].name}...
+                </span>
+              );
+            }
+            return (
+              <span className="flex items-center gap-2 font-mono text-[11px] text-ink-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
+                {submission.status_message || "Processing..."}
+              </span>
+            );
+          })()}
         </div>
       )}
 

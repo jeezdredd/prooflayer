@@ -15,17 +15,25 @@ from .registry import load_analyzer_class
 logger = logging.getLogger(__name__)
 
 
-def _publish_status(submission_id, status_message, status=None, final_score=None, final_verdict=None):
+def _publish_status(submission_id, status_message="", status=None, final_score=None, final_verdict=None, event=None, analyzer=None, verdict=None):
     channel_layer = get_channel_layer()
     if channel_layer is None:
         return
-    payload = {"type": "status", "status_message": status_message}
+    payload = {"type": "status"}
+    if status_message:
+        payload["status_message"] = status_message
     if status is not None:
         payload["status"] = status
     if final_score is not None:
         payload["final_score"] = final_score
     if final_verdict is not None:
         payload["final_verdict"] = final_verdict
+    if event is not None:
+        payload["event"] = event
+    if analyzer is not None:
+        payload["analyzer"] = analyzer
+    if verdict is not None:
+        payload["verdict"] = verdict
     try:
         async_to_sync(channel_layer.group_send)(
             f"submission_{submission_id}",
@@ -107,7 +115,7 @@ def run_analyzer(self, submission_id, config_id):
         status_msg = ANALYZER_STATUS_MESSAGES.get(config.name, f"Running {config.name}...")
         submission.status_message = status_msg
         submission.save(update_fields=["status_message"])
-        _publish_status(submission_id, status_msg)
+        _publish_status(submission_id, status_msg, event="analyzer_start", analyzer=config.name)
 
         meta = dict(submission.metadata or {})
         meta["submission_id"] = str(submission_id)
@@ -123,6 +131,7 @@ def run_analyzer(self, submission_id, config_id):
             evidence=output.evidence,
             execution_time=execution_time,
         )
+        _publish_status(submission_id, event="analyzer_done", analyzer=config.name, verdict=output.verdict)
         return str(result.id)
 
     except Exception as exc:
@@ -138,6 +147,7 @@ def run_analyzer(self, submission_id, config_id):
             execution_time=execution_time,
             error_message=str(exc),
         )
+        _publish_status(submission_id, event="analyzer_done", analyzer=config.name, verdict="error")
         return None
 
 

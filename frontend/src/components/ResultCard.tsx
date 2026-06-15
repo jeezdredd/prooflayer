@@ -4,6 +4,7 @@ import AnalyzerTimeline from "./AnalyzerTimeline";
 
 interface ResultCardProps {
   submission: Submission;
+  runningAnalyzers?: Set<string>;
 }
 
 const VERDICT_TONE: Record<string, { color: string; label: string; ring: string; sub?: string }> = {
@@ -33,7 +34,7 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
-export default function ResultCard({ submission }: ResultCardProps) {
+export default function ResultCard({ submission, runningAnalyzers }: ResultCardProps) {
   const verdict = VERDICT_TONE[submission.final_verdict] || VERDICT_TONE.inconclusive;
   const score = submission.final_score;
   const isProcessing = submission.status === "processing" || submission.status === "pending";
@@ -143,7 +144,7 @@ export default function ResultCard({ submission }: ResultCardProps) {
 
       {/* Pipeline */}
       <div className="px-6 py-6">
-        <AnalyzerTimeline submission={submission} />
+        <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} />
       </div>
     </article>
   );

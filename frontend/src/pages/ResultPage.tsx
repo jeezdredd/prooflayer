@@ -54,7 +54,7 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
   const { data: submission, isLoading, isError } = useSubmissionDetail(id || null);
-  const { connected } = useSubmissionWS(id);
+  const { connected, runningAnalyzers } = useSubmissionWS(id);
 
   if (isLoading) {
     return (
@@ -135,7 +135,7 @@ export default function ResultPage() {
           </div>
         )}
       </div>
-      <ResultCard submission={submission} />
+      <ResultCard submission={submission} runningAnalyzers={runningAnalyzers} />
       {submission.status === "completed" && (
         <ProvenancePanel submissionId={submission.id} />
       )}
