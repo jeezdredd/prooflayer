@@ -1,97 +1,37 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Check, Zap, Building2, GraduationCap, Crown, ArrowLeft } from "lucide-react";
+import {
+  Check, X, Zap, Building2, GraduationCap, Crown,
+  ArrowLeft, Sparkles, Mail,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { billing } from "../api/endpoints";
 import { toast } from "../components/ui/Toast";
 import { useAuthStore } from "../stores/authStore";
 
-const TIERS = [
-  {
-    key: "free",
-    label: "Free",
-    price: "$0",
-    period: "forever",
-    description: "For individuals getting started with content verification.",
-    Icon: Zap,
-    color: "border-ink-700",
-    headerColor: "text-ink-200",
-    features: [
-      "50 submissions / month",
-      "All detection analyzers",
-      "Community voting",
-      "PDF reports",
-    ],
-    locked: [],
-    cta: "Current plan",
-    ctaStyle: "border border-ink-700 text-ink-500 cursor-default",
-  },
-  {
-    key: "pro",
-    label: "Pro",
-    price: "$12",
-    period: "/ month",
-    description: "For journalists, researchers, and power users.",
-    Icon: Crown,
-    color: "border-iris/50",
-    headerColor: "text-iris",
-    features: [
-      "500 submissions / month",
-      "All detection analyzers",
-      "Vision LLM analysis",
-      "PDF reports",
-      "Side-by-side compare",
-      "Widget embed",
-      "API access",
-    ],
-    locked: [],
-    cta: "Subscribe",
-    ctaStyle: "bg-iris hover:bg-iris-light text-white transition",
-  },
-  {
-    key: "education",
-    label: "Education",
-    price: "Contact Sales",
-    period: "",
-    description: "For schools, universities, and non-profit organizations.",
-    Icon: GraduationCap,
-    color: "border-signal-sage/40",
-    headerColor: "text-signal-sage",
-    features: [
-      "2000 submissions / month",
-      "All Pro features",
-      "Classroom dashboard",
-      "Custom onboarding",
-      "Priority support",
-    ],
-    locked: [],
-    cta: "Contact Sales",
-    ctaStyle: "border border-signal-sage/60 text-signal-sage hover:bg-signal-sage/10 transition",
-  },
-  {
-    key: "enterprise",
-    label: "Enterprise",
-    price: "Contact Sales",
-    period: "",
-    description: "For media companies, newsrooms, and large organizations.",
-    Icon: Building2,
-    color: "border-signal-amber/40",
-    headerColor: "text-signal-amber",
-    features: [
-      "Unlimited submissions",
-      "All Pro features",
-      "On-premise deployment option",
-      "SLA guarantee",
-      "Dedicated support",
-      "Custom integrations",
-      "Audit logs",
-    ],
-    locked: [],
-    cta: "Contact Sales",
-    ctaStyle: "border border-signal-amber/60 text-signal-amber hover:bg-signal-amber/10 transition",
-  },
+const FEATURES_GRID = [
+  { label: "Submissions / month", free: "50", pro: "500", edu: "2 000", ent: "Unlimited" },
+  { label: "All detection analyzers",  free: true,  pro: true,  edu: true,  ent: true  },
+  { label: "Vision LLM analysis",      free: true,  pro: true,  edu: true,  ent: true  },
+  { label: "PDF reports",              free: true,  pro: true,  edu: true,  ent: true  },
+  { label: "Public feed & community",  free: true,  pro: true,  edu: true,  ent: true  },
+  { label: "Compare tool",             free: false, pro: true,  edu: true,  ent: true  },
+  { label: "Widget embed",             free: false, pro: true,  edu: true,  ent: true  },
+  { label: "API access",               free: false, pro: true,  edu: true,  ent: true  },
+  { label: "Priority support",         free: false, pro: false, edu: true,  ent: true  },
+  { label: "SLA guarantee",            free: false, pro: false, edu: false, ent: true  },
+  { label: "On-premise option",        free: false, pro: false, edu: false, ent: true  },
 ];
+
+function Cell({ val }: { val: string | boolean }) {
+  if (typeof val === "string") {
+    return <span className="font-mono text-[11px] text-ink-200 tabular-nums">{val}</span>;
+  }
+  return val
+    ? <Check size={14} strokeWidth={2.5} className="text-signal-sage mx-auto" />
+    : <X size={12} strokeWidth={2} className="text-ink-700 mx-auto" />;
+}
 
 export default function PricingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -105,6 +45,7 @@ export default function PricingPage() {
   });
 
   const handleCheckout = async () => {
+    if (!isAuthenticated) { window.location.href = "/register"; return; }
     setCheckoutLoading(true);
     try {
       const res = await billing.checkout();
@@ -126,177 +67,306 @@ export default function PricingPage() {
     }
   };
 
-  const handleContactSales = (tier: string) => {
-    window.open(
-      `mailto:hello@prooflayer.com?subject=ProofLayer ${tier} inquiry`,
-      "_blank"
-    );
-  };
+  const isCurrent = (key: string) => sub?.tier === key;
+  const usedPct = sub ? Math.min(100, (sub.uploads_used / sub.uploads_limit) * 100) : 0;
 
   return (
-    <div>
-      {!isAuthenticated && (
-        <div className="flex items-center justify-between mb-10 pb-6 border-b border-white/5">
-          <Link to="/" className="font-display text-2xl text-ink-50 leading-none">
-            Proof<span className="italic text-iris">Layer</span>
-          </Link>
-          <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.14em]">
-            <Link to="/login" className="text-ink-400 hover:text-ink-100 transition">Login</Link>
-            <Link to="/register" className="bg-iris hover:bg-iris-light text-white px-4 py-2 transition">
-              Get Started
-            </Link>
-          </div>
-        </div>
-      )}
-      {isAuthenticated && (
-        <Link to="/dashboard" className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400 hover:text-ink-100 transition mb-8">
-          <ArrowLeft size={13} strokeWidth={1.5} /> Dashboard
-        </Link>
-      )}
-      <div className="mb-10">
-        <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-600 mb-3">
-          Plans
-        </div>
-        <h1 className="font-display text-3xl text-ink-50 mb-2">Pricing</h1>
-        <p className="text-ink-400 text-sm max-w-xl">
-          All plans include full access to ProofLayer detectors. Upgrade for higher limits and advanced features.
-        </p>
-      </div>
+    <div className="min-h-screen bg-ink-950">
 
-      {sub && (
-        <div className="mb-8 p-4 case-card flex items-center justify-between">
-          <div>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">
-              Current plan
-            </span>
-            <div className="font-mono text-sm text-ink-100 mt-1 capitalize">
-              {sub.tier}{" "}
-              <span className="text-ink-500">
-                - {sub.uploads_used} / {sub.uploads_limit} uploads this month
-              </span>
+      {/* ── Public nav ── */}
+      {!isAuthenticated ? (
+        <header className="sticky top-0 z-30 backdrop-blur-xl bg-ink-950/90 border-b border-white/5">
+          <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+            <Link to="/" className="font-display text-xl text-ink-50 leading-none">
+              Proof<span className="italic text-iris">Layer</span>
+            </Link>
+            <div className="flex items-center gap-3">
+              <Link to="/login" className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400 hover:text-ink-100 transition px-3 py-2">
+                Login
+              </Link>
+              <Link to="/register" className="font-mono text-[11px] uppercase tracking-[0.14em] bg-iris hover:bg-iris-light text-white px-4 py-2 transition">
+                Get Started →
+              </Link>
             </div>
           </div>
-          {sub.tier === "pro" && (
-            <button
-              onClick={handlePortal}
-              disabled={portalLoading}
-              className="font-mono text-[10px] uppercase tracking-[0.14em] border border-ink-600 text-ink-400 hover:text-ink-200 hover:border-ink-400 px-3 py-1.5 transition disabled:opacity-50"
-            >
-              {portalLoading ? "..." : "Manage Billing"}
-            </button>
-          )}
+        </header>
+      ) : (
+        <div className="max-w-5xl mx-auto px-6 pt-6">
+          <Link to="/dashboard" className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500 hover:text-ink-200 transition">
+            <ArrowLeft size={12} strokeWidth={1.5} /> Dashboard
+          </Link>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {TIERS.map((tier, i) => {
-          const Icon = tier.Icon;
-          const isCurrent = sub?.tier === tier.key;
-          return (
-            <motion.div
-              key={tier.key}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className={`case-card p-6 flex flex-col border ${tier.color} ${isCurrent ? "ring-1 ring-iris/30" : ""}`}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Icon size={16} strokeWidth={1.5} className={tier.headerColor} />
-                <span className={`font-mono text-[11px] uppercase tracking-[0.14em] ${tier.headerColor}`}>
-                  {tier.label}
+      <div className="max-w-5xl mx-auto px-6 py-16">
+
+        {/* ── Hero ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-14"
+        >
+          <div className="inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.22em] text-ink-600 border border-white/6 px-3 py-1.5 mb-6">
+            <Sparkles size={10} strokeWidth={1.5} className="text-iris" />
+            Simple, transparent pricing
+          </div>
+          <h1 className="font-display text-4xl md:text-5xl text-ink-50 mb-4 leading-tight">
+            Verify more.<br />
+            <span className="italic text-iris">Pay less.</span>
+          </h1>
+          <p className="text-ink-400 text-sm max-w-md mx-auto leading-relaxed">
+            All plans include every detector. Upgrade for higher limits and team tools.
+          </p>
+        </motion.div>
+
+        {/* ── Usage bar (logged in) ── */}
+        {sub && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-10 p-4 border border-white/6 bg-white/[0.02] flex items-center gap-4"
+          >
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 capitalize">
+                  {sub.tier} plan · this month
                 </span>
-                {isCurrent && (
-                  <span className="ml-auto font-mono text-[9px] uppercase tracking-[0.16em] text-iris bg-iris/10 px-2 py-0.5 rounded-full">
-                    Active
-                  </span>
-                )}
+                <span className="font-mono text-[10px] text-ink-400 tabular-nums">
+                  {sub.uploads_used} / {sub.uploads_limit}
+                </span>
               </div>
-
-              <div className="mb-4">
-                <span className="font-display text-2xl text-ink-50">{tier.price}</span>
-                {tier.period && (
-                  <span className="text-ink-500 text-sm ml-1">{tier.period}</span>
-                )}
-                <p className="text-ink-500 text-xs mt-2 leading-relaxed">{tier.description}</p>
+              <div className="h-1 bg-ink-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${usedPct}%`,
+                    background: usedPct > 85 ? "#ef4444" : usedPct > 60 ? "#f59e0b" : "#7c6af7",
+                  }}
+                />
               </div>
-
-              <ul className="flex-1 space-y-2 mb-6">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2">
-                    <Check size={12} strokeWidth={2} className="text-signal-sage mt-0.5 shrink-0" />
-                    <span className="font-mono text-[11px] text-ink-300">{f}</span>
-                  </li>
-                ))}
-              </ul>
-
+            </div>
+            {sub.tier === "pro" && (
               <button
-                onClick={() => {
-                  if (isCurrent && tier.key === "pro") return;
-                  if (tier.key === "pro") handleCheckout();
-                  else if (tier.key === "education") handleContactSales("Education");
-                  else if (tier.key === "enterprise") handleContactSales("Enterprise");
-                }}
-                disabled={
-                  (tier.key === "free") ||
-                  (isCurrent && tier.key !== "pro") ||
-                  (tier.key === "pro" && checkoutLoading)
-                }
-                className={`w-full py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] ${
-                  isCurrent && tier.key === "free"
-                    ? "border border-ink-700 text-ink-600 cursor-default"
-                    : tier.ctaStyle
-                } disabled:opacity-50`}
+                onClick={handlePortal}
+                disabled={portalLoading}
+                className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] border border-ink-700 text-ink-400 hover:text-ink-200 hover:border-ink-500 px-3 py-1.5 transition disabled:opacity-40"
               >
-                {tier.key === "pro" && checkoutLoading
-                  ? "..."
-                  : isCurrent
-                  ? "Current plan"
-                  : tier.cta}
+                {portalLoading ? "..." : "Manage"}
               </button>
-            </motion.div>
-          );
-        })}
-      </div>
+            )}
+          </motion.div>
+        )}
 
-      <div className="mt-10 p-6 case-card border border-ink-800">
-        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mb-3">
-          Feature comparison
+        {/* ── Tier cards ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/5 border border-white/5 mb-1">
+          {/* FREE */}
+          {[
+            {
+              key: "free", label: "Free", Icon: Zap,
+              price: "$0", period: "forever",
+              desc: "Get started with content verification.",
+              accentClass: "text-ink-400", borderClass: "",
+              features: ["50 submissions / month", "All analyzers", "Community feed", "PDF reports"],
+            },
+            {
+              key: "pro", label: "Pro", Icon: Crown,
+              price: "$12", period: "/ month",
+              desc: "For journalists, researchers, power users.",
+              accentClass: "text-iris", borderClass: "",
+              features: ["500 submissions / month", "Everything in Free", "Compare tool", "Widget embed", "API access"],
+              featured: true,
+            },
+            {
+              key: "education", label: "Education", Icon: GraduationCap,
+              price: "Contact", period: "sales",
+              desc: "Universities, schools, non-profits.",
+              accentClass: "text-signal-sage", borderClass: "",
+              features: ["2 000 submissions / month", "Everything in Pro", "Classroom dashboard", "Priority support"],
+            },
+            {
+              key: "enterprise", label: "Enterprise", Icon: Building2,
+              price: "Contact", period: "sales",
+              desc: "Newsrooms, media companies, agencies.",
+              accentClass: "text-signal-amber", borderClass: "",
+              features: ["Unlimited submissions", "Everything in Pro", "On-premise option", "SLA", "Dedicated support"],
+            },
+          ].map((tier, i) => {
+            const Icon = tier.Icon;
+            const current = isCurrent(tier.key);
+            return (
+              <motion.div
+                key={tier.key}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+                className={`relative flex flex-col p-6 bg-ink-950 ${
+                  tier.featured ? "ring-1 ring-iris/40 z-10" : ""
+                }`}
+              >
+                {tier.featured && (
+                  <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-iris to-transparent" />
+                )}
+                {tier.featured && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-iris/[0.04] to-transparent pointer-events-none" />
+                )}
+                {current && (
+                  <div className="absolute top-4 right-4">
+                    <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-iris bg-iris/10 border border-iris/20 px-2 py-0.5">
+                      Active
+                    </span>
+                  </div>
+                )}
+                {tier.featured && !current && (
+                  <div className="absolute top-4 right-4">
+                    <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-iris bg-iris/10 border border-iris/20 px-2 py-0.5">
+                      Popular
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 mb-5">
+                  <Icon size={15} strokeWidth={1.5} className={tier.accentClass} />
+                  <span className={`font-mono text-[11px] uppercase tracking-[0.16em] ${tier.accentClass}`}>
+                    {tier.label}
+                  </span>
+                </div>
+
+                <div className="mb-5">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`font-display text-3xl ${tier.featured ? "text-ink-50" : "text-ink-200"}`}>
+                      {tier.price}
+                    </span>
+                    <span className="font-mono text-[11px] text-ink-600">{tier.period}</span>
+                  </div>
+                  <p className="font-mono text-[11px] text-ink-500 mt-2 leading-relaxed">{tier.desc}</p>
+                </div>
+
+                <ul className="flex-1 space-y-2.5 mb-7">
+                  {tier.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <Check
+                        size={12}
+                        strokeWidth={2.5}
+                        className={`shrink-0 mt-0.5 ${tier.featured ? "text-iris" : "text-signal-sage"}`}
+                      />
+                      <span className="font-mono text-[11px] text-ink-300 leading-relaxed">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => {
+                    if (tier.key === "free") return;
+                    if (tier.key === "pro") handleCheckout();
+                    else window.open(`mailto:hello@prooflayer.com?subject=ProofLayer ${tier.label} inquiry`, "_blank");
+                  }}
+                  disabled={tier.key === "free" || (current && tier.key === "pro") || (tier.key === "pro" && checkoutLoading)}
+                  aria-label={`${tier.label} plan CTA`}
+                  className={`w-full py-3 font-mono text-[11px] uppercase tracking-[0.14em] transition-all cursor-pointer ${
+                    tier.key === "free"
+                      ? "border border-ink-800 text-ink-700 cursor-default"
+                      : tier.featured
+                      ? current
+                        ? "border border-iris/40 text-iris/60 cursor-default"
+                        : "bg-iris hover:bg-iris-light text-white"
+                      : tier.key === "education"
+                      ? "border border-signal-sage/40 text-signal-sage hover:bg-signal-sage/10"
+                      : "border border-signal-amber/40 text-signal-amber hover:bg-signal-amber/10"
+                  } disabled:opacity-40 disabled:cursor-default`}
+                >
+                  {tier.key === "pro" && checkoutLoading
+                    ? "Redirecting..."
+                    : current
+                    ? "Current plan"
+                    : tier.key === "free"
+                    ? "Free forever"
+                    : tier.key === "pro"
+                    ? isAuthenticated ? "Subscribe →" : "Get Pro →"
+                    : <span className="flex items-center justify-center gap-1.5"><Mail size={11} strokeWidth={1.5} />Contact Sales</span>
+                  }
+                </button>
+              </motion.div>
+            );
+          })}
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full font-mono text-[11px]">
-            <thead>
-              <tr className="border-b border-ink-800">
-                <th className="text-left py-2 text-ink-500 font-normal">Feature</th>
-                <th className="text-center py-2 text-ink-400 font-normal">Free</th>
-                <th className="text-center py-2 text-iris font-normal">Pro</th>
-                <th className="text-center py-2 text-signal-sage font-normal">Education</th>
-                <th className="text-center py-2 text-signal-amber font-normal">Enterprise</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-900">
-              {[
-                ["Submissions / month", "50", "500", "2000", "Unlimited"],
-                ["All analyzers", "✓", "✓", "✓", "✓"],
-                ["Vision LLM", "✓", "✓", "✓", "✓"],
-                ["PDF reports", "✓", "✓", "✓", "✓"],
-                ["Compare tool", "-", "✓", "✓", "✓"],
-                ["Widget embed", "-", "✓", "✓", "✓"],
-                ["API access", "-", "✓", "✓", "✓"],
-                ["Priority support", "-", "-", "✓", "✓"],
-                ["SLA", "-", "-", "-", "✓"],
-              ].map(([feature, ...vals]) => (
-                <tr key={feature} className="hover:bg-white/[0.01]">
-                  <td className="py-2 text-ink-400">{feature}</td>
-                  {vals.map((v, i) => (
-                    <td key={i} className={`py-2 text-center ${v === "-" ? "text-ink-700" : "text-ink-200"}`}>
-                      {v}
-                    </td>
+
+        {/* ── Feature comparison table ── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="mt-12 border border-white/5"
+        >
+          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.015]">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-500">
+              Full feature comparison
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[540px]">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="text-left px-6 py-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-600 font-normal w-1/3">
+                    Feature
+                  </th>
+                  {[
+                    { label: "Free", cls: "text-ink-400" },
+                    { label: "Pro", cls: "text-iris" },
+                    { label: "Education", cls: "text-signal-sage" },
+                    { label: "Enterprise", cls: "text-signal-amber" },
+                  ].map((h) => (
+                    <th key={h.label} className={`px-4 py-3 font-mono text-[10px] uppercase tracking-[0.14em] font-normal text-center ${h.cls}`}>
+                      {h.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {FEATURES_GRID.map((row, ri) => (
+                  <tr
+                    key={row.label}
+                    className={`border-b border-white/[0.03] ${ri % 2 === 0 ? "" : "bg-white/[0.01]"}`}
+                  >
+                    <td className="px-6 py-3 font-mono text-[11px] text-ink-400">{row.label}</td>
+                    <td className="px-4 py-3 text-center"><Cell val={row.free} /></td>
+                    <td className="px-4 py-3 text-center"><Cell val={row.pro} /></td>
+                    <td className="px-4 py-3 text-center"><Cell val={row.edu} /></td>
+                    <td className="px-4 py-3 text-center"><Cell val={row.ent} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+
+        {/* ── FAQ strip ── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.45 }}
+          className="mt-12 grid md:grid-cols-3 gap-px bg-white/5 border border-white/5"
+        >
+          {[
+            { q: "Can I cancel anytime?", a: "Yes. Cancel from the billing portal and you keep access until the period ends." },
+            { q: "Is there a free trial?", a: "The Free plan is permanent — 50 submissions/month, forever. No card required." },
+            { q: "What payment methods?", a: "Cards, PayPal, and local methods via Paddle. Secure checkout, no data stored by us." },
+          ].map(({ q, a }) => (
+            <div key={q} className="p-6 bg-ink-950">
+              <div className="font-mono text-[11px] text-ink-200 mb-2">{q}</div>
+              <div className="font-mono text-[11px] text-ink-500 leading-relaxed">{a}</div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* ── Footer (public only) ── */}
+        {!isAuthenticated && (
+          <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-700">
+            <Link to="/terms" className="hover:text-ink-400 transition">Terms</Link>
+            <Link to="/privacy" className="hover:text-ink-400 transition">Privacy</Link>
+            <Link to="/refund" className="hover:text-ink-400 transition">Refund Policy</Link>
+            <a href="mailto:hello@prooflayer.com" className="hover:text-ink-400 transition">hello@prooflayer.com</a>
+          </div>
+        )}
       </div>
     </div>
   );
