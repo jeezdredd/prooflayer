@@ -1,10 +1,12 @@
 const API_BASE = "https://prooflayer.com/api/v1";
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "pl-analyze",
-    title: "Verify with ProofLayer",
-    contexts: ["image"],
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "pl-analyze",
+      title: "Verify with ProofLayer",
+      contexts: ["image"],
+    });
   });
 });
 
