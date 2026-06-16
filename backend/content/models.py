@@ -2,7 +2,7 @@ import hashlib
 import uuid
 
 from django.conf import settings
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 from pgvector.django import HnswIndex, VectorField
 
@@ -140,7 +140,7 @@ class AnonymousQuota(models.Model):
                 quota, _ = cls.objects.select_for_update().get_or_create(
                     ip_hash=ip_hash, date=today, defaults={"count": 0}
                 )
-            except Exception:
+            except IntegrityError:
                 quota = cls.objects.select_for_update().get(ip_hash=ip_hash, date=today)
             if quota.count >= limit:
                 return False, 0

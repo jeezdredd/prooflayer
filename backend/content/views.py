@@ -1,5 +1,7 @@
 import datetime
 import io
+import ipaddress
+import socket
 from urllib.parse import urlparse
 
 import requests as http_requests
@@ -19,6 +21,7 @@ from rest_framework.views import APIView
 from .models import Submission, VerdictOverride, AnonymousQuota
 from .pdf import generate_report_pdf
 from .serializers import (
+    PublicSubmissionSerializer,
     ReviewQueueSerializer,
     SubmissionCreateSerializer,
     SubmissionDetailSerializer,
@@ -27,6 +30,10 @@ from .serializers import (
 )
 from .throttles import UploadRateThrottle
 from .validators import validate_file_size, validate_mime_type
+from billing.models import get_or_create_subscription, uploads_this_month
+from content.tasks import process_submission
+
+User = get_user_model()
 
 
 class SubmissionViewSet(
@@ -68,7 +75,6 @@ class SubmissionViewSet(
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
-        from billing.models import get_or_create_subscription, uploads_this_month
         sub = get_or_create_subscription(request.user)
         used = uploads_this_month(request.user)
         if used >= sub.uploads_per_month:
@@ -98,7 +104,6 @@ class SubmissionViewSet(
             file_size=file.size,
         )
 
-        from content.tasks import process_submission
         process_submission.delay(str(submission.id))
 
         serializer = SubmissionCreateSerializer(submission)
@@ -128,7 +133,6 @@ class SubmissionViewSet(
 
     @action(detail=True, methods=["get"], url_path="report.pdf")
     def report_pdf(self, request, id=None):
-        from billing.models import get_or_create_subscription
         sub = get_or_create_subscription(request.user)
         if not sub.can_download_pdf:
             return Response({"detail": "PDF reports require Pro subscription.", "code": "upgrade_required"}, status=status.HTTP_402_PAYMENT_REQUIRED)
@@ -227,7 +231,6 @@ class PublicFeedView(generics.ListAPIView):
     authentication_classes = []
 
     def get_serializer_class(self):
-        from .serializers import PublicSubmissionSerializer
         return PublicSubmissionSerializer
 
     def get_queryset(self):
@@ -244,7 +247,6 @@ class PublicSubmissionDetailView(generics.RetrieveAPIView):
     lookup_field = "id"
 
     def get_serializer_class(self):
-        from .serializers import PublicSubmissionSerializer
         return PublicSubmissionSerializer
 
     def get_queryset(self):
@@ -295,8 +297,15 @@ class AnalyzeUrlView(APIView):
         if not url.startswith(("http://", "https://")):
             return Response({"detail": "Invalid URL."}, status=status.HTTP_400_BAD_REQUEST)
 
+        parsed_url = urlparse(url)
+        try:
+            resolved_ip = ipaddress.ip_address(socket.gethostbyname(parsed_url.hostname or ""))
+        except (socket.gaierror, ValueError):
+            return Response({"detail": "Invalid URL."}, status=status.HTTP_400_BAD_REQUEST)
+        if resolved_ip.is_private or resolved_ip.is_loopback or resolved_ip.is_link_local or resolved_ip.is_reserved:
+            return Response({"detail": "URL not allowed."}, status=status.HTTP_400_BAD_REQUEST)
+
         if request.user.is_authenticated:
-            from billing.models import get_or_create_subscription, uploads_this_month
             sub = get_or_create_subscription(request.user)
             used = uploads_this_month(request.user)
             if used >= sub.uploads_per_month:
@@ -306,7 +315,7 @@ class AnalyzeUrlView(APIView):
                 )
             owner = request.user
         else:
-            allowed, remaining = AnonymousQuota.check_and_increment(request)
+            allowed, remaining = AnonymousQuota.check_and_increment(request, limit=5)
             if not allowed:
                 now = timezone.now()
                 tomorrow = (now + datetime.timedelta(days=1)).replace(
@@ -317,7 +326,6 @@ class AnalyzeUrlView(APIView):
                     {"code": "anonymous_limit_reached", "resets_in": resets_in},
                     status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )
-            User = get_user_model()
             owner = User.objects.filter(is_staff=True).first()
             if owner is None:
                 return Response(
@@ -344,17 +352,10 @@ class AnalyzeUrlView(APIView):
 
         filename = urlparse(url).path.split("/")[-1] or "image"
 
-        class _FakeFile:
-            def __init__(self, content, name):
-                self._buf = io.BytesIO(content)
-                self.name = name
-                self.size = len(content)
-            def read(self, n=-1): return self._buf.read(n)
-            def seek(self, pos): return self._buf.seek(pos)
-
-        fake = _FakeFile(data, filename)
+        buf = io.BytesIO(data)
+        buf.name = filename
         try:
-            mime_type = validate_mime_type(fake)
+            mime_type = validate_mime_type(buf)
         except Exception:
             return Response(
                 {"detail": "Unsupported file type."},
@@ -371,7 +372,6 @@ class AnalyzeUrlView(APIView):
             source_url=url,
         )
 
-        from content.tasks import process_submission
         process_submission.delay(str(submission.id))
 
-        return Response({"submission_id": str(submission.id)}, status=status.HTTP_200_OK)
+        return Response({"submission_id": str(submission.id)}, status=status.HTTP_201_CREATED)
