@@ -1,7 +1,9 @@
+import hashlib
 import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from pgvector.django import HnswIndex, VectorField
 
 CLIP_EMBED_DIM = 512
@@ -109,3 +111,32 @@ class VerdictOverride(models.Model):
 
     def __str__(self):
         return f"{self.submission_id} {self.previous_verdict}→{self.new_verdict}"
+
+
+class AnonymousQuota(models.Model):
+    ip_hash = models.CharField(max_length=64, db_index=True)
+    date = models.DateField(db_index=True)
+    count = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = "anonymous_quota"
+        unique_together = [("ip_hash", "date")]
+
+    @classmethod
+    def get_ip_hash(cls, request) -> str:
+        ip = (
+            request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+            or request.META.get("REMOTE_ADDR", "")
+        )
+        return hashlib.sha256(ip.encode()).hexdigest()
+
+    @classmethod
+    def check_and_increment(cls, request, limit: int = 5) -> tuple[bool, int]:
+        ip_hash = cls.get_ip_hash(request)
+        today = timezone.now().date()
+        quota, _ = cls.objects.get_or_create(ip_hash=ip_hash, date=today)
+        if quota.count >= limit:
+            return False, 0
+        quota.count += 1
+        quota.save(update_fields=["count"])
+        return True, limit - quota.count
