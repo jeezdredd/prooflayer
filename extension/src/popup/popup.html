@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="./popup.css" />
+    <title>ProofLayer</title>
+  </head>
+  <body>
+    <header>
+      <img src="../../assets/icon32.png" alt="ProofLayer" />
+      <span>ProofLayer</span>
+    </header>
+    <main>
+      <div id="state-idle">
+        <p>Right-click any image on the page and select <strong>Verify with ProofLayer</strong>.</p>
+      </div>
+      <div id="state-analyzing" hidden>
+        <div class="spinner"></div>
+        <p>Analyzing...</p>
+      </div>
+      <div id="state-result" hidden>
+        <span id="verdict-badge" class="verdict-badge"></span>
+        <div class="score-bar-wrap">
+          <div id="score-bar" class="score-bar" style="width:0%"></div>
+        </div>
+        <p id="result-meta" class="result-meta"></p>
+        <a id="result-link" class="result-link" href="#" target="_blank">View full report</a>
+        <button class="btn-check-again" id="btn-check-again">Check another image</button>
+      </div>
+      <div id="state-limit" hidden>
+        <p>Daily limit reached (5 checks).</p>
+        <small id="limit-reset"></small>
+        <button class="btn-login" id="btn-login">Log in for unlimited checks</button>
+      </div>
+    </main>
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>
