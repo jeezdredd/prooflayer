@@ -1,4 +1,3 @@
-import pytest
 import requests
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +7,6 @@ from rest_framework.test import APIClient
 from users.tests.factories import UserFactory
 
 
-@pytest.mark.django_db
 class AnalyzeUrlViewTest(TestCase):
     URL = "/api/v1/content/analyze-url/"
 
@@ -57,7 +55,11 @@ class AnalyzeUrlViewTest(TestCase):
     @patch("content.views.uploads_this_month", return_value=0)
     @patch("content.views.get_or_create_subscription")
     @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
-    def test_auth_user_success(self, mock_dns, mock_sub, mock_uploads, mock_get, mock_mime, mock_delay):
+    @patch("content.views.Submission.objects.create")
+    def test_auth_user_success(self, mock_create, mock_dns, mock_sub, mock_uploads, mock_get, mock_mime, mock_delay):
+        mock_submission = MagicMock()
+        mock_submission.id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        mock_create.return_value = mock_submission
         mock_subscription = MagicMock()
         mock_subscription.uploads_per_month = 10
         mock_sub.return_value = mock_subscription
@@ -143,7 +145,11 @@ class AnalyzeUrlViewTest(TestCase):
     @patch("content.views.http_requests.get")
     @patch("content.views.AnonymousQuota.check_and_increment", return_value=(True, 4))
     @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
-    def test_anonymous_full_success(self, mock_dns, mock_quota, mock_get, mock_mime, mock_delay):
+    @patch("content.views.Submission.objects.create")
+    def test_anonymous_full_success(self, mock_create, mock_dns, mock_quota, mock_get, mock_mime, mock_delay):
+        mock_submission = MagicMock()
+        mock_submission.id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        mock_create.return_value = mock_submission
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
         mock_resp.iter_content.return_value = [b'\xff\xd8\xff' + b'x' * 100]
