@@ -15,8 +15,16 @@
         <p>Right-click any image on the page and select <strong>Verify with ProofLayer</strong>.</p>
       </div>
       <div id="state-analyzing" hidden>
-        <div class="spinner"></div>
-        <p>Analyzing...</p>
+        <div class="freq-bars">
+          <div class="freq-bar"></div>
+          <div class="freq-bar"></div>
+          <div class="freq-bar"></div>
+          <div class="freq-bar"></div>
+          <div class="freq-bar"></div>
+          <div class="freq-bar"></div>
+          <div class="freq-bar"></div>
+        </div>
+        <p class="scan-label" id="scan-label">Running AI analysis...</p>
       </div>
       <div id="state-result" hidden>
         <span id="verdict-badge" class="verdict-badge"></span>

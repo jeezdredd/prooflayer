@@ -1,6 +1,35 @@
 const API_BASE = "https://prooflayer.com/api/v1";
 const POLL_INTERVAL = 2000;
 
+const SCAN_MESSAGES = [
+  "Running AI analysis...",
+  "Checking metadata...",
+  "Scanning for tampering...",
+  "Verifying authenticity...",
+  "Analyzing pixel patterns...",
+  "Cross-referencing database...",
+];
+
+let scanMsgInterval: ReturnType<typeof setInterval> | null = null;
+
+function startScanMessages() {
+  const el = document.getElementById("scan-label");
+  if (!el) return;
+  let i = 0;
+  el.textContent = SCAN_MESSAGES[0];
+  scanMsgInterval = setInterval(() => {
+    i = (i + 1) % SCAN_MESSAGES.length;
+    el.textContent = SCAN_MESSAGES[i];
+  }, 2200);
+}
+
+function stopScanMessages() {
+  if (scanMsgInterval !== null) {
+    clearInterval(scanMsgInterval);
+    scanMsgInterval = null;
+  }
+}
+
 type State = "idle" | "analyzing" | "result" | "limit";
 
 function show(state: State) {
@@ -8,6 +37,11 @@ function show(state: State) {
     const el = document.getElementById(`state-${s}`);
     if (el) el.hidden = s !== state;
   });
+  if (state === "analyzing") {
+    startScanMessages();
+  } else {
+    stopScanMessages();
+  }
 }
 
 function formatVerdict(v: string): string {
