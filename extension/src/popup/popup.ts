@@ -133,7 +133,11 @@ document.getElementById("btn-login")?.addEventListener("click", () => {
 chrome.storage.local.get("pl_pending_result", async ({ pl_pending_result }) => {
   if (pl_pending_result) {
     await chrome.storage.local.remove("pl_pending_result");
-    if (pl_pending_result.status === 429 || pl_pending_result.error === "anonymous_limit_reached") {
+    if (pl_pending_result.error === "data_url_unsupported") {
+      const msg = document.getElementById("idle-msg");
+      if (msg) msg.textContent = "This image is embedded inline and can't be verified. Try right-clicking a different image.";
+      show("idle");
+    } else if (pl_pending_result.status === 429 || pl_pending_result.error === "anonymous_limit_reached") {
       show("limit");
     } else if (pl_pending_result.submission_id) {
       show("analyzing");

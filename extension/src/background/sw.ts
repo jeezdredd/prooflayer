@@ -42,6 +42,11 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId !== "pl-analyze") return;
   const url = info.srcUrl ?? pendingImageUrl;
   if (!url || !tab?.id) return;
+  if (url.startsWith("data:")) {
+    chrome.storage.local.set({ pl_pending_result: { error: "data_url_unsupported" } });
+    chrome.action.openPopup().catch(() => {});
+    return;
+  }
 
   analyzeUrl(url).then((result) => {
     chrome.storage.local.set({ pl_pending_result: result });
