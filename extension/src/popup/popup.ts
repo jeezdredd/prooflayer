@@ -96,13 +96,6 @@ document.getElementById("btn-login")?.addEventListener("click", () => {
   chrome.tabs.create({ url: "https://prooflayer.com/login" });
 });
 
-chrome.storage.local.get("pl_pending_url", async ({ pl_pending_url }) => {
-  if (pl_pending_url) {
-    await chrome.storage.local.remove("pl_pending_url");
-    await analyze(pl_pending_url);
-  }
-});
-
 chrome.storage.local.get("pl_pending_result", async ({ pl_pending_result }) => {
   if (pl_pending_result) {
     await chrome.storage.local.remove("pl_pending_result");
