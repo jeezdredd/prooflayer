@@ -38,7 +38,15 @@ async function poll(submissionId: string): Promise<void> {
 
   const url = `${API_BASE}/content/submissions/${submissionId}/`;
 
+  let attempts = 0;
+  const MAX_ATTEMPTS = 60;
+
   const check = async (): Promise<void> => {
+    if (attempts >= MAX_ATTEMPTS) {
+      show("idle");
+      return;
+    }
+    attempts++;
     const res = await fetch(url, { headers });
     if (!res.ok) return;
     const data = await res.json();
@@ -92,5 +100,19 @@ chrome.storage.local.get("pl_pending_url", async ({ pl_pending_url }) => {
   if (pl_pending_url) {
     await chrome.storage.local.remove("pl_pending_url");
     await analyze(pl_pending_url);
+  }
+});
+
+chrome.storage.local.get("pl_pending_result", async ({ pl_pending_result }) => {
+  if (pl_pending_result) {
+    await chrome.storage.local.remove("pl_pending_result");
+    if (pl_pending_result.status === 429 || pl_pending_result.error === "anonymous_limit_reached") {
+      show("limit");
+    } else if (pl_pending_result.submission_id) {
+      show("analyzing");
+      await poll(pl_pending_result.submission_id);
+    } else {
+      show("idle");
+    }
   }
 });
