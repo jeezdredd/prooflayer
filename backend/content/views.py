@@ -1,5 +1,13 @@
+import datetime
+import io
+from urllib.parse import urlparse
+
+import requests as http_requests
+from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.db.models import Count, Avg
 from django.http import HttpResponse
+from django.utils import timezone
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
@@ -8,7 +16,7 @@ from users.permissions import IsVerifiedUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Submission, VerdictOverride
+from .models import Submission, VerdictOverride, AnonymousQuota
 from .pdf import generate_report_pdf
 from .serializers import (
     ReviewQueueSerializer,
@@ -276,3 +284,94 @@ class WidgetEmbedView(APIView):
             },
             headers={"Access-Control-Allow-Origin": "*"},
         )
+
+
+class AnalyzeUrlView(APIView):
+    permission_classes = [AllowAny]
+    MAX_SIZE = 20 * 1024 * 1024
+
+    def post(self, request):
+        url = (request.data.get("url") or "").strip()
+        if not url.startswith(("http://", "https://")):
+            return Response({"detail": "Invalid URL."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.user.is_authenticated:
+            from billing.models import get_or_create_subscription, uploads_this_month
+            sub = get_or_create_subscription(request.user)
+            used = uploads_this_month(request.user)
+            if used >= sub.uploads_per_month:
+                return Response(
+                    {"code": "upload_limit_reached"},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+            owner = request.user
+        else:
+            allowed, remaining = AnonymousQuota.check_and_increment(request)
+            if not allowed:
+                now = timezone.now()
+                tomorrow = (now + datetime.timedelta(days=1)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                resets_in = int((tomorrow - now).total_seconds())
+                return Response(
+                    {"code": "anonymous_limit_reached", "resets_in": resets_in},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+            User = get_user_model()
+            owner = User.objects.filter(is_staff=True).first()
+            if owner is None:
+                return Response(
+                    {"detail": "Service not configured."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+        try:
+            resp = http_requests.get(url, timeout=10, stream=True)
+            resp.raise_for_status()
+            data = b""
+            for chunk in resp.iter_content(chunk_size=65536):
+                data += chunk
+                if len(data) > self.MAX_SIZE:
+                    return Response(
+                        {"detail": "File too large (max 20 MB)."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+        except http_requests.RequestException as exc:
+            return Response(
+                {"detail": f"Could not fetch URL: {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        filename = urlparse(url).path.split("/")[-1] or "image"
+
+        class _FakeFile:
+            def __init__(self, content, name):
+                self._buf = io.BytesIO(content)
+                self.name = name
+                self.size = len(content)
+            def read(self, n=-1): return self._buf.read(n)
+            def seek(self, pos): return self._buf.seek(pos)
+
+        fake = _FakeFile(data, filename)
+        try:
+            mime_type = validate_mime_type(fake)
+        except Exception:
+            return Response(
+                {"detail": "Unsupported file type."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_obj = ContentFile(data, name=filename)
+        submission = Submission.objects.create(
+            user=owner,
+            file=file_obj,
+            original_filename=filename,
+            mime_type=mime_type,
+            file_size=len(data),
+            source_url=url,
+        )
+
+        from content.tasks import process_submission
+        process_submission.delay(str(submission.id))
+
+        return Response({"submission_id": str(submission.id)}, status=status.HTTP_200_OK)

@@ -44,6 +44,7 @@ class Submission(models.Model):
     pdq_hash = models.CharField(max_length=64, blank=True, db_index=True)
     pdq_quality = models.PositiveSmallIntegerField(null=True, blank=True)
     clip_embedding = VectorField(dimensions=CLIP_EMBED_DIM, null=True, blank=True)
+    source_url = models.URLField(max_length=2000, blank=True)
     is_public = models.BooleanField(default=False, db_index=True)
     approved_for_training = models.BooleanField(default=False, db_index=True)
     verified_label = models.CharField(
