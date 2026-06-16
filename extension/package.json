@@ -1,0 +1,16 @@
+{
+  "name": "prooflayer-extension",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:firefox": "vite build --mode firefox"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.28",
+    "@types/chrome": "^0.0.268",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0"
+  }
+}
