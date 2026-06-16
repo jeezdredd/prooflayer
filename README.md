@@ -31,7 +31,7 @@ Backend: Django 5.1, DRF 3.15, Celery 5.4, PostgreSQL 16, Redis 7, MinIO, Ollama
 
 Frontend: React 18, Vite 6, TypeScript 5.6, Tailwind 3, Zustand 5, TanStack Query 5, React Router 7, Axios.
 
-Infra: Docker Compose for local, Railway for production, Sentry for errors, Flower for Celery monitoring, GitHub Actions for CI.
+Infra: Docker Compose (local + prod), self-hosted Ubuntu homelab, Sentry for errors, Flower for Celery monitoring, GitHub Actions for CI.
 
 ## Architecture
 
@@ -151,42 +151,11 @@ frontend/
     types/       # Shared TS interfaces
   public/
     widget.js    # Embeddable badge script
-worker/          # Optional standalone Celery container config
 ```
 
-## Production deployment (Railway)
+## Production deployment
 
-Each service is a separate Railway app pointing at this repo. Service configs live in `backend/railway.toml` and `frontend/railway.toml`.
-
-Backend service. Root `.`, Dockerfile `backend/Dockerfile`. Migrations and `seed_analyzers` run on boot.
-
-Celery service. Same image, override start command:
-
-```
-celery -A config.celery worker --loglevel=info -Q default,ml,reports --concurrency=2
-```
-
-Ollama service. Image `ollama/ollama:latest`. A persistent volume mounted at `/root/.ollama` is required (10 GB), otherwise models redownload on every deploy. Start command:
-
-```
-sh -c "ollama serve & sleep 8 && ollama pull qwen2.5:3b && ollama pull moondream && wait"
-```
-
-Without the pull, `/api/generate` returns 404 for the vision model and `llm_vision` falls back to inconclusive.
-
-MinIO service. `minio/minio:latest`, volume at `/data`, port 9000 exposed internally.
-
-Postgres and Redis are Railway templates wired through `DATABASE_URL` and `REDIS_URL`.
-
-Required on both backend and celery services:
-
-```
-OLLAMA_URL=http://ollama.railway.internal:11434
-OLLAMA_MODEL=qwen2.5:3b
-OLLAMA_VISION_MODEL=moondream
-```
-
-Frontend service. Root `frontend`, Dockerfile `frontend/Dockerfile`. Nginx serves the built static bundle and reverse-proxies `/api/` to the backend.
+See `deploy/README.md` for the homelab Ubuntu setup (Caddy + Cloudflare Tunnel + Docker Compose).
 
 ## Tests
 

@@ -211,3 +211,6 @@ __marimo__/
 backend/media/
 REPORT.md
 scripts/download_hf_models.py
+.DS_Store
+.superpowers/
+docs/superpowers/

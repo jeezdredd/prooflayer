@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "services/auth-email.md",
+                "file": "index.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "auth-email"
+              "title": "index"
             }
           }
         ]
@@ -182,10 +182,11 @@
   },
   "active": "397aa7536420b54b",
   "lastOpenFiles": [
+    "index.md",
+    "services/auth-email.md",
     "overview.md",
     "services/visit-tracking.md",
     "concepts/perceptual-provenance.md",
-    "services/auth-email.md",
     "infrastructure/media-domain.md",
     "log.md",
     "hot.md",
