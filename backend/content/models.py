@@ -2,7 +2,7 @@ import hashlib
 import uuid
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from pgvector.django import HnswIndex, VectorField
 
@@ -134,9 +134,15 @@ class AnonymousQuota(models.Model):
     def check_and_increment(cls, request, limit: int = 5) -> tuple[bool, int]:
         ip_hash = cls.get_ip_hash(request)
         today = timezone.now().date()
-        quota, _ = cls.objects.get_or_create(ip_hash=ip_hash, date=today)
-        if quota.count >= limit:
-            return False, 0
-        quota.count += 1
-        quota.save(update_fields=["count"])
+        with transaction.atomic():
+            try:
+                quota, _ = cls.objects.select_for_update().get_or_create(
+                    ip_hash=ip_hash, date=today, defaults={"count": 0}
+                )
+            except Exception:
+                quota = cls.objects.select_for_update().get(ip_hash=ip_hash, date=today)
+            if quota.count >= limit:
+                return False, 0
+            quota.count += 1
+            quota.save(update_fields=["count"])
         return True, limit - quota.count
