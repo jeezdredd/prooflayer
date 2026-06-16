@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "ProofLayer",
+  "version": "0.1.0",
+  "description": "Verify images and media with ProofLayer AI",
+  "permissions": ["contextMenus", "storage", "activeTab"],
+  "host_permissions": ["https://prooflayer.com/*", "http://localhost:8000/*"],
+  "background": {
+    "scripts": ["src/background/sw.ts"],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/inject.ts"]
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}
