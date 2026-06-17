@@ -1,4 +1,4 @@
-const API_BASE = "https://prooflayer.com/api/v1";
+const API_BASE = "https://api.prooflayer.cloud/api/v1";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
