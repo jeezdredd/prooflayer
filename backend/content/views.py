@@ -375,3 +375,20 @@ class AnalyzeUrlView(APIView):
         process_submission.delay(str(submission.id))
 
         return Response({"submission_id": str(submission.id)}, status=status.HTTP_201_CREATED)
+
+
+class SubmissionStatusView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, id):
+        try:
+            sub = Submission.objects.get(id=id)
+        except Submission.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            "id": str(sub.id),
+            "status": sub.status,
+            "final_verdict": sub.final_verdict,
+            "final_score": sub.final_score,
+        })

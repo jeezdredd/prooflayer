@@ -70,7 +70,7 @@ async function poll(submissionId: string): Promise<void> {
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const url = `${API_BASE}/content/submissions/${submissionId}/`;
+  const url = `${API_BASE}/content/submissions/${submissionId}/status/`;
 
   let attempts = 0;
   const MAX_ATTEMPTS = 60;

@@ -6,6 +6,7 @@ from .views import (
     PublicFeedView,
     PublicSubmissionDetailView,
     ReviewQueueView,
+    SubmissionStatusView,
     SubmissionViewSet,
     VerdictOverrideView,
     WidgetEmbedView,
@@ -22,4 +23,5 @@ urlpatterns = [
     path("review/queue/", ReviewQueueView.as_view(), name="review-queue"),
     path("review/<uuid:id>/override/", VerdictOverrideView.as_view(), name="review-override"),
     path("analyze-url/", AnalyzeUrlView.as_view(), name="analyze-url"),
+    path("submissions/<uuid:id>/status/", SubmissionStatusView.as_view(), name="submission-status"),
 ]
