@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Verify images and media with ProofLayer AI",
   "permissions": ["contextMenus", "storage", "activeTab"],
-  "host_permissions": ["https://prooflayer.com/*", "https://api.prooflayer.cloud/*", "http://localhost:8000/*"],
+  "host_permissions": ["https://prooflayer.cloud/*", "https://api.prooflayer.cloud/*", "http://localhost:8000/*"],
   "background": {
     "service_worker": "src/background/sw.ts",
     "type": "module"

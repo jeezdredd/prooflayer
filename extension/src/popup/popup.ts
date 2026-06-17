@@ -60,7 +60,7 @@ function renderResult(data: { final_verdict: string; final_score: number; id: st
   meta.textContent = `Confidence: ${Math.round((data.final_score ?? 0) * 100)}%`;
 
   const link = document.getElementById("result-link") as HTMLAnchorElement;
-  link.href = `https://prooflayer.com/result/${data.id}`;
+  link.href = `https://prooflayer.cloud/result/${data.id}`;
 
   show("result");
 }
@@ -127,7 +127,7 @@ async function analyze(imageUrl: string) {
 document.getElementById("btn-check-again")?.addEventListener("click", () => show("idle"));
 
 document.getElementById("btn-login")?.addEventListener("click", () => {
-  chrome.tabs.create({ url: "https://prooflayer.com/login" });
+  chrome.tabs.create({ url: "https://prooflayer.cloud/login" });
 });
 
 chrome.storage.local.get("pl_pending_result", async ({ pl_pending_result }) => {
