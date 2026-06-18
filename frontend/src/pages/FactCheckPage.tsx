@@ -196,8 +196,8 @@ function FactCheckPageInner() {
                   </span>
                   <p className="text-ink-100 leading-relaxed flex-1">{claim.claim}</p>
                 </div>
-                <span className={clsx("badge border-current shrink-0", ASSESSMENT_TONE[claim.assessment])}>
-                  {ASSESSMENT_LABELS[claim.assessment]}
+                <span className={clsx("badge border-current shrink-0", ASSESSMENT_TONE[claim.assessment] ?? "text-signal-amber")}>
+                  {ASSESSMENT_LABELS[claim.assessment] ?? "Uncertain"}
                 </span>
               </div>
               {claim.explanation && (

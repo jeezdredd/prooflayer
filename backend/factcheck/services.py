@@ -73,8 +73,10 @@ _ASSESSMENT_ALIASES = {
 _VALID_ASSESSMENTS = {"likely_true", "likely_false", "uncertain"}
 
 
-def _normalize_assessment(raw: str) -> str:
-    v = raw.strip().lower().replace("-", "_")
+def _normalize_assessment(raw) -> str:
+    if not raw:
+        return "uncertain"
+    v = str(raw).strip().lower().replace("-", "_").replace(" ", "_")
     if v in _VALID_ASSESSMENTS:
         return v
     return _ASSESSMENT_ALIASES.get(v, "uncertain")
