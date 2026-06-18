@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import {
   Check, X, Zap, Building2, GraduationCap, Gem,
-  ArrowLeft, Sparkles, Mail,
+  ArrowLeft, Sparkles, Mail, ShieldCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { billing } from "../api/endpoints";
@@ -158,7 +158,7 @@ export default function PricingPage() {
         )}
 
         {/* ── Tier cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/5 border border-white/5 mb-1">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5 border border-white/5 mb-1 ${user?.is_staff ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
           {/* FREE */}
           {[
             {
@@ -190,6 +190,14 @@ export default function PricingPage() {
               accentClass: "text-signal-amber", borderClass: "",
               features: ["Unlimited submissions", "Everything in Pro", "On-premise option", "SLA", "Dedicated support"],
             },
+            ...(user?.is_staff ? [{
+              key: "internal", label: "Internal", Icon: ShieldCheck,
+              price: "∞", period: "always",
+              desc: "Grants unrestricted, full access to the ProofLayer system. Reserved for internal operators and system administrators.",
+              accentClass: "text-red-400", iconClass: "text-red-400", borderClass: "",
+              internal: true,
+              features: ["Unlimited submissions", "All Pro features", "No rate limits", "Admin panel access", "Review queue", "Verdict overrides"],
+            }] : []),
           ].map((tier, i) => {
             const Icon = tier.Icon;
             const current = isCurrent(tier.key);
@@ -201,7 +209,7 @@ export default function PricingPage() {
                 transition={{ delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}
                 className={`relative flex flex-col p-6 bg-ink-950 ${
                   tier.featured ? "ring-1 ring-iris/40 z-10" : ""
-                }`}
+                } ${"internal" in tier ? "ring-1 ring-red-400/20" : ""}`}
               >
                 {tier.featured && (
                   <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-iris to-transparent" />
@@ -220,6 +228,13 @@ export default function PricingPage() {
                   <div className="absolute top-4 right-4">
                     <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-iris bg-iris/10 border border-iris/20 px-2 py-0.5">
                       Popular
+                    </span>
+                  </div>
+                )}
+                {"internal" in tier && (
+                  <div className="absolute top-4 right-4">
+                    <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5">
+                      Internal
                     </span>
                   </div>
                 )}
