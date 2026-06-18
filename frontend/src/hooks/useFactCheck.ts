@@ -11,6 +11,7 @@ interface FactCheckState {
 }
 
 const POLL_INTERVAL = 1500;
+const POLL_TIMEOUT = 300_000;
 
 export function useFactCheck() {
   const [state, setState] = useState<FactCheckState>({
@@ -21,11 +22,16 @@ export function useFactCheck() {
     result: null,
   });
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopPolling = () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
   };
 
@@ -41,6 +47,11 @@ export function useFactCheck() {
       setState((s) => ({ ...s, isPending: false, isError: true }));
       return;
     }
+
+    timeoutRef.current = setTimeout(() => {
+      stopPolling();
+      setState((s) => ({ ...s, isPending: false, isError: true }));
+    }, POLL_TIMEOUT);
 
     intervalRef.current = setInterval(async () => {
       try {
