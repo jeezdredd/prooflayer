@@ -4,13 +4,16 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-06-18: Redis configured as Django cache backend (was LocMemCache - broke cross-process cache.get). See [[fixes/factcheck-cache]].
+- 2026-06-18: Factcheck made async (Celery task + Redis stage cache). POST returns task_id, GET /status/ polls. See [[api/endpoints]].
+- 2026-06-18: Resend switched to HTTP API (django-anymail) - no MX records needed, freed for Cloudflare Email Routing. See [[services/auth-email]].
+- 2026-06-18: Staff/superuser bypass: no upload limits, skip IsVerifiedUser, skip SubscriptionGate. See [[services/backend]].
+- 2026-06-18: toggle-public URL fixed (frontend sent underscore, backend expects hyphen). See [[fixes/toggle-public-url]].
+- 2026-06-18: Pricing page: Internal tier card (staff only), Pro checkmarks fixed (text-iris = transparent), staff isCurrent logic.
 - 2026-06-17: Browser extension built (MV3, Chrome + Firefox). See [[services/extension]].
 - 2026-06-17: `analyze-url` endpoint added + `SubmissionStatusView` (AllowAny). See [[api/endpoints]].
 - 2026-06-17: `AnonymousQuota` model - 5/day per IP for analyze-url. See [[models/AnonymousQuota]].
-- 2026-06-17: Email service = Resend (smtp.resend.com). Replaced Gmail SMTP. See [[services/auth-email]].
-- 2026-06-17: All domain refs changed prooflayer.com -> prooflayer.cloud everywhere (frontend, extension).
-- 2026-05-14: Created full memory bank. See [[index]].
-- 2026-05-14: Filed research synthesis [[concepts/detection-strategy-2026]] (Qwen-as-oracle is wrong; rebuild as calibrated ensemble).
+- 2026-06-17: Email service = Resend HTTP API. See [[services/auth-email]].
 
 ## Current dev state
 

@@ -87,3 +87,5 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[fixes/em-dash-purge]] - never use "-"
 - [[fixes/photo-check-video]] - skip flag for video frames
 - [[fixes/model-name-leak]] - stripped from evidence
+- [[fixes/factcheck-cache]] - LocMemCache breaks cross-process cache.get; use Redis cache backend
+- [[fixes/toggle-public-url]] - DRF action url_path uses hyphens, not underscores

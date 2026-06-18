@@ -27,7 +27,8 @@ Both Django and Celery hit DB 0.
 - Celery task queue (broker)
 - Celery task results (backend)
 - Chord synchronization (chord_join key)
-- Possible: Django cache framework (LocMem fallback)
+- Django cache framework (`CACHES["default"]` = `RedisCache`, DB 0) - **required** for factcheck stage progress sharing across processes
+- Factcheck stage cache keys: `fc:{task_id}` TTL 600s
 - [[api/system-status]] probe (`client.ping()`)
 
 ## See also

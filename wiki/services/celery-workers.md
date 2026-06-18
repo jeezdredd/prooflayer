@@ -63,6 +63,10 @@ Worker subscribes to all three with `-Q default,ml,reports`.
 
 - `run_provenance_check(submission_id)` - external source matching
 
+`backend/factcheck/tasks.py`:
+
+- `run_factcheck(text)` - async factcheck pipeline: spaCy NER -> DuckDuckGo search -> Ollama LLM assess -> Google Fact Check. Writes stage progress to Django cache (`fc:{task_id}`). Goes to `default` queue.
+
 ## Status messages
 
 `ANALYZER_STATUS_MESSAGES` dict maps analyzer name -> user-facing string. Set on `submission.status_message` per-task so UI shows live "Analyzing image with vision AI...".

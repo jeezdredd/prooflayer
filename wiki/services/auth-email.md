@@ -6,7 +6,7 @@ source: backend/users/
 
 # Auth + Email Verification
 
-JWT auth via `rest_framework_simplejwt`. Email verification via signed token + Resend SMTP.
+JWT auth via `rest_framework_simplejwt`. Email verification via signed token + Resend HTTP API (django-anymail).
 
 ## Flow
 
@@ -68,9 +68,11 @@ class IsVerifiedUser(BasePermission):
         return bool(u and u.is_authenticated and getattr(u, "is_verified", False))
 ```
 
+Staff/superuser users bypass `IsVerifiedUser` entirely (always return True).
+
 Gated endpoints (require `is_verified=True`, return 403 otherwise):
 - `POST /api/v1/content/submissions/` (upload) - `SubmissionViewSet.get_permissions` swaps on action
-- `POST /api/v1/factcheck/` - `FactCheckView`
+- `POST /api/v1/factcheck/check/` - `FactCheckView`
 - `POST /api/v1/crowdsource/vote/` - `VoteCreateView`
 - `POST /api/v1/reports/` - `ReportCreateView`
 
