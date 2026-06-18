@@ -34,6 +34,8 @@ def run_factcheck(self, text):
 
         _set_stage(task_id, "assessing", 55)
         claims = _build_assessed_claims(claims_raw, search_context)
+        seen_claims: set = set()
+        claims = [c for c in claims if not (c.get("claim", "") in seen_claims or seen_claims.add(c.get("claim", "")))]
 
         _set_stage(task_id, "cross_referencing", 80)
         enriched = []

@@ -62,10 +62,10 @@ def _build_assessed_claims(claims_raw: list, search_context: str) -> list:
         raw = response.json().get("response", "")
         parsed = json.loads(raw)
         if isinstance(parsed, list):
-            return parsed
+            return parsed[:len(claims_raw)]
         if isinstance(parsed, dict):
             if "claims" in parsed:
-                return parsed["claims"]
+                return parsed["claims"][:len(claims_raw)]
             return [parsed]
         raise ValueError(f"Unexpected type: {type(parsed)}")
     except Exception as exc:
