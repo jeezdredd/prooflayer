@@ -56,7 +56,7 @@ export default function TermsPage() {
 
       <section>
         <h2 className="text-ink-100 text-base mb-3">10. Contact</h2>
-        <p>Questions: <a href="mailto:hello@prooflayer.cloud" className="text-iris hover:underline">hello@prooflayer.cloud</a></p>
+        <p>Questions: <a href="mailto:legal@prooflayer.cloud" className="text-iris hover:underline">legal@prooflayer.cloud</a></p>
       </section>
     </LegalLayout>
   );

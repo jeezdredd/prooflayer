@@ -15,7 +15,7 @@ export default function RefundPage() {
 
       <section>
         <h2 className="text-ink-100 text-base mb-3">How to Request a Refund</h2>
-        <p>Email <a href="mailto:hello@prooflayer.cloud" className="text-iris hover:underline">hello@prooflayer.cloud</a> with your account email and reason. We process refunds within 5 business days.</p>
+        <p>Email <a href="mailto:finance@prooflayer.cloud" className="text-iris hover:underline">finance@prooflayer.cloud</a> with your account email and reason. We process refunds within 5 business days.</p>
       </section>
 
       <section>
@@ -28,7 +28,7 @@ export default function RefundPage() {
 
       <section>
         <h2 className="text-ink-100 text-base mb-3">Contact</h2>
-        <p><a href="mailto:hello@prooflayer.cloud" className="text-iris hover:underline">hello@prooflayer.cloud</a></p>
+        <p><a href="mailto:finance@prooflayer.cloud" className="text-iris hover:underline">finance@prooflayer.cloud</a></p>
       </section>
     </LegalLayout>
   );
