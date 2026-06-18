@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Zap, LayoutDashboard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { billing } from "../api/endpoints";
+import { useAuthStore } from "../stores/authStore";
 
 interface Props {
   children: React.ReactNode;
@@ -19,11 +20,12 @@ export function useSubscriptionInfo() {
 
 export default function SubscriptionGate({ children, feature }: Props) {
   const { data: sub, isLoading } = useSubscriptionInfo();
+  const { user } = useAuthStore();
 
   if (isLoading) return null;
 
   const isPro = sub && sub.tier !== "free";
-  if (isPro) return <>{children}</>;
+  if (isPro || user?.is_staff) return <>{children}</>;
 
   return (
     <motion.div

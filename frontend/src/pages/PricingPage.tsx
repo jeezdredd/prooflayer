@@ -172,7 +172,7 @@ export default function PricingPage() {
               key: "pro", label: "Pro", Icon: Gem,
               price: "$12", period: "/ month",
               desc: "For journalists, researchers, power users.",
-              accentClass: "text-iris", borderClass: "",
+              accentClass: "text-iris", iconClass: "text-violet-400", borderClass: "",
               features: ["500 submissions / month", "Everything in Free", "Compare tool", "Widget embed", "API access"],
               featured: true,
             },
@@ -225,7 +225,7 @@ export default function PricingPage() {
                 )}
 
                 <div className="flex items-center gap-2 mb-5">
-                  <Icon size={15} strokeWidth={1.5} className={tier.accentClass} />
+                  <Icon size={15} strokeWidth={1.5} className={"iconClass" in tier ? (tier as {iconClass: string}).iconClass : tier.accentClass} />
                   <span className={`font-mono text-[11px] uppercase tracking-[0.16em] ${tier.accentClass}`}>
                     {tier.label}
                   </span>
