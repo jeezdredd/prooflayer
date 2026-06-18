@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import {
-  Check, X, Zap, Building2, GraduationCap, Crown,
+  Check, X, Zap, Building2, GraduationCap, Star,
   ArrowLeft, Sparkles, Mail,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -106,7 +106,7 @@ export default function PricingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-14"
         >
-          <div className="inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.22em] text-ink-600 border border-white/6 px-3 py-1.5 mb-6">
+          <div className="inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.22em] text-ink-400 border border-white/12 px-3 py-1.5 mb-6">
             <Sparkles size={10} strokeWidth={1.5} className="text-iris" />
             Simple, transparent pricing
           </div>
@@ -169,7 +169,7 @@ export default function PricingPage() {
               features: ["50 submissions / month", "All analyzers", "Community feed", "PDF reports"],
             },
             {
-              key: "pro", label: "Pro", Icon: Crown,
+              key: "pro", label: "Pro", Icon: Star,
               price: "$12", period: "/ month",
               desc: "For journalists, researchers, power users.",
               accentClass: "text-iris", borderClass: "",
