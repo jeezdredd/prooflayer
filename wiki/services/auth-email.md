@@ -6,7 +6,7 @@ source: backend/users/
 
 # Auth + Email Verification
 
-JWT auth via `rest_framework_simplejwt`. Email verification via signed token + Gmail SMTP.
+JWT auth via `rest_framework_simplejwt`. Email verification via signed token + Resend SMTP.
 
 ## Flow
 
@@ -37,25 +37,25 @@ Response codes: 200 verified, 400 missing/already-verified, 404 invalid token, 4
 ## Settings (env-driven)
 
 ```python
-EMAIL_HOST          # smtp.gmail.com
+EMAIL_HOST          # smtp.resend.com
 EMAIL_PORT          # 587
 EMAIL_USE_TLS       # true
-EMAIL_HOST_USER     # full gmail address
-EMAIL_HOST_PASSWORD # Gmail App Password (NOT account password)
+EMAIL_HOST_USER     # resend  (literal string "resend")
+EMAIL_HOST_PASSWORD # re_xxxxxxxxxxxxxxxxxxxx  (Resend API key)
 DEFAULT_FROM_EMAIL  # "ProofLayer <noreply@prooflayer.cloud>"
 FRONTEND_URL        # https://prooflayer.cloud
 ```
 
 When `EMAIL_HOST` is empty, `EMAIL_BACKEND` falls back to `console.EmailBackend` (dev prints to stdout, never tries SMTP).
 
-## Gmail App Password setup
+## Resend HTTP API setup
 
-1. Enable 2FA on the sending Gmail account.
-2. https://myaccount.google.com/apppasswords -> "Mail" -> generate.
-3. Paste 16-char password into `EMAIL_HOST_PASSWORD`. No spaces.
-4. `EMAIL_HOST_USER` = full gmail (e.g. `prooflayer.notify@gmail.com`).
+Production uses [Resend](https://resend.com) HTTP API via `django-anymail[resend]`. Uses HTTP, not SMTP, so **no MX records required**. MX records on `prooflayer.cloud` belong to Cloudflare Email Routing (for receiving at `hello@prooflayer.cloud`).
 
-Gmail SMTP relays via `smtp.gmail.com:587 STARTTLS`. Daily send cap ~500/day on free, 2000 on Workspace - fine for capstone.
+- `RESEND_API_KEY` = Resend API key (`re_...`)
+- `EMAIL_BACKEND` = `anymail.backends.resend.EmailBackend` (set automatically when key present)
+- Can send FROM any address on verified domain: `noreply@prooflayer.cloud`, `hello@prooflayer.cloud`, etc.
+- `anymail` app added to `INSTALLED_APPS` dynamically when `RESEND_API_KEY` set.
 
 ## Verification gating
 

@@ -4,11 +4,13 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-06-17: Browser extension built (MV3, Chrome + Firefox). See [[services/extension]].
+- 2026-06-17: `analyze-url` endpoint added + `SubmissionStatusView` (AllowAny). See [[api/endpoints]].
+- 2026-06-17: `AnonymousQuota` model - 5/day per IP for analyze-url. See [[models/AnonymousQuota]].
+- 2026-06-17: Email service = Resend (smtp.resend.com). Replaced Gmail SMTP. See [[services/auth-email]].
+- 2026-06-17: All domain refs changed prooflayer.com -> prooflayer.cloud everywhere (frontend, extension).
 - 2026-05-14: Created full memory bank. See [[index]].
 - 2026-05-14: Filed research synthesis [[concepts/detection-strategy-2026]] (Qwen-as-oracle is wrong; rebuild as calibrated ensemble).
-- 2026-05-13: Em-dash purge complete. See [[fixes/em-dash-purge]].
-- 2026-05-10: skip_photo_check flag added. See [[concepts/skip-photo-check]].
-- 2026-05-09: Organika dropped. See [[fixes/organika-broken]]. Model name leak stripped. See [[fixes/model-name-leak]].
 
 ## Current dev state
 
@@ -17,6 +19,14 @@ Fast-load context for next session. Read me first.
 - Worker capped at `--max-memory-per-child=2500000`.
 - Ollama `MAX_LOADED_MODELS=1`, `KEEP_ALIVE=2m`.
 - All UI text uses ASCII hyphen, no em-dashes.
+- Production at homelab Ubuntu server (192.168.8.112). Deploy: `~/deploy.sh prooflayer`.
+- Docker project name: `deploy`. Containers: `deploy-backend-1`, `deploy-celery_worker-1`, etc.
+
+## Extension status
+
+Chrome/Firefox extension built and tested. Two open issues:
+1. Login flow: `btn-login` opens `prooflayer.cloud/login` but JWT not persisted back to extension storage after login.
+2. Anonymous quota: 5/day per IP drains fast during dev (each test = 1 use).
 
 ## Pending overhaul
 

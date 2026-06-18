@@ -27,8 +27,22 @@ GET    /api/v1/content/submissions/{id}/                 detail w/ analysis_resu
 DELETE /api/v1/content/submissions/{id}/                 (if allowed)
 POST   /api/v1/content/submissions/{id}/override/        staff VerdictOverride
 GET    /api/v1/content/submissions/{id}/report.pdf       PDF export (reports app)
+GET    /api/v1/content/submissions/{id}/status/          AllowAny, returns {id, status, final_verdict, final_score}
 GET    /api/v1/content/widget/embed/{sha256}/            public widget JSON
+POST   /api/v1/content/analyze-url/                      {url} -> {submission_id}, anonymous quota enforced
+GET    /api/v1/content/feed/                             public feed
+GET    /api/v1/content/feed/{id}/                        public submission detail
 ```
+
+### analyze-url endpoint
+
+`POST /api/v1/content/analyze-url/` - accepts `{url}` JSON body. Downloads image at URL (SSRF-guarded), creates Submission, dispatches analysis. Auth optional - anonymous requests tracked via `AnonymousQuota` (5/day per IP). Returns 201 `{submission_id}`. Returns 429 with `{error: "anonymous_limit_reached"}` when quota hit.
+
+SSRF guard: resolves hostname -> rejects private/loopback/link-local IPs before fetch.
+
+### submission status endpoint
+
+`GET /api/v1/content/submissions/{id}/status/` - no auth required (`AllowAny`). Returns `{id, status, final_verdict, final_score}`. Used by browser extension to poll without JWT.
 
 Filters: `?status=...&final_verdict=...&search=filename`. Pagination via `?page=N` (default page_size 25).
 

@@ -18,7 +18,8 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[services/minio]] - S3-compatible blob store
 - [[services/frontend]] - React + Vite
 - [[services/flower]] - celery monitoring
-- [[services/auth-email]] - JWT auth + email verification (Gmail SMTP)
+- [[services/auth-email]] - JWT auth + email verification (Resend SMTP)
+- [[services/extension]] - Chrome/Firefox browser extension (MV3)
 - [[services/visit-tracking]] - Discord webhook notify on visit (IP + geo)
 - [[services/backups]] - Nightly pg_dump -> MinIO, 14-day retention
 
@@ -49,6 +50,7 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[models/VerdictOverride]] - human review trail
 - [[models/KnownFakeHash]] - SHA-256 blacklist seed
 - [[models/User]] - custom auth user
+- [[models/AnonymousQuota]] - per-IP daily rate limit for analyze-url
 
 ## Concepts
 
