@@ -8,21 +8,26 @@ from factcheck.ner import extract_claim_sentences, extract_entities
 
 logger = logging.getLogger(__name__)
 
-OLLAMA_ASSESS_PROMPT = """Assess each factual claim listed below. Use web context if helpful.
+OLLAMA_ASSESS_PROMPT = """You are a fact-checking engine. Assess each claim below strictly.
 
-Rules:
-- "likely_true": matches well-known facts or confirmed by web context.
-- "likely_false": contradicts known facts or refuted by web context.
-- "uncertain": recent/ongoing or genuinely ambiguous.
+Assessment rules (use EXACTLY these values, no other values allowed):
+- "likely_true": matches well-known established facts or confirmed by web context.
+- "likely_false": contradicts established facts, scientifically disproven, or refuted by web context.
+- "uncertain": recent/ongoing event, genuinely ambiguous, or cannot verify.
+
+Be strict: if a claim is scientifically wrong or historically incorrect, use "likely_false", not "uncertain".
 
 Web context:
 {search_context}
 
-Claims to assess (assess ALL of them, in order):
+Claims (assess ALL, in order):
 {claims_list}
 
-Respond ONLY with a JSON array, one object per claim, same order as above:
-[{{"claim": "...", "assessment": "likely_true|likely_false|uncertain", "explanation": "one sentence"}}]"""
+Respond ONLY with a JSON array, exactly one object per claim, same order:
+[{{"claim": "exact claim text", "assessment": "likely_true", "explanation": "one sentence"}},
+ {{"claim": "exact claim text", "assessment": "likely_false", "explanation": "one sentence"}}]
+
+The "assessment" field MUST be one of: likely_true, likely_false, uncertain"""
 
 
 def search_web(query, max_results=5):
@@ -40,6 +45,39 @@ def search_web(query, max_results=5):
     except Exception as exc:
         logger.warning("DuckDuckGo search failed: %s", exc)
         return ""
+
+
+_ASSESSMENT_ALIASES = {
+    "true": "likely_true",
+    "likely true": "likely_true",
+    "likelytrue": "likely_true",
+    "probably_true": "likely_true",
+    "probably true": "likely_true",
+    "correct": "likely_true",
+    "accurate": "likely_true",
+    "false": "likely_false",
+    "likely false": "likely_false",
+    "likelyfalse": "likely_false",
+    "probably_false": "likely_false",
+    "probably false": "likely_false",
+    "incorrect": "likely_false",
+    "inaccurate": "likely_false",
+    "misleading": "likely_false",
+    "unknown": "uncertain",
+    "unverifiable": "uncertain",
+    "mixed": "uncertain",
+    "partially_true": "uncertain",
+    "partially true": "uncertain",
+}
+
+_VALID_ASSESSMENTS = {"likely_true", "likely_false", "uncertain"}
+
+
+def _normalize_assessment(raw: str) -> str:
+    v = raw.strip().lower().replace("-", "_")
+    if v in _VALID_ASSESSMENTS:
+        return v
+    return _ASSESSMENT_ALIASES.get(v, "uncertain")
 
 
 def _build_assessed_claims(claims_raw: list, search_context: str) -> list:
@@ -62,12 +100,15 @@ def _build_assessed_claims(claims_raw: list, search_context: str) -> list:
         raw = response.json().get("response", "")
         parsed = json.loads(raw)
         if isinstance(parsed, list):
-            return parsed[:len(claims_raw)]
-        if isinstance(parsed, dict):
-            if "claims" in parsed:
-                return parsed["claims"][:len(claims_raw)]
-            return [parsed]
-        raise ValueError(f"Unexpected type: {type(parsed)}")
+            items = parsed[:len(claims_raw)]
+        elif isinstance(parsed, dict):
+            items = parsed.get("claims", [parsed])[:len(claims_raw)]
+        else:
+            raise ValueError(f"Unexpected type: {type(parsed)}")
+        for item in items:
+            if isinstance(item, dict) and "assessment" in item:
+                item["assessment"] = _normalize_assessment(str(item["assessment"]))
+        return items
     except Exception as exc:
         logger.warning("Ollama factcheck failed: %s", exc)
         return [{"claim": c, "assessment": "uncertain", "explanation": "LLM unavailable"} for c in claims_raw]
