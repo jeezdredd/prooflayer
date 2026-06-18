@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { User } from "../types";
 import { setAccessToken, getAccessToken } from "../api/client";
+import { useUploadStore } from "./uploadStore";
 
 interface AuthState {
   user: User | null;
@@ -40,6 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     setAccessToken(null);
     localStorage.removeItem("user");
+    useUploadStore.getState().reset();
     set({ user: null, isAuthenticated: false });
   },
 
