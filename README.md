@@ -170,6 +170,6 @@ pytest -k test_caching        # filter by keyword
 
 ## License
 
-Copyright (c) 2026 Sevastyan Chesalin. All rights reserved.
+Copyright (c) 2026 Sole Proprietor ProofLayer. All rights reserved.
 
-This software and its source code are proprietary. No part of this repository may be copied, modified, distributed, or used without explicit written permission from the author.
+This software and its source code are proprietary. No part of this repository may be copied, modified, distributed, or used without explicit written permission from the owner.
