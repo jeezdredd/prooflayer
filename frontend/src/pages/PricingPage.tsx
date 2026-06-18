@@ -67,7 +67,10 @@ export default function PricingPage() {
     }
   };
 
-  const isCurrent = (key: string) => sub?.tier === key;
+  const isCurrent = (key: string) => {
+    if (user?.is_staff) return key === "internal";
+    return sub?.tier === key;
+  };
   const usedPct = sub ? Math.min(100, (sub.uploads_used / sub.uploads_limit) * 100) : 0;
 
   return (
@@ -234,7 +237,7 @@ export default function PricingPage() {
                 {"internal" in tier && (
                   <div className="absolute top-4 right-4">
                     <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5">
-                      Internal
+                      Staff Only
                     </span>
                   </div>
                 )}
@@ -262,7 +265,7 @@ export default function PricingPage() {
                       <Check
                         size={12}
                         strokeWidth={2.5}
-                        className={`shrink-0 mt-0.5 ${tier.featured ? "text-iris" : "text-signal-sage"}`}
+                        className={`shrink-0 mt-0.5 ${"internal" in tier ? "text-red-400" : tier.featured ? "text-violet-400" : "text-signal-sage"}`}
                       />
                       <span className="font-mono text-[11px] text-ink-300 leading-relaxed">{f}</span>
                     </li>
@@ -271,15 +274,17 @@ export default function PricingPage() {
 
                 <button
                   onClick={() => {
-                    if (tier.key === "free") return;
+                    if (tier.key === "free" || "internal" in tier) return;
                     if (tier.key === "pro") handleCheckout();
                     else window.open(`mailto:hello@prooflayer.cloud?subject=ProofLayer ${tier.label} inquiry`, "_blank");
                   }}
-                  disabled={tier.key === "free" || (current && tier.key === "pro") || (tier.key === "pro" && checkoutLoading)}
+                  disabled={tier.key === "free" || "internal" in tier || (current && tier.key === "pro") || (tier.key === "pro" && checkoutLoading)}
                   aria-label={`${tier.label} plan CTA`}
                   className={`w-full py-3 font-mono text-[11px] uppercase tracking-[0.14em] transition-all cursor-pointer ${
                     tier.key === "free"
                       ? "border border-ink-800 text-ink-700 cursor-default"
+                      : "internal" in tier
+                      ? "border border-red-400/30 text-red-400/60 cursor-default"
                       : tier.featured
                       ? current
                         ? "border border-iris/40 text-iris/60 cursor-default"
@@ -289,7 +294,9 @@ export default function PricingPage() {
                       : "border border-signal-amber/40 text-signal-amber hover:bg-signal-amber/10"
                   } disabled:opacity-40 disabled:cursor-default`}
                 >
-                  {tier.key === "pro" && checkoutLoading
+                  {"internal" in tier
+                    ? "System Access"
+                    : tier.key === "pro" && checkoutLoading
                     ? "Redirecting..."
                     : current
                     ? "Current plan"

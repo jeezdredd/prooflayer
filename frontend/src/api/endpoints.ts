@@ -122,4 +122,4 @@ export const billing = {
 };
 
 export const togglePublic = (id: string) =>
-  client.post<{ is_public: boolean }>(`/content/submissions/${id}/toggle_public/`, {});
+  client.post<{ is_public: boolean }>(`/content/submissions/${id}/toggle-public/`, {});
