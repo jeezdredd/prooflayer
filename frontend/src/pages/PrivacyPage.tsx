@@ -41,7 +41,7 @@ export default function PrivacyPage() {
 
       <section>
         <h2 className="text-ink-100 text-base mb-3">5. Your Rights</h2>
-        <p>You have the right to access, correct, or delete your personal data. Email <a href="mailto:hello@prooflayer.com" className="text-iris hover:underline">hello@prooflayer.com</a> to exercise these rights. We respond within 30 days.</p>
+        <p>You have the right to access, correct, or delete your personal data. Email <a href="mailto:hello@prooflayer.cloud" className="text-iris hover:underline">hello@prooflayer.cloud</a> to exercise these rights. We respond within 30 days.</p>
       </section>
 
       <section>
@@ -51,7 +51,7 @@ export default function PrivacyPage() {
 
       <section>
         <h2 className="text-ink-100 text-base mb-3">7. Contact</h2>
-        <p><a href="mailto:hello@prooflayer.com" className="text-iris hover:underline">hello@prooflayer.com</a></p>
+        <p><a href="mailto:hello@prooflayer.cloud" className="text-iris hover:underline">hello@prooflayer.cloud</a></p>
       </section>
     </LegalLayout>
   );

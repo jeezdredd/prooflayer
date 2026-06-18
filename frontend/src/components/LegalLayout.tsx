@@ -35,7 +35,7 @@ export default function LegalLayout({ title, updated, children }: Props) {
           <Link to="/terms" className="hover:text-ink-400 transition">Terms</Link>
           <Link to="/privacy" className="hover:text-ink-400 transition">Privacy</Link>
           <Link to="/refund" className="hover:text-ink-400 transition">Refund</Link>
-          <a href="mailto:hello@prooflayer.com" className="hover:text-ink-400 transition">Contact</a>
+          <a href="mailto:hello@prooflayer.cloud" className="hover:text-ink-400 transition">Contact</a>
         </div>
       </main>
     </div>

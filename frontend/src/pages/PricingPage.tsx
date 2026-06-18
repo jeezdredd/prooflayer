@@ -258,7 +258,7 @@ export default function PricingPage() {
                   onClick={() => {
                     if (tier.key === "free") return;
                     if (tier.key === "pro") handleCheckout();
-                    else window.open(`mailto:hello@prooflayer.com?subject=ProofLayer ${tier.label} inquiry`, "_blank");
+                    else window.open(`mailto:hello@prooflayer.cloud?subject=ProofLayer ${tier.label} inquiry`, "_blank");
                   }}
                   disabled={tier.key === "free" || (current && tier.key === "pro") || (tier.key === "pro" && checkoutLoading)}
                   aria-label={`${tier.label} plan CTA`}
@@ -364,7 +364,7 @@ export default function PricingPage() {
             <Link to="/terms" className="hover:text-ink-400 transition">Terms</Link>
             <Link to="/privacy" className="hover:text-ink-400 transition">Privacy</Link>
             <Link to="/refund" className="hover:text-ink-400 transition">Refund Policy</Link>
-            <a href="mailto:hello@prooflayer.com" className="hover:text-ink-400 transition">hello@prooflayer.com</a>
+            <a href="mailto:hello@prooflayer.cloud" className="hover:text-ink-400 transition">hello@prooflayer.cloud</a>
           </div>
         )}
       </div>
