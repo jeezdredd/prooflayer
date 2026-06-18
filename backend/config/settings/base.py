@@ -173,6 +173,13 @@ GOOGLE_FACT_CHECK_KEY = os.environ.get("GOOGLE_FACT_CHECK_KEY", "")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}
+
 REFRESH_COOKIE_NAME = "prooflayer_refresh"
 REFRESH_COOKIE_PATH = "/api/v1/auth/"
 REFRESH_COOKIE_DOMAIN = os.environ.get("REFRESH_COOKIE_DOMAIN", "") or None
