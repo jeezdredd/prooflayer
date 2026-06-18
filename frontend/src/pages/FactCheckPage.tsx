@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useFactCheck } from "../hooks/useFactCheck";
 import { useState } from "react";
-import type { FactCheckResult, FactCheckStage } from "../types";
+import type { FactCheckStage } from "../types";
 import SubscriptionGate from "../components/SubscriptionGate";
 
 const VERDICT_TONE: Record<string, { color: string; label: string }> = {

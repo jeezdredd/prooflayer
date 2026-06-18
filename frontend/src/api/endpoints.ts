@@ -1,6 +1,5 @@
 import client from "./client";
 import type {
-  FactCheckResult,
   FactCheckStatus,
   PaginatedResponse,
   ProvenanceResult,
