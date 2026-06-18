@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import {
-  Check, X, Zap, Building2, GraduationCap, Star,
+  Check, X, Zap, Building2, GraduationCap, Gem,
   ArrowLeft, Sparkles, Mail,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -36,7 +36,7 @@ function Cell({ val }: { val: string | boolean }) {
 export default function PricingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   const { data: sub } = useQuery({
     queryKey: ["subscription"],
@@ -119,8 +119,8 @@ export default function PricingPage() {
           </p>
         </motion.div>
 
-        {/* ── Usage bar (logged in) ── */}
-        {sub && (
+        {/* ── Usage bar (logged in, non-staff) ── */}
+        {sub && !user?.is_staff && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -169,7 +169,7 @@ export default function PricingPage() {
               features: ["50 submissions / month", "All analyzers", "Community feed", "PDF reports"],
             },
             {
-              key: "pro", label: "Pro", Icon: Star,
+              key: "pro", label: "Pro", Icon: Gem,
               price: "$12", period: "/ month",
               desc: "For journalists, researchers, power users.",
               accentClass: "text-iris", borderClass: "",

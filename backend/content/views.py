@@ -75,19 +75,20 @@ class SubmissionViewSet(
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
-        sub = get_or_create_subscription(request.user)
-        used = uploads_this_month(request.user)
-        if used >= sub.uploads_per_month:
-            return Response(
-                {
-                    "detail": f"Monthly upload limit reached ({sub.uploads_per_month} uploads). Upgrade to Pro for more.",
-                    "code": "upload_limit_reached",
-                    "limit": sub.uploads_per_month,
-                    "used": used,
-                    "tier": sub.tier,
-                },
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
+        if not (request.user.is_staff or request.user.is_superuser):
+            sub = get_or_create_subscription(request.user)
+            used = uploads_this_month(request.user)
+            if used >= sub.uploads_per_month:
+                return Response(
+                    {
+                        "detail": f"Monthly upload limit reached ({sub.uploads_per_month} uploads). Upgrade to Pro for more.",
+                        "code": "upload_limit_reached",
+                        "limit": sub.uploads_per_month,
+                        "used": used,
+                        "tier": sub.tier,
+                    },
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
 
         file = request.FILES.get("file")
         if not file:
@@ -306,13 +307,14 @@ class AnalyzeUrlView(APIView):
             return Response({"detail": "URL not allowed."}, status=status.HTTP_400_BAD_REQUEST)
 
         if request.user.is_authenticated:
-            sub = get_or_create_subscription(request.user)
-            used = uploads_this_month(request.user)
-            if used >= sub.uploads_per_month:
-                return Response(
-                    {"code": "upload_limit_reached"},
-                    status=status.HTTP_402_PAYMENT_REQUIRED,
-                )
+            if not (request.user.is_staff or request.user.is_superuser):
+                sub = get_or_create_subscription(request.user)
+                used = uploads_this_month(request.user)
+                if used >= sub.uploads_per_month:
+                    return Response(
+                        {"code": "upload_limit_reached"},
+                        status=status.HTTP_402_PAYMENT_REQUIRED,
+                    )
             owner = request.user
         else:
             allowed, remaining = AnonymousQuota.check_and_increment(request, limit=5)
