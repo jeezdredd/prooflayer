@@ -39,15 +39,19 @@ def run_factcheck(self, text):
         search_context = search_web(search_query)
 
         _set_stage(task_id, "assessing", 55)
-        claims = _build_assessed_claims(claims_raw, search_context)
+        raw_assessed = _build_assessed_claims(claims_raw, search_context)
         seen_texts: set = set()
         merged = []
-        for i, item in enumerate(claims):
+        for i, item in enumerate(raw_assessed):
             claim_text = item.get("claim", "").strip() or (claims_raw[i] if i < len(claims_raw) else "")
-            if claim_text in seen_texts:
+            if not claim_text or claim_text in seen_texts:
                 continue
             seen_texts.add(claim_text)
             merged.append({**item, "claim": claim_text})
+        for original in claims_raw:
+            if original and original not in seen_texts:
+                seen_texts.add(original)
+                merged.append({"claim": original, "assessment": "uncertain", "explanation": "Could not assess."})
         claims = merged
 
         _set_stage(task_id, "cross_referencing", 80)
