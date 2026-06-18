@@ -38,7 +38,7 @@ app.conf.task_routes = {
     "analyzers.tasks.aggregate_verdicts": {"queue": "default"},
 }
 
-app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports", "api"])
+app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports", "api", "factcheck"])
 
 app.conf.beat_schedule = {
     "nightly-postgres-backup": {

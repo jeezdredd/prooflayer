@@ -1,7 +1,7 @@
-import { useState } from "react";
 import clsx from "clsx";
 import { useFactCheck } from "../hooks/useFactCheck";
-import type { FactCheckResult } from "../types";
+import { useState } from "react";
+import type { FactCheckResult, FactCheckStage } from "../types";
 import SubscriptionGate from "../components/SubscriptionGate";
 
 const VERDICT_TONE: Record<string, { color: string; label: string }> = {
@@ -29,19 +29,33 @@ const SAMPLE_PROMPTS = [
   "ChatGPT was released by OpenAI in November 2022 and reached 100 million users in two months.",
 ];
 
+const STAGES: Array<{ key: FactCheckStage; label: string }> = [
+  { key: "extracting", label: "Extracting named entities via spaCy NER" },
+  { key: "searching", label: "Fetching web context via DuckDuckGo" },
+  { key: "assessing", label: "Assessing claims with qwen2.5:3b" },
+  { key: "cross_referencing", label: "Cross-referencing Google Fact Check API" },
+  { key: "done", label: "Complete" },
+];
+
+const STAGE_ORDER: FactCheckStage[] = ["pending", "extracting", "searching", "assessing", "cross_referencing", "done"];
+
+function stageIndex(stage: FactCheckStage | null): number {
+  if (!stage) return 0;
+  return STAGE_ORDER.indexOf(stage);
+}
+
 function FactCheckPageInner() {
   const [text, setText] = useState("");
-  const [result, setResult] = useState<FactCheckResult | null>(null);
-  const { mutate: check, isPending, isError } = useFactCheck();
+  const { submit, isPending, isError, stage, progress, result } = useFactCheck();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
-    setResult(null);
-    check(text, { onSuccess: setResult });
+    submit(text);
   };
 
   const verdict = result ? (VERDICT_TONE[result.overall_verdict] ?? VERDICT_TONE.no_claims) : null;
+  const currentStageIndex = stageIndex(stage);
 
   return (
     <div className="max-w-3xl animate-rise">
@@ -102,34 +116,51 @@ function FactCheckPageInner() {
 
       {isPending && (
         <div className="mt-6 case-card crop-marks p-6 animate-fade-in">
-          <div className="flex items-center gap-3 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
-            <span className="label-mono text-signal-amber">Pipeline Running</span>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
+              <span className="label-mono text-signal-amber">Pipeline Running</span>
+            </div>
+            <span className="font-mono text-[11px] text-ink-500">{progress}%</span>
           </div>
+
+          <div className="h-px bg-ink-800 mb-5 relative overflow-hidden">
+            <div
+              className="absolute inset-y-0 left-0 bg-signal-amber/60 transition-all duration-700"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
           <div className="space-y-3">
-            {[
-              "Extracting named entities via spaCy NER",
-              "Splitting compound sentences into atomic claims",
-              "Fetching web context via DuckDuckGo",
-              "Assessing claims with qwen2.5:3b",
-              "Cross-referencing Google Fact Check API",
-            ].map((step, i) => (
-              <div key={i} className="flex items-center gap-3" style={{ animationDelay: `${i * 0.18}s` }}>
-                <span className="font-mono text-[10px] text-ink-600 w-5 shrink-0">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div className="flex-1 h-px bg-ink-800 relative overflow-hidden">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-signal-amber/40"
-                    style={{
-                      width: "40%",
-                      animation: `scan 1.8s ease-in-out ${i * 0.18}s infinite`,
-                    }}
-                  />
+            {STAGES.filter((s) => s.key !== "done").map((s, i) => {
+              const sIdx = STAGE_ORDER.indexOf(s.key);
+              const done = sIdx < currentStageIndex;
+              const active = sIdx === currentStageIndex;
+              return (
+                <div key={s.key} className="flex items-center gap-3">
+                  <span className="font-mono text-[10px] text-ink-600 w-5 shrink-0">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="flex-1 h-px bg-ink-800 relative overflow-hidden">
+                    {active && (
+                      <div
+                        className="absolute inset-y-0 left-0 bg-signal-amber/40"
+                        style={{ width: "40%", animation: "scan 1.8s ease-in-out infinite" }}
+                      />
+                    )}
+                    {done && (
+                      <div className="absolute inset-y-0 left-0 right-0 bg-signal-sage/40" />
+                    )}
+                  </div>
+                  <span className={clsx(
+                    "font-mono text-[10px] text-right",
+                    active ? "text-signal-amber" : done ? "text-signal-sage" : "text-ink-600"
+                  )}>
+                    {s.label}
+                  </span>
                 </div>
-                <span className="font-mono text-[10px] text-ink-500 text-right">{step}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

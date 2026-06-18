@@ -76,10 +76,13 @@ GET  /api/v1/provenance/{submission_id}/   -> external source matches
 ## Factcheck (`factcheck.urls`)
 
 ```
-POST /api/v1/factcheck/run/   { text }   -> { claims: [...], overall_verdict }
+POST /api/v1/factcheck/check/   { text }   -> { task_id }
+GET  /api/v1/factcheck/status/{task_id}/  -> { stage, progress, result?, error? }
 ```
 
-Pipeline: spaCy NER -> Ollama LLM extraction -> Google Fact Check Tools lookup per claim.
+Async Celery pipeline. Stages: `extracting` (10%) -> `searching` (30%) -> `assessing` (55%) -> `cross_referencing` (80%) -> `done` (100%). Stage payload cached in Redis (key `fc:{task_id}`, TTL 600s). Frontend polls every 1.5s until `stage == "done"` or `"error"`.
+
+Pipeline: spaCy NER -> DuckDuckGo search -> Ollama LLM assessment -> Google Fact Check Tools lookup per claim.
 
 ## System
 

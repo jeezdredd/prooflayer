@@ -126,6 +126,23 @@ export interface FactCheckResult {
   claims_count: number;
   overall_verdict: "mostly_accurate" | "mixed" | "misleading" | "no_claims";
   claims: FactCheckClaim[];
+  entities?: Array<{ text: string; type: string; start: number; end: number }>;
+}
+
+export type FactCheckStage =
+  | "pending"
+  | "extracting"
+  | "searching"
+  | "assessing"
+  | "cross_referencing"
+  | "done"
+  | "error";
+
+export interface FactCheckStatus {
+  stage: FactCheckStage;
+  progress: number;
+  result?: FactCheckResult;
+  error?: string;
 }
 
 export interface UploaderProfile {

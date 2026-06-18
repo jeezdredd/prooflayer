@@ -1,6 +1,7 @@
 import client from "./client";
 import type {
   FactCheckResult,
+  FactCheckStatus,
   PaginatedResponse,
   ProvenanceResult,
   PublicSubmission,
@@ -94,7 +95,9 @@ export const feedback = {
 
 export const factcheck = {
   check: (text: string) =>
-    client.post<FactCheckResult>("/factcheck/check/", { text }),
+    client.post<{ task_id: string }>("/factcheck/check/", { text }),
+  status: (task_id: string) =>
+    client.get<FactCheckStatus>(`/factcheck/status/${task_id}/`),
 };
 
 export const review = {

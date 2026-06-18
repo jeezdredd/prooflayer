@@ -42,18 +42,11 @@ def search_web(query, max_results=5):
         return ""
 
 
-def analyze_with_ollama(text):
+def _build_assessed_claims(claims_raw: list, search_context: str) -> list:
     ollama_url = getattr(settings, "OLLAMA_URL", "http://ollama:11434")
     model = getattr(settings, "OLLAMA_MODEL", "qwen2.5:3b")
 
-    candidate_claims = extract_claim_sentences(text, max_claims=8)
-    if not candidate_claims:
-        return _fallback_sentence_split(text)
-
-    search_query = " ".join(candidate_claims[:2])[:200]
-    search_context = search_web(search_query)
-
-    claims_list = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(candidate_claims))
+    claims_list = "\n".join(f"{i + 1}. {c}" for i, c in enumerate(claims_raw))
     prompt = OLLAMA_ASSESS_PROMPT.format(
         search_context=search_context or "No search results available.",
         claims_list=claims_list,
@@ -77,7 +70,18 @@ def analyze_with_ollama(text):
         raise ValueError(f"Unexpected type: {type(parsed)}")
     except Exception as exc:
         logger.warning("Ollama factcheck failed: %s", exc)
-        return [{"claim": c, "assessment": "uncertain", "explanation": "LLM unavailable"} for c in candidate_claims]
+        return [{"claim": c, "assessment": "uncertain", "explanation": "LLM unavailable"} for c in claims_raw]
+
+
+def analyze_with_ollama(text):
+    candidate_claims = extract_claim_sentences(text, max_claims=8)
+    if not candidate_claims:
+        return _fallback_sentence_split(text)
+
+    search_query = " ".join(candidate_claims[:2])[:200]
+    search_context = search_web(search_query)
+
+    return _build_assessed_claims(candidate_claims, search_context)
 
 
 def _fallback_sentence_split(text):

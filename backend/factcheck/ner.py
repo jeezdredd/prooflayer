@@ -31,23 +31,7 @@ def _get_nlp():
 
 
 def _split_compound(sentence: str) -> list[str]:
-    parts = re.split(r"\s+and\s+|\s+but\s+", sentence, flags=re.IGNORECASE)
-    if len(parts) <= 1:
-        return [sentence]
-    subject = ""
-    first = parts[0].strip()
-    result = [first]
-    words = first.split()
-    for i, w in enumerate(words):
-        if w[0].isupper() and i == 0:
-            subject = w
-    for part in parts[1:]:
-        part = part.strip()
-        if part and part[0].islower() and subject:
-            part = subject + " " + part
-        if len(part) >= 15:
-            result.append(part)
-    return result
+    return [sentence]
 
 
 def extract_claim_sentences(text: str, max_claims: int = 8) -> list[str]:
