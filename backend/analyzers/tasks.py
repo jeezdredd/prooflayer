@@ -3,6 +3,7 @@ import time
 
 from asgiref.sync import async_to_sync
 from celery import chord, group, shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from channels.layers import get_channel_layer
 
 from content.models import Submission
@@ -206,7 +207,7 @@ def rescue_stuck_submissions():
     return count
 
 
-@shared_task(name="analyzers.tasks.run_weekly_retrain")
+@shared_task(name="analyzers.tasks.run_weekly_retrain", soft_time_limit=3600, time_limit=3900)
 def run_weekly_retrain(media_type: str = "image", triggered_by_id=None, min_samples_override=None):
     from datetime import timedelta
     from django.conf import settings
@@ -266,6 +267,10 @@ def run_weekly_retrain(media_type: str = "image", triggered_by_id=None, min_samp
         call_command("retrain_detector", media_type=media_type, epochs=run.epochs, stdout=buf)
         run.hf_revision = buf.getvalue().splitlines()[-1][:120] if buf.getvalue() else ""
         run.status = RetrainRun.Status.SUCCESS
+    except SoftTimeLimitExceeded:
+        run.status = RetrainRun.Status.FAILED
+        run.error = "soft time limit exceeded (worker likely OOM or training >1h)"
+        logger.warning("retrain soft time limit")
     except Exception as exc:
         run.status = RetrainRun.Status.FAILED
         run.error = str(exc)[:2000]
