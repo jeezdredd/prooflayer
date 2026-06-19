@@ -4,6 +4,9 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-06-19: Factcheck v2 landed: Wikipedia lookup, confidence score per claim, top-3 web sources, claim->source highlight panel, PDF export, URL input mode, PDF/DOCX upload, qwen2.5:7b optional. See [[services/factcheck]].
+- 2026-06-19: `backend/common/url_safety.py:validate_public_url` factored from `AnalyzeUrlView`; reused by factcheck URL fetch. SSRF guard now shared.
+- 2026-06-19: Memory bank moved to Obsidian vault `claude-memory/` (was `~/.claude/projects/.../memory/`). Local dir frozen.
 - 2026-06-18: Redis configured as Django cache backend (was LocMemCache - broke cross-process cache.get). See [[fixes/factcheck-cache]].
 - 2026-06-18: Factcheck made async (Celery task + Redis stage cache). POST returns task_id, GET /status/ polls. See [[api/endpoints]].
 - 2026-06-18: Resend switched to HTTP API (django-anymail) - no MX records needed, freed for Cloudflare Email Routing. See [[services/auth-email]].

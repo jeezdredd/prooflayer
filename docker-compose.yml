@@ -138,7 +138,7 @@ services:
     restart: "no"
     environment:
       - OLLAMA_HOST=http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b && ollama pull qwen2.5vl:3b"]
+    entrypoint: ["/bin/sh", "-c", "ollama pull qwen2.5:3b && ollama pull qwen2.5vl:3b && ollama pull qwen2.5:7b || true"]
     volumes:
       - ollama_data:/root/.ollama
 

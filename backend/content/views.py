@@ -1,10 +1,10 @@
 import datetime
 import io
-import ipaddress
-import socket
 from urllib.parse import urlparse
 
 import requests as http_requests
+
+from common.url_safety import UnsafeUrlError, validate_public_url
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.db.models import Count, Avg
@@ -295,16 +295,10 @@ class AnalyzeUrlView(APIView):
 
     def post(self, request):
         url = (request.data.get("url") or "").strip()
-        if not url.startswith(("http://", "https://")):
-            return Response({"detail": "Invalid URL."}, status=status.HTTP_400_BAD_REQUEST)
-
-        parsed_url = urlparse(url)
         try:
-            resolved_ip = ipaddress.ip_address(socket.gethostbyname(parsed_url.hostname or ""))
-        except (socket.gaierror, ValueError):
-            return Response({"detail": "Invalid URL."}, status=status.HTTP_400_BAD_REQUEST)
-        if resolved_ip.is_private or resolved_ip.is_loopback or resolved_ip.is_link_local or resolved_ip.is_reserved:
-            return Response({"detail": "URL not allowed."}, status=status.HTTP_400_BAD_REQUEST)
+            validate_public_url(url)
+        except UnsafeUrlError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         if request.user.is_authenticated:
             if not (request.user.is_staff or request.user.is_superuser):

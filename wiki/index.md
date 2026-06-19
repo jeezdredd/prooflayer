@@ -20,6 +20,7 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[services/flower]] - celery monitoring
 - [[services/auth-email]] - JWT auth + email verification (Resend SMTP)
 - [[services/extension]] - Chrome/Firefox browser extension (MV3)
+- [[services/factcheck]] - async text fact-check pipeline (NER + DDG + Wikipedia + Ollama + Google FCT)
 - [[services/visit-tracking]] - Discord webhook notify on visit (IP + geo)
 - [[services/backups]] - Nightly pg_dump -> MinIO, 14-day retention
 

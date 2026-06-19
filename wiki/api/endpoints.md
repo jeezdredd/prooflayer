@@ -76,13 +76,33 @@ GET  /api/v1/provenance/{submission_id}/   -> external source matches
 ## Factcheck (`factcheck.urls`)
 
 ```
-POST /api/v1/factcheck/check/   { text }   -> { task_id }
-GET  /api/v1/factcheck/status/{task_id}/  -> { stage, progress, result?, error? }
+POST /api/v1/factcheck/check/         { text }                  -> { task_id }
+GET  /api/v1/factcheck/status/{task_id}/                        -> { stage, progress, result?, error? }
+POST /api/v1/factcheck/export/        { result, text }          -> application/pdf
+POST /api/v1/factcheck/fetch-url/     { url }                   -> { text, title }
+POST /api/v1/factcheck/extract-doc/   multipart: file=PDF|DOCX  -> { text }
 ```
 
 Async Celery pipeline. Stages: `extracting` (10%) -> `searching` (30%) -> `assessing` (55%) -> `cross_referencing` (80%) -> `done` (100%). Stage payload cached in Redis (key `fc:{task_id}`, TTL 600s). Frontend polls every 1.5s until `stage == "done"` or `"error"`.
 
-Pipeline: spaCy NER -> DuckDuckGo search -> Ollama LLM assessment -> Google Fact Check Tools lookup per claim.
+Pipeline: spaCy NER -> DuckDuckGo search + Wikipedia lookup -> Ollama LLM assessment (with confidence 0-100) -> Google Fact Check Tools per claim, top-3 web sources attached.
+
+Claim shape:
+```json
+{
+  "claim": "...",
+  "assessment": "likely_true|likely_false|uncertain",
+  "confidence": 0-100,
+  "explanation": "...",
+  "sources": [{"title", "url"}, ...],
+  "wikipedia": {"title", "extract", "url"} | null,
+  "fact_checks": [...]
+}
+```
+
+`fetch-url/` enforces SSRF guard via `backend/common/url_safety.py:validate_public_url`, capped at 1 MB, HTML-only. `extract-doc/` capped at 10 MB.
+
+See [[services/factcheck]] for full details.
 
 ## System
 

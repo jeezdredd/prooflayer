@@ -113,6 +113,7 @@ export interface ProvenanceResult {
 export interface FactCheckClaim {
   claim: string;
   assessment: "likely_true" | "likely_false" | "uncertain";
+  confidence?: number;
   explanation: string;
   fact_checks: Array<{
     claim_text: string;
@@ -120,7 +121,11 @@ export interface FactCheckClaim {
     url: string;
     publisher: string;
   }>;
+  sources?: Array<{ title: string; url: string }>;
+  wikipedia?: { title: string; extract: string; url: string } | null;
 }
+
+export type FactCheckMode = "text" | "url" | "document";
 
 export interface FactCheckResult {
   claims_count: number;

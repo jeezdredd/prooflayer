@@ -1,8 +1,10 @@
 import json
 import logging
+from urllib.parse import quote
 
 import requests as http_requests
 from django.conf import settings
+from duckduckgo_search import DDGS
 
 from factcheck.ner import extract_claim_sentences, extract_entities
 
@@ -15,6 +17,12 @@ Assessment rules (use EXACTLY these values, no other values allowed):
 - "likely_false": contradicts established facts, scientifically disproven, or refuted by web context.
 - "uncertain": recent/ongoing event, genuinely ambiguous, or cannot verify.
 
+Confidence rules:
+- "confidence": integer 0-100. Strength of supporting evidence.
+- High (80-100): authoritative sources or established knowledge clearly confirm/refute.
+- Medium (40-79): partial evidence or limited sources.
+- Low (0-39): little/conflicting evidence, mostly inference.
+
 Be strict: if a claim is scientifically wrong or historically incorrect, use "likely_false", not "uncertain".
 
 Web context:
@@ -24,27 +32,86 @@ Claims (assess ALL, in order):
 {claims_list}
 
 Respond ONLY with a JSON array, exactly one object per claim, same order:
-[{{"claim": "exact claim text", "assessment": "likely_true", "explanation": "one sentence"}},
- {{"claim": "exact claim text", "assessment": "likely_false", "explanation": "one sentence"}}]
+[{{"claim": "exact claim text", "assessment": "likely_true", "confidence": 85, "explanation": "one sentence"}},
+ {{"claim": "exact claim text", "assessment": "likely_false", "confidence": 90, "explanation": "one sentence"}}]
 
-The "assessment" field MUST be one of: likely_true, likely_false, uncertain"""
+The "assessment" field MUST be one of: likely_true, likely_false, uncertain.
+The "confidence" field MUST be an integer 0-100."""
 
 
 def search_web(query, max_results=5):
     try:
-        from duckduckgo_search import DDGS
         with DDGS() as ddgs:
             results = list(ddgs.text(query, max_results=max_results))
-        snippets = []
+        out = []
         for r in results:
-            title = r.get("title", "")
-            body = r.get("body", "")
-            url = r.get("href", "")
-            snippets.append(f"[{title}] {body} ({url})")
-        return "\n".join(snippets)
+            out.append({
+                "title": r.get("title", ""),
+                "body": r.get("body", ""),
+                "url": r.get("href", ""),
+            })
+        return out
     except Exception as exc:
         logger.warning("DuckDuckGo search failed: %s", exc)
-        return ""
+        return []
+
+
+def lookup_wikipedia(query):
+    if not query:
+        return None
+    try:
+        base = "https://en.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "format": "json",
+            "prop": "extracts",
+            "exintro": 1,
+            "explaintext": 1,
+            "titles": query,
+            "redirects": 1,
+        }
+        headers = {"User-Agent": "ProofLayer/1.0"}
+        resp = http_requests.get(base, params=params, timeout=8, headers=headers)
+        resp.raise_for_status()
+        pages = (resp.json().get("query") or {}).get("pages") or {}
+        for pid, page in pages.items():
+            if pid == "-1":
+                continue
+            extract = (page.get("extract") or "").strip()
+            title = page.get("title", "")
+            if extract:
+                return {
+                    "title": title,
+                    "extract": extract[:800],
+                    "url": f"https://en.wikipedia.org/wiki/{quote(title.replace(' ', '_'))}",
+                }
+        resp2 = http_requests.get(
+            base,
+            params={"action": "opensearch", "format": "json", "search": query, "limit": 1, "namespace": 0},
+            timeout=8,
+            headers=headers,
+        )
+        resp2.raise_for_status()
+        data = resp2.json()
+        if len(data) >= 2 and data[1]:
+            title = data[1][0]
+            params["titles"] = title
+            r3 = http_requests.get(base, params=params, timeout=8, headers=headers)
+            r3.raise_for_status()
+            pages = (r3.json().get("query") or {}).get("pages") or {}
+            for pid, page in pages.items():
+                if pid == "-1":
+                    continue
+                extract = (page.get("extract") or "").strip()
+                if extract:
+                    return {
+                        "title": page.get("title", title),
+                        "extract": extract[:800],
+                        "url": f"https://en.wikipedia.org/wiki/{quote(title.replace(' ', '_'))}",
+                    }
+    except Exception as exc:
+        logger.warning("Wikipedia lookup failed for %r: %s", query, exc)
+    return None
 
 
 _ASSESSMENT_ALIASES = {
@@ -82,6 +149,18 @@ def _normalize_assessment(raw) -> str:
     return _ASSESSMENT_ALIASES.get(v, "uncertain")
 
 
+def _normalize_confidence(raw) -> int:
+    try:
+        if raw is None:
+            return 50
+        if isinstance(raw, str):
+            raw = raw.strip().rstrip("%")
+        v = int(float(raw))
+    except (TypeError, ValueError):
+        return 50
+    return max(0, min(100, v))
+
+
 def _build_assessed_claims(claims_raw: list, search_context: str) -> list:
     ollama_url = getattr(settings, "OLLAMA_URL", "http://ollama:11434")
     model = getattr(settings, "OLLAMA_MODEL", "qwen2.5:3b")
@@ -108,12 +187,47 @@ def _build_assessed_claims(claims_raw: list, search_context: str) -> list:
         else:
             raise ValueError(f"Unexpected type: {type(parsed)}")
         for item in items:
-            if isinstance(item, dict) and "assessment" in item:
-                item["assessment"] = _normalize_assessment(str(item["assessment"]))
+            if isinstance(item, dict):
+                if "assessment" in item:
+                    item["assessment"] = _normalize_assessment(str(item["assessment"]))
+                else:
+                    item["assessment"] = "uncertain"
+                item["confidence"] = _normalize_confidence(item.get("confidence"))
         return items
     except Exception as exc:
         logger.warning("Ollama factcheck failed: %s", exc)
-        return [{"claim": c, "assessment": "uncertain", "explanation": "LLM unavailable"} for c in claims_raw]
+        return [
+            {"claim": c, "assessment": "uncertain", "confidence": 0, "explanation": "LLM unavailable"}
+            for c in claims_raw
+        ]
+
+
+def format_search_context(web_results: list, wiki_hits: list) -> str:
+    lines = []
+    if web_results:
+        lines.append("Web search:")
+        for r in web_results:
+            title = r.get("title", "")
+            body = r.get("body", "")
+            url = r.get("url", "")
+            lines.append(f"[{title}] {body} ({url})")
+    if wiki_hits:
+        lines.append("")
+        lines.append("Wikipedia:")
+        for w in wiki_hits:
+            lines.append(f"[{w.get('title','')}] {w.get('extract','')}")
+    return "\n".join(lines)
+
+
+def match_wiki(claim_text: str, wiki_hits: list):
+    if not claim_text or not wiki_hits:
+        return None
+    ct = claim_text.lower()
+    for w in wiki_hits:
+        title = (w.get("title") or "").lower()
+        if title and title in ct:
+            return w
+    return wiki_hits[0] if wiki_hits else None
 
 
 def analyze_with_ollama(text):
@@ -122,14 +236,31 @@ def analyze_with_ollama(text):
         return _fallback_sentence_split(text)
 
     search_query = " ".join(candidate_claims[:2])[:200]
-    search_context = search_web(search_query)
+    web_results = search_web(search_query)
+    wiki_hits = []
+    for c in candidate_claims[:4]:
+        hit = lookup_wikipedia(c[:120])
+        if hit:
+            wiki_hits.append(hit)
+    context = format_search_context(web_results, wiki_hits)
 
-    return _build_assessed_claims(candidate_claims, search_context)
+    assessed = _build_assessed_claims(candidate_claims, context)
+    sources = [{"title": r["title"], "url": r["url"]} for r in web_results[:3] if r.get("url")]
+    out = []
+    for item in assessed:
+        claim_text = (item.get("claim") or "").strip()
+        wiki = match_wiki(claim_text, wiki_hits)
+        out.append({**item, "sources": sources, "wikipedia": wiki})
+    return out
 
 
 def _fallback_sentence_split(text):
     sentences = [s.strip() for s in text.replace("!", ".").replace("?", ".").split(".") if len(s.strip()) > 20]
-    return [{"claim": s, "assessment": "uncertain", "explanation": "LLM unavailable"} for s in sentences[:8]]
+    return [
+        {"claim": s, "assessment": "uncertain", "confidence": 0, "explanation": "LLM unavailable",
+         "sources": [], "wikipedia": None}
+        for s in sentences[:8]
+    ]
 
 
 def check_google_fact_check(claim_text):

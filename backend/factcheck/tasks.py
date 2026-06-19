@@ -4,7 +4,14 @@ from celery import shared_task
 from django.core.cache import cache
 
 from factcheck.ner import _regex_split, extract_claim_sentences, extract_entities
-from factcheck.services import _build_assessed_claims, check_google_fact_check, search_web
+from factcheck.services import (
+    _build_assessed_claims,
+    check_google_fact_check,
+    format_search_context,
+    lookup_wikipedia,
+    match_wiki,
+    search_web,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +27,7 @@ def _set_stage(task_id, stage, progress, result=None, error=None):
     cache.set(f"fc:{task_id}", payload, timeout=STAGE_TTL)
 
 
-@shared_task(bind=True, soft_time_limit=240, time_limit=270)
+@shared_task(bind=True, soft_time_limit=300, time_limit=330)
 def run_factcheck(self, text):
     task_id = self.request.id
     try:
@@ -36,10 +43,16 @@ def run_factcheck(self, text):
 
         _set_stage(task_id, "searching", 30)
         search_query = " ".join(claims_raw[:2])[:200]
-        search_context = search_web(search_query)
+        web_results = search_web(search_query)
+        wiki_hits = []
+        for c in claims_raw[:4]:
+            hit = lookup_wikipedia(c[:120])
+            if hit:
+                wiki_hits.append(hit)
+        context = format_search_context(web_results, wiki_hits)
 
         _set_stage(task_id, "assessing", 55)
-        raw_assessed = _build_assessed_claims(claims_raw, search_context)
+        raw_assessed = _build_assessed_claims(claims_raw, context)
         seen_texts: set = set()
         merged = []
         for i, item in enumerate(raw_assessed):
@@ -51,14 +64,31 @@ def run_factcheck(self, text):
         for original in claims_raw:
             if original and original not in seen_texts:
                 seen_texts.add(original)
-                merged.append({"claim": original, "assessment": "uncertain", "explanation": "Could not assess."})
+                merged.append({
+                    "claim": original,
+                    "assessment": "uncertain",
+                    "confidence": 0,
+                    "explanation": "Could not assess.",
+                })
         claims = merged
 
         _set_stage(task_id, "cross_referencing", 80)
+        top_sources = [
+            {"title": r.get("title", ""), "url": r.get("url", "")}
+            for r in web_results[:3]
+            if r.get("url")
+        ]
         enriched = []
         for claim_obj in claims:
-            fact_checks = check_google_fact_check(claim_obj.get("claim", ""))
-            enriched.append({**claim_obj, "fact_checks": fact_checks})
+            ctext = claim_obj.get("claim", "")
+            fact_checks = check_google_fact_check(ctext)
+            wiki = match_wiki(ctext, wiki_hits)
+            enriched.append({
+                **claim_obj,
+                "fact_checks": fact_checks,
+                "sources": top_sources,
+                "wikipedia": wiki,
+            })
 
         false_count = sum(1 for c in enriched if c.get("assessment") == "likely_false")
         uncertain_count = sum(1 for c in enriched if c.get("assessment") == "uncertain")

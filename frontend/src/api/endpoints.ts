@@ -97,6 +97,21 @@ export const factcheck = {
     client.post<{ task_id: string }>("/factcheck/check/", { text }),
   status: (task_id: string) =>
     client.get<FactCheckStatus>(`/factcheck/status/${task_id}/`),
+  fetchUrl: (url: string) =>
+    client.post<{ text: string; title: string }>("/factcheck/fetch-url/", { url }),
+  extractDoc: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return client.post<{ text: string }>("/factcheck/extract-doc/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+  exportPdf: (result: unknown, text: string) =>
+    client.post<Blob>(
+      "/factcheck/export/",
+      { result, text },
+      { responseType: "blob" },
+    ),
 };
 
 export const review = {

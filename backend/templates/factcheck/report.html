@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Fact Check Report</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Helvetica, Arial, sans-serif; color: #111; font-size: 11pt; line-height: 1.5; }
+  h1 { font-size: 24pt; margin: 0 0 4pt 0; }
+  h2 { font-size: 13pt; margin: 18pt 0 6pt 0; border-bottom: 1px solid #ddd; padding-bottom: 3pt; }
+  .meta { color: #666; font-size: 9pt; margin-bottom: 14pt; }
+  .verdict-banner { padding: 12pt 14pt; border-radius: 4pt; color: #fff; margin: 8pt 0 16pt 0; }
+  .verdict-banner .label { font-size: 9pt; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
+  .verdict-banner .value { font-size: 20pt; font-weight: 600; margin-top: 2pt; }
+  .verdict-banner .count { font-size: 9pt; margin-top: 4pt; opacity: 0.9; }
+  .claim { border: 1px solid #e5e5e5; border-radius: 4pt; padding: 10pt 12pt; margin-bottom: 10pt; page-break-inside: avoid; }
+  .claim-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6pt; gap: 12pt; }
+  .claim-text { flex: 1; font-weight: 500; }
+  .badge { padding: 3pt 8pt; border-radius: 3pt; color: #fff; font-size: 9pt; white-space: nowrap; font-weight: 600; }
+  .conf-bar { background: #eee; height: 4pt; border-radius: 2pt; margin: 6pt 0; overflow: hidden; }
+  .conf-fill { height: 100%; }
+  .conf-label { font-size: 8pt; color: #666; }
+  .explanation { color: #333; font-size: 10pt; margin-top: 4pt; }
+  .sources { margin-top: 8pt; font-size: 9pt; }
+  .sources .head { color: #666; text-transform: uppercase; letter-spacing: 0.06em; font-size: 8pt; margin-bottom: 3pt; }
+  .sources a { color: #2563eb; text-decoration: none; word-break: break-all; }
+  .wiki { background: #f5f5f5; padding: 6pt 8pt; border-radius: 3pt; margin-top: 6pt; font-size: 9pt; }
+  .wiki .title { font-weight: 600; }
+  .entities { font-size: 9pt; color: #555; }
+  .entity { display: inline-block; background: #f1f1f1; padding: 2pt 6pt; margin: 2pt; border-radius: 2pt; }
+  .source-text { background: #fafafa; padding: 8pt 10pt; border-left: 3pt solid #ddd; font-size: 9pt; color: #444; white-space: pre-wrap; }
+  footer { margin-top: 24pt; padding-top: 8pt; border-top: 1px solid #eee; color: #888; font-size: 8pt; }
+</style>
+</head>
+<body>
+
+<h1>Fact Check Report</h1>
+<div class="meta">Generated {{ generated_at|date:"Y-m-d H:i" }} UTC · ProofLayer</div>
+
+<div class="verdict-banner" style="background: {{ verdict_color }};">
+  <div class="label">Overall Verdict</div>
+  <div class="value">{{ verdict_label }}</div>
+  <div class="count">{{ result.claims_count }} claim{{ result.claims_count|pluralize }} analyzed</div>
+</div>
+
+<h2>Claims</h2>
+{% for claim in claims %}
+<div class="claim">
+  <div class="claim-header">
+    <div class="claim-text">#{{ forloop.counter|stringformat:"02d" }} · {{ claim.claim }}</div>
+    <div class="badge" style="background: {{ claim.display_color }};">{{ claim.display_label }}</div>
+  </div>
+  <div class="conf-bar"><div class="conf-fill" style="width: {{ claim.confidence|default:0 }}%; background: #2563eb;"></div></div>
+  <div class="conf-label">Confidence: {{ claim.confidence|default:0 }}%</div>
+  {% if claim.explanation %}<div class="explanation">{{ claim.explanation }}</div>{% endif %}
+
+  {% if claim.wikipedia %}
+  <div class="wiki">
+    <span class="title">Wikipedia · {{ claim.wikipedia.title }}</span><br>
+    {{ claim.wikipedia.extract|truncatechars:280 }}<br>
+    <a href="{{ claim.wikipedia.url }}">{{ claim.wikipedia.url }}</a>
+  </div>
+  {% endif %}
+
+  {% if claim.sources %}
+  <div class="sources">
+    <div class="head">Sources</div>
+    {% for s in claim.sources %}
+      <div>· <a href="{{ s.url }}">{{ s.title|default:s.url }}</a></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if claim.fact_checks %}
+  <div class="sources">
+    <div class="head">Fact Check Cross-References</div>
+    {% for fc in claim.fact_checks %}
+      <div>· {{ fc.publisher }} - {{ fc.rating }} - <a href="{{ fc.url }}">{{ fc.url }}</a></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% empty %}
+<p>No claims found.</p>
+{% endfor %}
+
+{% if entities %}
+<h2>Named Entities</h2>
+<div class="entities">
+  {% for e in entities %}<span class="entity">{{ e.text }} · {{ e.type }}</span>{% endfor %}
+</div>
+{% endif %}
+
+{% if original_text %}
+<h2>Source Text</h2>
+<div class="source-text">{{ original_text }}</div>
+{% endif %}
+
+<footer>ProofLayer Fact Check · prooflayer.cloud · Report generated {{ generated_at|date:"Y-m-d H:i" }} UTC</footer>
+
+</body>
+</html>
