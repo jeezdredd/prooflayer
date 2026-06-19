@@ -86,8 +86,8 @@ services:
       - /dev/kfd
       - /dev/dri
     group_add:
-      - video
-      - render
+      - "${RENDER_GID:-991}"
+      - "${VIDEO_GID:-44}"
     depends_on:
       db:
         condition: service_healthy
