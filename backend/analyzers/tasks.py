@@ -207,8 +207,13 @@ def rescue_stuck_submissions():
     return count
 
 
-@shared_task(name="analyzers.tasks.run_weekly_retrain", soft_time_limit=3600, time_limit=3900)
-def run_weekly_retrain(media_type: str = "image", triggered_by_id=None, min_samples_override=None):
+@shared_task(name="analyzers.tasks.run_weekly_retrain", soft_time_limit=21600, time_limit=21900)
+def run_weekly_retrain(
+    media_type: str = "image",
+    triggered_by_id=None,
+    min_samples_override=None,
+    epochs_override=None,
+):
     from datetime import timedelta
     from django.conf import settings
     from django.core.management import call_command
@@ -251,6 +256,9 @@ def run_weekly_retrain(media_type: str = "image", triggered_by_id=None, min_samp
         status=RetrainRun.Status.STARTED,
         triggered_by_id=triggered_by_id,
     )
+    if epochs_override is not None:
+        run.epochs = max(1, int(epochs_override))
+        run.save(update_fields=["epochs"])
 
     if samples < min_samples:
         run.status = RetrainRun.Status.SKIPPED

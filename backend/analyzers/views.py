@@ -38,13 +38,21 @@ class RetrainTriggerView(APIView):
             )
         force = bool(request.data.get("force"))
         min_samples_override = 1 if force else None
+        epochs_raw = request.data.get("epochs")
+        epochs_override = None
+        if epochs_raw is not None:
+            try:
+                epochs_override = max(1, min(10, int(epochs_raw)))
+            except (TypeError, ValueError):
+                return Response({"error": "epochs must be int 1-10"}, status=status.HTTP_400_BAD_REQUEST)
         task = run_weekly_retrain.delay(
             media_type,
             triggered_by_id=request.user.id,
             min_samples_override=min_samples_override,
+            epochs_override=epochs_override,
         )
         return Response(
-            {"task_id": task.id, "media_type": media_type, "force": force},
+            {"task_id": task.id, "media_type": media_type, "force": force, "epochs": epochs_override},
             status=status.HTTP_202_ACCEPTED,
         )
 

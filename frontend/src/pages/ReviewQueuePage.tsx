@@ -54,14 +54,15 @@ export default function ReviewQueuePage() {
 
   const [retrainMedia, setRetrainMedia] = useState<"image" | "video" | "audio">("image");
   const [retrainForce, setRetrainForce] = useState(false);
+  const [retrainEpochs, setRetrainEpochs] = useState(1);
   const [retrainBusy, setRetrainBusy] = useState(false);
 
   const handleRetrain = async () => {
     setRetrainBusy(true);
     try {
-      const res = await retrain.trigger(retrainMedia, retrainForce);
+      const res = await retrain.trigger(retrainMedia, retrainForce, retrainEpochs);
       toast.success(
-        `Retrain dispatched (${res.data.media_type}${res.data.force ? ", force" : ""}). Email on finish.`,
+        `Retrain dispatched (${res.data.media_type}, ${res.data.epochs ?? "?"} ep${res.data.force ? ", force" : ""}). Email on finish.`,
       );
     } catch {
       toast.error("Retrain dispatch failed");
@@ -99,6 +100,17 @@ export default function ReviewQueuePage() {
               className="accent-signal-amber"
             />
             Force
+          </label>
+          <label className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300">
+            Ep
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={retrainEpochs}
+              onChange={(e) => setRetrainEpochs(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+              className="w-12 font-mono text-[11px] bg-transparent border border-white/10 text-ink-200 px-2 py-1 rounded-sm"
+            />
           </label>
           <button
             onClick={handleRetrain}

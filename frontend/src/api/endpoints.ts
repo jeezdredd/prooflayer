@@ -125,8 +125,11 @@ export const review = {
 };
 
 export const retrain = {
-  trigger: (media_type: "image" | "video" | "audio" = "image", force = false) =>
-    client.post<{ task_id: string; media_type: string; force: boolean }>("/analyzers/retrain/", { media_type, force }),
+  trigger: (media_type: "image" | "video" | "audio" = "image", force = false, epochs?: number) =>
+    client.post<{ task_id: string; media_type: string; force: boolean; epochs: number | null }>(
+      "/analyzers/retrain/",
+      { media_type, force, ...(epochs ? { epochs } : {}) },
+    ),
   runs: () =>
     client.get<Array<{
       id: string;
