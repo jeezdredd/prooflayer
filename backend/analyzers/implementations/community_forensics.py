@@ -5,6 +5,7 @@ import torch
 from PIL import Image
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
+from analyzers._device import get_device, inputs_to_device, to_device
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -16,13 +17,14 @@ _state = {"model": None, "processor": None}
 
 def _load():
     if _state["model"] is None:
-        _state["model"] = AutoModelForImageClassification.from_pretrained(MODEL_NAME, use_safetensors=True).eval()
+        model = AutoModelForImageClassification.from_pretrained(MODEL_NAME, use_safetensors=True).eval()
+        _state["model"] = to_device(model)
         try:
             _state["processor"] = AutoImageProcessor.from_pretrained(MODEL_NAME)
         except Exception:
             from transformers import ViTImageProcessor
             _state["processor"] = ViTImageProcessor(size={"height": 384, "width": 384}, do_normalize=True, image_mean=[0.5, 0.5, 0.5], image_std=[0.5, 0.5, 0.5])
-        logger.info("community_forensics loaded %s", MODEL_NAME)
+        logger.info("community_forensics loaded %s on %s", MODEL_NAME, get_device())
     return _state["model"], _state["processor"]
 
 
@@ -41,10 +43,10 @@ class CommunityForensicsDetector(BaseAnalyzer):
 
         try:
             model, processor = _load()
-            inputs = processor(images=image, return_tensors="pt", do_resize=False)
+            inputs = inputs_to_device(processor(images=image, return_tensors="pt", do_resize=False))
             with torch.no_grad():
                 outputs = model(**inputs)
-                logits = outputs.logits.squeeze()
+                logits = outputs.logits.squeeze().cpu()
                 if logits.dim() == 0:
                     ai_prob = float(torch.sigmoid(logits).item())
                 else:

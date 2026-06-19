@@ -5,6 +5,7 @@ import torch
 from PIL import Image
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
+from analyzers._device import get_device, inputs_to_device, to_device
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -16,9 +17,8 @@ _state = {"model": None, "processor": None}
 
 def _load():
     if _state["model"] is None:
-        _state["model"] = AutoModelForImageClassification.from_pretrained(
-            MODEL_NAME, local_files_only=False
-        ).eval()
+        model = AutoModelForImageClassification.from_pretrained(MODEL_NAME, local_files_only=False).eval()
+        _state["model"] = to_device(model)
         try:
             _state["processor"] = AutoImageProcessor.from_pretrained(MODEL_NAME)
         except Exception:
@@ -29,7 +29,7 @@ def _load():
                 image_mean=[0.5, 0.5, 0.5],
                 image_std=[0.5, 0.5, 0.5],
             )
-        logger.info("npr_detector loaded %s", MODEL_NAME)
+        logger.info("npr_detector loaded %s on %s", MODEL_NAME, get_device())
     return _state["model"], _state["processor"]
 
 
@@ -55,10 +55,10 @@ class NPRDetector(BaseAnalyzer):
 
         try:
             model, processor = _load()
-            inputs = processor(images=image, return_tensors="pt")
+            inputs = inputs_to_device(processor(images=image, return_tensors="pt"))
             with torch.no_grad():
                 outputs = model(**inputs)
-                probs = torch.softmax(outputs.logits, dim=-1).squeeze()
+                probs = torch.softmax(outputs.logits, dim=-1).squeeze().cpu()
                 label2id = getattr(model.config, "label2id", {"REAL": 0, "FAKE": 1})
                 fake_idx = _fake_index(label2id)
                 ai_prob = float(probs[fake_idx].item())

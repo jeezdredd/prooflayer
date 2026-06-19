@@ -30,10 +30,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+
 COPY pyproject.toml uv.lock* /tmp/
 RUN uv pip install --system --no-cache \
     --index-strategy unsafe-best-match \
-    --extra-index-url https://download.pytorch.org/whl/cpu \
+    --extra-index-url ${TORCH_INDEX_URL} \
     -r /tmp/pyproject.toml
 
 RUN for i in 1 2 3; do \

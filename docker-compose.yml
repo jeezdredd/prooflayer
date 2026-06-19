@@ -57,6 +57,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
     command: >
       celery -A config.celery worker
       --loglevel=info
@@ -78,6 +80,14 @@ services:
       - HF_TOKEN=${HF_TOKEN:-}
       - PYTORCH_NO_CUDA_MEMORY_CACHING=1
       - OMP_NUM_THREADS=2
+      - HSA_OVERRIDE_GFX_VERSION=${HSA_OVERRIDE_GFX_VERSION:-}
+      - HIP_VISIBLE_DEVICES=${HIP_VISIBLE_DEVICES:-0}
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
     depends_on:
       db:
         condition: service_healthy

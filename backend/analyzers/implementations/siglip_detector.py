@@ -5,6 +5,7 @@ import torch
 from PIL import Image
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
+from analyzers._device import get_device, inputs_to_device, to_device
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -16,11 +17,10 @@ _state = {"model": None, "processor": None}
 
 def _load():
     if _state["model"] is None:
-        _state["model"] = AutoModelForImageClassification.from_pretrained(
-            MODEL_NAME, local_files_only=False
-        ).eval()
+        model = AutoModelForImageClassification.from_pretrained(MODEL_NAME, local_files_only=False).eval()
+        _state["model"] = to_device(model)
         _state["processor"] = AutoImageProcessor.from_pretrained(MODEL_NAME)
-        logger.info("siglip_detector loaded %s", MODEL_NAME)
+        logger.info("siglip_detector loaded %s on %s", MODEL_NAME, get_device())
     return _state["model"], _state["processor"]
 
 
@@ -57,10 +57,10 @@ class SigLIPDetector(BaseAnalyzer):
 
         try:
             model, processor = _load()
-            inputs = processor(images=image, return_tensors="pt")
+            inputs = inputs_to_device(processor(images=image, return_tensors="pt"))
             with torch.no_grad():
                 outputs = model(**inputs)
-                probs = torch.softmax(outputs.logits, dim=1).squeeze(0)
+                probs = torch.softmax(outputs.logits, dim=1).squeeze(0).cpu()
             ai_prob, per_label = _ai_probability(model, probs)
         except Exception as exc:
             logger.warning("siglip_detector inference failed: %s", exc)

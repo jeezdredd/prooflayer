@@ -6,6 +6,7 @@ import torch
 from PIL import Image
 from transformers import AutoFeatureExtractor, AutoModelForImageClassification
 
+from analyzers._device import get_device, inputs_to_device, to_device
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -31,8 +32,9 @@ def _load_model(name: str):
         model = AutoModelForImageClassification.from_pretrained(name, use_safetensors=True)
         extractor = AutoFeatureExtractor.from_pretrained(name)
         model.eval()
+        model = to_device(model)
         _model_cache[name] = (model, extractor)
-        logger.info("AI detector model loaded: %s", name)
+        logger.info("AI detector model loaded: %s on %s", name, get_device())
     return _model_cache[name]
 
 
@@ -74,10 +76,10 @@ def _run_one(name: str, idx: int, image: Image.Image) -> dict:
     label = f"classifier_{idx + 1}"
     try:
         model, extractor = _load_model(name)
-        inputs = extractor(images=image, return_tensors="pt")
+        inputs = inputs_to_device(extractor(images=image, return_tensors="pt"))
         with torch.no_grad():
             outputs = model(**inputs)
-            probs = torch.softmax(outputs.logits, dim=1).squeeze(0)
+            probs = torch.softmax(outputs.logits, dim=1).squeeze(0).cpu()
         ai_prob = _ai_prob_from_outputs(model, probs)
         id2label = model.config.id2label
         return {
