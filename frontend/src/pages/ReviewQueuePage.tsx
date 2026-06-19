@@ -53,13 +53,16 @@ export default function ReviewQueuePage() {
   }
 
   const [retrainMedia, setRetrainMedia] = useState<"image" | "video" | "audio">("image");
+  const [retrainForce, setRetrainForce] = useState(false);
   const [retrainBusy, setRetrainBusy] = useState(false);
 
   const handleRetrain = async () => {
     setRetrainBusy(true);
     try {
-      const res = await retrain.trigger(retrainMedia);
-      toast.success(`Retrain dispatched (${res.data.media_type}) - task ${res.data.task_id.slice(0, 8)}`);
+      const res = await retrain.trigger(retrainMedia, retrainForce);
+      toast.success(
+        `Retrain dispatched (${res.data.media_type}${res.data.force ? ", force" : ""}). Email on finish.`,
+      );
     } catch {
       toast.error("Retrain dispatch failed");
     } finally {
@@ -88,6 +91,15 @@ export default function ReviewQueuePage() {
             <option value="video">video</option>
             <option value="audio">audio</option>
           </select>
+          <label className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={retrainForce}
+              onChange={(e) => setRetrainForce(e.target.checked)}
+              className="accent-signal-amber"
+            />
+            Force
+          </label>
           <button
             onClick={handleRetrain}
             disabled={retrainBusy}

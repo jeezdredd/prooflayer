@@ -219,7 +219,18 @@ class VerdictOverrideView(APIView):
             reason=reason,
         )
         submission.final_verdict = new_verdict
-        submission.save(update_fields=["final_verdict", "updated_at"])
+        label_map = {
+            "authentic": "real",
+            "fake": "fake",
+            "likely_fake": "fake",
+        }
+        updated_fields = ["final_verdict", "updated_at"]
+        new_label = label_map.get(new_verdict)
+        if new_label:
+            submission.verified_label = new_label
+            submission.approved_for_training = True
+            updated_fields += ["verified_label", "approved_for_training"]
+        submission.save(update_fields=updated_fields)
 
         return Response(
             VerdictOverrideSerializer(submission.verdict_overrides.first()).data,

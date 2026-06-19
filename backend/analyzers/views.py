@@ -36,9 +36,15 @@ class RetrainTriggerView(APIView):
                 {"error": f"media_type must be one of {sorted(ALLOWED_MEDIA)}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        task = run_weekly_retrain.delay(media_type)
+        force = bool(request.data.get("force"))
+        min_samples_override = 1 if force else None
+        task = run_weekly_retrain.delay(
+            media_type,
+            triggered_by_id=request.user.id,
+            min_samples_override=min_samples_override,
+        )
         return Response(
-            {"task_id": task.id, "media_type": media_type},
+            {"task_id": task.id, "media_type": media_type, "force": force},
             status=status.HTTP_202_ACCEPTED,
         )
 

@@ -207,7 +207,7 @@ def rescue_stuck_submissions():
 
 
 @shared_task(name="analyzers.tasks.run_weekly_retrain")
-def run_weekly_retrain(media_type: str = "image"):
+def run_weekly_retrain(media_type: str = "image", triggered_by_id=None, min_samples_override=None):
     from datetime import timedelta
     from django.conf import settings
     from django.core.management import call_command
@@ -217,7 +217,10 @@ def run_weekly_retrain(media_type: str = "image"):
     from content.models import Submission
     from .models import RetrainRun
 
-    min_samples = getattr(settings, "RETRAIN_MIN_NEW_SAMPLES", 50)
+    if min_samples_override is not None:
+        min_samples = int(min_samples_override)
+    else:
+        min_samples = getattr(settings, "RETRAIN_MIN_NEW_SAMPLES", 50)
     media_types_map = {
         "image": ["image/jpeg", "image/png", "image/webp"],
         "video": ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"],
@@ -241,7 +244,12 @@ def run_weekly_retrain(media_type: str = "image"):
     )
     samples = qs.count()
 
-    run = RetrainRun.objects.create(media_type=media_type, samples_used=samples, status=RetrainRun.Status.STARTED)
+    run = RetrainRun.objects.create(
+        media_type=media_type,
+        samples_used=samples,
+        status=RetrainRun.Status.STARTED,
+        triggered_by_id=triggered_by_id,
+    )
 
     if samples < min_samples:
         run.status = RetrainRun.Status.SKIPPED
@@ -250,6 +258,7 @@ def run_weekly_retrain(media_type: str = "image"):
         run.save(update_fields=["status", "error", "finished_at"])
         logger.info("retrain skipped: %s", run.error)
         _notify_retrain(run)
+        _email_retrain(run)
         return str(run.id)
 
     buf = StringIO()
@@ -265,6 +274,7 @@ def run_weekly_retrain(media_type: str = "image"):
     run.finished_at = timezone.now()
     run.save(update_fields=["hf_revision", "status", "error", "finished_at"])
     _notify_retrain(run)
+    _email_retrain(run)
     return str(run.id)
 
 
@@ -291,3 +301,36 @@ def _notify_retrain(run):
         requests.post(url, json=payload, timeout=5)
     except Exception as exc:
         logger.warning("retrain notify failed: %s", exc)
+
+
+def _email_retrain(run):
+    from django.conf import settings
+    from django.core.mail import EmailMultiAlternatives
+
+    user = run.triggered_by
+    if not user or not user.email:
+        return
+    status = run.status
+    subject = f"[ProofLayer] Retrain {status}: {run.media_type}"
+    lines = [
+        f"Retrain run {run.id} finished with status: {status}.",
+        f"Media type: {run.media_type}",
+        f"Samples used: {run.samples_used}",
+    ]
+    if run.hf_revision:
+        lines.append(f"HF revision: {run.hf_revision}")
+    if run.error:
+        lines.append(f"Error: {run.error}")
+    text_body = "\n".join(lines)
+    html_body = "<p>" + "</p><p>".join(lines) + "</p>"
+    try:
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[user.email],
+        )
+        msg.attach_alternative(html_body, "text/html")
+        msg.send(fail_silently=True)
+    except Exception as exc:
+        logger.warning("retrain email failed: %s", exc)

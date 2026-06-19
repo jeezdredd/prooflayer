@@ -4,6 +4,7 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-06-19: VerdictOverrideView now marks submission `approved_for_training=True` + `verified_label=real/fake` when override verdict is authentic/fake/likely_fake. Without this, retrain query returned 0 samples even after manual review. Plus retrain task: accepts `triggered_by_id` (FK on RetrainRun, migration 0004) + `min_samples_override`; sends email to triggering user on success/skipped/failed. Frontend gets a "Force" checkbox to lower min_samples to 1 for testing on tiny datasets.
 - 2026-06-19: Staff bypass throttles globally (new `common/throttling.py` Staff* subclasses set as DEFAULT_THROTTLE_CLASSES). UploadRateThrottle also bypasses staff. Admins no longer hit override/upload rate caps.
 - 2026-06-19: Retrain trigger endpoint added: `POST /api/v1/analyzers/retrain/` (IsAdminUser) + `GET /api/v1/analyzers/retrain/runs/` for last 10. Frontend ReviewQueuePage now has media-type picker + "Run Retrain" button.
 - 2026-06-19: Subscription gate Zap icon: text-iris bug (transparent gradient color) → text-violet-300.

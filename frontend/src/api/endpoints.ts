@@ -125,8 +125,8 @@ export const review = {
 };
 
 export const retrain = {
-  trigger: (media_type: "image" | "video" | "audio" = "image") =>
-    client.post<{ task_id: string; media_type: string }>("/analyzers/retrain/", { media_type }),
+  trigger: (media_type: "image" | "video" | "audio" = "image", force = false) =>
+    client.post<{ task_id: string; media_type: string; force: boolean }>("/analyzers/retrain/", { media_type, force }),
   runs: () =>
     client.get<Array<{
       id: string;
