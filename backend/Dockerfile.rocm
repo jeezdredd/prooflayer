@@ -1,0 +1,55 @@
+FROM rocm/pytorch:rocm6.2_ubuntu22.04_py3.10_pytorch_release_2.3.0
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    g++ \
+    libmagic1 \
+    libjpeg-dev \
+    zlib1g-dev \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    ffmpeg \
+    libsndfile1 \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libcairo2 \
+    libffi8 \
+    shared-mime-info \
+    fonts-liberation \
+    postgresql-client \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock* /tmp/
+RUN uv pip install --system --no-cache \
+    --index-strategy unsafe-best-match \
+    --no-deps-package torch \
+    -r /tmp/pyproject.toml || \
+    uv pip install --system --no-cache \
+    --index-strategy unsafe-best-match \
+    -r /tmp/pyproject.toml
+
+RUN for i in 1 2 3; do \
+      uv pip install --system --no-cache \
+        https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl \
+      && break || sleep 5; \
+    done
+
+COPY backend/ /app/
+
+RUN DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput || true
+
+EXPOSE 8000
+
+CMD ["celery", "-A", "config.celery", "worker", "--loglevel=info", "-Q", "default,ml,reports", "--concurrency=1"]

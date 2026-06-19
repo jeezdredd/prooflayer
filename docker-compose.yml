@@ -56,7 +56,7 @@ services:
   celery_worker:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: ${WORKER_DOCKERFILE:-backend/Dockerfile}
       args:
         TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
     command: >
