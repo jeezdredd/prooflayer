@@ -64,7 +64,7 @@ services:
       - -c
       - |
         python -u manage.py preload_models || true
-        exec python -u -m celery -A config.celery worker --loglevel=info -Q default,ml,reports --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=10000000 --without-heartbeat --without-gossip --without-mingle
+        exec python -u -m celery -A config.celery worker --loglevel=info -Q default,ml,reports --concurrency=1 --max-tasks-per-child=50 --max-memory-per-child=10000000 -E
     volumes:
       - ./backend:/app
       - media_data:/app/media
