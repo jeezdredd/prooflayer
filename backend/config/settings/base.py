@@ -112,8 +112,8 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
     ),
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
+        "common.throttling.StaffBypassAnonRateThrottle",
+        "common.throttling.StaffBypassUserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "20/hour",

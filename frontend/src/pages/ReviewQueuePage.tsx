@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { review } from "../api/endpoints";
+import { retrain, review } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 import { Skeleton } from "../components/ui/Skeleton";
 import { toast } from "../components/ui/Toast";
@@ -52,14 +52,50 @@ export default function ReviewQueuePage() {
     return <div className="text-sm text-signal-blood font-mono">Staff access required.</div>;
   }
 
+  const [retrainMedia, setRetrainMedia] = useState<"image" | "video" | "audio">("image");
+  const [retrainBusy, setRetrainBusy] = useState(false);
+
+  const handleRetrain = async () => {
+    setRetrainBusy(true);
+    try {
+      const res = await retrain.trigger(retrainMedia);
+      toast.success(`Retrain dispatched (${res.data.media_type}) - task ${res.data.task_id.slice(0, 8)}`);
+    } catch {
+      toast.error("Retrain dispatch failed");
+    } finally {
+      setRetrainBusy(false);
+    }
+  };
+
   return (
     <div>
-      <div className="mb-6">
-        <span className="label-mono">Service / 08</span>
-        <h1 className="font-display text-4xl text-white mt-2">Review Queue</h1>
-        <p className="text-sm text-ink-400 mt-2">
-          Manually override verdicts for submissions flagged as <code className="text-ink-200">needs_review</code> or <code className="text-ink-200">inconclusive</code>.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <span className="label-mono">Service / 08</span>
+          <h1 className="font-display text-4xl text-white mt-2">Review Queue</h1>
+          <p className="text-sm text-ink-400 mt-2">
+            Manually override verdicts for submissions flagged as <code className="text-ink-200">needs_review</code> or <code className="text-ink-200">inconclusive</code>.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 case-card crop-marks px-3 py-2">
+          <span className="label-mono">Retrain</span>
+          <select
+            value={retrainMedia}
+            onChange={(e) => setRetrainMedia(e.target.value as "image" | "video" | "audio")}
+            className="font-mono text-[11px] bg-transparent border border-white/10 text-ink-200 px-2 py-1 rounded-sm"
+          >
+            <option value="image">image</option>
+            <option value="video">video</option>
+            <option value="audio">audio</option>
+          </select>
+          <button
+            onClick={handleRetrain}
+            disabled={retrainBusy}
+            className="font-mono text-[10px] uppercase tracking-[0.14em] text-signal-amber hover:bg-signal-amber/10 border border-signal-amber/60 px-3 py-1.5 rounded-sm transition-colors"
+          >
+            {retrainBusy ? "Dispatching..." : "Run Retrain"}
+          </button>
+        </div>
       </div>
 
       {isLoading && (

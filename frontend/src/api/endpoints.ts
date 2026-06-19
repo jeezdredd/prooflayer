@@ -124,6 +124,22 @@ export const review = {
     client.post(`/content/review/${id}/override/`, data),
 };
 
+export const retrain = {
+  trigger: (media_type: "image" | "video" | "audio" = "image") =>
+    client.post<{ task_id: string; media_type: string }>("/analyzers/retrain/", { media_type }),
+  runs: () =>
+    client.get<Array<{
+      id: string;
+      media_type: string;
+      status: string;
+      samples_used: number;
+      hf_revision: string;
+      error: string;
+      started_at: string | null;
+      finished_at: string | null;
+    }>>("/analyzers/retrain/runs/"),
+};
+
 export const feed = {
   list: (params?: Record<string, string>) =>
     client.get<PaginatedResponse<PublicSubmission>>("/content/feed/", { params }),

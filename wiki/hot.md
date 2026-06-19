@@ -4,6 +4,10 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-06-19: Staff bypass throttles globally (new `common/throttling.py` Staff* subclasses set as DEFAULT_THROTTLE_CLASSES). UploadRateThrottle also bypasses staff. Admins no longer hit override/upload rate caps.
+- 2026-06-19: Retrain trigger endpoint added: `POST /api/v1/analyzers/retrain/` (IsAdminUser) + `GET /api/v1/analyzers/retrain/runs/` for last 10. Frontend ReviewQueuePage now has media-type picker + "Run Retrain" button.
+- 2026-06-19: Subscription gate Zap icon: text-iris bug (transparent gradient color) → text-violet-300.
+- 2026-06-19: Pricing Internal tier: collapsed Active/Staff stack to single badge with priority, pr-16 on header row to prevent label/badge overlap.
 - 2026-06-19: Factcheck v2 landed: Wikipedia lookup, confidence score per claim, top-3 web sources, claim->source highlight panel, PDF export, URL input mode, PDF/DOCX upload, qwen2.5:7b optional. See [[services/factcheck]].
 - 2026-06-19: `backend/common/url_safety.py:validate_public_url` factored from `AnalyzeUrlView`; reused by factcheck URL fetch. SSRF guard now shared.
 - 2026-06-19: Memory bank moved to Obsidian vault `claude-memory/` (was `~/.claude/projects/.../memory/`). Local dir frozen.
