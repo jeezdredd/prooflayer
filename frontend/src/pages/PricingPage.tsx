@@ -220,27 +220,27 @@ export default function PricingPage() {
                 {tier.featured && (
                   <div className="absolute inset-0 bg-gradient-to-b from-iris/[0.04] to-transparent pointer-events-none" />
                 )}
-                {current && (
-                  <div className="absolute top-4 right-4">
-                    <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-iris bg-iris/10 border border-iris/20 px-2 py-0.5">
-                      Active
-                    </span>
-                  </div>
-                )}
-                {tier.featured && !current && (
-                  <div className="absolute top-4 right-4">
-                    <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-iris bg-iris/10 border border-iris/20 px-2 py-0.5">
-                      Popular
-                    </span>
-                  </div>
-                )}
-                {"internal" in tier && (
-                  <div className="absolute top-4 right-4">
-                    <span className="font-mono text-[8px] uppercase tracking-[0.18em] text-red-400 bg-red-400/10 border border-red-400/20 px-2 py-0.5">
-                      Staff Only
-                    </span>
-                  </div>
-                )}
+                {(() => {
+                  let badge: { label: string; cls: string } | null = null;
+                  if ("internal" in tier) {
+                    badge = {
+                      label: current ? "Active / Staff" : "Staff Only",
+                      cls: "text-red-400 bg-red-400/10 border-red-400/20",
+                    };
+                  } else if (current) {
+                    badge = { label: "Active", cls: "text-iris bg-iris/10 border-iris/20" };
+                  } else if (tier.featured) {
+                    badge = { label: "Popular", cls: "text-iris bg-iris/10 border-iris/20" };
+                  }
+                  if (!badge) return null;
+                  return (
+                    <div className="absolute top-4 right-4">
+                      <span className={`font-mono text-[8px] uppercase tracking-[0.18em] border px-2 py-0.5 ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })()}
 
                 <div className="flex items-center gap-2 mb-5">
                   <Icon size={15} strokeWidth={1.5} className={"iconClass" in tier ? (tier as {iconClass: string}).iconClass : tier.accentClass} />
