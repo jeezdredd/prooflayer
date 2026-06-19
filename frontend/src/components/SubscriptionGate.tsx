@@ -35,8 +35,8 @@ export default function SubscriptionGate({ children, feature }: Props) {
       transition={{ duration: 0.4 }}
     >
       <div className="flex justify-center mb-5">
-        <div className="w-14 h-14 border border-iris/50 bg-iris/10 flex items-center justify-center rounded-sm">
-          <Zap className="w-7 h-7 text-iris" />
+        <div className="w-14 h-14 border border-violet-400/50 bg-violet-400/10 flex items-center justify-center rounded-sm">
+          <Zap className="w-7 h-7 text-violet-300" strokeWidth={1.8} />
         </div>
       </div>
       <span className="label-mono">Pro Feature</span>
