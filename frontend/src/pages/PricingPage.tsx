@@ -224,7 +224,7 @@ export default function PricingPage() {
                   let badge: { label: string; cls: string } | null = null;
                   if ("internal" in tier) {
                     badge = {
-                      label: current ? "Active / Staff" : "Staff Only",
+                      label: current ? "Active" : "Staff",
                       cls: "text-red-400 bg-red-400/10 border-red-400/20",
                     };
                   } else if (current) {
@@ -242,9 +242,9 @@ export default function PricingPage() {
                   );
                 })()}
 
-                <div className="flex items-center gap-2 mb-5">
+                <div className="flex items-center gap-2 mb-5 pr-16">
                   <Icon size={15} strokeWidth={1.5} className={"iconClass" in tier ? (tier as {iconClass: string}).iconClass : tier.accentClass} />
-                  <span className={`font-mono text-[11px] uppercase tracking-[0.16em] ${tier.accentClass}`}>
+                  <span className={`font-mono text-[11px] uppercase tracking-[0.16em] truncate ${tier.accentClass}`}>
                     {tier.label}
                   </span>
                 </div>
