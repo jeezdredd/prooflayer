@@ -17,7 +17,14 @@ _state = {"model": None, "processor": None}
 
 def _load():
     if _state["model"] is None:
-        model = AutoModelForImageClassification.from_pretrained(MODEL_NAME, local_files_only=False).eval()
+        try:
+            model = AutoModelForImageClassification.from_pretrained(
+                MODEL_NAME, local_files_only=False, use_safetensors=True
+            ).eval()
+        except Exception:
+            model = AutoModelForImageClassification.from_pretrained(
+                MODEL_NAME, local_files_only=False
+            ).eval()
         _state["model"] = to_device(model)
         try:
             _state["processor"] = AutoImageProcessor.from_pretrained(MODEL_NAME)
