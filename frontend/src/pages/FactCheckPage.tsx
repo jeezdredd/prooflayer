@@ -25,9 +25,9 @@ const ASSESSMENT_LABELS: Record<string, string> = {
 };
 
 const ASSESSMENT_BG: Record<string, string> = {
-  likely_true: "bg-signal-sage/20",
-  likely_false: "bg-signal-blood/20",
-  uncertain: "bg-signal-amber/20",
+  likely_true: "bg-signal-sage/25 text-signal-sage",
+  likely_false: "bg-signal-blood/25 text-signal-blood",
+  uncertain: "bg-signal-amber/25 text-signal-amber",
 };
 
 const SAMPLE_PROMPTS = [
@@ -89,18 +89,18 @@ function HighlightedText({
     const bg = ASSESSMENT_BG[claim.assessment] ?? "bg-signal-amber/20";
     const active = activeIdx === m.idx;
     parts.push(
-      <mark
+      <span
         key={`m-${m.idx}`}
         id={`mark-${m.idx}`}
         onClick={() => onClick(m.idx)}
         className={clsx(
-          "cursor-pointer rounded-sm px-0.5 text-ink-50 transition-all",
+          "cursor-pointer rounded-sm px-0.5 transition-all",
           bg,
           active && "ring-1 ring-signal-amber ring-offset-1 ring-offset-ink-900",
         )}
       >
         {text.slice(m.start, m.end)}
-      </mark>,
+      </span>,
     );
     cursor = m.end;
   });

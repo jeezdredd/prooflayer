@@ -68,7 +68,7 @@ def run_factcheck(self, text):
                     "claim": original,
                     "assessment": "uncertain",
                     "confidence": 0,
-                    "explanation": "Could not assess.",
+                    "explanation": "",
                 })
         claims = merged
 
