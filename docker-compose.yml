@@ -69,8 +69,11 @@ services:
       - ./backend:/app
       - media_data:/app/media
       - hf_cache:/root/.cache/huggingface
+    env_file:
+      - path: .env
+        required: false
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.dev
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.dev}
       - DATABASE_URL=postgres://prooflayer:${POSTGRES_PASSWORD:-prooflayer_dev}@db:5432/prooflayer
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
