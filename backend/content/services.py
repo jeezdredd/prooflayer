@@ -18,23 +18,29 @@ def compute_sha256(file):
     return sha256.hexdigest()
 
 
+def _clean_str(s: str) -> str:
+    return s.replace("\x00", "")
+
+
 def _json_safe(value):
-    if value is None or isinstance(value, (bool, int, float, str)):
+    if value is None or isinstance(value, (bool, int, float)):
         return value
+    if isinstance(value, str):
+        return _clean_str(value)
     if isinstance(value, bytes):
         try:
-            return value.decode("utf-8", errors="replace")
+            return _clean_str(value.decode("utf-8", errors="replace"))
         except Exception:
             return value.hex()
     if isinstance(value, dict):
-        return {str(k): _json_safe(v) for k, v in value.items()}
+        return {_clean_str(str(k)): _json_safe(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_safe(v) for v in value]
     try:
         return float(value)
     except (TypeError, ValueError):
         pass
-    return str(value)
+    return _clean_str(str(value))
 
 
 def extract_metadata(file_path):
