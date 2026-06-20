@@ -236,6 +236,7 @@ class Command(BaseCommand):
             id2label=id2label,
             label2id=label2id,
             ignore_mismatched_sizes=True,
+            use_safetensors=True,
         )
 
         def preprocess(examples):
