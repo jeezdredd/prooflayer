@@ -30,7 +30,10 @@ def _load():
     path = _model_path()
     if _state["model"] is None or _state["loaded_path"] != path:
         logger.info("custom_detector loading from %s", path)
-        _state["model"] = AutoModelForImageClassification.from_pretrained(path).eval()
+        try:
+            _state["model"] = AutoModelForImageClassification.from_pretrained(path, use_safetensors=True).eval()
+        except Exception:
+            _state["model"] = AutoModelForImageClassification.from_pretrained(path).eval()
         _state["processor"] = AutoFeatureExtractor.from_pretrained(path)
         _state["loaded_path"] = path
     return _state["model"], _state["processor"]

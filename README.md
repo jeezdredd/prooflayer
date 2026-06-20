@@ -6,16 +6,19 @@ Backend: Django + Celery. Frontend: React + Vite. Infra: Postgres, Redis, MinIO,
 
 ## Features
 
-- **7 parallel analyzers** via Celery chord:
+- **10 analyzers** seeded as DB configs, fanned out via Celery chord (weight/queue/timeout admin-editable):
   - `metadata` - EXIF/XMP signatures, edit-software flags
   - `ela` - Error Level Analysis for splice/clone detection
-  - `siglip_detector` - SigLIP-base binary AI/real classifier (Apache-2.0)
-  - `community_forensics` - ViT-S/16 trained on 4803 generators (NeurIPS 2024, MIT)
-  - `npr_detector` - NPR ViT deepfake corroborator
-  - `llm_vision` - qwen2.5vl:3b on Ollama for scene reasoning
+  - `siglip_detector` - `prithivMLmods/Deep-Fake-Detector-v2-Model` ViT classifier
+  - `community_forensics` - `buildborderless/CommunityForensics-DeepfakeDet-ViT` (NeurIPS 2024), main authority (weight 3.0)
+  - `npr_detector` - `Wvolf/ViT_Deepfake_Detection`, corroborator (weight 0.5)
+  - `custom_detector` - retrained ViT from the review queue (weight 3.5), dir `prooflayer-retrained`, falls back to `Nahrawy/AIorNot`
+  - `llm_vision` - Ollama vision model (`qwen2.5vl:3b` in prod) for scene reasoning
+  - `llm_text` - Ollama text model for AI-authorship classification
   - `audio_spectrogram` - librosa spectral features for synthetic-voice detection
-  - `video_frames` - uniform-sampled frames through the image ensemble
-- **Fact-check pipeline** (async Celery): spaCy NER claim extraction -> DuckDuckGo web context -> Ollama LLM assessment -> Google Fact Check API cross-reference
+  - `video_frame` - uniform-sampled frames through the image ensemble
+- Torch detectors run on GPU when available (AMD ROCm worker, see `wiki/services/gpu-rocm.md`); CPU otherwise.
+- **Fact-check pipeline** (async Celery): spaCy NER claim extraction -> DuckDuckGo web context + Wikipedia lookup -> Ollama LLM assessment (with confidence) -> Google Fact Check API cross-reference. Input modes: text, URL (SSRF-guarded fetch), PDF/DOCX upload. PDF export of results.
 - **Provenance**: pHash/dHash/aHash against known-fake database, optional TinEye/Google Vision hooks
 - **Browser extension** (MV3): Chrome + Firefox, one-click verify from any page
 - Crowdsource voting (real / fake / uncertain) per submission
@@ -28,7 +31,7 @@ Backend: Django + Celery. Frontend: React + Vite. Infra: Postgres, Redis, MinIO,
 
 ## Stack
 
-**Backend:** Django 5.1, DRF 3.15, Celery 5.4, PostgreSQL 16, Redis 7, MinIO, Ollama, transformers + torch (CPU), spaCy, librosa, OpenCV, Pillow, imagehash, WeasyPrint, django-anymail[resend]
+**Backend:** Django 5.1, DRF 3.15, Celery 5.4, PostgreSQL 16 (pgvector), Redis 7, MinIO, Ollama, transformers + torch (CPU, or ROCm on the GPU worker), spaCy, librosa, OpenCV, Pillow, imagehash, WeasyPrint, trafilatura + pypdf + python-docx (factcheck doc/URL ingest), django-anymail[resend]
 
 **Frontend:** React 18, Vite 6, TypeScript 5.6, Tailwind 3, Zustand 5, TanStack Query 5, React Router 7, Framer Motion, Axios
 

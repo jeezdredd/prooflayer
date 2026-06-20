@@ -21,8 +21,11 @@ DATABASES = {
 }
 
 _cors_raw = os.environ.get("CORS_ALLOWED_ORIGINS", "")
-CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_raw.split(",") if o.strip()]
-CORS_ALLOW_ALL_ORIGINS = not CORS_ALLOWED_ORIGINS
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_raw.split(",") if o.strip()] or [
+    "https://prooflayer.cloud",
+    "https://www.prooflayer.cloud",
+]
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()] or ["https://*.prooflayer.cloud"]

@@ -178,6 +178,8 @@
   },
   "active": "397aa7536420b54b",
   "lastOpenFiles": [
+    "services/gpu-rocm.md",
+    "analyzers/custom_detector.md",
     "services/factcheck.md",
     "fixes/toggle-public-url.md",
     "fixes/factcheck-cache.md",

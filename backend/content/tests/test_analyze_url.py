@@ -25,19 +25,19 @@ class AnalyzeUrlViewTest(TestCase):
         assert response.status_code == 400
         assert "detail" in response.data
 
-    @patch("content.views.socket.gethostbyname", return_value="127.0.0.1")
+    @patch("common.url_safety.socket.gethostbyname", return_value="127.0.0.1")
     def test_ssrf_private_ip_loopback(self, mock_dns):
         response = self.client.post(self.URL, {"url": "http://127.0.0.1/img.jpg"}, format="json")
         assert response.status_code == 400
-        assert response.data["detail"] == "URL not allowed."
+        assert response.data["detail"] == "URL not allowed"
 
-    @patch("content.views.socket.gethostbyname", return_value="169.254.169.254")
+    @patch("common.url_safety.socket.gethostbyname", return_value="169.254.169.254")
     def test_ssrf_link_local(self, mock_dns):
         response = self.client.post(self.URL, {"url": "http://metadata.internal/img.jpg"}, format="json")
         assert response.status_code == 400
-        assert response.data["detail"] == "URL not allowed."
+        assert response.data["detail"] == "URL not allowed"
 
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.uploads_this_month", return_value=0)
     @patch("content.views.get_or_create_subscription")
     def test_auth_user_billing_limit_reached(self, mock_sub, mock_uploads, mock_dns):
@@ -51,10 +51,10 @@ class AnalyzeUrlViewTest(TestCase):
 
     @patch("content.views.process_submission.delay")
     @patch("content.views.validate_mime_type", return_value="image/jpeg")
-    @patch("content.views.http_requests.get")
+    @patch("content.views.safe_get")
     @patch("content.views.uploads_this_month", return_value=0)
     @patch("content.views.get_or_create_subscription")
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.Submission.objects.create")
     def test_auth_user_success(self, mock_create, mock_dns, mock_sub, mock_uploads, mock_get, mock_mime, mock_delay):
         mock_submission = MagicMock()
@@ -73,7 +73,7 @@ class AnalyzeUrlViewTest(TestCase):
         assert "submission_id" in response.data
         mock_delay.assert_called_once()
 
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.AnonymousQuota.check_and_increment", return_value=(False, 0))
     def test_anonymous_quota_exceeded(self, mock_quota, mock_dns):
         response = self.client.post(self.URL, {"url": "http://example.com/img.jpg"}, format="json")
@@ -81,7 +81,7 @@ class AnalyzeUrlViewTest(TestCase):
         assert response.data["code"] == "anonymous_limit_reached"
         assert "resets_in" in response.data
 
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.AnonymousQuota.check_and_increment", return_value=(True, 4))
     def test_anonymous_no_staff_user(self, mock_quota, mock_dns):
         with patch("content.views.User.objects") as mock_user_mgr:
@@ -92,9 +92,9 @@ class AnalyzeUrlViewTest(TestCase):
         assert response.status_code == 503
         assert "detail" in response.data
 
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.AnonymousQuota.check_and_increment", return_value=(True, 4))
-    @patch("content.views.http_requests.get")
+    @patch("content.views.safe_get")
     def test_anonymous_url_fetch_fails(self, mock_get, mock_quota, mock_dns):
         mock_get.side_effect = requests.RequestException("connection refused")
         with patch("content.views.User.objects") as mock_user_mgr:
@@ -105,9 +105,9 @@ class AnalyzeUrlViewTest(TestCase):
         assert response.status_code == 400
         assert "detail" in response.data
 
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.AnonymousQuota.check_and_increment", return_value=(True, 4))
-    @patch("content.views.http_requests.get")
+    @patch("content.views.safe_get")
     def test_anonymous_file_too_large(self, mock_get, mock_quota, mock_dns):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
@@ -122,10 +122,10 @@ class AnalyzeUrlViewTest(TestCase):
         assert response.status_code == 400
         assert "too large" in response.data["detail"].lower()
 
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.AnonymousQuota.check_and_increment", return_value=(True, 4))
     @patch("content.views.validate_mime_type")
-    @patch("content.views.http_requests.get")
+    @patch("content.views.safe_get")
     def test_anonymous_unsupported_mime(self, mock_get, mock_mime, mock_quota, mock_dns):
         mock_resp = MagicMock()
         mock_resp.raise_for_status.return_value = None
@@ -142,9 +142,9 @@ class AnalyzeUrlViewTest(TestCase):
 
     @patch("content.views.process_submission.delay")
     @patch("content.views.validate_mime_type", return_value="image/jpeg")
-    @patch("content.views.http_requests.get")
+    @patch("content.views.safe_get")
     @patch("content.views.AnonymousQuota.check_and_increment", return_value=(True, 4))
-    @patch("content.views.socket.gethostbyname", return_value="93.184.216.34")
+    @patch("common.url_safety.socket.gethostbyname", return_value="93.184.216.34")
     @patch("content.views.Submission.objects.create")
     def test_anonymous_full_success(self, mock_create, mock_dns, mock_quota, mock_get, mock_mime, mock_delay):
         mock_submission = MagicMock()

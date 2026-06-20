@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 import requests as http_requests
 
-from common.url_safety import UnsafeUrlError, validate_public_url
+from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.db.models import Count, Avg
@@ -341,7 +341,7 @@ class AnalyzeUrlView(APIView):
                 )
 
         try:
-            resp = http_requests.get(url, timeout=10, stream=True)
+            resp = safe_get(url, timeout=10)
             resp.raise_for_status()
             data = b""
             for chunk in resp.iter_content(chunk_size=65536):
@@ -351,9 +351,11 @@ class AnalyzeUrlView(APIView):
                         {"detail": "File too large (max 20 MB)."},
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-        except http_requests.RequestException as exc:
+        except UnsafeUrlError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except http_requests.RequestException:
             return Response(
-                {"detail": f"Could not fetch URL: {exc}"},
+                {"detail": "Could not fetch URL"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

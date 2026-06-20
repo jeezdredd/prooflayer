@@ -1,6 +1,6 @@
 # ProofLayer Memory Bank
 
-Forensic content verification SaaS. Submit image/video/audio/text -> 7 independent analyzers cross-examine -> aggregated verdict published with raw evidence.
+Forensic content verification SaaS. Submit image/video/audio/text -> 10 analyzers cross-examine -> aggregated verdict published with raw evidence.
 
 ## Start here
 
@@ -23,6 +23,8 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[services/factcheck]] - async text fact-check pipeline (NER + DDG + Wikipedia + Ollama + Google FCT)
 - [[services/visit-tracking]] - Discord webhook notify on visit (IP + geo)
 - [[services/backups]] - Nightly pg_dump -> MinIO, 14-day retention
+- [[services/factcheck]] - async text fact-check (NER + DDG + Wikipedia + Ollama + Google FCT)
+- [[services/gpu-rocm]] - AMD ROCm GPU worker (RX 6700S, gfx1031)
 
 ## Detection strategy
 
@@ -38,6 +40,7 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 7 independe
 - [[analyzers/siglip-detector]] - SigLIP-base binary classifier (Apache-2.0)
 - [[analyzers/community-forensics]] - ViT-S/16 trained on 4803 generators (NeurIPS 2024, MIT)
 - [[analyzers/npr-detector]] - ViT deepfake (Wvolf), corroborator
+- [[analyzers/custom_detector]] - retrained ViT from review queue (weight 3.5, highest)
 - [[analyzers/llm-vision]] - multimodal LLM (qwen2.5vl)
 - [[analyzers/video-frames]] - uniform-sampled frames -> ensemble
 - [[analyzers/audio-spectrogram]] - librosa spectral features

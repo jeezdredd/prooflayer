@@ -64,9 +64,14 @@ First call after `OLLAMA_KEEP_ALIVE` timeout = load weights from disk to RAM:
 
 User-facing: UploadProgress shows rotating tips ("Cold-loading vision model...") to hide this.
 
-## Railway deployment
+## Deployment (homelab)
 
-Production setup uses Railway with volume at `/root/.ollama` and pull command in start script. Persistent memory item: must set OLLAMA_VISION_MODEL=moondream on backend+celery (smaller / Railway's RAM budget).
+Self-hosted on the Ubuntu homelab. `docker-compose.yml` `ollama` service mounts `ollama_data:/root/.ollama`; `ollama_init` pulls `qwen2.5:3b`, `qwen2.5vl:3b`, and best-effort `qwen2.5:7b` on boot. Production sets `OLLAMA_VISION_MODEL=qwen2.5vl:3b`.
+
+> [!note] vision model default
+> `config.settings.base.py` hardcodes `OLLAMA_VISION_MODEL` default `llava:7b`, but compose overrides it (`moondream` for the backend service default, `qwen2.5vl:3b` for the worker). Production env sets `qwen2.5vl:3b` explicitly - the base default is never used in deployed envs.
+
+(Railway is retired; the project moved to the homelab Ubuntu server - see [[services/gpu-rocm]].)
 
 ## See also
 

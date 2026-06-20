@@ -1,5 +1,6 @@
 import io
 import hashlib
+import json
 import pytest
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -7,6 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from analyzers.tests.factories import AnalysisResultFactory
 from content.models import KnownFakeHash, Submission
 from content.services import (
+    _json_safe,
     check_known_fake,
     clone_analysis_results,
     compute_sha256,
@@ -46,6 +48,27 @@ class TestExtractMetadata:
         path.write_text("not an image")
         meta = extract_metadata(str(path))
         assert meta == {}
+
+
+class TestJsonSafeNullByte:
+    def test_strips_null_from_string(self):
+        assert _json_safe("foo\x00bar") == "foobar"
+
+    def test_strips_null_from_bytes(self):
+        assert _json_safe(b"a\x00b") == "ab"
+
+    def test_strips_null_from_dict_keys_and_values(self):
+        out = _json_safe({"k\x00": "v\x00"})
+        assert out == {"k": "v"}
+
+    def test_exif_with_null_byte_extracts_clean(self, tmp_path):
+        img = Image.new("RGB", (10, 10))
+        exif = img.getexif()
+        exif[0x010E] = "desc\x00with null"
+        path = tmp_path / "withexif.jpg"
+        img.save(str(path), format="JPEG", exif=exif)
+        meta = extract_metadata(str(path))
+        assert "\x00" not in json.dumps(meta)
 
 
 class TestGenerateThumbnail:

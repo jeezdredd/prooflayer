@@ -6,7 +6,7 @@ updated: 2026-06-14
 
 # Analyzer Pipeline
 
-Seven independent analyzers. Each implements `BaseAnalyzer`:
+Ten analyzers seeded as [[models/AnalyzerConfig]] DB rows (`backend/analyzers/management/commands/seed_analyzers.py`). Each implements `BaseAnalyzer`:
 
 ```python
 class BaseAnalyzer:
@@ -30,10 +30,13 @@ Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue,
 | 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.0** | ViT-S/16 NeurIPS 2024, main authority |
 | 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | **2.0** | ViT deepfake classifier (raised from 1.5) |
 | 05 | [[analyzers/npr-detector]] | **probabilistic** | image | ml | **0.5** | ViT deepfake detector (lowered from 1.5 - GAN-trained, blind to diffusion) |
-| 06 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | LLaVA 7B vision analysis |
-| 07 | [[analyzers/video-frames]] | mixed | video | ml | 2.0 | Sample frames -> image ensemble |
-| 08 | [[analyzers/audio-spectrogram]] | rule-based | audio | default | 2.0 | Spectral artifact check |
-| 09 | [[analyzers/llm-text]] | rule-based | text | ml | 2.5 | AI authorship classifier |
+| 06 | [[analyzers/custom_detector]] | **probabilistic** | image | ml | **3.5** | retrained ViT from review queue (`prooflayer-retrained`, falls back to `Nahrawy/AIorNot`); highest weight |
+| 07 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | Ollama vision (`qwen2.5vl:3b` prod) |
+| 08 | [[analyzers/video-frames]] | mixed | video | ml | 2.0 | Sample frames -> image ensemble |
+| 09 | [[analyzers/audio-spectrogram]] | rule-based | audio | ml | 2.0 | Spectral artifact check |
+| 10 | [[analyzers/llm-text]] | rule-based | text | ml | 2.5 | AI authorship classifier |
+
+Real model ids: siglip_detector=`prithivMLmods/Deep-Fake-Detector-v2-Model`, community_forensics=`buildborderless/CommunityForensics-DeepfakeDet-ViT`, npr_detector=`Wvolf/ViT_Deepfake_Detection`. Torch detectors load on `cuda` when available (AMD ROCm worker, see [[services/gpu-rocm]]) via `analyzers/_device.py`.
 
 **Probabilistic** analyzers emit `evidence["ai_probability"]` and contribute raw probability to aggregation even when verdict is `inconclusive`.  
 **Rule-based** analyzers emit verdict + confidence; aggregator uses `VERDICT_SCORES` mapping.
@@ -72,10 +75,13 @@ Each `run_analyzer` task:
 - `community_forensics.py`
 - `siglip_detector.py`
 - `npr_detector.py`
+- `custom_detector.py` (retrained)
 - `llm_image_analyzer.py`
 - `video_analyzer.py`
 - `audio_analyzer.py`
 - `llm_analyzer.py` (text)
+
+`clip_detector.py` defines the legacy `ai_detector` ensemble (dima806 + umm-maybe) - NOT seeded, dead code retained only for `_load_clip` reference.
 
 > [!gap] Multi-modal video
 > Video MIME routes to [[analyzers/video-frames]] only. Audio track not extracted -> audio-spectrogram skipped. Gap to close post-diploma.

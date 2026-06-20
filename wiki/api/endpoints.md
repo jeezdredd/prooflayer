@@ -49,9 +49,13 @@ Filters: `?status=...&final_verdict=...&search=filename`. Pagination via `?page=
 ## Analyzers (`analyzers.urls`)
 
 ```
-GET /api/v1/analyzers/configs/   -> AnalyzerConfig list (admin tunable)
-GET /api/v1/analyzers/results/   -> AnalysisResult flat list
+GET  /api/v1/analyzers/configs/                -> AnalyzerConfig list (admin tunable)
+GET  /api/v1/analyzers/results/<submission_id>/ -> AnalysisResult list (owner-scoped)
+POST /api/v1/analyzers/retrain/   { media_type, force?, epochs? }  -> { task_id }   (IsAdminUser)
+GET  /api/v1/analyzers/retrain/runs/                                -> last 10 RetrainRun rows (IsAdminUser)
 ```
+
+`retrain/` dispatches `run_weekly_retrain` to fine-tune [[analyzers/custom_detector]] from review-queue-approved samples (`force` lowers min-samples to 1 for testing; `epochs` 1-10). Emails the triggering user + Discord on finish. See [[services/celery-workers]].
 
 ## Crowdsource (`crowdsource.urls`)
 

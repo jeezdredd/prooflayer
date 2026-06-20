@@ -153,6 +153,10 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 900
 CELERY_TASK_SOFT_TIME_LIMIT = 720
 
+from PIL import Image as _PILImage
+
+_PILImage.MAX_IMAGE_PIXELS = 64_000_000
+
 MAX_UPLOAD_SIZE = 500 * 1024 * 1024
 ALLOWED_MIME_TYPES = [
     "image/jpeg", "image/png", "image/webp",

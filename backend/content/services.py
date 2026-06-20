@@ -153,7 +153,10 @@ def _load_clip():
 
     name = "openai/clip-vit-base-patch32"
     _CLIP_STATE["processor"] = CLIPProcessor.from_pretrained(name)
-    _CLIP_STATE["model"] = CLIPModel.from_pretrained(name).eval()
+    try:
+        _CLIP_STATE["model"] = CLIPModel.from_pretrained(name, use_safetensors=True).eval()
+    except Exception:
+        _CLIP_STATE["model"] = CLIPModel.from_pretrained(name).eval()
     return _CLIP_STATE
 
 
