@@ -1,17 +1,20 @@
 import hashlib
 import time
+from datetime import timedelta
 from typing import Any
 
 import redis
 import requests
 from django.conf import settings
 from django.db import connection
+from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from api.models import Feedback
+from users.models import EmailLog
 
 PROBE_TIMEOUT = 2.0
 
@@ -109,6 +112,27 @@ def _probe_storage() -> dict[str, Any]:
         }
     except Exception as exc:
         return {"status": "down", "error": str(exc)[:120]}
+
+
+def _probe_email() -> dict[str, Any]:
+    configured = bool(getattr(settings, "EMAIL_CONFIGURED", False))
+    backend = "resend" if configured else "console"
+    out = {
+        "backend": backend,
+        "from_email": getattr(settings, "DEFAULT_FROM_EMAIL", ""),
+        "recent_failures": 0,
+    }
+    if not configured:
+        out["status"] = "skip" if settings.DEBUG else "down"
+        return out
+    try:
+        since = timezone.now() - timedelta(hours=24)
+        recent = EmailLog.objects.filter(created_at__gte=since, status__in=["failed", "console"]).count()
+    except Exception:
+        recent = 0
+    out["recent_failures"] = recent
+    out["status"] = "down" if recent else "ok"
+    return out
 
 
 def _client_ip(request) -> str:
@@ -246,6 +270,7 @@ class SystemStatusView(APIView):
             "celery": _probe_celery(),
             "ollama": _probe_ollama(),
             "storage": _probe_storage(),
+            "email": _probe_email(),
         }
         all_ok = all(s.get("status") in ("ok", "skip") for s in services.values())
         return Response({
