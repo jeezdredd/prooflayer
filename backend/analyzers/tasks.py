@@ -9,6 +9,8 @@ from channels.layers import get_channel_layer
 from content.models import Submission
 from content.storage_utils import local_file
 
+from users.emails import deliver
+
 from .aggregator import aggregate
 from .models import AnalyzerConfig, AnalysisResult
 from .registry import load_analyzer_class
@@ -344,6 +346,6 @@ def _email_retrain(run):
             to=[user.email],
         )
         msg.attach_alternative(html_body, "text/html")
-        msg.send(fail_silently=True)
+        deliver(msg, kind="retrain", user=user)
     except Exception as exc:
         logger.warning("retrain email failed: %s", exc)
