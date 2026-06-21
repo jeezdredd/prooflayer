@@ -8,8 +8,8 @@ DATABASES = {
         "NAME": os.environ.get("POSTGRES_DB", "prooflayer"),
         "USER": os.environ.get("POSTGRES_USER", "prooflayer"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "prooflayer_dev"),
-        "HOST": "localhost",
-        "PORT": "5432",
+        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
     }
 }
 

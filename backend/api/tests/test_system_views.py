@@ -28,6 +28,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_celery", return_value={"status": "ok"}),
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
+            patch("api.system_views._probe_email", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert response.status_code == 200
@@ -39,6 +40,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_celery", return_value={"status": "ok"}),
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
+            patch("api.system_views._probe_email", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert "overall" in response.data
@@ -52,6 +54,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_celery", return_value={"status": "ok"}),
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
+            patch("api.system_views._probe_email", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert response.data["overall"] == "operational"
@@ -63,6 +66,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_celery", return_value={"status": "ok"}),
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
+            patch("api.system_views._probe_email", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert response.data["overall"] == "degraded"
@@ -74,6 +78,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_celery", return_value={"status": "ok"}),
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
+            patch("api.system_views._probe_email", return_value={"status": "ok"}),
             patch("api.system_views._last_retrain", return_value=None),
         ):
             response = self.client.get(self.url)

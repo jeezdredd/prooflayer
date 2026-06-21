@@ -124,8 +124,23 @@ Dev override: `dev.py` sets `REFRESH_COOKIE_SECURE=False` + `CORS_ALLOW_CREDENTI
 
 `CORS_ALLOW_CREDENTIALS=True` required so browsers attach cookie cross-origin (`prooflayer.cloud` -> `api.prooflayer.cloud`). Frontend axios must also set `withCredentials: true`.
 
+## Email robustness + audit trail (2026-06-21)
+
+All outbound mail flows through one choke point `backend/users/emails.py:deliver(msg, kind, user=None)`: it sends, then writes a best-effort `EmailLog` row (status `sent` | `console` | `failed`) and re-raises real failures so `send_verification_email`'s autoretry still fires. The log write is wrapped in try/except so it can never break the send (also survives the migration race where the worker boots before the `email_logs` table exists). `send_verification_email` (reuses a still-valid token instead of minting a new one per retry) and the retrain-notify email both route through it; the retrain caller swallows the re-raise so a finished retrain is never re-run.
+
+The trap this fixes: with no `RESEND_API_KEY`, `base.py` falls back to the console backend and `msg.send()` "succeeds" silently - no email, no error. `send_verification_email` runs on the (ROCm) worker, which reads its env from `env_file: .env`, so a missing key there breaks delivery with zero signal.
+
+Visibility now:
+- `EMAIL_CONFIGURED = bool(RESEND_API_KEY)` in settings; a Django system check (`users.W001`) warns loudly on every `manage.py`/deploy when prod is unconfigured (warning, never blocks boot).
+- `/api/v1/system/status/` `email` probe: `skip` in dev console, `down` in prod when unconfigured OR when recent `console`/`failed` EmailLog rows exist (catches worker-side drift the API process cannot see directly). PII-free - exposes only status/backend/from_email/recent_failures.
+- `EmailLog` admin (read-only) lists every send. Register + resend responses carry `delivery: "email" | "console"` so VerifyGate shows an honest "not configured" message instead of a false "sent".
+- `python manage.py send_test_email <addr>` - ops smoke test through the configured backend.
+
+Required worker/.env keys for real delivery: `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL`, `FRONTEND_URL` (+ a verified Resend sender domain).
+
 ## See also
 
 - [[users-model]]
 - [[infrastructure/env-vars]]
 - [[services/celery-workers]]
+- [[services/gpu-rocm]]
