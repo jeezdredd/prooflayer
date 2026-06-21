@@ -4,7 +4,9 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
+from django.utils import timezone
 
+from .emails import deliver
 from .models import EmailVerificationToken
 
 logger = logging.getLogger(__name__)
@@ -113,7 +115,15 @@ def send_verification_email(user_id: int) -> str:
     user = User.objects.get(pk=user_id)
     if user.is_verified:
         return "already_verified"
-    token = EmailVerificationToken.objects.create(user=user)
+    token = (
+        EmailVerificationToken.objects.filter(
+            user=user, used_at__isnull=True, expires_at__gt=timezone.now()
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if token is None:
+        token = EmailVerificationToken.objects.create(user=user)
     link = f"{settings.FRONTEND_URL}/verify-email?token={token.token}"
     username = user.username or user.email
 
@@ -127,7 +137,7 @@ def send_verification_email(user_id: int) -> str:
         to=[user.email],
     )
     msg.attach_alternative(html_body, "text/html")
-    msg.send(fail_silently=False)
+    status = deliver(msg, kind="verification", user=user)
 
-    logger.info("verification email sent user=%s", user_id)
-    return "sent"
+    logger.info("verification email %s user=%s", status, user_id)
+    return status
