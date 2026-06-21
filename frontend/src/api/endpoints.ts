@@ -32,7 +32,7 @@ export const auth = {
     client.post<{ detail: string; email?: string }>("/auth/verify-email/", { token }),
 
   resendVerification: () =>
-    client.post<{ detail: string }>("/auth/resend-verification/", {}),
+    client.post<{ detail: string; delivery: string }>("/auth/resend-verification/", {}),
 };
 
 export const content = {

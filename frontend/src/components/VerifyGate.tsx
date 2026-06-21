@@ -10,11 +10,13 @@ type State = "idle" | "sending" | "sent" | "error";
 export default function VerifyGate() {
   const user = useAuthStore((s) => s.user);
   const [state, setState] = useState<State>("idle");
+  const [consoleMode, setConsoleMode] = useState(false);
 
   const resend = async () => {
     setState("sending");
     try {
-      await auth.resendVerification();
+      const res = await auth.resendVerification();
+      setConsoleMode(res.data.delivery === "console");
       setState("sent");
     } catch {
       setState("error");
@@ -60,6 +62,11 @@ export default function VerifyGate() {
       </div>
       {state === "error" && (
         <p className="mt-4 text-xs text-signal-blood font-mono">Failed to send. Try again.</p>
+      )}
+      {state === "sent" && consoleMode && (
+        <p className="mt-4 text-xs text-signal-amber font-mono">
+          Email delivery is not configured on the server. Contact an administrator.
+        </p>
       )}
     </motion.div>
   );

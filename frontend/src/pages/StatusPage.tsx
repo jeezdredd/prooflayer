@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Activity, Database, Zap, Cpu, Brain, HardDrive, RefreshCw } from "lucide-react";
+import { Activity, Database, Zap, Cpu, Brain, HardDrive, RefreshCw, Mail } from "lucide-react";
 import client from "../api/client";
 
 interface ServiceProbe {
@@ -16,6 +16,9 @@ interface ServiceProbe {
   version?: string;
   endpoint?: string;
   reason?: string;
+  backend?: string;
+  from_email?: string;
+  recent_failures?: number;
 }
 
 interface RetrainInfo {
@@ -41,9 +44,10 @@ const SERVICE_META: Record<string, { label: string; desc: string; Icon: typeof A
   celery: { label: "Workers", desc: "Background analyzer pool.", Icon: Cpu },
   ollama: { label: "Vision LLM", desc: "Local inference - vision + text.", Icon: Brain },
   storage: { label: "Object Store", desc: "S3 blob store.", Icon: HardDrive },
+  email: { label: "Email", desc: "Transactional mail (Resend).", Icon: Mail },
 };
 
-const ORDER = ["api", "database", "redis", "celery", "ollama", "storage"];
+const ORDER = ["api", "database", "redis", "celery", "ollama", "storage", "email"];
 
 function StatusDot({ status }: { status: ServiceProbe["status"] }) {
   const tone =
@@ -147,6 +151,8 @@ export default function StatusPage() {
                       {probe.loaded_models && probe.loaded_models.length > 0 && ` · loaded: ${probe.loaded_models.join(", ")}`}
                       {probe.available_models && probe.loaded_models?.length === 0 && ` · idle (${probe.available_models.length} models cached)`}
                       {probe.version && ` · v${probe.version}`}
+                      {probe.backend && ` · via ${probe.backend}`}
+                      {probe.recent_failures != null && probe.recent_failures > 0 && ` · ${probe.recent_failures} recent issue(s)`}
                     </span>
                   ) : probe.status === "skip" ? (
                     <span className="font-mono text-[11px] text-ink-500">{probe.reason || "skipped"}</span>
