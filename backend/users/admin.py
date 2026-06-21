@@ -5,7 +5,7 @@ from django.utils.html import format_html
 
 from unfold.admin import ModelAdmin
 
-from .models import User
+from .models import EmailLog, User
 
 
 class EmailUserCreationForm(UserCreationForm):
@@ -59,3 +59,18 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
             '<span style="{}background:#7f1d1d;color:#fca5a5">UNVERIFIED</span>',
             self._BADGE,
         )
+
+
+@admin.register(EmailLog)
+class EmailLogAdmin(ModelAdmin):
+    list_display = ("created_at", "to_email", "kind", "status", "backend")
+    list_filter = ("status", "kind", "backend")
+    search_fields = ("to_email",)
+    readonly_fields = ("created_at", "to_email", "kind", "subject", "backend", "status", "error", "user")
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

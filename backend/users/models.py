@@ -64,3 +64,27 @@ class EmailVerificationToken(models.Model):
     def mark_used(self):
         self.used_at = timezone.now()
         self.save(update_fields=["used_at"])
+
+
+class EmailLog(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    to_email = models.CharField(max_length=254)
+    kind = models.CharField(max_length=20, default="other")
+    subject = models.CharField(max_length=255, blank=True)
+    backend = models.CharField(max_length=20)
+    status = models.CharField(max_length=20)
+    error = models.TextField(blank=True)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="email_logs",
+    )
+
+    class Meta:
+        db_table = "email_logs"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.kind} {self.status} {self.to_email}"
