@@ -198,6 +198,7 @@ if _RESEND_API_KEY:
     INSTALLED_APPS = INSTALLED_APPS + ["anymail"]
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_CONFIGURED = bool(_RESEND_API_KEY)
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")
