@@ -38,6 +38,9 @@ services:
       - media_data:/app/media
     ports:
       - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.dev
       - DATABASE_URL=postgres://prooflayer:${POSTGRES_PASSWORD:-prooflayer_dev}@db:5432/prooflayer
