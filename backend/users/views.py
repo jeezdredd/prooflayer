@@ -67,6 +67,7 @@ class RegisterView(generics.CreateAPIView):
             {
                 "user": UserSerializer(user).data,
                 "access": str(refresh.access_token),
+                "delivery": "email" if settings.EMAIL_CONFIGURED else "console",
             },
             status=status.HTTP_201_CREATED,
         )
@@ -152,4 +153,5 @@ class ResendVerificationView(APIView):
         if user.is_verified:
             return Response({"detail": "already verified"}, status=status.HTTP_400_BAD_REQUEST)
         send_verification_email.delay(user.id)
-        return Response({"detail": "queued"})
+        delivery = "email" if settings.EMAIL_CONFIGURED else "console"
+        return Response({"detail": "queued", "delivery": delivery})
