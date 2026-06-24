@@ -116,7 +116,7 @@ def _probe_storage() -> dict[str, Any]:
 
 def _probe_email() -> dict[str, Any]:
     configured = bool(getattr(settings, "EMAIL_CONFIGURED", False))
-    backend = "resend" if configured else "console"
+    backend = getattr(settings, "EMAIL_MODE", "resend" if configured else "console")
     out = {
         "backend": backend,
         "from_email": getattr(settings, "DEFAULT_FROM_EMAIL", ""),

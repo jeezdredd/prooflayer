@@ -14,7 +14,11 @@ def _msg():
 
 
 @pytest.mark.django_db
-@override_settings(EMAIL_CONFIGURED=True, EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    EMAIL_CONFIGURED=True,
+    EMAIL_MODE="resend",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
 def test_deliver_sent_when_configured():
     status = deliver(_msg(), kind="verification")
     assert status == "sent"
@@ -31,6 +35,21 @@ def test_deliver_console_when_unconfigured():
     status = deliver(_msg(), kind="verification")
     assert status == "console"
     assert EmailLog.objects.get().status == "console"
+
+
+@pytest.mark.django_db
+@override_settings(
+    EMAIL_CONFIGURED=True,
+    EMAIL_MODE="smtp",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+def test_deliver_smtp_mode():
+    status = deliver(_msg(), kind="verification")
+    assert status == "sent"
+    assert len(mail.outbox) == 1
+    log = EmailLog.objects.get()
+    assert log.status == "sent"
+    assert log.backend == "smtp"
 
 
 @pytest.mark.django_db

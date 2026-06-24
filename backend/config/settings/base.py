@@ -192,13 +192,25 @@ REFRESH_COOKIE_SAMESITE = os.environ.get("REFRESH_COOKIE_SAMESITE", "Lax")
 
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "ProofLayer <noreply@prooflayer.cloud>")
 _RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+_EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 if _RESEND_API_KEY:
     EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
     ANYMAIL = {"RESEND_API_KEY": _RESEND_API_KEY}
     INSTALLED_APPS = INSTALLED_APPS + ["anymail"]
+    EMAIL_MODE = "resend"
+elif _EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = _EMAIL_HOST
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+    EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() == "true"
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_MODE = "smtp"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_CONFIGURED = bool(_RESEND_API_KEY)
+    EMAIL_MODE = "console"
+EMAIL_CONFIGURED = EMAIL_MODE != "console"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")

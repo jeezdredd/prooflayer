@@ -136,7 +136,12 @@ Visibility now:
 - `EmailLog` admin (read-only) lists every send. Register + resend responses carry `delivery: "email" | "console"` so VerifyGate shows an honest "not configured" message instead of a false "sent".
 - `python manage.py send_test_email <addr>` - ops smoke test through the configured backend.
 
-Required worker/.env keys for real delivery: `RESEND_API_KEY`, `DEFAULT_FROM_EMAIL`, `FRONTEND_URL` (+ a verified Resend sender domain).
+Three email modes (selected in `base.py`, exposed as `EMAIL_MODE`, which drives the EmailLog `backend` label + the status probe):
+- `resend` - `RESEND_API_KEY` set -> anymail Resend HTTP backend.
+- `smtp` - no Resend key but `EMAIL_HOST` set -> Django SMTP backend (`EMAIL_PORT`/`EMAIL_USE_TLS`/`EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD`). Homelab uses this (Resend over SMTP: `smtp.resend.com`, user `resend`, password = the `re_` key).
+- `console` - neither set -> not delivered (the silent trap the audit trail surfaces).
+
+`EMAIL_CONFIGURED = EMAIL_MODE != "console"`. Required keys for real delivery: either `RESEND_API_KEY`, or `EMAIL_HOST` + SMTP creds; plus `DEFAULT_FROM_EMAIL`, `FRONTEND_URL`, and a verified sender domain.
 
 ## See also
 

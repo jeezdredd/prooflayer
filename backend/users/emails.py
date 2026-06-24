@@ -24,7 +24,7 @@ def _safe_log(to_email, subject, kind, backend, status, error, user):
 
 def deliver(msg, *, kind, user=None) -> str:
     configured = bool(getattr(settings, "EMAIL_CONFIGURED", False))
-    backend = "resend" if configured else "console"
+    backend = getattr(settings, "EMAIL_MODE", "resend" if configured else "console")
     to_email = (msg.to or [""])[0]
     try:
         msg.send(fail_silently=False)
