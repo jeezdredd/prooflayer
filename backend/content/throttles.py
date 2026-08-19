@@ -1,4 +1,4 @@
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 
 class UploadRateThrottle(UserRateThrottle):
@@ -9,3 +9,7 @@ class UploadRateThrottle(UserRateThrottle):
         if user and user.is_authenticated and (user.is_staff or user.is_superuser):
             return True
         return super().allow_request(request, view)
+
+
+class WidgetRateThrottle(AnonRateThrottle):
+    scope = "widget"

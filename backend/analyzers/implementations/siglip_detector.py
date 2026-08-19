@@ -77,7 +77,7 @@ class SigLIPDetector(BaseAnalyzer):
 
         per_label_rounded = {k: round(v, 4) for k, v in per_label.items()}
         evidence = {
-            "model": "siglip-deepfake-v2",
+            "model": MODEL_NAME,
             "ai_probability": round(ai_prob, 4),
             "per_label": per_label_rounded,
         }

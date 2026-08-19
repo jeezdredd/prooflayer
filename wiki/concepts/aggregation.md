@@ -1,7 +1,7 @@
 ---
 type: concept
 created: 2026-05-14
-updated: 2026-06-03
+updated: 2026-08-19
 source: backend/analyzers/aggregator.py
 ---
 
@@ -11,16 +11,32 @@ Combines per-analyzer [[models/AnalysisResult]] into `final_score` (0..1) + `fin
 
 ## Analyzer types
 
-Analyzers split into two groups based on what they expose in `evidence`:
+Group membership is decided **per result, from the evidence payload** - not from a
+hardcoded analyzer-name list. `_get_ai_probability()` reads the first present key of
+`PROBABILITY_KEYS = ("ai_probability", "ai_probability_avg")`, clamps it to `0..1`, and
+returns `None` if absent or non-numeric.
 
-**Probabilistic** (ML detectors) - emit `evidence["ai_probability"]` as a calibrated float:
-- `community_forensics` (weight 3.0)
-- `npr_detector` (weight 2.5)
-- `siglip_detector` (weight 1.5)
-- `llm_vision` (weight varies, when it returns `ai_probability`)
+**Probabilistic** - any result carrying one of those keys:
+- `community_forensics` (weight 3.5), `siglip_detector` (2.0), `npr_detector` (1.0)
+- `custom_detector` (1.5), `ai_detector` (1.5, via `ai_probability_avg`)
+- `video_frame` (2.0, median over sampled frames)
 
-**Rule-based** (heuristic analyzers) - emit verdict + confidence bucket, no raw probability:
-- `metadata`, `ela`, `audio_spectrogram`, `llm_text`
+**Rule-based** - verdict + confidence bucket, no raw probability:
+- `metadata` (1.5), `audio_spectrogram` (2.0), `llm_text` (2.5), `llm_vision` (1.5)
+
+**Manipulation-only** - never votes on the AI axis:
+- `ela` (0.75). Always returns `inconclusive`, so it is excluded from `DECISIVE_VERDICTS` and
+  from the weighted mean. It contributes only through `_has_manipulation_signal`, which reads
+  `evidence["manipulation_suspected"]`. Measured AUC on the AI axis was *inverted*
+  (38/60 real photos flagged vs 12/60 AI) - see [[fixes/audit-2026-08]].
+
+> [!warning] Fixed 2026-08-19
+> The old name-list put `llm_vision` in the probabilistic set, but that analyzer never
+> emits `ai_probability` - so it was skipped by the probability loop **and** excluded from
+> the rule-based loop. It contributed **zero weight** to every score while still voting in
+> the corroboration count. Conversely `custom_detector` and `ai_detector` did emit
+> probabilities that were thrown away and replaced with coarse 0.0/0.5/1.0 verdict buckets.
+> See [[fixes/aggregator-probability-sourcing]].
 
 ## Hybrid weighted mean
 

@@ -13,7 +13,7 @@ DECISIVE_VERDICTS = {
     AnalysisResult.Verdict.FAKE,
 }
 
-PROBABILISTIC_ANALYZERS = {"community_forensics", "npr_detector", "siglip_detector", "llm_vision"}
+PROBABILITY_KEYS = ("ai_probability", "ai_probability_avg")
 MANIPULATION_ANALYZERS = {"ela", "metadata"}
 
 CORROBORATION_CONFIDENCE_FLOOR = 0.5
@@ -24,12 +24,16 @@ AUTHENTIC_EDITED_AI_CEIL = 0.30
 
 
 def _get_ai_probability(result) -> float | None:
-    if result.analyzer.name not in PROBABILISTIC_ANALYZERS:
-        return None
-    ai_prob = (result.evidence or {}).get("ai_probability")
-    if ai_prob is None:
-        return None
-    return float(ai_prob)
+    evidence = result.evidence or {}
+    for key in PROBABILITY_KEYS:
+        raw = evidence.get(key)
+        if raw is None:
+            continue
+        try:
+            return min(max(float(raw), 0.0), 1.0)
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 def _community_forensics_priority(all_results) -> bool:
@@ -39,8 +43,8 @@ def _community_forensics_priority(all_results) -> bool:
     )
     if cf is None:
         return False
-    ai_prob = (cf.evidence or {}).get("ai_probability", 0.0)
-    if ai_prob < CF_PRIORITY_THRESHOLD:
+    ai_prob = _get_ai_probability(cf)
+    if ai_prob is None or ai_prob < CF_PRIORITY_THRESHOLD:
         return False
     return any(
         r.analyzer.name in CF_PRIORITY_PEERS
@@ -53,6 +57,8 @@ def _has_manipulation_signal(valid_results) -> bool:
     for r in valid_results:
         if r.analyzer.name not in MANIPULATION_ANALYZERS:
             continue
+        if (r.evidence or {}).get("manipulation_suspected"):
+            return True
         if r.verdict in (AnalysisResult.Verdict.SUSPICIOUS, AnalysisResult.Verdict.FAKE):
             return True
     return False
@@ -68,12 +74,11 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     total_weight = 0.0
     weighted_score = 0.0
 
-    prob_results = [r for r in valid_results if r.analyzer.name in PROBABILISTIC_ANALYZERS]
-    prob_names = {r.analyzer.name for r in prob_results}
-    non_prob_decisive = [r for r in decisive_results if r.analyzer.name not in PROBABILISTIC_ANALYZERS]
+    prob_scores = {id(r): _get_ai_probability(r) for r in valid_results}
+    non_prob_decisive = [r for r in decisive_results if prob_scores.get(id(r)) is None]
 
-    for result in prob_results:
-        ai_prob = _get_ai_probability(result)
+    for result in valid_results:
+        ai_prob = prob_scores.get(id(result))
         if ai_prob is not None:
             weighted_score += ai_prob * result.analyzer.weight
             total_weight += result.analyzer.weight
@@ -95,7 +100,7 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     fake_voters = []
     authentic_voters = []
     for r in valid_results:
-        ai_prob = _get_ai_probability(r)
+        ai_prob = prob_scores.get(id(r))
         if ai_prob is not None:
             prob_conf = abs(ai_prob - 0.5) * 2
             if prob_conf >= CORROBORATION_CONFIDENCE_FLOOR:

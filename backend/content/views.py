@@ -28,12 +28,31 @@ from .serializers import (
     SubmissionListSerializer,
     VerdictOverrideSerializer,
 )
-from .throttles import UploadRateThrottle
+from .throttles import UploadRateThrottle, WidgetRateThrottle
 from .validators import validate_file_size, validate_mime_type
 from billing.models import get_or_create_subscription, uploads_this_month
 from content.tasks import process_submission
 
 User = get_user_model()
+
+ANONYMOUS_OWNER_EMAIL = "anonymous@prooflayer.invalid"
+
+
+def get_anonymous_owner():
+    """Service account that owns anonymous analyze-url submissions.
+
+    Created inactive and unusable-password so it can never be logged into, and kept
+    separate from real staff accounts so anonymous traffic does not land in an admin's
+    submission list or count against their quota.
+    """
+    owner, created = User.objects.get_or_create(
+        email=ANONYMOUS_OWNER_EMAIL,
+        defaults={"is_active": False, "is_verified": True},
+    )
+    if created:
+        owner.set_unusable_password()
+        owner.save(update_fields=["password"])
+    return owner
 
 
 class SubmissionViewSet(
@@ -268,11 +287,15 @@ class PublicSubmissionDetailView(generics.RetrieveAPIView):
 class WidgetEmbedView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
-    throttle_classes = []
+    throttle_classes = [WidgetRateThrottle]
 
     def get(self, request, sha256):
         submission = (
-            Submission.objects.filter(sha256_hash=sha256, status=Submission.Status.COMPLETED)
+            Submission.objects.filter(
+                sha256_hash=sha256,
+                status=Submission.Status.COMPLETED,
+                is_public=True,
+            )
             .order_by("-created_at")
             .first()
         )
@@ -333,12 +356,7 @@ class AnalyzeUrlView(APIView):
                     {"code": "anonymous_limit_reached", "resets_in": resets_in},
                     status=status.HTTP_429_TOO_MANY_REQUESTS,
                 )
-            owner = User.objects.filter(is_staff=True).first()
-            if owner is None:
-                return Response(
-                    {"detail": "Service not configured."},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
+            owner = get_anonymous_owner()
 
         try:
             resp = safe_get(url, timeout=10)
@@ -388,12 +406,15 @@ class AnalyzeUrlView(APIView):
 
 class SubmissionStatusView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
 
     def get(self, request, id):
         try:
             sub = Submission.objects.get(id=id)
         except Submission.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        user = request.user
+        owns = user.is_authenticated and (sub.user_id == user.id or user.is_staff)
+        if not (sub.is_public or owns or sub.source_url):
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response({
             "id": str(sub.id),

@@ -76,9 +76,9 @@ class NPRDetector(BaseAnalyzer):
             gc.collect()
 
         evidence = {
-            "model": "vit-deepfake-detector",
+            "model": MODEL_NAME,
             "ai_probability": round(ai_prob, 4),
-            "training_corpus": "ViT fine-tuned for deepfake detection",
+            "training_corpus": "ViT fine-tuned on face deepfakes - weak outside portrait imagery",
         }
 
         if ai_prob >= 0.85:

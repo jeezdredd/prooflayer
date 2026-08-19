@@ -12,6 +12,16 @@ RETRAIN_MODEL_DIR = os.environ.get(
     "/root/.cache/huggingface/prooflayer-retrained",
 )
 
+def _sample_group(image_path: str) -> str:
+    """Group key so frames of one video never straddle the train/eval split."""
+    stem = os.path.splitext(os.path.basename(image_path))[0]
+    for marker in ("_f", "_spec"):
+        if marker in stem:
+            stem = stem.rsplit(marker, 1)[0]
+            break
+    return stem
+
+
 MEDIA_TYPES = {
     "image": ["image/jpeg", "image/png", "image/webp"],
     "video": ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"],
@@ -99,7 +109,7 @@ class Command(BaseCommand):
 
             self.stdout.write(f"Starting fine-tune ({options['epochs']} epochs)...")
             tmp_model_dir = os.path.join(tmpdir, "model_output")
-            self._finetune(dataset_dir, tmp_model_dir, options["epochs"])
+            self._finetune(dataset_dir, tmp_model_dir, options["epochs"], media_type)
 
             if not os.path.exists(tmp_model_dir):
                 self.stderr.write("Fine-tune produced no output. Aborting save.")
@@ -196,12 +206,12 @@ class Command(BaseCommand):
         except Exception as exc:
             self.stderr.write(f"CIFAKE load failed: {exc}")
 
-    def _finetune(self, dataset_dir, output_dir, epochs):
+    def _finetune(self, dataset_dir, output_dir, epochs, media_type="image"):
         try:
             import torch
-            from datasets import Dataset, Image as HFImage
+            from torch.utils.data import Dataset as TorchDataset
             from transformers import (
-                AutoFeatureExtractor,
+                AutoImageProcessor,
                 AutoModelForImageClassification,
                 Trainer,
                 TrainingArguments,
@@ -212,7 +222,6 @@ class Command(BaseCommand):
             self.stderr.write(f"Missing dependency: {e}")
             return
 
-        media_type = "image"
         base_model = BASE_MODELS[media_type]
 
         label2id = {"real": 0, "fake": 1}
@@ -229,7 +238,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Total samples: {len(samples)}")
 
-        feature_extractor = AutoFeatureExtractor.from_pretrained(base_model)
+        feature_extractor = AutoImageProcessor.from_pretrained(base_model)
         model = AutoModelForImageClassification.from_pretrained(
             base_model,
             num_labels=2,
@@ -239,43 +248,45 @@ class Command(BaseCommand):
             use_safetensors=True,
         )
 
-        def preprocess(examples):
-            images = [PILImage.open(p).convert("RGB") for p in examples["image_path"]]
-            return feature_extractor(images=images, return_tensors="pt")
-
         import random
-        random.shuffle(samples)
-        split = int(len(samples) * 0.9)
-        train_samples = samples[:split]
-        eval_samples = samples[split:]
 
-        def make_dataset(items):
-            def gen():
-                for item in items:
-                    try:
-                        img = PILImage.open(item["image_path"]).convert("RGB")
-                        inputs = feature_extractor(images=img, return_tensors="pt")
-                        yield {
-                            "pixel_values": inputs["pixel_values"].squeeze(0),
-                            "label": item["label"],
-                        }
-                    except Exception:
-                        pass
-            return list(gen())
+        groups = {}
+        for item in samples:
+            groups.setdefault(_sample_group(item["image_path"]), []).append(item)
+        group_keys = sorted(groups)
+        random.Random(1337).shuffle(group_keys)
 
-        train_data = make_dataset(train_samples)
-        eval_data = make_dataset(eval_samples)
+        split_at = max(1, int(len(group_keys) * 0.9))
+        train_samples = [s for k in group_keys[:split_at] for s in groups[k]]
+        eval_samples = [s for k in group_keys[split_at:] for s in groups[k]]
+        if not eval_samples:
+            eval_samples = train_samples[-1:]
+        self.stdout.write(
+            f"Split by source group: {len(group_keys)} groups -> "
+            f"{len(train_samples)} train / {len(eval_samples)} eval"
+        )
 
-        import torch
-        from torch.utils.data import Dataset as TorchDataset
+        class LazyImageDataset(TorchDataset):
+            """Decodes and preprocesses on __getitem__.
 
-        class SimpleDataset(TorchDataset):
-            def __init__(self, data):
-                self.data = data
+            Materialising every pixel_values tensor up front costs ~600KB per image,
+            which OOMs the worker on any realistic dataset size.
+            """
+
+            def __init__(self, items):
+                self.items = items
+
             def __len__(self):
-                return len(self.data)
+                return len(self.items)
+
             def __getitem__(self, idx):
-                return self.data[idx]
+                item = self.items[idx]
+                img = PILImage.open(item["image_path"]).convert("RGB")
+                inputs = feature_extractor(images=img, return_tensors="pt")
+                return {
+                    "pixel_values": inputs["pixel_values"].squeeze(0),
+                    "label": item["label"],
+                }
 
         def compute_metrics(eval_pred):
             logits, labels = eval_pred
@@ -299,8 +310,8 @@ class Command(BaseCommand):
         trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=SimpleDataset(train_data),
-            eval_dataset=SimpleDataset(eval_data),
+            train_dataset=LazyImageDataset(train_samples),
+            eval_dataset=LazyImageDataset(eval_samples),
             compute_metrics=compute_metrics,
         )
 

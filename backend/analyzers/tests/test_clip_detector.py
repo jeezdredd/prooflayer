@@ -48,6 +48,7 @@ def _mk_mock_for_label(ai_prob: float, label_real="human", label_ai="artificial"
     mock_outputs.logits = logits
     mock_model.return_value = mock_outputs
     mock_model.eval = MagicMock()
+    mock_model.to.return_value = mock_model
     mock_model.config = MagicMock()
     mock_model.config.id2label = {0: label_real, 1: label_ai}
     mock_extractor.return_value = {"pixel_values": torch.randn(1, 3, 224, 224)}

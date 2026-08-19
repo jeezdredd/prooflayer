@@ -6,10 +6,13 @@ from analyzers.base import AnalysisOutput, BaseAnalyzer
 
 logger = logging.getLogger(__name__)
 
+TOTAL_FLAGS = 7
+FLAGS_FOR_CERTAINTY = 5
+
 
 class AudioSpectrogramAnalyzer(BaseAnalyzer):
     name = "audio_spectrogram"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/mp4"]
@@ -84,6 +87,8 @@ class AudioSpectrogramAnalyzer(BaseAnalyzer):
 
         evidence["flags"] = flags
         flag_count = len(flags)
+        evidence["flags_total"] = TOTAL_FLAGS
+        evidence["ai_probability"] = round(min(flag_count / FLAGS_FOR_CERTAINTY, 1.0), 4)
 
         if flag_count >= 4:
             verdict = "fake"

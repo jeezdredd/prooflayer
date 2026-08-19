@@ -43,6 +43,38 @@ def _json_safe(value):
     return _clean_str(str(value))
 
 
+EXIF_IFD_POINTER = 0x8769
+GPS_IFD_POINTER = 0x8825
+GENERATION_TEXT_KEYS = ("parameters", "prompt", "workflow", "sd-metadata", "comment",
+                        "software", "description", "generation_data", "aigc", "dream")
+
+
+def _extract_png_text(img) -> dict:
+    text = {}
+    raw = getattr(img, "text", None) or {}
+    for key, value in raw.items():
+        if not isinstance(value, str):
+            continue
+        text[_clean_str(str(key))] = _clean_str(value[:4000])
+    info = getattr(img, "info", None) or {}
+    for key in GENERATION_TEXT_KEYS:
+        value = info.get(key)
+        if isinstance(value, (str, bytes)) and key not in text:
+            decoded = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+            text[_clean_str(str(key))] = _clean_str(decoded[:4000])
+    return text
+
+
+def _extract_xmp(img) -> str:
+    info = getattr(img, "info", None) or {}
+    raw = info.get("XML:com.adobe.xmp") or info.get("xmp")
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", errors="replace")
+    if not isinstance(raw, str):
+        return ""
+    return _clean_str(raw[:20000])
+
+
 def extract_metadata(file_path):
     try:
         img = Image.open(file_path)
@@ -64,13 +96,35 @@ def extract_metadata(file_path):
             exif[tag_name] = _json_safe(value)
 
         try:
-            gps_ifd = exif_data.get_ifd(0x8825)
+            exif_ifd = exif_data.get_ifd(EXIF_IFD_POINTER)
+            for tag_id, value in (exif_ifd or {}).items():
+                tag_name = ExifTags.TAGS.get(tag_id, str(tag_id))
+                exif.setdefault(tag_name, _json_safe(value))
+        except Exception:
+            logger.debug("exif sub-ifd read failed", exc_info=True)
+
+        try:
+            gps_ifd = exif_data.get_ifd(GPS_IFD_POINTER)
             if gps_ifd:
                 exif["GPSInfo"] = {str(k): _json_safe(v) for k, v in gps_ifd.items()}
         except Exception:
             pass
 
         metadata["exif"] = exif
+
+    try:
+        png_text = _extract_png_text(img)
+        if png_text:
+            metadata["png_text"] = png_text
+    except Exception:
+        logger.debug("png text read failed", exc_info=True)
+
+    try:
+        xmp = _extract_xmp(img)
+        if xmp:
+            metadata["xmp"] = xmp
+    except Exception:
+        logger.debug("xmp read failed", exc_info=True)
 
     return metadata
 

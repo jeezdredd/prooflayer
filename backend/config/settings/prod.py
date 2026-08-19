@@ -43,16 +43,19 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", "")
 AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "")
-AWS_DEFAULT_ACL = "public-read"
+MEDIA_PRIVATE = os.environ.get("MEDIA_PRIVATE", "true").lower() == "true"
+AWS_DEFAULT_ACL = None if MEDIA_PRIVATE else "public-read"
 AWS_S3_FILE_OVERWRITE = False
+AWS_QUERYSTRING_EXPIRE = int(os.environ.get("AWS_QUERYSTRING_EXPIRE", "3600"))
 
 if AWS_STORAGE_BUCKET_NAME:
     _storage_options = {
         "bucket_name": AWS_STORAGE_BUCKET_NAME,
         "region_name": AWS_S3_REGION_NAME,
-        "custom_domain": AWS_S3_CUSTOM_DOMAIN or None,
-        "default_acl": "public-read",
-        "querystring_auth": False,
+        "custom_domain": None if MEDIA_PRIVATE else (AWS_S3_CUSTOM_DOMAIN or None),
+        "default_acl": AWS_DEFAULT_ACL,
+        "querystring_auth": MEDIA_PRIVATE,
+        "querystring_expire": AWS_QUERYSTRING_EXPIRE,
         "file_overwrite": False,
         "addressing_style": "path",
         "signature_version": "s3v4",
@@ -69,7 +72,9 @@ if AWS_STORAGE_BUCKET_NAME:
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
-    if AWS_S3_CUSTOM_DOMAIN:
+    if MEDIA_PRIVATE:
+        pass
+    elif AWS_S3_CUSTOM_DOMAIN:
         MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
     elif AWS_S3_ENDPOINT_URL:
         MEDIA_URL = f"{AWS_S3_ENDPOINT_URL.rstrip('/')}/{AWS_STORAGE_BUCKET_NAME}/"

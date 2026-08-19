@@ -2,6 +2,14 @@
 
 Newest at top.
 
+## [2026-08-19] system-audit | Full-stack audit: detection, security, reliability
+
+- Source: live read of `backend/` (analyzers, content, common, provenance, config) + HF model configs + 2026 detection benchmark literature
+- Summary: 11 correctness bugs and 3 security issues found and fixed; suite 33 failed/133 passed -> 301 passed
+- Pages created: [[fixes/audit-2026-08]]
+- Pages updated: [[concepts/aggregation]], [[hot]]
+- Headline: aggregator silently zero-weighted `llm_vision`; EXIF sub-IFD never read so camera-signature was unreachable; video analysis broken on GPU; C2PA extraction dead since the c2pa-python 0.5 API change
+
 ## [2026-05-14] memory-bank-creation | Full ProofLayer wiki bootstrap
 
 - Source: live read of `/Users/sevastyan0107/PycharmProjects/prooflayer/` (backend/, frontend/, docker-compose.yml, .env.example, models, services)

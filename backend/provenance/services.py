@@ -205,26 +205,67 @@ def run_clip_neighbor_lookup(submission):
     return results
 
 
-def extract_c2pa(submission):
-    from .models import ProvenanceResult
+def read_c2pa_manifest(path: str) -> str | None:
+    """Return the raw C2PA manifest JSON for a local file, or None.
 
+    c2pa-python moved to a stream-based Reader API in 0.5.0 and dropped the old
+    module-level read_file helper, so try the modern entrypoints first.
+    """
     try:
         import c2pa
     except ImportError:
         return None
 
+    reader_cls = getattr(c2pa, "Reader", None)
+    if reader_cls is not None:
+        try:
+            with reader_cls(path) as reader:
+                return reader.json()
+        except TypeError:
+            try:
+                with open(path, "rb") as fh, reader_cls(fh) as reader:
+                    return reader.json()
+            except Exception as exc:
+                logger.debug("C2PA Reader stream read failed: %s", exc)
+        except Exception as exc:
+            logger.debug("C2PA Reader read failed: %s", exc)
+
+    from_file = getattr(getattr(c2pa, "c2pa_api", None), "Reader", None)
+    if from_file is not None and hasattr(from_file, "from_file"):
+        try:
+            return from_file.from_file(path).json
+        except Exception as exc:
+            logger.debug("C2PA c2pa_api.Reader failed: %s", exc)
+
+    legacy = getattr(c2pa, "read_file", None)
+    if legacy is not None:
+        try:
+            return legacy(path, None)
+        except Exception as exc:
+            logger.debug("C2PA legacy read_file failed: %s", exc)
+
+    return None
+
+
+def extract_c2pa(submission):
+    from .models import ProvenanceResult
+
     try:
         with local_file(submission.file) as path:
-            manifest_json = c2pa.read_file(path, None)
+            manifest_json = read_c2pa_manifest(path)
         if not manifest_json:
             return None
-        r = ProvenanceResult.objects.create(
+        existing = submission.provenance_results.filter(
+            source_type=ProvenanceResult.SourceType.C2PA
+        ).first()
+        if existing:
+            return existing
+        return ProvenanceResult.objects.create(
             submission=submission,
             source_type=ProvenanceResult.SourceType.C2PA,
             title="C2PA Content Credentials",
             raw_data={"manifest": manifest_json},
         )
-        return r
     except Exception as exc:
         logger.warning("C2PA extraction failed: %s", exc)
         return None

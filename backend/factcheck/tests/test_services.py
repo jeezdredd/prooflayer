@@ -41,25 +41,26 @@ class TestCheckGoogleFactCheckNoKey:
 
 class TestSearchWeb:
     def test_ddgs_exception_returns_empty(self):
-        with patch("duckduckgo_search.DDGS") as mock_ddgs:
+        with patch("factcheck.services.DDGS") as mock_ddgs:
             mock_ddgs.side_effect = Exception("network error")
             result = search_web("test query")
-        assert result == ""
+        assert result == []
 
-    def test_returns_joined_snippets(self):
+    def test_returns_structured_sources(self):
         fake_results = [
             {"title": "Title A", "body": "Body A", "href": "http://a.com"},
             {"title": "Title B", "body": "Body B", "href": "http://b.com"},
         ]
-        with patch("duckduckgo_search.DDGS") as mock_ddgs:
+        with patch("factcheck.services.DDGS") as mock_ddgs:
             ctx = MagicMock()
             ctx.__enter__ = MagicMock(return_value=ctx)
             ctx.__exit__ = MagicMock(return_value=False)
             ctx.text = MagicMock(return_value=fake_results)
             mock_ddgs.return_value = ctx
             result = search_web("some query")
-        assert "Title A" in result
-        assert "Title B" in result
+        assert [r["title"] for r in result] == ["Title A", "Title B"]
+        assert result[0]["url"] == "http://a.com"
+        assert result[1]["body"] == "Body B"
 
 
 class TestAnalyzeText:

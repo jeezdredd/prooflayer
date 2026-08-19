@@ -5,6 +5,8 @@ from analyzers.base import AnalysisOutput, BaseAnalyzer
 
 AI_TOOL_SIGNATURES = [
     "stable diffusion",
+    "stable-diffusion",
+    "sdxl",
     "dall-e",
     "dall·e",
     "midjourney",
@@ -22,7 +24,54 @@ AI_TOOL_SIGNATURES = [
     "canva ai",
     "bing image creator",
     "copilot designer",
+    "flux",
+    "black forest labs",
+    "ideogram",
+    "imagen",
+    "gemini",
+    "nano banana",
+    "recraft",
+    "seedream",
+    "qwen-image",
+    "grok",
+    "gpt-image",
+    "openai",
+    "sora",
+    "runway",
+    "kling",
+    "luma",
+    "pika",
+    "automatic1111",
+    "comfyui",
+    "invokeai",
+    "fooocus",
+    "draw things",
+    "krea",
+    "magnific",
+    "generative fill",
+    "generative ai",
+    "ai generated",
+    "ai-generated",
 ]
+
+C2PA_AI_MARKERS = (
+    "trainedalgorithmicmedia",
+    "compositewithtrainedalgorithmicmedia",
+    "algorithmicmedia",
+)
+
+XMP_AI_MARKERS = C2PA_AI_MARKERS + ("digitalsourcetype",)
+
+GENERATION_PARAM_MARKERS = (
+    "negative prompt",
+    "steps:",
+    "sampler:",
+    "cfg scale",
+    "denoising strength",
+    "model hash",
+    "clip skip",
+    "lora:",
+)
 
 EXIF_SOFTWARE_FIELDS = ["Software", "ProcessingSoftware", "Creator", "CreatorTool"]
 
@@ -32,7 +81,7 @@ CAMERA_CAPTURE_FIELDS = ["ExposureTime", "FNumber", "ISOSpeedRatings", "FocalLen
 
 class MetadataAnalyzer(BaseAnalyzer):
     name = "metadata"
-    version = "1.0.0"
+    version = "1.5.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -44,6 +93,14 @@ class MetadataAnalyzer(BaseAnalyzer):
         evidence["ai_tool"] = self._check_ai_tool_signatures(metadata)
         if evidence["ai_tool"]["detected"]:
             flags.append("ai_tool_signature")
+
+        evidence["generation_params"] = self._check_generation_params(metadata)
+        if evidence["generation_params"]["detected"]:
+            flags.append("generation_parameters")
+
+        evidence["c2pa"] = self._check_c2pa_ai(metadata)
+        if evidence["c2pa"]["ai_declared"]:
+            flags.append("c2pa_ai_declared")
 
         evidence["gps"] = self._check_gps_plausibility(metadata)
         if evidence["gps"]["suspicious"]:
@@ -63,14 +120,17 @@ class MetadataAnalyzer(BaseAnalyzer):
 
         strong_flags = [f for f in flags if f not in ("metadata_stripped", "camera_signature")]
 
-        if "ai_tool_signature" in flags:
+        if "c2pa_ai_declared" in flags:
+            confidence = 0.95
+            verdict = "fake"
+        elif "ai_tool_signature" in flags or "generation_parameters" in flags:
             confidence = 0.9
             verdict = "fake"
         elif len(strong_flags) >= 2:
             confidence = 0.8
             verdict = "suspicious"
         elif "camera_signature" in flags and len(strong_flags) == 0:
-            confidence = 0.85
+            confidence = 0.55
             verdict = "authentic"
         elif len(strong_flags) == 1 and "metadata_stripped" in flags:
             confidence = 0.55
@@ -105,9 +165,68 @@ class MetadataAnalyzer(BaseAnalyzer):
                     result["detected"] = True
                     result["tool"] = sig
                     result["field"] = field
-                    result["raw_value"] = value
+                    result["raw_value"] = value[:300]
                     return result
 
+        for field, value in (metadata.get("png_text") or {}).items():
+            if not isinstance(value, str):
+                continue
+            value_lower = value.lower()
+            for sig in AI_TOOL_SIGNATURES:
+                if sig in value_lower:
+                    result["detected"] = True
+                    result["tool"] = sig
+                    result["field"] = f"png_text.{field}"
+                    result["raw_value"] = value[:300]
+                    return result
+
+        xmp = metadata.get("xmp")
+        if isinstance(xmp, str):
+            xmp_lower = xmp.lower()
+            for sig in AI_TOOL_SIGNATURES:
+                if sig in xmp_lower:
+                    result["detected"] = True
+                    result["tool"] = sig
+                    result["field"] = "xmp"
+                    return result
+
+        return result
+
+    def _check_generation_params(self, metadata: dict) -> dict:
+        result = {"detected": False, "markers": [], "field": None}
+        for field, value in (metadata.get("png_text") or {}).items():
+            if not isinstance(value, str):
+                continue
+            lowered = value.lower()
+            hits = [m for m in GENERATION_PARAM_MARKERS if m in lowered]
+            if len(hits) >= 2:
+                result["detected"] = True
+                result["markers"] = hits
+                result["field"] = f"png_text.{field}"
+                return result
+        return result
+
+    def _check_c2pa_ai(self, metadata: dict) -> dict:
+        result = {"ai_declared": False, "marker": None, "source": None}
+        xmp = metadata.get("xmp")
+        if isinstance(xmp, str):
+            lowered = xmp.lower()
+            for marker in XMP_AI_MARKERS[:-1]:
+                if marker in lowered:
+                    result["ai_declared"] = True
+                    result["marker"] = marker
+                    result["source"] = "xmp"
+                    return result
+
+        c2pa = metadata.get("c2pa")
+        if c2pa:
+            lowered = str(c2pa).lower()
+            for marker in C2PA_AI_MARKERS:
+                if marker in lowered:
+                    result["ai_declared"] = True
+                    result["marker"] = marker
+                    result["source"] = "c2pa_manifest"
+                    return result
         return result
 
     def _check_gps_plausibility(self, metadata: dict) -> dict:
@@ -118,12 +237,17 @@ class MetadataAnalyzer(BaseAnalyzer):
         if not gps_info or not isinstance(gps_info, dict):
             return result
 
+        def _tag(key):
+            if key in gps_info:
+                return gps_info[key]
+            return gps_info.get(str(key))
+
         try:
-            lat = gps_info.get(2)
-            lon = gps_info.get(4)
+            lat = _tag(2)
+            lon = _tag(4)
             if lat and lon:
-                lat_val = self._gps_to_decimal(lat, gps_info.get(1, "N"))
-                lon_val = self._gps_to_decimal(lon, gps_info.get(3, "E"))
+                lat_val = self._gps_to_decimal(lat, _tag(1) or "N")
+                lon_val = self._gps_to_decimal(lon, _tag(3) or "E")
                 if not (-90 <= lat_val <= 90) or not (-180 <= lon_val <= 180):
                     result["suspicious"] = True
                     result["details"] = f"Invalid coordinates: {lat_val}, {lon_val}"

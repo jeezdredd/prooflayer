@@ -17,7 +17,7 @@ ENSEMBLE_MODELS = [
 ]
 
 _model_cache: dict[str, tuple] = {}
-_MAX_CACHED = 1
+_MAX_CACHED = len(ENSEMBLE_MODELS)
 
 
 def _load_model(name: str):

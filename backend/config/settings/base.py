@@ -122,6 +122,7 @@ REST_FRAMEWORK = {
         "register": "5/hour",
         "login": "20/hour",
         "resend_verification": "5/hour",
+        "widget": "120/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -164,8 +165,8 @@ ALLOWED_MIME_TYPES = [
     "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/mp4",
     "text/plain",
 ]
-FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
-DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")

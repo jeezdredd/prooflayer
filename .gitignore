@@ -214,3 +214,7 @@ scripts/download_hf_models.py
 .DS_Store
 .superpowers/
 docs/superpowers/
+
+# Local eval dataset and defense notes - never committed
+dataset/
+VIVA.md

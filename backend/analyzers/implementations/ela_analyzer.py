@@ -9,11 +9,14 @@ from analyzers.base import AnalysisOutput, BaseAnalyzer
 
 ELA_QUALITY = 95
 BLOCK_SIZE = 16
+OUTLIER_SIGMA = 4.0
+OUTLIER_RATIO_SUSPECT = 0.02
+MIN_BLOCKS_FOR_OUTLIERS = 64
 
 
 class ELAAnalyzer(BaseAnalyzer):
     name = "ela"
-    version = "1.0.0"
+    version = "2.0.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -53,7 +56,18 @@ class ELAAnalyzer(BaseAnalyzer):
             block_mean = mean_error
             uniformity_ratio = 0.0
 
-        heatmap_url = self._save_heatmap(diff, metadata)
+        outlier_ratio = 0.0
+        if len(block_means) >= MIN_BLOCKS_FOR_OUTLIERS and block_std > 0:
+            threshold = block_mean + OUTLIER_SIGMA * block_std
+            outlier_ratio = sum(1 for b in block_means if b > threshold) / len(block_means)
+
+        heatmap_path = self._save_heatmap(diff, metadata)
+
+        manipulation_suspected = (
+            not is_lossless_source
+            and len(block_means) >= MIN_BLOCKS_FOR_OUTLIERS
+            and outlier_ratio >= OUTLIER_RATIO_SUSPECT
+        )
 
         evidence = {
             "mean_error": round(mean_error, 3),
@@ -62,29 +76,22 @@ class ELAAnalyzer(BaseAnalyzer):
             "block_std": round(block_std, 3),
             "block_mean": round(block_mean, 3),
             "uniformity_ratio": round(uniformity_ratio, 4),
+            "block_outlier_ratio": round(outlier_ratio, 4),
+            "manipulation_suspected": manipulation_suspected,
             "source_format": source_format,
+            "note": (
+                "ELA localises recompression inconsistency (splicing). It does not separate "
+                "AI-generated from camera imagery, so it does not vote on that axis."
+            ),
         }
-        if heatmap_url:
-            evidence["heatmap_url"] = heatmap_url
+        if heatmap_path:
+            evidence["heatmap_path"] = heatmap_path
+            evidence["heatmap_url"] = default_storage.url(heatmap_path)
 
         if is_lossless_source:
             evidence["note"] = "lossless source (PNG/WebP/etc) - ELA heuristics unreliable"
-            return AnalysisOutput(confidence=0.5, verdict="inconclusive", evidence=evidence)
 
-        if uniformity_ratio < 0.3 and mean_error < 5.0:
-            confidence = 0.85
-            verdict = "fake"
-        elif uniformity_ratio < 0.5 and mean_error < 8.0:
-            confidence = 0.6
-            verdict = "suspicious"
-        elif uniformity_ratio > 1.0 or mean_error > 15.0:
-            confidence = 0.75
-            verdict = "authentic"
-        else:
-            confidence = 0.5
-            verdict = "inconclusive"
-
-        return AnalysisOutput(confidence=confidence, verdict=verdict, evidence=evidence)
+        return AnalysisOutput(confidence=0.5, verdict="inconclusive", evidence=evidence)
 
     def _save_heatmap(self, diff: np.ndarray, metadata: dict) -> str | None:
         submission_id = metadata.get("submission_id")
@@ -104,7 +111,6 @@ class ELAAnalyzer(BaseAnalyzer):
             storage_path = f"ela/{submission_id}.jpg"
             if default_storage.exists(storage_path):
                 default_storage.delete(storage_path)
-            saved_path = default_storage.save(storage_path, ContentFile(buf.read()))
-            return default_storage.url(saved_path)
+            return default_storage.save(storage_path, ContentFile(buf.read()))
         except Exception:
             return None

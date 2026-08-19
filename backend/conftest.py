@@ -1,7 +1,9 @@
 import io
 import pytest
 from PIL import Image
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework.test import APIClient
 
 from config.celery import app as celery_app
 from users.tests.factories import UserFactory
@@ -17,9 +19,17 @@ def _celery_eager():
     )
 
 
+@pytest.fixture(autouse=True)
+def _clear_throttle_cache():
+    """Throttle and quota counters live in the shared Redis cache; without this
+    they leak across tests and later requests get spurious 429s."""
+    cache.clear()
+    yield
+    cache.clear()
+
+
 @pytest.fixture
 def api_client():
-    from rest_framework.test import APIClient
     return APIClient()
 
 

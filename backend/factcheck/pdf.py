@@ -1,6 +1,5 @@
 from django.template.loader import render_to_string
 from django.utils import timezone
-from weasyprint import HTML
 
 
 VERDICT_COLORS = {
@@ -50,4 +49,6 @@ def render_factcheck_pdf(result: dict, original_text: str = "") -> bytes:
         "original_text": original_text,
         "generated_at": timezone.now(),
     })
+    from weasyprint import HTML
+
     return HTML(string=html).write_pdf()

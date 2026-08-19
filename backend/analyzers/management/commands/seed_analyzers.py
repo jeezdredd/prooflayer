@@ -18,7 +18,8 @@ _FALLBACK_VERSIONS = {
     "analyzers.implementations.llm_analyzer": "1.1.0",
     "analyzers.implementations.audio_analyzer": "1.2.0",
     "analyzers.implementations.llm_image_analyzer": "1.7.0",
-    "analyzers.implementations.custom_detector": "1.0.0",
+    "analyzers.implementations.custom_detector": "1.1.0",
+    "analyzers.implementations.clip_detector": "2.0.0",
 }
 
 
@@ -43,35 +44,35 @@ ANALYZERS = [
     {
         "name": "metadata",
         "analyzer_class": "analyzers.implementations.metadata_analyzer.MetadataAnalyzer",
-        "weight": 2.5,
+        "weight": 1.5,
         "queue": "default",
         "timeout": 60,
     },
     {
         "name": "ela",
         "analyzer_class": "analyzers.implementations.ela_analyzer.ELAAnalyzer",
-        "weight": 1.0,
+        "weight": 0.75,
         "queue": "default",
         "timeout": 60,
     },
     {
         "name": "siglip_detector",
         "analyzer_class": "analyzers.implementations.siglip_detector.SigLIPDetector",
-        "weight": 2.0,
+        "weight": 0.5,
         "queue": "ml",
         "timeout": 180,
     },
     {
         "name": "npr_detector",
         "analyzer_class": "analyzers.implementations.npr_detector.NPRDetector",
-        "weight": 0.5,
+        "weight": 1.0,
         "queue": "ml",
         "timeout": 180,
     },
     {
         "name": "community_forensics",
         "analyzer_class": "analyzers.implementations.community_forensics.CommunityForensicsDetector",
-        "weight": 3.0,
+        "weight": 3.5,
         "queue": "ml",
         "timeout": 180,
     },
@@ -104,9 +105,16 @@ ANALYZERS = [
         "timeout": 300,
     },
     {
+        "name": "ai_detector",
+        "analyzer_class": "analyzers.implementations.clip_detector.AIImageDetector",
+        "weight": 1.5,
+        "queue": "ml",
+        "timeout": 180,
+    },
+    {
         "name": "custom_detector",
         "analyzer_class": "analyzers.implementations.custom_detector.CustomDetector",
-        "weight": 3.5,
+        "weight": 1.5,
         "queue": "ml",
         "timeout": 180,
     },

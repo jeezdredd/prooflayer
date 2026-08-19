@@ -105,6 +105,15 @@ def process_submission(self, submission_id):
                 from provenance.services import check_perceptual_known_fake
                 submission.is_known_fake = check_perceptual_known_fake(submission)
 
+            try:
+                from provenance.services import read_c2pa_manifest
+                manifest = read_c2pa_manifest(path)
+                if manifest:
+                    metadata["c2pa"] = str(manifest)[:20000]
+                    submission.metadata = metadata
+            except Exception:
+                logger.exception("c2pa manifest read failed for %s", submission.id)
+
         submission.save(update_fields=[
             "sha256_hash", "metadata", "thumbnail", "is_known_fake",
             "phash", "dhash", "pdq_hash", "pdq_quality", "clip_embedding",

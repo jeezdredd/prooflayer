@@ -5,6 +5,7 @@ from asgiref.sync import async_to_sync
 from celery import chord, group, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from channels.layers import get_channel_layer
+from django.core.cache import cache
 
 from content.models import Submission
 from content.storage_utils import local_file
@@ -16,6 +17,8 @@ from .models import AnalyzerConfig, AnalysisResult
 from .registry import load_analyzer_class
 
 logger = logging.getLogger(__name__)
+
+AGGREGATION_LOCK_TTL = 600
 
 
 def _publish_status(submission_id, status_message="", status=None, final_score=None, final_verdict=None, event=None, analyzer=None, verdict=None):
@@ -156,6 +159,10 @@ def run_analyzer(self, submission_id, config_id):
 
 @shared_task
 def aggregate_verdicts(result_ids, submission_id):
+    if not cache.add(f"aggregating:{submission_id}", 1, AGGREGATION_LOCK_TTL):
+        logger.info("Submission %s aggregation already in flight, skipping", submission_id)
+        return
+
     try:
         submission = Submission.objects.get(id=submission_id)
     except Submission.DoesNotExist:
