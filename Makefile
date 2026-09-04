@@ -1,8 +1,15 @@
 # ProofLayer top-level Makefile.
 # Most commands assume Docker Compose v2 (`docker compose ...`).
 
-SERVER ?= seb0107@ubuntu-dev.local
-SERVER_FALLBACK ?= seb0107@192.168.8.112
+# Server address: first host that answers on :22, in order mDNS (home LAN) -> LAN IP ->
+# Tailscale. ubuntu-dev.local only resolves on the home LAN; off it, scp hangs with no
+# output. Override with SERVER=user@host.
+SERVER_USER ?= seb0107
+SERVER_HOSTS ?= ubuntu-dev.local 192.168.8.112 100.76.54.87
+SERVER ?= $(shell for h in $(SERVER_HOSTS); do nc -z -G 2 $$h 22 >/dev/null 2>&1 && echo $(SERVER_USER)@$$h && break; done)
+ifeq ($(strip $(SERVER)),)
+$(error no server reachable on :22 among "$(SERVER_HOSTS)" - check Tailscale/LAN, or pass SERVER=user@host)
+endif
 
 .PHONY: help dev down logs ps build seed sh fe-sh \
         deploy-server deploy-bootstrap deploy-cf deploy-redeploy \
