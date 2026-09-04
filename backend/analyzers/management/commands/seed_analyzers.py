@@ -124,12 +124,30 @@ ANALYZERS = [
 
 class Command(BaseCommand):
     help = "Seed analyzer configurations"
+    requires_system_checks = []
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--check",
+            action="store_true",
+            help="report drift between DB rows and ANALYZERS without writing; exit 1 on drift",
+        )
 
     def handle(self, *args, **options):
+        if options["check"]:
+            from analyzers.roster import describe_drift, roster_drift
+
+            report = roster_drift()
+            if report["in_sync"]:
+                self.stdout.write(self.style.SUCCESS(f"roster in sync ({report['active']} active)"))
+                return
+            self.stderr.write(f"roster drift: {describe_drift(report)}")
+            raise SystemExit(1)
+
         active_names = {a["name"] for a in ANALYZERS}
         for analyzer_data in ANALYZERS:
             module_path = analyzer_data["analyzer_class"].rsplit(".", 1)[0]
-            data = {**analyzer_data, "version": _git_version(module_path)}
+            data = {**analyzer_data, "version": _git_version(module_path), "is_active": True}
             obj, created = AnalyzerConfig.objects.update_or_create(
                 name=data["name"],
                 defaults=data,

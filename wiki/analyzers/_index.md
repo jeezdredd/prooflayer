@@ -21,6 +21,18 @@ class BaseAnalyzer:
 
 Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue, timeout, is_active).
 
+> [!warning] Rows only change when `seed_analyzers` runs
+> That happens on backend container boot (`docker-compose.yml`, `deploy/compose.prod.yml`) -
+> **not** on a worker-only rebuild, and not by editing this file. Until then the DB keeps the
+> old weights and any renamed analyzer keeps running under its old class path.
+> - Detect: `/system/status` -> `services.analyzers` (`down` on drift), `manage.py check`
+>   (`analyzers.W001`), `make roster-check` / `manage.py seed_analyzers --check` (exit 1).
+> - Fix: `make seed-analyzers` (compose), `make seed-analyzers-host` (uv from the host - plain
+>   `python manage.py` fails because `.env` points at the compose hostnames `db`/`redis`),
+>   `make seed-analyzers-server` (prod).
+> - `seed_analyzers` also re-activates expected rows now; before 2026-09-04 a row that had been
+>   deactivated stayed deactivated forever. Logic in `analyzers/roster.py`.
+
 ## Roster
 
 Weights as of 2026-09-04, after the measured rebalance in [[fixes/audit-2026-08]].

@@ -1,6 +1,7 @@
 ---
 type: api
 created: 2026-05-14
+updated: 2026-09-04
 source: backend/api/system_views.py
 ---
 
@@ -20,7 +21,11 @@ Public liveness probe across all infrastructure components. No auth required. Po
     "redis":    { "status": "ok", "latency_ms": 3.4, "version": "7.4.8" },
     "celery":   { "status": "ok", "workers": 1, "worker_names": ["celery@..."], "active_tasks": 0, "scheduled_tasks": 0 },
     "ollama":   { "status": "ok", "latency_ms": 12.5, "available_models": [...], "loaded_models": [] },
-    "storage":  { "status": "skip", "reason": "no s3 endpoint configured" }
+    "storage":  { "status": "skip", "reason": "no s3 endpoint configured" },
+    "email":    { "status": "ok", "backend": "resend", "from_email": "...", "recent_failures": 0 },
+    "analyzers": { "status": "ok", "active": 11, "expected": 11,
+                   "drift": { "missing": [], "inactive_expected": [], "stale_active": [],
+                              "class_mismatch": [], "weight_mismatch": [] } }
   }
 }
 ```
@@ -36,6 +41,13 @@ Public liveness probe across all infrastructure components. No auth required. Po
   - `scheduled()` -> pending count
 - `ollama`: `GET /api/tags` (available models) + `GET /api/ps` (currently loaded)
 - `storage`: `GET {AWS_S3_ENDPOINT_URL}/minio/health/live` if configured
+- `email`: configured backend + `EmailLog` rows with status `failed`/`console` in the last 24h
+- `analyzers`: `analyzers.roster.roster_drift()` - diffs `AnalyzerConfig` rows against
+  `seed_analyzers.ANALYZERS`. `down` (and `overall: degraded`) whenever any drift bucket is
+  non-empty, with `error` naming the buckets and telling you to run `seed_analyzers`. Same logic
+  backs the `analyzers.W001` system check and `manage.py seed_analyzers --check`. Added
+  2026-09-04 after a weight rebalance sat unapplied on a worker-only rebuild; see
+  [[analyzers/_index]].
 
 ## Failure mode
 
@@ -45,10 +57,10 @@ Any probe raises -> status `"down"`, error truncated to 120 chars in response.
 
 ## Frontend display
 
-`/status` page renders 6 service rows with:
+`/status` page renders 8 service rows (api, database, redis, celery, ollama, storage, email, analyzers) with:
 - Pulse-dot status indicator (sage green / blood red / gray)
 - Service label + lucide icon (Activity / Database / Zap / Cpu / Brain / HardDrive)
-- One-line metrics (latency_ms, worker count, model list)
+- One-line metrics (latency_ms, worker count, model list, `active/expected` for the roster)
 - Description text
 - Last-fetched timestamp
 

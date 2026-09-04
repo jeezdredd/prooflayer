@@ -1,3 +1,5 @@
+from contextlib import ExitStack
+
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -29,6 +31,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
             patch("api.system_views._probe_email", return_value={"status": "ok"}),
+            patch("api.system_views._probe_analyzers", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert response.status_code == 200
@@ -41,6 +44,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
             patch("api.system_views._probe_email", return_value={"status": "ok"}),
+            patch("api.system_views._probe_analyzers", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert "overall" in response.data
@@ -55,6 +59,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
             patch("api.system_views._probe_email", return_value={"status": "ok"}),
+            patch("api.system_views._probe_analyzers", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert response.data["overall"] == "operational"
@@ -67,6 +72,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
             patch("api.system_views._probe_email", return_value={"status": "ok"}),
+            patch("api.system_views._probe_analyzers", return_value={"status": "ok"}),
         ):
             response = self.client.get(self.url)
         assert response.data["overall"] == "degraded"
@@ -79,6 +85,7 @@ class TestSystemStatusView:
             patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
             patch("api.system_views._probe_storage", return_value={"status": "skip"}),
             patch("api.system_views._probe_email", return_value={"status": "ok"}),
+            patch("api.system_views._probe_analyzers", return_value={"status": "ok"}),
             patch("api.system_views._last_retrain", return_value=None),
         ):
             response = self.client.get(self.url)
@@ -143,3 +150,45 @@ class TestFeedbackView:
                 format="json",
             )
         assert response.status_code == 201
+
+
+@pytest.mark.django_db
+class TestAnalyzerRosterProbe:
+    def setup_method(self):
+        self.client = APIClient()
+        self.url = reverse("system-status")
+
+    def _others_ok(self):
+        return (
+            patch("api.system_views._probe_db", return_value={"status": "ok"}),
+            patch("api.system_views._probe_redis", return_value={"status": "ok"}),
+            patch("api.system_views._probe_celery", return_value={"status": "ok"}),
+            patch("api.system_views._probe_ollama", return_value={"status": "ok"}),
+            patch("api.system_views._probe_storage", return_value={"status": "skip"}),
+            patch("api.system_views._probe_email", return_value={"status": "ok"}),
+        )
+
+    def test_unseeded_roster_degrades_overall(self):
+        with ExitStack() as stack:
+            for cm in self._others_ok():
+                stack.enter_context(cm)
+            response = self.client.get(self.url)
+        probe = response.data["services"]["analyzers"]
+        assert probe["status"] == "down"
+        assert probe["active"] == 0
+        assert probe["drift"]["missing"]
+        assert "seed_analyzers" in probe["error"]
+        assert response.data["overall"] == "degraded"
+
+    def test_seeded_roster_is_ok(self):
+        from django.core.management import call_command
+
+        call_command("seed_analyzers", verbosity=0)
+        with ExitStack() as stack:
+            for cm in self._others_ok():
+                stack.enter_context(cm)
+            response = self.client.get(self.url)
+        probe = response.data["services"]["analyzers"]
+        assert probe["status"] == "ok"
+        assert probe["active"] == probe["expected"]
+        assert response.data["overall"] == "operational"

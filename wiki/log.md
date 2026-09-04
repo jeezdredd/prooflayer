@@ -2,6 +2,13 @@
 
 Newest at top.
 
+## [2026-09-04] roster-drift-visibility | Analyzer roster drift check, probe, Makefile targets
+
+- Source: `.env`, `docker-compose.yml`, `deploy/compose.prod.yml`, `Makefile`, `backend/api/system_views.py`, `backend/users/checks.py` (pattern)
+- Summary: host-side `seed_analyzers` failure traced to compose hostnames in `.env`; added `analyzers/roster.py`, `analyzers.W001` system check, `/system/status` `analyzers` probe + StatusPage row, `seed_analyzers --check`, four Makefile targets; fixed seed never re-activating deactivated rows
+- Pages updated: [[api/system-status]], [[analyzers/_index]], [[hot]]
+- Headline: the roster only reconciles when the backend container restarts; every weight rebalance so far was invisible on a worker-only rebuild
+
 ## [2026-09-04] npr-real-implementation | Real NPR built, measured, benched; disagreement rule reweighted
 
 - Source: `github.com/chuangchuangtan/NPR-DeepfakeDetection` (networks/resnet.py, data/datasets.py, HF demo app.py), authors' checkpoint `model_epoch_last_3090.pth`, `eval_detectors` on dataset/hf

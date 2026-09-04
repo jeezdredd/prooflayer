@@ -19,6 +19,9 @@ interface ServiceProbe {
   backend?: string;
   from_email?: string;
   recent_failures?: number;
+  active?: number;
+  expected?: number;
+  drift?: Record<string, string[]>;
 }
 
 interface RetrainInfo {
@@ -45,9 +48,10 @@ const SERVICE_META: Record<string, { label: string; desc: string; Icon: typeof A
   ollama: { label: "Vision LLM", desc: "Local inference - vision + text.", Icon: Brain },
   storage: { label: "Object Store", desc: "S3 blob store.", Icon: HardDrive },
   email: { label: "Email", desc: "Transactional mail (Resend).", Icon: Mail },
+  analyzers: { label: "Analyzer Roster", desc: "Seeded detector config vs. code.", Icon: Cpu },
 };
 
-const ORDER = ["api", "database", "redis", "celery", "ollama", "storage", "email"];
+const ORDER = ["api", "database", "redis", "celery", "ollama", "storage", "email", "analyzers"];
 
 function StatusDot({ status }: { status: ServiceProbe["status"] }) {
   const tone =
@@ -153,6 +157,7 @@ export default function StatusPage() {
                       {probe.version && ` · v${probe.version}`}
                       {probe.backend && ` · via ${probe.backend}`}
                       {probe.recent_failures != null && probe.recent_failures > 0 && ` · ${probe.recent_failures} recent issue(s)`}
+                      {probe.active != null && probe.expected != null && ` · ${probe.active}/${probe.expected} active`}
                     </span>
                   ) : probe.status === "skip" ? (
                     <span className="font-mono text-[11px] text-ink-500">{probe.reason || "skipped"}</span>

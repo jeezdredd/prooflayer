@@ -135,6 +135,24 @@ def _probe_email() -> dict[str, Any]:
     return out
 
 
+def _probe_analyzers() -> dict[str, Any]:
+    from analyzers.roster import describe_drift, roster_drift
+
+    try:
+        report = roster_drift()
+    except Exception as exc:
+        return {"status": "down", "error": str(exc)[:120]}
+    out = {
+        "status": "ok" if report["in_sync"] else "down",
+        "active": report["active"],
+        "expected": report["expected"],
+        "drift": report["drift"],
+    }
+    if not report["in_sync"]:
+        out["error"] = f"roster drift - run seed_analyzers ({describe_drift(report)})"[:200]
+    return out
+
+
 def _client_ip(request) -> str:
     cf = request.META.get("HTTP_CF_CONNECTING_IP", "")
     if cf:
@@ -271,6 +289,7 @@ class SystemStatusView(APIView):
             "ollama": _probe_ollama(),
             "storage": _probe_storage(),
             "email": _probe_email(),
+            "analyzers": _probe_analyzers(),
         }
         all_ok = all(s.get("status") in ("ok", "skip") for s in services.values())
         return Response({
