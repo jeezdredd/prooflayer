@@ -147,7 +147,10 @@ class Command(BaseCommand):
             except Exception as exc:
                 self.stderr.write(f"skip {name}: {exc}")
 
-        self.stdout.write(f"{len(samples)} images, {len(analyzers)} analyzers")
+        from analyzers.ensemble import ensemble_info
+
+        info = ensemble_info()
+        self.stdout.write(f"{info['label']} (roster {info['fingerprint']}): {len(samples)} images, {len(analyzers)} analyzers")
 
         per_analyzer = {name: Stats() for name, _, _ in analyzers}
         ensemble = Stats()

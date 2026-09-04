@@ -11,7 +11,7 @@ created: 2026-05-14
 
 | Path | Component | Notes |
 |------|-----------|-------|
-| `/` | `LandingPage` | Hero + analyzer overview + CTAs. Auth-aware (CTA flips to "Open Dashboard" when logged in). |
+| `/` | `LandingPage` | Hero + **Tribunal** section (`#tribunal`) + CTAs. Auth-aware (CTA flips to "Open Dashboard" when logged in). |
 | `/login` | `LoginPage` | Email + password. JWT pair returned. |
 | `/register` | `RegisterPage` | Email + username + password + confirm. |
 
@@ -28,6 +28,17 @@ created: 2026-05-14
 | `/review` | `ReviewQueuePage` | Staff only (`user.is_staff`). Override `needs_review` / `inconclusive` submissions |
 | `/status` | `StatusPage` | Live service health probes -> [[api/system-status]] |
 | `/results/:id` | `ResultPage` | Per-submission view: verdict + analyzer timeline + evidence + similar submissions + community votes |
+
+## Landing: the Tribunal section
+
+Rewritten 2026-09-04 (was "The Pipeline"). Presents [[concepts/tribunal]] as the product's own
+detection system: a four-tile "how it decides" grid (weighted standing, calibrated on real
+photos, split bench goes to a human, every verdict traceable) followed by the nine seeded checks
+with honest one-line descriptions. The section label reads the live `services.analyzers.ensemble`
+string from `/system/status/` (`useQuery`, 5-minute stale time, no retry) and falls back to
+`TRIBUNAL_FALLBACK` when the API is unreachable, so the version on the landing page cannot drift
+from the backend. The old list advertised NPR and SigLIP, which are no longer seeded, and listed
+C2PA under "more to come" although it ships inside the metadata check.
 
 ## Fallback
 

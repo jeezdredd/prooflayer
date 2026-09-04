@@ -34,6 +34,10 @@ class Command(BaseCommand):
         parser.add_argument("--real", type=int, default=150, help="real images total")
         parser.add_argument("--row-groups-per-shard", type=int, default=2, help="row groups to read from each shard per pass")
         parser.add_argument("--max-passes", type=int, default=3)
+        parser.add_argument(
+            "--start-row-group", type=int, default=0,
+            help="first row group to read in every shard; use a different value to get a disjoint sample",
+        )
         parser.add_argument("--models", nargs="*", default=[], help="only these generator names (substring match)")
 
     def handle(self, *args, **options):
@@ -62,7 +66,7 @@ class Command(BaseCommand):
         real_taken = 0
         scanned = 0
         skipped = 0
-        rg_cursor = {shard: 0 for shard in shards}
+        rg_cursor = {shard: options["start_row_group"] for shard in shards}
 
         def want(label: str, model: str) -> bool:
             if label in REAL_LABELS:

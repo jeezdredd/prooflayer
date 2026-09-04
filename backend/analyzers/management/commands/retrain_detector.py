@@ -1,7 +1,11 @@
+import json
 import logging
 import os
+import random
+import re
 import shutil
 import tempfile
+from datetime import datetime, timezone
 
 from django.core.management.base import BaseCommand
 
@@ -11,6 +15,31 @@ RETRAIN_MODEL_DIR = os.environ.get(
     "RETRAIN_MODEL_DIR",
     "/root/.cache/huggingface/prooflayer-retrained",
 )
+
+IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
+EXTRA_LABEL_DIRS = {"real": "real", "fake": "fake", "ai_generated": "fake"}
+
+
+def _collect_extra(dirs: list[str]) -> list[tuple[str, str]]:
+    """(path, label) for every image under <dir>/{real,fake,ai_generated}."""
+    out = []
+    for root in dirs:
+        for sub, label in EXTRA_LABEL_DIRS.items():
+            class_dir = os.path.join(root, sub)
+            if not os.path.isdir(class_dir):
+                continue
+            for name in sorted(os.listdir(class_dir)):
+                if name.lower().endswith(IMAGE_EXTENSIONS):
+                    out.append((os.path.join(class_dir, name), label))
+    return out
+
+
+def _source_of(image_path: str) -> str:
+    name = os.path.basename(os.path.realpath(image_path))
+    stem = os.path.splitext(name)[0]
+    stem = re.sub(r"^extra_\d+_", "", stem)
+    return stem.split("__", 1)[0] if "__" in stem else stem.split("_", 1)[0]
+
 
 def _sample_group(image_path: str) -> str:
     """Group key so frames of one video never straddle the train/eval split."""
@@ -43,6 +72,14 @@ class Command(BaseCommand):
         parser.add_argument("--epochs", type=int, default=3)
         parser.add_argument("--min-samples", type=int, default=10)
         parser.add_argument("--use-cifake", action="store_true", help="Include CIFAKE base dataset")
+        parser.add_argument(
+            "--extra-dir", action="append", default=[],
+            help="labelled tree with real/ and ai_generated/ (or fake/) subdirs; repeatable",
+        )
+        parser.add_argument("--base-model", default="", help="HF id or local path to fine-tune from")
+        parser.add_argument("--no-class-weights", action="store_true", help="disable inverse-frequency loss weights")
+        parser.add_argument("--batch-size", type=int, default=16)
+        parser.add_argument("--learning-rate", type=float, default=2e-5)
 
     def handle(self, *args, **options):
         from content.models import Submission
@@ -58,11 +95,12 @@ class Command(BaseCommand):
         )
 
         count = qs.count()
-        self.stdout.write(f"Found {count} approved {media_type} submissions")
+        extra_files = _collect_extra(options["extra_dir"])
+        self.stdout.write(f"Found {count} approved {media_type} submissions, {len(extra_files)} extra files")
 
-        if count < options["min_samples"]:
+        if count + len(extra_files) < options["min_samples"]:
             self.stderr.write(
-                f"Need at least {options['min_samples']} samples (got {count}). "
+                f"Need at least {options['min_samples']} samples (got {count + len(extra_files)}). "
                 f"Use --min-samples to lower threshold."
             )
             return
@@ -101,6 +139,11 @@ class Command(BaseCommand):
                     self.stderr.write(f"Skipping {submission.id}: {exc}")
                     continue
 
+            for src, label in extra_files:
+                dst = os.path.join(dataset_dir, label, f"extra_{copied}_{os.path.basename(src)}")
+                os.symlink(os.path.abspath(src), dst)
+                copied += 1
+
             self.stdout.write(f"Prepared {copied} training samples in {dataset_dir}")
 
             if options["use_cifake"] and media_type == "image":
@@ -109,7 +152,7 @@ class Command(BaseCommand):
 
             self.stdout.write(f"Starting fine-tune ({options['epochs']} epochs)...")
             tmp_model_dir = os.path.join(tmpdir, "model_output")
-            self._finetune(dataset_dir, tmp_model_dir, options["epochs"], media_type)
+            self._finetune(dataset_dir, tmp_model_dir, options["epochs"], media_type, options)
 
             if not os.path.exists(tmp_model_dir):
                 self.stderr.write("Fine-tune produced no output. Aborting save.")
@@ -206,7 +249,8 @@ class Command(BaseCommand):
         except Exception as exc:
             self.stderr.write(f"CIFAKE load failed: {exc}")
 
-    def _finetune(self, dataset_dir, output_dir, epochs, media_type="image"):
+    def _finetune(self, dataset_dir, output_dir, epochs, media_type="image", options=None):
+        options = options or {}
         try:
             import torch
             from torch.utils.data import Dataset as TorchDataset
@@ -222,7 +266,7 @@ class Command(BaseCommand):
             self.stderr.write(f"Missing dependency: {e}")
             return
 
-        base_model = BASE_MODELS[media_type]
+        base_model = options.get("base_model") or BASE_MODELS[media_type]
 
         label2id = {"real": 0, "fake": 1}
         id2label = {0: "Real", 1: "AI"}
@@ -248,8 +292,6 @@ class Command(BaseCommand):
             use_safetensors=True,
         )
 
-        import random
-
         groups = {}
         for item in samples:
             groups.setdefault(_sample_group(item["image_path"]), []).append(item)
@@ -266,6 +308,15 @@ class Command(BaseCommand):
             f"{len(train_samples)} train / {len(eval_samples)} eval"
         )
 
+        counts = {label_id: sum(1 for s in train_samples if s["label"] == label_id) for label_id in label2id.values()}
+        class_weights = None
+        if not options.get("no_class_weights") and all(counts.values()):
+            total = sum(counts.values())
+            class_weights = torch.tensor(
+                [total / (len(counts) * counts[i]) for i in sorted(counts)], dtype=torch.float32
+            )
+        self.stdout.write(f"Train class counts {counts}, loss weights {class_weights.tolist() if class_weights is not None else 'off'}")
+
         class LazyImageDataset(TorchDataset):
             """Decodes and preprocesses on __getitem__.
 
@@ -273,15 +324,18 @@ class Command(BaseCommand):
             which OOMs the worker on any realistic dataset size.
             """
 
-            def __init__(self, items):
-                self.items = items
-
             def __len__(self):
                 return len(self.items)
+
+            def __init__(self, items, augment=False):
+                self.items = items
+                self.augment = augment
 
             def __getitem__(self, idx):
                 item = self.items[idx]
                 img = PILImage.open(item["image_path"]).convert("RGB")
+                if self.augment and random.random() < 0.5:
+                    img = img.transpose(PILImage.Transpose.FLIP_LEFT_RIGHT)
                 inputs = feature_extractor(images=img, return_tensors="pt")
                 return {
                     "pixel_values": inputs["pixel_values"].squeeze(0),
@@ -294,29 +348,56 @@ class Command(BaseCommand):
             acc = (preds == labels).mean()
             return {"accuracy": acc}
 
+        batch_size = int(options.get("batch_size") or 16)
         training_args = TrainingArguments(
             output_dir=output_dir,
             num_train_epochs=epochs,
-            per_device_train_batch_size=16,
-            per_device_eval_batch_size=16,
+            per_device_train_batch_size=batch_size,
+            per_device_eval_batch_size=batch_size,
+            learning_rate=float(options.get("learning_rate") or 2e-5),
             eval_strategy="epoch",
             save_strategy="epoch",
+            save_total_limit=1,
             load_best_model_at_end=True,
             metric_for_best_model="accuracy",
-            logging_steps=50,
+            logging_steps=25,
             remove_unused_columns=False,
+            report_to=[],
+            use_cpu=os.environ.get("PROOFLAYER_FORCE_CPU") == "1",
+            dataloader_num_workers=0,
         )
 
-        trainer = Trainer(
+        class WeightedTrainer(Trainer):
+            def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+                labels = inputs.pop("labels")
+                outputs = model(**inputs)
+                weight = class_weights.to(outputs.logits.device) if class_weights is not None else None
+                loss = torch.nn.functional.cross_entropy(outputs.logits, labels, weight=weight)
+                return (loss, outputs) if return_outputs else loss
+
+        trainer = WeightedTrainer(
             model=model,
             args=training_args,
-            train_dataset=LazyImageDataset(train_samples),
+            train_dataset=LazyImageDataset(train_samples, augment=True),
             eval_dataset=LazyImageDataset(eval_samples),
             compute_metrics=compute_metrics,
         )
 
         trainer.train()
+        final_eval = trainer.evaluate()
         trainer.save_model(output_dir)
         feature_extractor.save_pretrained(output_dir)
+        meta = {
+            "base_model": base_model,
+            "epochs": epochs,
+            "train_counts": {id2label[k]: v for k, v in counts.items()},
+            "eval_samples": len(eval_samples),
+            "eval_accuracy": float(final_eval.get("eval_accuracy", 0.0)),
+            "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "sources": sorted({_source_of(s["image_path"]) for s in train_samples}),
+        }
+        with open(os.path.join(output_dir, "training_meta.json"), "w") as fh:
+            json.dump(meta, fh, indent=2)
+        self.stdout.write(f"eval accuracy {meta['eval_accuracy']:.3f} on {len(eval_samples)} held-out")
         self.stdout.write(self.style.SUCCESS(f"Model saved to {output_dir}"))
 

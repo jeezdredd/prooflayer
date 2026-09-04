@@ -142,11 +142,16 @@ def _probe_analyzers() -> dict[str, Any]:
         report = roster_drift()
     except Exception as exc:
         return {"status": "down", "error": str(exc)[:120]}
+    from analyzers.ensemble import ensemble_info
+
+    info = ensemble_info()
     out = {
         "status": "ok" if report["in_sync"] else "down",
         "active": report["active"],
         "expected": report["expected"],
         "drift": report["drift"],
+        "ensemble": info["label"],
+        "fingerprint": info["fingerprint"],
     }
     if not report["in_sync"]:
         out["error"] = f"roster drift - run seed_analyzers ({describe_drift(report)})"[:200]

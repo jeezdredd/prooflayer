@@ -113,6 +113,7 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
     similar_submissions = serializers.SerializerMethodField()
     file_url = serializers.SerializerMethodField()
     expected_analyzers = serializers.SerializerMethodField()
+    ensemble = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -132,12 +133,19 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "phash",
             "dhash",
             "file_url",
+            "ensemble",
             "analysis_results",
             "similar_submissions",
             "expected_analyzers",
             "created_at",
             "updated_at",
         )
+
+    def get_ensemble(self, obj):
+        from analyzers.ensemble import ensemble_info
+
+        info = ensemble_info()
+        return {"name": info["name"], "version": info["version"], "label": info["label"], "fingerprint": info["fingerprint"]}
 
     def get_file_url(self, obj):
         request = self.context.get("request")

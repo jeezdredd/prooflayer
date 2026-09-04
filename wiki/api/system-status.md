@@ -23,7 +23,8 @@ Public liveness probe across all infrastructure components. No auth required. Po
     "ollama":   { "status": "ok", "latency_ms": 12.5, "available_models": [...], "loaded_models": [] },
     "storage":  { "status": "skip", "reason": "no s3 endpoint configured" },
     "email":    { "status": "ok", "backend": "resend", "from_email": "...", "recent_failures": 0 },
-    "analyzers": { "status": "ok", "active": 11, "expected": 11,
+    "analyzers": { "status": "ok", "active": 9, "expected": 9,
+                   "ensemble": "Tribunal 1.0", "fingerprint": "3f9c1a7b2e04",
                    "drift": { "missing": [], "inactive_expected": [], "stale_active": [],
                               "class_mismatch": [], "weight_mismatch": [] } }
   }
@@ -48,6 +49,8 @@ Public liveness probe across all infrastructure components. No auth required. Po
   backs the `analyzers.W001` system check and `manage.py seed_analyzers --check`. Added
   2026-09-04 after a weight rebalance sat unapplied on a worker-only rebuild; see
   [[analyzers/_index]].
+  `ensemble` / `fingerprint` name the [[concepts/tribunal]] version and roster hash the
+  backend is running, so a stale worker is visible even when the DB rows are in sync.
 
 ## Failure mode
 

@@ -21,6 +21,10 @@ class BaseAnalyzer:
 
 Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue, timeout, is_active).
 
+The roster, its weights and the aggregation rules are versioned together as [[concepts/tribunal]]
+(`analyzers/ensemble.py`); every submission detail response and the status probe carry the
+version label and a roster fingerprint.
+
 > [!warning] Rows only change when `seed_analyzers` runs
 > That happens on backend container boot (`docker-compose.yml`, `deploy/compose.prod.yml`) -
 > **not** on a worker-only rebuild, and not by editing this file. Until then the DB keeps the

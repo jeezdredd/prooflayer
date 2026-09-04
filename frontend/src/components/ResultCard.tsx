@@ -224,6 +224,14 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
               </div>
             </div>
           )}
+          {!isProcessing && submission.ensemble && (
+            <div
+              className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600 mt-2 text-right"
+              title={`roster ${submission.ensemble.fingerprint}`}
+            >
+              verdict by {submission.ensemble.label}
+            </div>
+          )}
           {isProcessing && (
             <div className="text-right mt-2">
               <div className="font-display text-2xl text-signal-amber italic">analyzing…</div>

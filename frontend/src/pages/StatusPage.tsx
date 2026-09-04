@@ -22,6 +22,8 @@ interface ServiceProbe {
   active?: number;
   expected?: number;
   drift?: Record<string, string[]>;
+  ensemble?: string;
+  fingerprint?: string;
 }
 
 interface RetrainInfo {
@@ -158,6 +160,7 @@ export default function StatusPage() {
                       {probe.backend && ` · via ${probe.backend}`}
                       {probe.recent_failures != null && probe.recent_failures > 0 && ` · ${probe.recent_failures} recent issue(s)`}
                       {probe.active != null && probe.expected != null && ` · ${probe.active}/${probe.expected} active`}
+                      {probe.ensemble && ` · ${probe.ensemble}`}
                     </span>
                   ) : probe.status === "skip" ? (
                     <span className="font-mono text-[11px] text-ink-500">{probe.reason || "skipped"}</span>
