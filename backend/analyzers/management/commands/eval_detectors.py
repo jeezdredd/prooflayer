@@ -21,7 +21,7 @@ LABEL_DIRS = {
 DEFAULT_ANALYZERS = [
     ("community_forensics", "analyzers.implementations.community_forensics.CommunityForensicsDetector", 3.5),
     ("siglip_detector", "analyzers.implementations.siglip_detector.SigLIPDetector", 0.5),
-    ("npr_detector", "analyzers.implementations.npr_detector.NPRDetector", 1.0),
+    ("face_deepfake_detector", "analyzers.implementations.face_deepfake_detector.FaceDeepfakeDetector", 0.5),
     ("custom_detector", "analyzers.implementations.custom_detector.CustomDetector", 1.5),
     ("ai_detector", "analyzers.implementations.clip_detector.AIImageDetector", 1.5),
     ("metadata", "analyzers.implementations.metadata_analyzer.MetadataAnalyzer", 1.5),

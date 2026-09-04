@@ -19,7 +19,7 @@ exec python -u -m celery -A config.celery worker --loglevel=info -Q default,ml,r
 - `--pool=solo` - REQUIRED. The GPU/ROCm worker cannot use the default prefork pool: HIP/ROCm is fork-unsafe (same as CUDA), the first `model.to('cuda')` in a forked child hangs uninterruptibly. Solo runs the task in the MainProcess. See [[services/gpu-rocm]].
 - `-E` - emit task events so [[services/flower]] sees activity.
 - Under solo, `--concurrency`/`--max-tasks-per-child`/`--max-memory-per-child` are no-ops, so they were dropped. The in-process `_state` model cache then persists for the worker lifetime (load once, reuse).
-- `preload_models` (`backend/analyzers/management/commands/preload_models.py`) pre-pulls siglip / community_forensics / npr / clip ensemble so the first user submission isn't the one that downloads ~GBs. HF cache is persisted via the `hf_cache` volume.
+- `preload_models` (`backend/analyzers/management/commands/preload_models.py`) pre-pulls siglip / community_forensics / npr (GitHub checkpoint, sha256-pinned, cached under `$HF_HOME/prooflayer-npr/`) / face_deepfake / clip ensemble so the first user submission isn't the one that downloads ~GBs. HF cache is persisted via the `hf_cache` volume.
 
 ## Env
 

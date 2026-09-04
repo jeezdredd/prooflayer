@@ -1,7 +1,7 @@
 ---
 type: concept
 created: 2026-05-14
-updated: 2026-08-19
+updated: 2026-09-04
 source: backend/analyzers/aggregator.py
 ---
 
@@ -17,7 +17,7 @@ hardcoded analyzer-name list. `_get_ai_probability()` reads the first present ke
 returns `None` if absent or non-numeric.
 
 **Probabilistic** - any result carrying one of those keys:
-- `community_forensics` (weight 3.5), `siglip_detector` (2.0), `npr_detector` (1.0)
+- `community_forensics` (weight 3.5), `siglip_detector` (0.5), `face_deepfake_detector` (0.5)
 - `custom_detector` (1.5), `ai_detector` (1.5, via `ai_probability_avg`)
 - `video_frame` (2.0, median over sampled frames)
 
@@ -37,6 +37,23 @@ returns `None` if absent or non-numeric.
 > the corroboration count. Conversely `custom_detector` and `ai_detector` did emit
 > probabilities that were thrown away and replaced with coarse 0.0/0.5/1.0 verdict buckets.
 > See [[fixes/aggregator-probability-sourcing]].
+
+## Disagreement -> `needs_review`
+
+```python
+DISAGREEMENT_MIN_VOTERS = 2
+DISAGREEMENT_MIN_MINORITY_SHARE = 0.3
+```
+
+A confident voter is any result with `|ai_probability - 0.5| * 2 >= 0.5` (or, for rule-based
+results, `confidence >= 0.5`). Review fires only when **both** camps have at least two voters
+**and** the lighter camp carries at least 30% of the combined voter weight.
+
+> [!change] 2026-09-04
+> Previously any 2-vs-2 head count forced review. Real NPR (weight 1.0, saturated at p<0.01 on
+> everything diffusion) plus the face ViT (0.5) then outvoted CF 3.5 + custom 1.5 + ai_detector
+> 1.5 into `needs_review` on 27/60 AI images. Head counts do not survive one confidently wrong
+> out-of-domain detector; weight shares do.
 
 ## Hybrid weighted mean
 
@@ -65,7 +82,7 @@ Before banding, check for high-confidence CommunityForensics:
 
 ```python
 CF_PRIORITY_THRESHOLD = 0.92
-CF_PRIORITY_PEERS = {"npr_detector", "siglip_detector"}
+CF_PRIORITY_PEERS = {"custom_detector", "ai_detector", "npr_detector", "siglip_detector"}
 
 if cf.ai_probability >= 0.92 and any peer agrees (fake/suspicious):
     return (max(final_score, 0.85), "fake")

@@ -248,3 +248,58 @@ class TestManipulationSignalSourcing:
         )
         score, _ = aggregate([r_cf, r_ela])
         assert score == pytest.approx(0.9, abs=1e-3)
+
+
+@pytest.mark.django_db
+class TestWeightedDisagreement:
+    def _results(self, spec):
+        sub = SubmissionFactory()
+        out = []
+        for name, weight, verdict, prob in spec:
+            cfg = AnalyzerConfigFactory(name=name, weight=weight)
+            evidence = {"ai_probability": prob} if prob is not None else {}
+            out.append(AnalysisResultFactory(
+                submission=sub, analyzer=cfg, confidence=0.85, verdict=verdict, evidence=evidence,
+            ))
+        return out
+
+    def test_two_light_dissenters_cannot_force_review_against_heavy_consensus(self):
+        results = self._results([
+            ("community_forensics", 3.5, AnalysisResult.Verdict.FAKE, 0.99),
+            ("custom_detector", 1.5, AnalysisResult.Verdict.FAKE, 0.98),
+            ("ai_detector", 1.5, AnalysisResult.Verdict.FAKE, 0.97),
+            ("npr_detector", 1.0, AnalysisResult.Verdict.AUTHENTIC, 0.001),
+            ("face_deepfake_detector", 0.5, AnalysisResult.Verdict.AUTHENTIC, 0.02),
+        ])
+        score, verdict = aggregate(results)
+        assert verdict == "fake"
+        assert score > 0.7
+
+    def test_balanced_weight_split_still_flags_review(self):
+        results = self._results([
+            ("a", 2.0, AnalysisResult.Verdict.FAKE, 0.95),
+            ("b", 2.0, AnalysisResult.Verdict.FAKE, 0.95),
+            ("c", 2.0, AnalysisResult.Verdict.AUTHENTIC, 0.05),
+            ("d", 2.0, AnalysisResult.Verdict.AUTHENTIC, 0.05),
+        ])
+        _, verdict = aggregate(results)
+        assert verdict == "needs_review"
+
+    def test_minority_at_threshold_share_flags_review(self):
+        results = self._results([
+            ("a", 3.5, AnalysisResult.Verdict.FAKE, 0.95),
+            ("b", 1.5, AnalysisResult.Verdict.FAKE, 0.95),
+            ("c", 1.5, AnalysisResult.Verdict.AUTHENTIC, 0.05),
+            ("d", 1.0, AnalysisResult.Verdict.AUTHENTIC, 0.05),
+        ])
+        _, verdict = aggregate(results)
+        assert verdict == "needs_review"
+
+    def test_single_dissenter_is_never_review(self):
+        results = self._results([
+            ("a", 1.0, AnalysisResult.Verdict.FAKE, 0.95),
+            ("b", 1.0, AnalysisResult.Verdict.FAKE, 0.95),
+            ("c", 5.0, AnalysisResult.Verdict.AUTHENTIC, 0.05),
+        ])
+        _, verdict = aggregate(results)
+        assert verdict != "needs_review"

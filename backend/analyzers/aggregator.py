@@ -19,7 +19,9 @@ MANIPULATION_ANALYZERS = {"ela", "metadata"}
 CORROBORATION_CONFIDENCE_FLOOR = 0.5
 MIN_CORROBORATING_FOR_FAKE = 2
 CF_PRIORITY_THRESHOLD = 0.92
-CF_PRIORITY_PEERS = {"npr_detector", "siglip_detector"}
+CF_PRIORITY_PEERS = {"custom_detector", "ai_detector", "npr_detector", "siglip_detector"}
+DISAGREEMENT_MIN_VOTERS = 2
+DISAGREEMENT_MIN_MINORITY_SHARE = 0.3
 AUTHENTIC_EDITED_AI_CEIL = 0.30
 
 
@@ -51,6 +53,22 @@ def _community_forensics_priority(all_results) -> bool:
         and r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS)
         for r in all_results
     )
+
+
+def _has_weighted_disagreement(fake_voters, authentic_voters) -> bool:
+    """Two camps of confident voters, and the lighter camp is not a rounding error.
+
+    Counting heads let two low-weight, out-of-domain detectors (each saturated at
+    p<0.01 on everything) manufacture needs_review against a heavy consensus.
+    """
+    if len(fake_voters) < DISAGREEMENT_MIN_VOTERS or len(authentic_voters) < DISAGREEMENT_MIN_VOTERS:
+        return False
+    fake_weight = sum(r.analyzer.weight for r in fake_voters)
+    authentic_weight = sum(r.analyzer.weight for r in authentic_voters)
+    total = fake_weight + authentic_weight
+    if total <= 0:
+        return False
+    return min(fake_weight, authentic_weight) / total >= DISAGREEMENT_MIN_MINORITY_SHARE
 
 
 def _has_manipulation_signal(valid_results) -> bool:
@@ -115,8 +133,7 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
                 elif r.verdict == AnalysisResult.Verdict.AUTHENTIC:
                     authentic_voters.append(r)
 
-    has_disagreement = len(fake_voters) >= 2 and len(authentic_voters) >= 2
-    if has_disagreement:
+    if _has_weighted_disagreement(fake_voters, authentic_voters):
         return round(final_score, 4), "needs_review"
 
     raw_verdict = _band(final_score)

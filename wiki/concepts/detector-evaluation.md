@@ -55,6 +55,11 @@ Reported per analyzer:
   quarantine stubs rather than JPEGs, so the effective real-class size is 250, not 500.
 - `--skip llm_vision` is implicit: the LLM analyzers are not in `DEFAULT_ANALYZERS` because they
   need a reachable Ollama.
+- `DEFAULT_ANALYZERS` mirrors the seeded image roster. `npr_detector` (real NPR) is deliberately
+  absent: it measured AUC 0.499 here and is not seeded. Add it back to the list to re-measure.
+- The ensemble row runs the real `aggregate()` including the weighted-disagreement rule, so a
+  detector that is confidently wrong shows up twice: in its own AUC and in the
+  `needs_review` count.
 - Set `PROOFLAYER_FORCE_CPU=1` to run without a GPU.
 
 ## Related

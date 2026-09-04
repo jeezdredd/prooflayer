@@ -41,7 +41,9 @@
               "type": "file-explorer",
               "state": {
                 "sortOrder": "alphabetical",
-                "autoReveal": false
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
               },
               "icon": "lucide-folder-closed",
               "title": "Файловый менеджер"
@@ -182,6 +184,7 @@
   },
   "active": "b41cbe4e773f4b5c",
   "lastOpenFiles": [
+    "analyzers/face-deepfake-detector.md",
     "concepts/detector-evaluation.md",
     "fixes/audit-2026-08.md",
     "concepts/detection-strategy-2026.md",

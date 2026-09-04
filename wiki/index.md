@@ -39,7 +39,8 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 10 analyzer
 - [[analyzers/ai-ensemble]] - DEPRECATED dima806 + umm-maybe (dropped 2026-05-31)
 - [[analyzers/siglip-detector]] - SigLIP-base binary classifier (Apache-2.0)
 - [[analyzers/community-forensics]] - ViT-S/16 trained on 4803 generators (NeurIPS 2024, MIT)
-- [[analyzers/npr-detector]] - ViT deepfake (Wvolf), corroborator
+- [[analyzers/npr-detector]] - real NPR (Tan et al. CVPR 2024), ProGAN-trained ResNet stem over the nearest-neighbour resampling residual
+- [[analyzers/face-deepfake-detector]] - Wvolf ViT face-swap classifier (was misnamed npr_detector until 2026-09-04), weight 0.5
 - [[analyzers/custom_detector]] - retrained ViT from review queue (weight 3.5, highest)
 - [[analyzers/llm-vision]] - multimodal LLM (qwen2.5vl)
 - [[analyzers/video-frames]] - uniform-sampled frames -> ensemble

@@ -1,12 +1,12 @@
 ---
 type: index
 created: 2026-05-14
-updated: 2026-06-14
+updated: 2026-09-04
 ---
 
 # Analyzer Pipeline
 
-Ten analyzers seeded as [[models/AnalyzerConfig]] DB rows (`backend/analyzers/management/commands/seed_analyzers.py`). Each implements `BaseAnalyzer`:
+Twelve analyzers seeded as [[models/AnalyzerConfig]] DB rows (`backend/analyzers/management/commands/seed_analyzers.py`). Each implements `BaseAnalyzer`:
 
 ```python
 class BaseAnalyzer:
@@ -23,32 +23,43 @@ Registered via [[models/AnalyzerConfig]] DB rows (admin-editable: weight, queue,
 
 ## Roster
 
+Weights as of 2026-09-04, after the measured rebalance in [[fixes/audit-2026-08]].
+
 | # | Name | Type | MIME | Queue | Weight | Notes |
 |---|------|------|------|-------|--------|-------|
-| 01 | [[analyzers/metadata]] | rule-based | image | default | 2.5 | EXIF/XMP signatures |
-| 02 | [[analyzers/ela]] | rule-based | image | default | 1.0 | JPEG splice detection |
-| 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.0** | ViT-S/16 NeurIPS 2024, main authority |
-| 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | **2.0** | ViT deepfake classifier (raised from 1.5) |
-| 05 | [[analyzers/npr-detector]] | **probabilistic** | image | ml | **0.5** | ViT deepfake detector (lowered from 1.5 - GAN-trained, blind to diffusion) |
-| 06 | [[analyzers/custom_detector]] | **probabilistic** | image | ml | **3.5** | retrained ViT from review queue (`prooflayer-retrained`, falls back to `Nahrawy/AIorNot`); highest weight |
-| 07 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | Ollama vision (`qwen2.5vl:3b` prod) |
-| 08 | [[analyzers/video-frames]] | mixed | video | ml | 2.0 | Sample frames -> image ensemble |
-| 09 | [[analyzers/audio-spectrogram]] | rule-based | audio | ml | 2.0 | Spectral artifact check |
-| 10 | [[analyzers/llm-text]] | rule-based | text | ml | 2.5 | AI authorship classifier |
+| 01 | [[analyzers/metadata]] | rule-based | image | default | 1.5 | EXIF sub-IFD, PNG `parameters`, XMP, C2PA `trainedAlgorithmicMedia`. Lowered from 2.5: EXIF is forgeable |
+| 02 | [[analyzers/ela]] | manipulation-only | image | default | 0.75 | Never votes on the AI axis (measured inverted); feeds `authentic_edited` via `manipulation_suspected` |
+| 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.5** | ViT-S/16 NeurIPS 2024. AUC 1.000 on the eval set, main authority |
+| 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | 0.5 | Face-trained ViT. AUC **0.323** on general imagery (anti-correlated); lowered from 2.0 |
+| 05 | [[analyzers/face-deepfake-detector]] | **probabilistic** | image | ml | 0.5 | `Wvolf/ViT_Deepfake_Detection`, face-swap classifier, AUC 0.688 off-domain. Was misnamed `npr_detector` |
+| 06 | [[analyzers/custom_detector]] | **probabilistic** | image | ml | 1.5 | `prooflayer-retrained` or `Nahrawy/AIorNot`. AUC 0.920. Lowered from 3.5: highest weight was on the weakest base model |
+| 07 | [[analyzers/ai-ensemble]] (`ai_detector`) | **probabilistic** | image | ml | 1.5 | dima806 + umm-maybe with a photographic gate. AUC 0.914. Was deactivated dead code until 2026-08-19 |
+| 08 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | Ollama vision. Contributed **zero** weight until 2026-08-19 |
+| 09 | [[analyzers/video-frames]] | **probabilistic** | video | ml | 2.0 | Frames sampled across the whole clip -> CF; emits median `ai_probability` |
+| 10 | [[analyzers/audio-spectrogram]] | rule-based + prob | audio | ml | 2.0 | Spectral flags; now also emits `ai_probability` |
+| 11 | [[analyzers/llm-text]] | rule-based | text | ml | 2.5 | AI authorship classifier |
 
-Real model ids: siglip_detector=`prithivMLmods/Deep-Fake-Detector-v2-Model`, community_forensics=`buildborderless/CommunityForensics-DeepfakeDet-ViT`, npr_detector=`Wvolf/ViT_Deepfake_Detection`. Torch detectors load on `cuda` when available (AMD ROCm worker, see [[services/gpu-rocm]]) via `analyzers/_device.py`.
+Not seeded: [[analyzers/npr-detector]] - real NPR (CVPR 2024), correct and tested, but AUC 0.499 on
+diffusion output. Kept as an opt-in GAN-era detector.
 
-**Probabilistic** analyzers emit `evidence["ai_probability"]` and contribute raw probability to aggregation even when verdict is `inconclusive`.  
+Real model ids: siglip_detector=`prithivMLmods/Deep-Fake-Detector-v2-Model`, community_forensics=`buildborderless/CommunityForensics-DeepfakeDet-ViT`, face_deepfake_detector=`Wvolf/ViT_Deepfake_Detection`, npr_detector=authors' `model_epoch_last_3090.pth` (sha256-pinned). Torch detectors load on `cuda` when available (AMD ROCm worker, see [[services/gpu-rocm]]) via `analyzers/_device.py`.
+
+**Probabilistic** is decided per result from the evidence payload (`ai_probability` or
+`ai_probability_avg`), not from a name list - see [[concepts/aggregation]].
 **Rule-based** analyzers emit verdict + confidence; aggregator uses `VERDICT_SCORES` mapping.
 
-> [!change] 2026-06-14 Aggregator: probabilistic-always scoring
-> CF, NPR, SigLIP now contribute to weighted sum from `valid_results` regardless of verdict. Previously `inconclusive` results were excluded - Gemini images scored `authentic` because only NPR (ai_prob=0.01) was in `decisive_results` while CF (ai_prob=0.40) and SigLIP (ai_prob=0.64) were silently dropped.
+> [!change] 2026-09-04 Weighted disagreement
+> `needs_review` now requires the lighter camp to hold >= 30% of the confident-voter weight, not
+> just two heads. Two saturated low-weight detectors could otherwise manufacture review against
+> a 3.5 + 1.5 + 1.5 consensus - which is exactly what real NPR did on 27/60 AI images.
+
+> [!change] 2026-08-19 Probability sourced from evidence
+> The hardcoded `PROBABILISTIC_ANALYZERS` set silently zero-weighted `llm_vision` and discarded
+> `custom_detector` / `ai_detector` probabilities. See [[fixes/audit-2026-08]].
 
 > [!change] 2026-06-14 `authentic_edited` verdict
-> Aggregator emits `authentic_edited` when `final_score < 0.30` (no AI signal) but ELA or metadata returns `suspicious`/`fake`. Frontend shows "REAL · EDITED" banner with explanation.
-
-> [!deprecated] [[analyzers/ai-ensemble]] (dima806 + umm-maybe) dropped 2026-05-31.  
-> Replaced by CommunityForensics + NPR detector. See [[concepts/detection-strategy-2026]].
+> Aggregator emits `authentic_edited` when `final_score < 0.30` (no AI signal) but a
+> manipulation analyzer flags the image. Frontend shows "REAL · EDITED" banner with explanation.
 
 ## Dispatch
 
@@ -74,14 +85,16 @@ Each `run_analyzer` task:
 - `ela_analyzer.py`
 - `community_forensics.py`
 - `siglip_detector.py`
-- `npr_detector.py`
+- `face_deepfake_detector.py` (was `npr_detector.py` until 2026-09-04)
+- `npr_detector.py` (real NPR, not seeded)
 - `custom_detector.py` (retrained)
+- `clip_detector.py` (`ai_detector` ensemble)
 - `llm_image_analyzer.py`
 - `video_analyzer.py`
 - `audio_analyzer.py`
 - `llm_analyzer.py` (text)
 
-`clip_detector.py` defines the legacy `ai_detector` ensemble (dima806 + umm-maybe) - NOT seeded, dead code retained only for `_load_clip` reference.
+Offline measurement: `manage.py eval_detectors`, see [[concepts/detector-evaluation]].
 
 > [!gap] Multi-modal video
 > Video MIME routes to [[analyzers/video-frames]] only. Audio track not extracted -> audio-spectrogram skipped. Gap to close post-diploma.

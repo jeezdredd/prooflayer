@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 
 from analyzers.implementations.clip_detector import _load_model as _load_clip, ENSEMBLE_MODELS as CLIP_MODELS
 from analyzers.implementations.community_forensics import _load as _load_cf
-from analyzers.implementations.npr_detector import _load as _load_npr
+from analyzers.implementations.face_deepfake_detector import _load as _load_face
 from analyzers.implementations.siglip_detector import _load as _load_siglip
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class Command(BaseCommand):
         targets = [
             ("siglip_detector", _load_siglip),
             ("community_forensics", _load_cf),
-            ("npr_detector", _load_npr),
+            ("face_deepfake_detector", _load_face),
         ]
         for name, fn in targets:
             try:

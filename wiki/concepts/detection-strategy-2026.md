@@ -49,6 +49,9 @@ Replace Moonlight (no signal). Use Qwen2-VL-7B Q4_K_M or MiniCPM-V 2.6 (8B). Min
 ### 1. NPR (Neighboring Pixel Relationships) - CPU, 100ms/image
 Repo: `github.com/chuangchuangtan/NPR-DeepfakeDetection`. ResNet-50 (~90M params), trained on ProGAN, generalizes 93.3% mean across 28 generators incl. 11 diffusion families via universal upsampling fingerprint. Weakens on Flux/MJ v7 (DiT, no upsampling trace) but cheapest strong signal. **Apache-2.0**.
 
+> [!change] 2026-09-04 Implemented - see [[analyzers/npr-detector]]
+> The released checkpoint is not a full ResNet-50: it is the ResNet-50 stem + layer1 + layer2 over the NPR residual, 1.44M params, 5.8 MB. Runs at native resolution (no resize), ~0.15 s/image on CPU. Verified against the authors' HF demo images (midjourney logit +110, CelebAHQ -114).
+
 ### 2. UniversalFakeDetect - 1.5MB linear probe on frozen CLIP
 Repo: `github.com/WisconsinAIVision/UniversalFakeDetect`. CVPR 2023. Linear head on CLIP ViT-L/14. **Differentiation lives here:** fine-tune on a few thousand of YOUR OWN labeled images in 10 min on Colab T4. Frozen CLIP avoids training-set bias trap.
 
