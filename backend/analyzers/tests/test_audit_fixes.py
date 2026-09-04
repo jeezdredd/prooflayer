@@ -303,3 +303,90 @@ class TestWeightedDisagreement:
         ])
         _, verdict = aggregate(results)
         assert verdict != "needs_review"
+
+
+class TestRetrainedProvenance:
+    def test_training_meta_is_read_and_trimmed(self, tmp_path):
+        import json as _json
+
+        from analyzers.implementations.custom_detector import training_meta
+
+        (tmp_path / "training_meta.json").write_text(_json.dumps({
+            "base_model": "buildborderless/CommunityForensics-DeepfakeDet-ViT",
+            "trained_at": "2026-09-04T15:54:10+00:00",
+            "epochs": 3,
+            "train_counts": {"Real": 362, "AI": 660},
+            "sources": ["flux.2-klein-9b", "sora-2", "flickr"],
+            "eval_accuracy": 1.0,
+            "secret_internal_field": "dropped",
+        }))
+        meta = training_meta(str(tmp_path))
+        assert meta["base_model"].endswith("DeepfakeDet-ViT")
+        assert meta["sources"] == 3
+        assert meta["train_counts"] == {"Real": 362, "AI": 660}
+        assert "secret_internal_field" not in meta
+
+    def test_missing_or_corrupt_meta_is_empty(self, tmp_path):
+        from analyzers.implementations.custom_detector import training_meta
+
+        assert training_meta(str(tmp_path)) == {}
+        (tmp_path / "training_meta.json").write_text("{not json")
+        assert training_meta(str(tmp_path)) == {}
+
+
+@pytest.mark.django_db
+class TestSingleDominantVoter:
+    def _results(self, spec):
+        sub = SubmissionFactory()
+        out = []
+        for name, weight, verdict, prob in spec:
+            cfg = AnalyzerConfigFactory(name=name, weight=weight)
+            out.append(AnalysisResultFactory(
+                submission=sub, analyzer=cfg, confidence=0.85, verdict=verdict,
+                evidence={"ai_probability": prob} if prob is not None else {},
+            ))
+        return out
+
+    def test_dominant_near_certain_voter_convicts_alone(self):
+        results = self._results([
+            ("custom_detector", 3.5, AnalysisResult.Verdict.FAKE, 0.98),
+            ("community_forensics", 3.0, AnalysisResult.Verdict.INCONCLUSIVE, 0.45),
+            ("ai_detector", 1.0, AnalysisResult.Verdict.INCONCLUSIVE, 0.6),
+        ])
+        score, verdict = aggregate(results)
+        assert verdict in ("fake", "likely_fake")
+        assert score > 0.6
+
+    def test_dominant_but_not_certain_is_downgraded(self):
+        results = self._results([
+            ("custom_detector", 3.5, AnalysisResult.Verdict.FAKE, 0.85),
+            ("community_forensics", 3.0, AnalysisResult.Verdict.INCONCLUSIVE, 0.45),
+            ("ai_detector", 1.0, AnalysisResult.Verdict.INCONCLUSIVE, 0.6),
+        ])
+        _, verdict = aggregate(results)
+        assert verdict not in ("fake", "likely_fake")
+
+    def test_minority_share_cannot_convict_alone(self):
+        results = self._results([
+            ("custom_detector", 1.5, AnalysisResult.Verdict.FAKE, 0.99),
+            ("community_forensics", 3.5, AnalysisResult.Verdict.AUTHENTIC, 0.1),
+            ("ai_detector", 1.5, AnalysisResult.Verdict.INCONCLUSIVE, 0.6),
+        ])
+        _, verdict = aggregate(results)
+        assert verdict not in ("fake", "likely_fake")
+
+    def test_exact_half_share_counts_as_dominant(self):
+        results = self._results([
+            ("custom_detector", 3.5, AnalysisResult.Verdict.FAKE, 0.95),
+            ("community_forensics", 3.5, AnalysisResult.Verdict.AUTHENTIC, 0.2),
+        ])
+        score, verdict = aggregate(results)
+        assert (verdict in ("fake", "likely_fake")) == (score >= 0.6)
+
+    def test_two_voters_path_unchanged(self):
+        results = self._results([
+            ("a", 1.0, AnalysisResult.Verdict.FAKE, 0.95),
+            ("b", 1.0, AnalysisResult.Verdict.FAKE, 0.95),
+        ])
+        _, verdict = aggregate(results)
+        assert verdict == "fake"

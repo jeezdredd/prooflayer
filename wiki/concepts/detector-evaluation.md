@@ -85,6 +85,26 @@ Writes `real/real__NNNN.png` and `ai_generated/<model-slug>__NNN.png`; `eval_det
 > and round-robins across the 13 test shards so one shard's ordering cannot skew the model mix.
 > First run yielded 150 real + 236 AI over 20 generators (11-12 each).
 
+## Held-out protocol for retrains
+
+A retrain must never be scored on images it trained on. The protocol used for Tribunal 1.1:
+
+1. Train on `dataset/openfake` + `dataset/hf` (everything in those trees is training data now).
+2. Pull a **second** OpenFake sample with a different offset:
+   `fetch_openfake --out dataset/openfake_test --per-model 8 --real 100 --start-row-group 6`.
+3. `dedupe_dataset --target dataset/openfake_test --against dataset/openfake` - the offset does
+   not guarantee disjointness (13 exact duplicates the first time). Run once at distance 0 and
+   once at `--max-distance 4` for re-encodes.
+4. Baseline `eval_detectors --dataset dataset/openfake_test` with the model dir **unset**, then
+   the same with `RETRAIN_MODEL_DIR` pointing at the new model. Same images, same everything
+   else, so the diff is the model.
+5. `dataset/hf` afterwards is an in-sample sanity check only; label it as such.
+
+Any weight or rule change is then simulated offline from the eval JSON with the real
+`aggregate()` (stand-in result objects) before touching `seed_analyzers.py`, with
+real -> fake = 0 on every held-out real photo as a hard constraint. Simulations have matched
+the subsequent real reruns exactly every time so far.
+
 ## Related
 
 - [[concepts/verdict-thresholds]]

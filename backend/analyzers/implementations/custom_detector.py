@@ -1,4 +1,5 @@
 import gc
+import json
 import logging
 import os
 
@@ -25,6 +26,26 @@ def _model_path() -> str:
     if os.path.isdir(candidate) and os.path.exists(os.path.join(candidate, "config.json")):
         return candidate
     return FALLBACK_MODEL
+
+
+def training_meta(path: str) -> dict:
+    """Provenance written by retrain_detector next to the weights, if any."""
+    meta_path = os.path.join(path, "training_meta.json")
+    if not os.path.isfile(meta_path):
+        return {}
+    try:
+        with open(meta_path) as fh:
+            meta = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    return {
+        "base_model": meta.get("base_model"),
+        "trained_at": meta.get("trained_at"),
+        "epochs": meta.get("epochs"),
+        "train_counts": meta.get("train_counts"),
+        "sources": len(meta.get("sources") or []),
+        "eval_accuracy": meta.get("eval_accuracy"),
+    }
 
 
 AI_LABEL_KEYS = ("ai", "fake", "artificial", "synthetic", "generated", "deepfake")
@@ -65,7 +86,7 @@ def _ai_probability(model, probs) -> float:
 
 class CustomDetector(BaseAnalyzer):
     name = "custom_detector"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -98,6 +119,8 @@ class CustomDetector(BaseAnalyzer):
             "ai_probability": round(ai_prob, 4),
             "retrained": retrained,
         }
+        if retrained:
+            evidence["training"] = training_meta(source)
 
         if ai_prob >= 0.85:
             return AnalysisOutput(confidence=0.85, verdict="fake", evidence=evidence)

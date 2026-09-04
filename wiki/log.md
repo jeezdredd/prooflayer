@@ -2,6 +2,15 @@
 
 Newest at top.
 
+## [2026-09-04] tribunal-1.1-retrain | Ensemble named and versioned; custom_detector retrained on 2026 generators
+
+- Source: `retrain_detector` run (CF backbone, openfake + hf), `fetch_openfake --start-row-group 6` + `dedupe_dataset` for a held-out test, eval JSONs (eval9 baseline, eval10 retrained, eval12/13 Tribunal 1.1 confirm), offline weight/rule simulation with the real `aggregate()`
+- Summary: Tribunal identity (name, version, fingerprint) in API/status/landing; retrained member AUC 0.711 -> 0.993 held-out; lone-voter exception (share >= 50%, p >= 0.9) + weights CF 3.5 / custom 3.5 / ai 1.0; ensemble caught 23% -> 71% on unseen modern generators with 0 real photos called fake
+- Commands added: `retrain_detector --extra-dir/--base-model`, `dedupe_dataset`, `fetch_openfake --start-row-group`, `make ship-retrained`
+- Pages created: [[concepts/tribunal]]
+- Pages updated: [[analyzers/custom_detector]] (rewritten), [[concepts/aggregation]], [[concepts/detector-evaluation]], [[analyzers/_index]], [[api/system-status]], [[frontend/routes]], [[fixes/audit-2026-08]], [[hot]]
+- Headline: 130 seconds of fine-tuning on the right backbone did more than any threshold could - and the rule that let it count had to be shaped by the 5% of real photos the new model over-scores
+
 ## [2026-09-04] modern-generators-openfake | OpenFake eval, CF calibration, two face models unseeded
 
 - Source: `ComplexDataLab/OpenFake` core/test parquet (150 real + 236 AI, 20 generators), eval JSONs, arXiv 2602.07814 benchmark for framing

@@ -22,6 +22,8 @@ CF_PRIORITY_THRESHOLD = 0.92
 CF_PRIORITY_PEERS = {"custom_detector", "ai_detector", "npr_detector", "siglip_detector"}
 DISAGREEMENT_MIN_VOTERS = 2
 DISAGREEMENT_MIN_MINORITY_SHARE = 0.3
+SINGLE_VOTER_MIN_SHARE = 0.5
+SINGLE_VOTER_MIN_PROB = 0.9
 AUTHENTIC_EDITED_AI_CEIL = 0.30
 
 
@@ -69,6 +71,26 @@ def _has_weighted_disagreement(fake_voters, authentic_voters) -> bool:
     if total <= 0:
         return False
     return min(fake_weight, authentic_weight) / total >= DISAGREEMENT_MIN_MINORITY_SHARE
+
+
+def _single_dominant_fake_voter(fake_voters, authentic_voters, prob_scores) -> bool:
+    """One fake voter may carry the verdict alone only when it dominates the bench.
+
+    The two-corroborator rule exists to stop a single detector from convicting on its
+    own. It also caps recall on generators that only one member has been trained on.
+    Allow the exception when that member holds at least half of the confident-voter
+    weight *and* is near-certain (p >= 0.9). Measured on 100 held-out real photos this
+    kept real -> fake at zero; the naive "any single voter" variant did not.
+    """
+    if len(fake_voters) != 1:
+        return False
+    voter = fake_voters[0]
+    prob = prob_scores.get(id(voter))
+    if prob is None or prob < SINGLE_VOTER_MIN_PROB:
+        return False
+    fake_weight = voter.analyzer.weight
+    total = fake_weight + sum(r.analyzer.weight for r in authentic_voters)
+    return total > 0 and fake_weight / total >= SINGLE_VOTER_MIN_SHARE
 
 
 def _has_manipulation_signal(valid_results) -> bool:
@@ -138,7 +160,11 @@ def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
 
     raw_verdict = _band(final_score)
 
-    if raw_verdict in ("fake", "likely_fake") and len(fake_voters) < MIN_CORROBORATING_FOR_FAKE:
+    if (
+        raw_verdict in ("fake", "likely_fake")
+        and len(fake_voters) < MIN_CORROBORATING_FOR_FAKE
+        and not _single_dominant_fake_voter(fake_voters, authentic_voters, prob_scores)
+    ):
         raw_verdict = "suspicious" if raw_verdict == "fake" else "inconclusive"
 
     if raw_verdict == "authentic" and len(authentic_voters) < 1 and total_weight > 0:

@@ -2,7 +2,7 @@ import hashlib
 
 ENSEMBLE_NAME = "Tribunal"
 ENSEMBLE_SLUG = "tribunal"
-ENSEMBLE_VERSION = "1.0"
+ENSEMBLE_VERSION = "1.1"
 
 
 def ensemble_label() -> str:

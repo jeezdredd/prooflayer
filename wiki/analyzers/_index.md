@@ -39,15 +39,15 @@ version label and a roster fingerprint.
 
 ## Roster
 
-Weights as of 2026-09-04, after the measured rebalance in [[fixes/audit-2026-08]].
+Weights as of Tribunal 1.1 (2026-09-04), after the measured rebalance in [[fixes/audit-2026-08]].
 
 | # | Name | Type | MIME | Queue | Weight | Notes |
 |---|------|------|------|-------|--------|-------|
 | 01 | [[analyzers/metadata]] | rule-based | image | default | 1.5 | EXIF sub-IFD, PNG `parameters`, XMP, C2PA `trainedAlgorithmicMedia`. Lowered from 2.5: EXIF is forgeable |
 | 02 | [[analyzers/ela]] | manipulation-only | image | default | 0.75 | Never votes on the AI axis (measured inverted); feeds `authentic_edited` via `manipulation_suspected` |
 | 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.5** | ViT-S/16 NeurIPS 2024. AUC 1.000 diffusiondb / 0.977 OpenFake; raw score **calibrated** since 2026-09-04 |
-| 06 | [[analyzers/custom_detector]] | **probabilistic** | image | ml | 1.5 | `prooflayer-retrained` or `Nahrawy/AIorNot`. AUC 0.920. Lowered from 3.5: highest weight was on the weakest base model |
-| 07 | [[analyzers/ai-ensemble]] (`ai_detector`) | **probabilistic** | image | ml | 1.5 | dima806 + umm-maybe with a photographic gate. AUC 0.914. Was deactivated dead code until 2026-08-19 |
+| 06 | [[analyzers/custom_detector]] | **probabilistic** | image | ml | **3.5** | Retrained 2026-09-04 on the CF backbone with 20 current generators: AUC **0.993** held-out. Back to 3.5 in Tribunal 1.1, this time measured |
+| 07 | [[analyzers/ai-ensemble]] (`ai_detector`) | **probabilistic** | image | ml | 1.0 | dima806 + umm-maybe with a photographic gate. AUC 0.914 diffusiondb, 0.668 current generators; lowered from 1.5 in Tribunal 1.1 |
 | 08 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | Ollama vision. Contributed **zero** weight until 2026-08-19 |
 | 09 | [[analyzers/video-frames]] | **probabilistic** | video | ml | 2.0 | Frames sampled across the whole clip -> CF; emits median `ai_probability` |
 | 10 | [[analyzers/audio-spectrogram]] | rule-based + prob | audio | ml | 2.0 | Spectral flags; now also emits `ai_probability` |

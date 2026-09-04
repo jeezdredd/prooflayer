@@ -11,7 +11,7 @@ import ShaderBackground from "../components/ui/ShaderBackground";
 import client from "../api/client";
 import { useAuthStore } from "../stores/authStore";
 
-const TRIBUNAL_FALLBACK = "Tribunal 1.0";
+const TRIBUNAL_FALLBACK = "Tribunal 1.1";
 
 const ANALYZERS = [
   { code: "01", name: "Metadata & Provenance", desc: "EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have.", Icon: Fingerprint },

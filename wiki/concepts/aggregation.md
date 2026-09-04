@@ -18,7 +18,8 @@ returns `None` if absent or non-numeric.
 
 **Probabilistic** - any result carrying one of those keys:
 - `community_forensics` (weight 3.5, raw score calibrated - see [[analyzers/community-forensics]])
-- `custom_detector` (1.5), `ai_detector` (1.5, via `ai_probability_avg`)
+- `custom_detector` (3.5 since Tribunal 1.1, retrained on 20 current generators - see [[analyzers/custom_detector]])
+- `ai_detector` (1.0 since Tribunal 1.1, via `ai_probability_avg`)
 - `video_frame` (2.0, median over sampled frames)
 
 **Rule-based** - verdict + confidence bucket, no raw probability:
@@ -54,6 +55,27 @@ results, `confidence >= 0.5`). Review fires only when **both** camps have at lea
 > everything diffusion) plus the face ViT (0.5) then outvoted CF 3.5 + custom 1.5 + ai_detector
 > 1.5 into `needs_review` on 27/60 AI images. Head counts do not survive one confidently wrong
 > out-of-domain detector; weight shares do.
+
+## Lone voter -> `fake` only when dominant and certain
+
+```python
+MIN_CORROBORATING_FOR_FAKE = 2
+SINGLE_VOTER_MIN_SHARE = 0.5
+SINGLE_VOTER_MIN_PROB = 0.9
+```
+
+A `fake` / `likely_fake` band normally needs two confident fake voters; with one it is
+downgraded to `suspicious` / `inconclusive`. Exception (2026-09-04): a **single** fake voter
+carries the band when its probability is >= 0.9 *and* its weight is at least half of the
+combined weight of all confident voters (fake plus authentic).
+
+> [!change] 2026-09-04 - why not just "one voter suffices"
+> After the retrain, `custom_detector` sees flux.2 / gpt-image-2 / sora-2 / veo-3 at 0.83-0.998
+> while every other member is blind, so the two-voter rule capped held-out recall at 35%. Lifting
+> it to "any single voter" reached 92% on one weight set but produced a real photo called fake
+> in three of four candidate rosters (the retrained model puts 5% of real photos above 0.75).
+> The share + certainty version reached **71% caught with 0/100 real -> fake** under the
+> Tribunal 1.1 weights. See [[fixes/audit-2026-08]].
 
 ## Hybrid weighted mean
 

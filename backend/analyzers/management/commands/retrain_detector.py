@@ -8,6 +8,7 @@ import tempfile
 from datetime import datetime, timezone
 
 from django.core.management.base import BaseCommand
+from django.db import DatabaseError
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,23 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
 EXTRA_LABEL_DIRS = {"real": "real", "fake": "fake", "ai_generated": "fake"}
 
 
+def _readable(path: str) -> bool:
+    from PIL import Image
+
+    try:
+        with Image.open(path) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
+
 def _collect_extra(dirs: list[str]) -> list[tuple[str, str]]:
-    """(path, label) for every image under <dir>/{real,fake,ai_generated}."""
+    """(path, label) for every decodable image under <dir>/{real,fake,ai_generated}.
+
+    Unreadable files are dropped here rather than crashing the Trainer mid-epoch;
+    dataset/hf/real carries 250 zero-content macOS quarantine stubs.
+    """
     out = []
     for root in dirs:
         for sub, label in EXTRA_LABEL_DIRS.items():
@@ -29,8 +45,9 @@ def _collect_extra(dirs: list[str]) -> list[tuple[str, str]]:
             if not os.path.isdir(class_dir):
                 continue
             for name in sorted(os.listdir(class_dir)):
-                if name.lower().endswith(IMAGE_EXTENSIONS):
-                    out.append((os.path.join(class_dir, name), label))
+                path = os.path.join(class_dir, name)
+                if name.lower().endswith(IMAGE_EXTENSIONS) and _readable(path):
+                    out.append((path, label))
     return out
 
 
@@ -94,8 +111,15 @@ class Command(BaseCommand):
             status="completed",
         )
 
-        count = qs.count()
         extra_files = _collect_extra(options["extra_dir"])
+        try:
+            count = qs.count()
+        except DatabaseError as exc:
+            if not extra_files:
+                raise
+            self.stderr.write(f"Submission query failed ({str(exc).splitlines()[0][:80]}); training on --extra-dir only")
+            qs = Submission.objects.none()
+            count = 0
         self.stdout.write(f"Found {count} approved {media_type} submissions, {len(extra_files)} extra files")
 
         if count + len(extra_files) < options["min_samples"]:

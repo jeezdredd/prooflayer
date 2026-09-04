@@ -19,7 +19,7 @@ _FALLBACK_VERSIONS = {
     "analyzers.implementations.llm_analyzer": "1.1.0",
     "analyzers.implementations.audio_analyzer": "1.2.0",
     "analyzers.implementations.llm_image_analyzer": "1.7.0",
-    "analyzers.implementations.custom_detector": "1.1.0",
+    "analyzers.implementations.custom_detector": "1.2.0",
     "analyzers.implementations.clip_detector": "2.0.0",
 }
 
@@ -94,14 +94,14 @@ ANALYZERS = [
     {
         "name": "ai_detector",
         "analyzer_class": "analyzers.implementations.clip_detector.AIImageDetector",
-        "weight": 1.5,
+        "weight": 1.0,
         "queue": "ml",
         "timeout": 180,
     },
     {
         "name": "custom_detector",
         "analyzer_class": "analyzers.implementations.custom_detector.CustomDetector",
-        "weight": 1.5,
+        "weight": 3.5,
         "queue": "ml",
         "timeout": 180,
     },

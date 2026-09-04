@@ -20,8 +20,8 @@ LABEL_DIRS = {
 
 DEFAULT_ANALYZERS = [
     ("community_forensics", "analyzers.implementations.community_forensics.CommunityForensicsDetector", 3.5),
-    ("custom_detector", "analyzers.implementations.custom_detector.CustomDetector", 1.5),
-    ("ai_detector", "analyzers.implementations.clip_detector.AIImageDetector", 1.5),
+    ("custom_detector", "analyzers.implementations.custom_detector.CustomDetector", 3.5),
+    ("ai_detector", "analyzers.implementations.clip_detector.AIImageDetector", 1.0),
     ("metadata", "analyzers.implementations.metadata_analyzer.MetadataAnalyzer", 1.5),
     ("ela", "analyzers.implementations.ela_analyzer.ELAAnalyzer", 0.75),
 ]

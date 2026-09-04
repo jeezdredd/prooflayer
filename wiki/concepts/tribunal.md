@@ -24,7 +24,7 @@ Code: `analyzers/ensemble.py` - `ENSEMBLE_NAME`, `ENSEMBLE_VERSION`, `ensemble_i
 
 - `GET /api/v1/submissions/<id>/` -> `ensemble: {name, version, label, fingerprint}` on every
   detail response, so a stored verdict can be traced to the configuration that produced it.
-- `GET /api/v1/system/status/` -> `services.analyzers.ensemble` = `"Tribunal 1.0"` next to the
+- `GET /api/v1/system/status/` -> `services.analyzers.ensemble` = `"Tribunal 1.1"` next to the
   roster-drift probe ([[api/system-status]]).
 - `manage.py eval_detectors` prints the label and fingerprint in its header.
 
@@ -42,6 +42,32 @@ Code: `analyzers/ensemble.py` - `ENSEMBLE_NAME`, `ENSEMBLE_VERSION`, `ensemble_i
   go in the changelog below, not in prose elsewhere.
 
 ## Changelog
+
+### 1.1 - 2026-09-04
+The retrain release. `custom_detector` is now fine-tuned from the community_forensics backbone
+on 400 real / 736 AI images spanning 20 current generators ([[analyzers/custom_detector]]);
+its held-out AUC went 0.711 -> **0.993**. Weights: custom_detector 1.5 -> **3.5**, ai_detector
+1.5 -> **1.0**, community_forensics 3.5 (unchanged), metadata 1.5, ela 0.75. New rule: a lone
+fake voter carries the verdict when it holds >= 50% of the confident-voter weight and p >= 0.9
+([[concepts/aggregation]]).
+
+Measured on `dataset/openfake_test` - a second OpenFake pull, perceptual-hash deduplicated
+against the training tree, 100 real / 145 AI, 20 generators, never seen in training:
+
+| set | version | ensemble AUC | AI caught (fake+likely) | AI called authentic | real called fake | real suspicious |
+|---|---|---|---|---|---|---|
+| openfake_test | 1.0 | 0.916 (acc 0.776) | 34/145 (23%) | 39 (27%) | 0/100 | 2 |
+| openfake_test | **1.1** | **0.993** (acc 0.951) | **103/145 (71%)** | **4 (3%)** | **0/100** | 8 |
+| diffusiondb | 1.1 | 1.000 | 60/60 | 0 | 0/60 | 0 |
+
+Per generator (1.1, confirmed by rerun): midjourney-7, ideogram-2.0, illustrious, lumina,
+recraft-v2, aurora, halfmoon at 100%; z-image-turbo 7/8; frames, gpt-image-1.5, nano-banana-pro,
+recraft-v3, seedream-v5 6/8. Still weak: gpt-image-2 1/6, flux.2-klein-9b 2/8, veo-3 2/8, sora-2 2/7 -
+the retrained member sees them (0.83-0.998) but community_forensics scores them near real and
+outweighs it. Next lever is either a second modern-trained member or a CF retrain.
+
+Cost of the recall: real photos called `suspicious` went 2 -> 8 of 100. None called fake.
+
 
 ### 1.0 - 2026-09-04
 Members (image): community_forensics 3.5 (calibrated), custom_detector 1.5, ai_detector 1.5,

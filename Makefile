@@ -7,7 +7,7 @@ SERVER_FALLBACK ?= seb0107@192.168.8.112
 .PHONY: help dev down logs ps build seed sh fe-sh \
         deploy-server deploy-bootstrap deploy-cf deploy-redeploy \
         seed-server seed-analyzers seed-analyzers-host seed-analyzers-server \
-        roster-check wiki
+        roster-check ship-retrained wiki
 
 help:
 	@echo "ProofLayer Makefile"
@@ -24,6 +24,7 @@ help:
 	@echo "  make seed-analyzers-host  same, from the host via uv (localhost db/redis)"
 	@echo "  make seed-analyzers-server  same, on the remote server"
 	@echo "  make roster-check      report analyzer roster drift without writing"
+	@echo "  make ship-retrained    copy a retrained custom_detector into the server's hf_cache volume"
 	@echo "  make sh                shell into backend container"
 	@echo "  make fe-sh             shell into frontend container"
 	@echo ""
@@ -101,6 +102,16 @@ seed-server:
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_demo_data"
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_known_fakes"
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_users"
+
+# Copy a locally retrained custom_detector (RETRAIN_MODEL_DIR/image) into the worker's
+# hf_cache volume on the server. The worker reloads on the next inference (path change
+# is detected), no restart needed. MODEL_DIR defaults to the local HF cache location.
+MODEL_DIR ?= $(HOME)/.cache/huggingface/prooflayer-retrained/image
+ship-retrained:
+	@test -f "$(MODEL_DIR)/model.safetensors" || (echo "no model at $(MODEL_DIR)"; exit 1)
+	ssh $(SERVER) "mkdir -p ~/retrained-upload"
+	rsync -av --delete --exclude 'checkpoint-*' --exclude 'training_args.bin' "$(MODEL_DIR)/" $(SERVER):~/retrained-upload/
+	$(SSH) "docker run --rm -v deploy_hf_cache:/hf -v ~/retrained-upload:/src:ro alpine sh -c 'mkdir -p /hf/prooflayer-retrained && rm -rf /hf/prooflayer-retrained/image && cp -r /src /hf/prooflayer-retrained/image && ls -la /hf/prooflayer-retrained/image'"
 
 seed-analyzers-server:
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_analyzers"
