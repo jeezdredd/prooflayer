@@ -2,7 +2,17 @@
 type: analyzer
 created: 2026-05-28
 source: backend/analyzers/implementations/siglip_detector.py
+status: not seeded (removed 2026-09-04)
 ---
+
+> [!warning] Removed from the active roster 2026-09-04
+> Measured on 60 flickr photos vs 60 diffusiondb images: AUC **0.323** (anti-correlated - ranks real
+> photos as *more* AI-like than AI images) and **21/60 real photos at p>=0.75**. It was one of the
+> two fake voters on every real photo that ended in `needs_review`; with it gone those went 7 -> 0
+> and nothing on the AI side changed. It is a face-trained ViT (architecture is ViT, not SigLIP,
+> despite the name) and there is no labelled face-swap set in `dataset/` to justify keeping it on.
+> Module and tests stay; re-add to `seed_analyzers.ANALYZERS` to re-enable. See [[fixes/audit-2026-08]].
+
 
 # SigLIP Deepfake Detector
 

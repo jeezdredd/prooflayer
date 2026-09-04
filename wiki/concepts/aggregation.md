@@ -17,7 +17,7 @@ hardcoded analyzer-name list. `_get_ai_probability()` reads the first present ke
 returns `None` if absent or non-numeric.
 
 **Probabilistic** - any result carrying one of those keys:
-- `community_forensics` (weight 3.5), `siglip_detector` (0.5), `face_deepfake_detector` (0.5)
+- `community_forensics` (weight 3.5, raw score calibrated - see [[analyzers/community-forensics]])
 - `custom_detector` (1.5), `ai_detector` (1.5, via `ai_probability_avg`)
 - `video_frame` (2.0, median over sampled frames)
 

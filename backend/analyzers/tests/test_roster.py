@@ -57,11 +57,11 @@ class TestRosterDrift:
 
     def test_class_path_change_is_drift(self):
         call_command("seed_analyzers", verbosity=0)
-        AnalyzerConfig.objects.filter(name="face_deepfake_detector").update(
+        AnalyzerConfig.objects.filter(name="ai_detector").update(
             analyzer_class="analyzers.implementations.npr_detector.NPRDetector"
         )
         report = roster_drift()
-        assert report["drift"]["class_mismatch"] == ["face_deepfake_detector"]
+        assert report["drift"]["class_mismatch"] == ["ai_detector"]
 
     def test_reseed_repairs_drift(self):
         call_command("seed_analyzers", verbosity=0)

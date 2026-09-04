@@ -2,6 +2,14 @@
 
 Newest at top.
 
+## [2026-09-04] modern-generators-openfake | OpenFake eval, CF calibration, two face models unseeded
+
+- Source: `ComplexDataLab/OpenFake` core/test parquet (150 real + 236 AI, 20 generators), eval JSONs, arXiv 2602.07814 benchmark for framing
+- Summary: measured the ensemble on 2026 generators for the first time (41% of AI called authentic); found CF ranks fine (AUC 0.977) but is miscalibrated; shipped a holdout-validated piecewise-linear calibration; unseeded siglip (35% real-photo FP) and face_deepfake (AUC 0.181); ensemble AUC 0.808 -> 0.890, acc 0.627 -> 0.777, real->fake 0
+- Commands added: `fetch_openfake` (memory-bounded parquet sampler), per-generator table in `eval_detectors`
+- Pages updated: [[fixes/audit-2026-08]], [[analyzers/community-forensics]], [[analyzers/face-deepfake-detector]], [[analyzers/siglip-detector]], [[analyzers/_index]] (9 seeded), [[concepts/aggregation]], [[concepts/detector-evaluation]], [[hot]]
+- Headline: a detector that separates 2022 output perfectly read 41% of 2026 output as real - and the fix was a threshold map with zero measured false positives, not a new model. flux.2 and sora-2 remain invisible.
+
 ## [2026-09-04] roster-drift-visibility | Analyzer roster drift check, probe, Makefile targets
 
 - Source: `.env`, `docker-compose.yml`, `deploy/compose.prod.yml`, `Makefile`, `backend/api/system_views.py`, `backend/users/checks.py` (pattern)

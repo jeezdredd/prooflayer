@@ -62,6 +62,29 @@ Reported per analyzer:
   `needs_review` count.
 - Set `PROOFLAYER_FORCE_CPU=1` to run without a GPU.
 
+## Modern-generator sample: `fetch_openfake`
+
+`dataset/hf` is diffusiondb (2022 SD 1.x) vs flickr - every current detector separates it
+perfectly, which says nothing about 2026 generators. [OpenFake](https://huggingface.co/datasets/ComplexDataLab/OpenFake)
+(`ComplexDataLab/OpenFake`, **CC-BY-NC-4.0** - local evaluation only, never redistribute)
+has 20+ current generators with a `model` column and 3M real LAION images.
+
+```bash
+uv run python backend/manage.py fetch_openfake \
+  --out dataset/openfake --per-model 12 --real 150
+```
+
+Writes `real/real__NNNN.png` and `ai_generated/<model-slug>__NNN.png`; `eval_detectors` reads the
+`<generator>__` prefix and prints a per-generator table (share of AI images the ensemble called
+`fake`/`likely_fake`, plus mean `ai_probability` per detector).
+
+> [!warning] Shards are ~5 GB each
+> `datasets.load_dataset(..., streaming=True)` materialises whole row groups of image bytes and
+> was OOM-killed on the first shard. The command reads parquet **row groups** through
+> `HfFileSystem` + `pyarrow`, fetching `label`/`model` first and decoding only the rows it keeps,
+> and round-robins across the 13 test shards so one shard's ordering cannot skew the model mix.
+> First run yielded 150 real + 236 AI over 20 generators (11-12 each).
+
 ## Related
 
 - [[concepts/verdict-thresholds]]

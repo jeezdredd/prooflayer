@@ -20,8 +20,6 @@ LABEL_DIRS = {
 
 DEFAULT_ANALYZERS = [
     ("community_forensics", "analyzers.implementations.community_forensics.CommunityForensicsDetector", 3.5),
-    ("siglip_detector", "analyzers.implementations.siglip_detector.SigLIPDetector", 0.5),
-    ("face_deepfake_detector", "analyzers.implementations.face_deepfake_detector.FaceDeepfakeDetector", 0.5),
     ("custom_detector", "analyzers.implementations.custom_detector.CustomDetector", 1.5),
     ("ai_detector", "analyzers.implementations.clip_detector.AIImageDetector", 1.5),
     ("metadata", "analyzers.implementations.metadata_analyzer.MetadataAnalyzer", 1.5),
@@ -29,6 +27,14 @@ DEFAULT_ANALYZERS = [
 ]
 
 FAKE_VERDICTS = {"fake", "likely_fake"}
+GENERATOR_SEPARATOR = "__"
+
+
+def _generator_of(path: str) -> str:
+    stem = os.path.splitext(os.path.basename(path))[0]
+    if GENERATOR_SEPARATOR in stem:
+        return stem.split(GENERATOR_SEPARATOR, 1)[0]
+    return ""
 REAL_VERDICTS = {"authentic", "authentic_edited"}
 
 
@@ -82,6 +88,14 @@ def _is_readable(path: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def prob_scores_for(result) -> float | None:
+    evidence = result.evidence or {}
+    for key in ("ai_probability", "ai_probability_avg"):
+        if evidence.get(key) is not None:
+            return float(evidence[key])
+    return None
 
 
 def _collect(root: str, limit_per_class: int) -> tuple[list[tuple[str, int]], int]:
@@ -138,6 +152,7 @@ class Command(BaseCommand):
         per_analyzer = {name: Stats() for name, _, _ in analyzers}
         ensemble = Stats()
         ensemble_verdicts = {}
+        per_generator = {}
         rows = []
 
         for idx, (path, label) in enumerate(samples, 1):
@@ -176,18 +191,43 @@ class Command(BaseCommand):
                 key = ("ai" if label else "real", verdict)
                 ensemble_verdicts[key] = ensemble_verdicts.get(key, 0) + 1
                 row["ensemble"] = {"score": score, "verdict": verdict}
+                generator = _generator_of(path)
+                if label == 1 and generator:
+                    bucket = per_generator.setdefault(generator, {"n": 0, "caught": 0, "scores": {}})
+                    bucket["n"] += 1
+                    bucket["caught"] += verdict in FAKE_VERDICTS
+                    for r in results:
+                        prob = prob_scores_for(r)
+                        if prob is not None:
+                            bucket["scores"].setdefault(r.analyzer.name, []).append(prob)
 
             rows.append(row)
             if idx % 10 == 0:
                 self.stdout.write(f"  {idx}/{len(samples)}")
 
         self._report(per_analyzer, ensemble, ensemble_verdicts, len(samples))
+        if per_generator:
+            self._report_generators(per_generator, [name for name, _, _ in analyzers])
 
         if options["json_out"]:
             os.makedirs(os.path.dirname(os.path.abspath(options["json_out"])), exist_ok=True)
             with open(options["json_out"], "w") as fh:
                 json.dump(rows, fh, indent=2, default=str)
             self.stdout.write(f"raw results -> {options['json_out']}")
+
+    def _report_generators(self, per_generator, analyzer_names):
+        detectors = [n for n in analyzer_names if any(n in b["scores"] for b in per_generator.values())]
+        self.stdout.write("")
+        self.stdout.write("Per generator (AI images only): caught = ensemble verdict fake/likely_fake; columns = mean ai_probability")
+        header = f"{'generator':26} {'n':>4} {'caught':>7} " + " ".join(f"{d[:12]:>12}" for d in detectors)
+        self.stdout.write(header)
+        self.stdout.write("-" * len(header))
+        for generator, b in sorted(per_generator.items(), key=lambda kv: kv[1]["caught"] / max(kv[1]["n"], 1)):
+            cells = []
+            for d in detectors:
+                vals = b["scores"].get(d)
+                cells.append(f"{sum(vals) / len(vals):>12.3f}" if vals else f"{'-':>12}")
+            self.stdout.write(f"{generator:26} {b['n']:>4} {b['caught'] / b['n']:>7.0%} " + " ".join(cells))
 
     def _report(self, per_analyzer, ensemble, ensemble_verdicts, total):
         self.stdout.write("")

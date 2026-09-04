@@ -57,20 +57,6 @@ ANALYZERS = [
         "timeout": 60,
     },
     {
-        "name": "siglip_detector",
-        "analyzer_class": "analyzers.implementations.siglip_detector.SigLIPDetector",
-        "weight": 0.5,
-        "queue": "ml",
-        "timeout": 180,
-    },
-    {
-        "name": "face_deepfake_detector",
-        "analyzer_class": "analyzers.implementations.face_deepfake_detector.FaceDeepfakeDetector",
-        "weight": 0.5,
-        "queue": "ml",
-        "timeout": 180,
-    },
-    {
         "name": "community_forensics",
         "analyzer_class": "analyzers.implementations.community_forensics.CommunityForensicsDetector",
         "weight": 3.5,

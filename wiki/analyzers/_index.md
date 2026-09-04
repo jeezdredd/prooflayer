@@ -6,7 +6,7 @@ updated: 2026-09-04
 
 # Analyzer Pipeline
 
-Twelve analyzers seeded as [[models/AnalyzerConfig]] DB rows (`backend/analyzers/management/commands/seed_analyzers.py`). Each implements `BaseAnalyzer`:
+Nine analyzers seeded as [[models/AnalyzerConfig]] DB rows (`backend/analyzers/management/commands/seed_analyzers.py`). Each implements `BaseAnalyzer`:
 
 ```python
 class BaseAnalyzer:
@@ -41,9 +41,7 @@ Weights as of 2026-09-04, after the measured rebalance in [[fixes/audit-2026-08]
 |---|------|------|------|-------|--------|-------|
 | 01 | [[analyzers/metadata]] | rule-based | image | default | 1.5 | EXIF sub-IFD, PNG `parameters`, XMP, C2PA `trainedAlgorithmicMedia`. Lowered from 2.5: EXIF is forgeable |
 | 02 | [[analyzers/ela]] | manipulation-only | image | default | 0.75 | Never votes on the AI axis (measured inverted); feeds `authentic_edited` via `manipulation_suspected` |
-| 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.5** | ViT-S/16 NeurIPS 2024. AUC 1.000 on the eval set, main authority |
-| 04 | [[analyzers/siglip-detector]] | **probabilistic** | image | ml | 0.5 | Face-trained ViT. AUC **0.323** on general imagery (anti-correlated); lowered from 2.0 |
-| 05 | [[analyzers/face-deepfake-detector]] | **probabilistic** | image | ml | 0.5 | `Wvolf/ViT_Deepfake_Detection`, face-swap classifier, AUC 0.688 off-domain. Was misnamed `npr_detector` |
+| 03 | [[analyzers/community-forensics]] | **probabilistic** | image | ml | **3.5** | ViT-S/16 NeurIPS 2024. AUC 1.000 diffusiondb / 0.977 OpenFake; raw score **calibrated** since 2026-09-04 |
 | 06 | [[analyzers/custom_detector]] | **probabilistic** | image | ml | 1.5 | `prooflayer-retrained` or `Nahrawy/AIorNot`. AUC 0.920. Lowered from 3.5: highest weight was on the weakest base model |
 | 07 | [[analyzers/ai-ensemble]] (`ai_detector`) | **probabilistic** | image | ml | 1.5 | dima806 + umm-maybe with a photographic gate. AUC 0.914. Was deactivated dead code until 2026-08-19 |
 | 08 | [[analyzers/llm-vision]] | rule-based | image | ml | 1.5 | Ollama vision. Contributed **zero** weight until 2026-08-19 |
@@ -51,10 +49,17 @@ Weights as of 2026-09-04, after the measured rebalance in [[fixes/audit-2026-08]
 | 10 | [[analyzers/audio-spectrogram]] | rule-based + prob | audio | ml | 2.0 | Spectral flags; now also emits `ai_probability` |
 | 11 | [[analyzers/llm-text]] | rule-based | text | ml | 2.5 | AI authorship classifier |
 
-Not seeded: [[analyzers/npr-detector]] - real NPR (CVPR 2024), correct and tested, but AUC 0.499 on
-diffusion output. Kept as an opt-in GAN-era detector.
+Not seeded:
+- [[analyzers/npr-detector]] - real NPR (CVPR 2024), correct and tested, but AUC 0.499 on diffusion
+  output. Kept as an opt-in GAN-era detector.
+- [[analyzers/face-deepfake-detector]] - `Wvolf/ViT_Deepfake_Detection`, the model that used to be
+  called `npr_detector`. AUC 0.688 on diffusiondb, **0.181** on OpenFake. Removed 2026-09-04.
+- [[analyzers/siglip-detector]] - `prithivMLmods/Deep-Fake-Detector-v2-Model`. AUC **0.323** and a
+  **35% false-positive rate** on real photos (21/60 at p>=0.75). Even at weight 0.5 it was one of the
+  two voters behind every real-photo `needs_review`. Removed 2026-09-04; keep the module for a
+  face-swap set if one ever lands.
 
-Real model ids: siglip_detector=`prithivMLmods/Deep-Fake-Detector-v2-Model`, community_forensics=`buildborderless/CommunityForensics-DeepfakeDet-ViT`, face_deepfake_detector=`Wvolf/ViT_Deepfake_Detection`, npr_detector=authors' `model_epoch_last_3090.pth` (sha256-pinned). Torch detectors load on `cuda` when available (AMD ROCm worker, see [[services/gpu-rocm]]) via `analyzers/_device.py`.
+Real model ids: community_forensics=`buildborderless/CommunityForensics-DeepfakeDet-ViT`, face_deepfake_detector (not seeded)=`Wvolf/ViT_Deepfake_Detection`, npr_detector (not seeded)=authors' `model_epoch_last_3090.pth` (sha256-pinned). Torch detectors load on `cuda` when available (AMD ROCm worker, see [[services/gpu-rocm]]) via `analyzers/_device.py`.
 
 **Probabilistic** is decided per result from the evidence payload (`ai_probability` or
 `ai_probability_avg`), not from a name list - see [[concepts/aggregation]].
