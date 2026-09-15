@@ -24,7 +24,7 @@ Code: `analyzers/ensemble.py` - `ENSEMBLE_NAME`, `ENSEMBLE_VERSION`, `ensemble_i
 
 - `GET /api/v1/submissions/<id>/` -> `ensemble: {name, version, label, fingerprint}` on every
   detail response, so a stored verdict can be traced to the configuration that produced it.
-- `GET /api/v1/system/status/` -> `services.analyzers.ensemble` = `"Tribunal 1.1"` next to the
+- `GET /api/v1/system/status/` -> `services.analyzers.ensemble` = `"Tribunal 1.2"` next to the
   roster-drift probe ([[api/system-status]]).
 - `manage.py eval_detectors` prints the label and fingerprint in its header.
 
@@ -42,6 +42,24 @@ Code: `analyzers/ensemble.py` - `ENSEMBLE_NAME`, `ENSEMBLE_VERSION`, `ensemble_i
   go in the changelog below, not in prose elsewhere.
 
 ## Changelog
+
+### 1.2 - 2026-09-15
+Calibration for the retrained member ([[analyzers/custom_detector]]): `calibration.json`
+next to the weights maps everything a real photo ever scored (<= 0.975) to <= 0.50 and lifts
+0.98+ to 0.80+. Weights and rules unchanged, so the roster fingerprint is still `352aa7ef3234`
+- the fingerprint covers roster and weights, not model artefacts; the model dir carries its own
+`training_meta.json` and `calibration.json`.
+
+| set | version | ensemble AUC | AI caught | AI called authentic | real called fake | real suspicious |
+|---|---|---|---|---|---|---|
+| openfake_test | 1.1 | 0.993 | 103/145 (71%) | 4 | 0/100 | 8 |
+| openfake_test | **1.2** | **0.995** | 97/145 (67%) | 9 | **0/100** | **1** |
+| diffusiondb | 1.2 | 1.000 | 60/60 | 0 | 0/60 | 0 |
+
+A deliberate trade: seven fewer real photos flagged `suspicious` for six fewer catches and five
+more misses. Validated on a generator + real-photo split before shipping. Weak generators
+unchanged: gpt-image-2 0/6, flux.2 2/8, veo-3 2/8, sora-2 2/7.
+
 
 ### 1.1 - 2026-09-04
 The retrain release. `custom_detector` is now fine-tuned from the community_forensics backbone

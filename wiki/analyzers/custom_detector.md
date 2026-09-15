@@ -1,7 +1,7 @@
 ---
 type: analyzer
 created: 2026-06-20
-updated: 2026-09-04
+updated: 2026-09-15
 source: backend/analyzers/implementations/custom_detector.py
 ---
 
@@ -60,6 +60,26 @@ Caveat that goes with the number: on the 100 held-out real photos its score reac
 the top (p99 0.967) and **5 photos sit at >= 0.75**. It is a strong ranker, not a calibrated
 one, which is exactly why the aggregation rule for a lone voter demands p >= 0.9 *and* a
 dominant weight share - see [[concepts/aggregation]].
+
+## Calibration (2026-09-15, Tribunal 1.2)
+
+The retrained model is a strong ranker with an ugly real-photo tail: on the 100 held-out real
+photos p50 = 0.002 but p95 = 0.848 and max = 0.975, while AI p10 = 0.984. The two do not
+overlap above 0.98 - **0.0% FPR / 90.3% TPR** at that threshold - so the fix is a threshold-shaped
+map, not a smooth one. Shipped as `calibration.json` next to the weights (read by
+`load_calibration`, applied before bands and aggregation; evidence keeps `raw_probability` and
+`calibrated: true`):
+
+```json
+{"knots": [[0, 0], [0.98, 0.50], [0.981, 0.80], [1, 1]]}
+```
+
+Anything a real photo has ever produced maps to <= 0.50 (never a confident voter); scores above
+that jump to 0.80+ and reach the lone-voter bar (0.9) at raw ~0.99. Validated on a generator +
+real-photo split both ways: real -> suspicious 4 -> 0/1 per half, real -> fake 0/50 at weight
+3.5. Raising the weight to 4.5 produced a false `fake` on one half, so the weight stays 3.5 and
+the model-specific map lives with the model, not in code. Full-set numbers in
+[[concepts/tribunal]].
 
 ## How it gets trained
 

@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-09-15] tribunal-1.2-calibration | Per-model calibration file for the retrained detector
+
+- Source: regenerated eval JSON on dataset/openfake_test, generator+real split holdout
+- Pages updated: [[concepts/tribunal]], [[analyzers/custom_detector]], [[hot]]
+
 ## [2026-09-15] presigned-media-fix | Signed media URLs for a public endpoint; Caddy media block
 
 - Source: prod `.env`, live `default_storage.url()` output on the server, storages 1.14.6 `url()`, `deploy/caddy.snippet`

@@ -390,3 +390,30 @@ class TestSingleDominantVoter:
         ])
         _, verdict = aggregate(results)
         assert verdict == "fake"
+
+
+class TestCustomDetectorCalibration:
+    def test_missing_file_means_raw(self, tmp_path):
+        from analyzers.implementations.custom_detector import apply_calibration, load_calibration
+
+        assert load_calibration(str(tmp_path)) is None
+        assert apply_calibration(0.42, None) == 0.42
+
+    def test_knots_are_loaded_and_applied(self, tmp_path):
+        import json as _json
+
+        from analyzers.implementations.custom_detector import apply_calibration, load_calibration
+
+        (tmp_path / "calibration.json").write_text(_json.dumps({"knots": [[0, 0], [0.5, 0.2], [1, 1]]}))
+        knots = load_calibration(str(tmp_path))
+        assert knots == [(0.0, 0.0), (0.5, 0.2), (1.0, 1.0)]
+        assert apply_calibration(0.5, knots) == pytest.approx(0.2)
+        assert apply_calibration(0.75, knots) == pytest.approx(0.6)
+        assert apply_calibration(0.0, knots) == 0.0 and apply_calibration(1.0, knots) == 1.0
+
+    @pytest.mark.parametrize("bad", ['{"knots": [[0.1, 0], [1, 1]]}', '{"knots": [[0, 0], [0.9, 0.5], [0.5, 0.6], [1, 1]]}', '{"knots": [[0, 0]]}', "{not json", '{"nope": 1}'])
+    def test_invalid_knots_are_rejected(self, tmp_path, bad):
+        from analyzers.implementations.custom_detector import load_calibration
+
+        (tmp_path / "calibration.json").write_text(bad)
+        assert load_calibration(str(tmp_path)) is None

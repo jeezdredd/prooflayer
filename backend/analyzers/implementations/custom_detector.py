@@ -18,7 +18,36 @@ RETRAIN_MODEL_DIR = os.environ.get(
 )
 FALLBACK_MODEL = "Nahrawy/AIorNot"
 
-_state = {"model": None, "processor": None, "loaded_path": None}
+_state = {"model": None, "processor": None, "loaded_path": None, "calibration": None}
+CALIBRATION_FILENAME = "calibration.json"
+
+
+def load_calibration(path: str) -> list[tuple[float, float]] | None:
+    """Monotone knots shipped next to a retrained model, or None for the raw score."""
+    cal_path = os.path.join(path, CALIBRATION_FILENAME)
+    if not os.path.isfile(cal_path):
+        return None
+    try:
+        with open(cal_path) as fh:
+            knots = json.load(fh)["knots"]
+        knots = [(float(x), float(y)) for x, y in knots]
+    except (OSError, ValueError, KeyError, TypeError):
+        logger.warning("custom_detector: unreadable %s, using raw scores", cal_path)
+        return None
+    if len(knots) < 2 or knots != sorted(knots) or knots[0] != (0.0, 0.0) or knots[-1] != (1.0, 1.0):
+        logger.warning("custom_detector: rejected calibration knots %s", knots)
+        return None
+    return knots
+
+
+def apply_calibration(raw: float, knots) -> float:
+    raw = min(max(float(raw), 0.0), 1.0)
+    if not knots:
+        return raw
+    for (x0, y0), (x1, y1) in zip(knots, knots[1:]):
+        if raw <= x1:
+            return y1 if x1 == x0 else y0 + (y1 - y0) * (raw - x0) / (x1 - x0)
+    return 1.0
 
 
 def _model_path() -> str:
@@ -63,6 +92,7 @@ def _load():
         _state["model"] = to_device(model)
         _state["processor"] = AutoImageProcessor.from_pretrained(path)
         _state["loaded_path"] = path
+        _state["calibration"] = load_calibration(path) if os.path.isdir(path) else None
         logger.info("custom_detector loaded %s on %s", path, get_device())
     return _state["model"], _state["processor"]
 
@@ -86,7 +116,7 @@ def _ai_probability(model, probs) -> float:
 
 class CustomDetector(BaseAnalyzer):
     name = "custom_detector"
-    version = "1.2.0"
+    version = "1.3.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -114,9 +144,14 @@ class CustomDetector(BaseAnalyzer):
 
         source = _state["loaded_path"] or FALLBACK_MODEL
         retrained = source != FALLBACK_MODEL
+        raw_prob = ai_prob
+        knots = _state["calibration"]
+        ai_prob = apply_calibration(raw_prob, knots)
         evidence = {
             "model": "prooflayer-retrained" if retrained else FALLBACK_MODEL,
             "ai_probability": round(ai_prob, 4),
+            "raw_probability": round(raw_prob, 4),
+            "calibrated": bool(knots),
             "retrained": retrained,
         }
         if retrained:
