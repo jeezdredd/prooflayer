@@ -47,6 +47,9 @@ MEDIA_PRIVATE = os.environ.get("MEDIA_PRIVATE", "true").lower() == "true"
 AWS_DEFAULT_ACL = None if MEDIA_PRIVATE else "public-read"
 AWS_S3_FILE_OVERWRITE = False
 AWS_QUERYSTRING_EXPIRE = int(os.environ.get("AWS_QUERYSTRING_EXPIRE", "3600"))
+AWS_S3_PUBLIC_ENDPOINT_URL = os.environ.get("AWS_S3_PUBLIC_ENDPOINT_URL", "") or (
+    f"https://{AWS_S3_CUSTOM_DOMAIN}" if AWS_S3_CUSTOM_DOMAIN else ""
+)
 
 if AWS_STORAGE_BUCKET_NAME:
     _storage_options = {
@@ -56,6 +59,7 @@ if AWS_STORAGE_BUCKET_NAME:
         "default_acl": AWS_DEFAULT_ACL,
         "querystring_auth": MEDIA_PRIVATE,
         "querystring_expire": AWS_QUERYSTRING_EXPIRE,
+        "public_endpoint_url": AWS_S3_PUBLIC_ENDPOINT_URL or None,
         "file_overwrite": False,
         "addressing_style": "path",
         "signature_version": "s3v4",
@@ -65,7 +69,7 @@ if AWS_STORAGE_BUCKET_NAME:
 
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "content.storage.PublicSignedS3Storage",
             "OPTIONS": _storage_options,
         },
         "staticfiles": {

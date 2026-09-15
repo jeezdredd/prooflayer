@@ -14,25 +14,24 @@ import { useAuthStore } from "../stores/authStore";
 const TRIBUNAL_FALLBACK = "Tribunal 1.1";
 
 const ANALYZERS = [
-  { code: "01", name: "Metadata & Provenance", tag: "EXIF · PNG params · C2PA", desc: "EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have.", Icon: Fingerprint, idle: { rotate: [0, -6, 6, 0] } },
-  { code: "02", name: "Error Level Analysis", tag: "splicing, not synthesis", desc: "Re-saves at fixed JPEG quality and looks for localised recompression outliers. Flags splicing and editing; it never votes on whether an image is AI.", Icon: ScanLine, idle: { y: [-3, 3, -3] } },
-  { code: "03", name: "Community Forensics ViT", tag: "2.7M images · 4,803 generators", desc: "ViT-S/16 trained on 2.7M images from 4,803 generators. Runs on a native-resolution crop plus a global view; its score is calibrated against twenty 2026 generators.", Icon: Brain, idle: { scale: [1, 1.12, 1] } },
-  { code: "04", name: "Retrained Detector", tag: "learns from your corrections", desc: "Fine-tuned from the human review queue and our own labelled sets, so verdicts you correct today change the model tomorrow. Sees Flux 2, Sora 2 and GPT Image where the rest of the bench is blind.", Icon: GraduationCap, idle: { rotate: [0, 8, 0], y: [0, -2, 0] } },
-  { code: "05", name: "AI Ensemble", tag: "two classifiers, photo gate", desc: "Two independent image classifiers behind a photographic-content gate, so screenshots and diagrams are not judged by models trained on photos.", Icon: Layers, idle: { y: [0, -3, 0], scale: [1, 1.06, 1] } },
-  { code: "06", name: "Vision LLM", tag: "must name the defect", desc: "A cautious forensic prompt. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.", Icon: Eye, idle: { scaleY: [1, 0.15, 1] } },
-  { code: "07", name: "Video Frame Sampler", tag: "whole clip, median verdict", desc: "Frames sampled across the whole clip, not the first eight seconds, each scored by the forensics ViT. The clip gets the median.", Icon: Film, idle: { x: [-2, 2, -2] } },
-  { code: "08", name: "Audio Spectrogram", tag: "vocoder artifacts", desc: "MFCC variance, spectral flatness, pitch, noise floor. Vocoder artifacts and synthetic-voice patterns raise flags and a probability.", Icon: AudioLines, idle: { scaleY: [1, 1.35, 0.8, 1] } },
-  { code: "09", name: "Text LLM", tag: "authorship signals", desc: "AI authorship from perplexity, sentence rhythm, and discourse markers.", Icon: Type, idle: { y: [0, -2, 0] } },
+  { code: "01", name: "Metadata & Provenance", tag: "EXIF · PNG params · C2PA", desc: "EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have.", Icon: Fingerprint },
+  { code: "02", name: "Error Level Analysis", tag: "splicing, not synthesis", desc: "Re-saves at fixed JPEG quality and looks for localised recompression outliers. Flags splicing and editing; it never votes on whether an image is AI.", Icon: ScanLine },
+  { code: "03", name: "Community Forensics ViT", tag: "2.7M images · 4,803 generators", desc: "ViT-S/16 trained on 2.7M images from 4,803 generators. Runs on a native-resolution crop plus a global view; its score is calibrated against twenty 2026 generators.", Icon: Brain },
+  { code: "04", name: "Retrained Detector", tag: "learns from your corrections", desc: "Fine-tuned from the human review queue and our own labelled sets, so verdicts you correct today change the model tomorrow. Sees Flux 2, Sora 2 and GPT Image where the rest of the bench is blind.", Icon: GraduationCap },
+  { code: "05", name: "AI Ensemble", tag: "two classifiers, photo gate", desc: "Two independent image classifiers behind a photographic-content gate, so screenshots and diagrams are not judged by models trained on photos.", Icon: Layers },
+  { code: "06", name: "Vision LLM", tag: "must name the defect", desc: "A cautious forensic prompt. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.", Icon: Eye },
+  { code: "07", name: "Video Frame Sampler", tag: "whole clip, median verdict", desc: "Frames sampled across the whole clip, not the first eight seconds, each scored by the forensics ViT. The clip gets the median.", Icon: Film },
+  { code: "08", name: "Audio Spectrogram", tag: "vocoder artifacts", desc: "MFCC variance, spectral flatness, pitch, noise floor. Vocoder artifacts and synthetic-voice patterns raise flags and a probability.", Icon: AudioLines },
+  { code: "09", name: "Text LLM", tag: "authorship signals", desc: "AI authorship from perplexity, sentence rhythm, and discourse markers.", Icon: Type },
 ];
 
 const TRIBUNAL_RULES = [
-  { Icon: Scale, title: "Weighted standing", body: "Every member's vote is weighted by measured reliability, not by guess. Members that failed the measurement were removed.", idle: { rotate: [-8, 8, -8] } },
-  { Icon: ShieldCheck, title: "Calibrated on real photos", body: "Thresholds are set on the tail of real-photo scores across hundreds of originals, so lifting recall on new generators added zero false accusations.", idle: { scale: [1, 1.1, 1] } },
-  { Icon: Gavel, title: "Split bench goes to a human", body: "When confident members disagree and the minority carries real weight, the case is escalated for review instead of averaged into a shrug.", idle: { rotate: [0, -25, 0] } },
-  { Icon: Fingerprint, title: "Every verdict is traceable", body: "Each result carries the Tribunal version and a fingerprint of the exact roster and weights that produced it.", idle: { opacity: [1, 0.45, 1] } },
+  { Icon: Scale, title: "Weighted standing", body: "Every member's vote is weighted by measured reliability, not by guess. Members that failed the measurement were removed." },
+  { Icon: ShieldCheck, title: "Calibrated on real photos", body: "Thresholds are set on the tail of real-photo scores across hundreds of originals, so lifting recall on new generators added zero false accusations." },
+  { Icon: Gavel, title: "Split bench goes to a human", body: "When confident members disagree and the minority carries real weight, the case is escalated for review instead of averaged into a shrug." },
+  { Icon: Fingerprint, title: "Every verdict is traceable", body: "Each result carries the Tribunal version and a fingerprint of the exact roster and weights that produced it." },
 ];
 
-const IDLE = { duration: 2.4, repeat: Infinity, repeatType: "loop" as const, ease: "easeInOut" as const };
 
 const FEATURES = [
   {
@@ -457,8 +456,9 @@ export default function LandingPage() {
                 >
                   <motion.div
                     className="text-signal-amber/80 mb-4 inline-flex"
-                    animate={r.idle}
-                    transition={{ ...IDLE, delay: i * 0.3 }}
+                    animate={{ scale: open ? 1.15 : 1, color: open ? "var(--signal-amber)" : undefined }}
+                    whileHover={{ scale: 1.12, y: -2 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 18 }}
                   >
                     <Icon size={22} strokeWidth={1.5} />
                   </motion.div>
@@ -505,8 +505,9 @@ export default function LandingPage() {
                     </div>
                     <motion.div
                       className="text-signal-amber/70 group-hover:text-signal-amber inline-flex md:col-span-1"
-                      animate={a.idle}
-                      transition={{ ...IDLE, delay: i * 0.2 }}
+                      animate={{ scale: open ? 1.2 : 1, rotate: open ? -8 : 0 }}
+                      whileHover={{ scale: 1.15 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 18 }}
                     >
                       <Icon size={18} strokeWidth={1.5} />
                     </motion.div>
@@ -515,7 +516,7 @@ export default function LandingPage() {
                     </div>
                     <div className="col-span-3 md:col-span-5 flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">
                       <span>{a.tag}</span>
-                      <motion.span animate={{ rotate: open ? 45 : 0 }} className="text-ink-600 text-base leading-none">+</motion.span>
+                      <motion.span animate={{ rotate: open ? 45 : 0 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="text-ink-600 text-base leading-none">+</motion.span>
                     </div>
                   </button>
                   <AnimatePresence initial={false}>
@@ -541,9 +542,9 @@ export default function LandingPage() {
               className="grid grid-cols-[auto_auto_1fr] md:grid-cols-12 items-center gap-3 md:gap-6 py-4"
             >
               <div className="w-6 md:col-span-1" />
-              <motion.div className="text-signal-violet/70 inline-flex md:col-span-1" animate={{ rotate: [0, 180, 360], scale: [1, 1.2, 1] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }}>
+              <div className="text-signal-violet/70 inline-flex md:col-span-1">
                 <Sparkles size={18} strokeWidth={1.5} />
-              </motion.div>
+              </div>
               <div className="font-display text-xl md:text-2xl italic text-ink-300 leading-tight md:col-span-5">
                 Measured, not assumed.
               </div>

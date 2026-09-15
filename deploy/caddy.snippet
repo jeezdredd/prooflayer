@@ -27,13 +27,16 @@ http://api.prooflayer.cloud {
     }
 }
 
-# ===== Media (MinIO public-read bucket) =====
+# ===== Media (MinIO, private bucket, presigned URLs) =====
+# The backend signs URLs against https://media.prooflayer.cloud with path-style keys
+# (/prooflayer-media/<key>?X-Amz-...). SigV4 covers host and path, so: do NOT rewrite a path
+# that already carries the bucket, and pass the original Host header through to MinIO.
+# Bare legacy paths (/<key>) still get the bucket prefixed; they only work while unsigned.
 http://media.prooflayer.cloud {
     encode zstd gzip
-    rewrite * /prooflayer-media{path}
-    reverse_proxy 127.0.0.1:9000 {
-        header_up Host {upstream_hostport}
-    }
+    @bare not path /prooflayer-media/*
+    rewrite @bare /prooflayer-media{path}
+    reverse_proxy 127.0.0.1:9000
 }
 
 # ===== Django Admin =====

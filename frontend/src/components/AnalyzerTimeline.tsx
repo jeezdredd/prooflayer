@@ -283,7 +283,7 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                 <pre className="font-mono text-[11px] text-ink-200 overflow-x-auto overflow-y-auto max-h-52 whitespace-pre-wrap leading-relaxed">
                   {JSON.stringify(
                     Object.fromEntries(
-                      Object.entries(step.result.evidence).filter(([k]) => k !== "heatmap_url")
+                      Object.entries(step.result.evidence).filter(([k]) => k !== "heatmap_url" && k !== "heatmap_path")
                     ),
                     null, 2
                   )}

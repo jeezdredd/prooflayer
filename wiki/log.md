@@ -2,6 +2,12 @@
 
 Newest at top.
 
+## [2026-09-15] presigned-media-fix | Signed media URLs for a public endpoint; Caddy media block
+
+- Source: prod `.env`, live `default_storage.url()` output on the server, storages 1.14.6 `url()`, `deploy/caddy.snippet`
+- Pages created: [[fixes/presigned-media-public-endpoint]]
+- Pages updated: [[hot]]
+
 ## [2026-09-04] tribunal-1.1-retrain | Ensemble named and versioned; custom_detector retrained on 2026 generators
 
 - Source: `retrain_detector` run (CF backbone, openfake + hf), `fetch_openfake --start-row-group 6` + `dedupe_dataset` for a held-out test, eval JSONs (eval9 baseline, eval10 retrained, eval12/13 Tribunal 1.1 confirm), offline weight/rule simulation with the real `aggregate()`
