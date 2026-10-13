@@ -17,6 +17,7 @@ from analyzers.text.classifier import TextClassifier
 from analyzers.text.normalize import normalize_for_model
 
 LANGS = ("en", "ru", "fr")
+MIN_CROP = 64
 
 
 def read_rows(path: Path) -> list[dict]:
@@ -89,8 +90,9 @@ class Command(BaseCommand):
             seqs = []
             for i in indices:
                 ids = encoded[i]
-                start = random.randint(0, len(ids) - body) if len(ids) > body else 0
-                seqs.append(tokenizer.build_inputs_with_special_tokens(ids[start : start + body]))
+                length = random.randint(min(len(ids), MIN_CROP), min(len(ids), body))
+                start = random.randint(0, len(ids) - length)
+                seqs.append(tokenizer.build_inputs_with_special_tokens(ids[start : start + length]))
             batch = tokenizer.pad({"input_ids": seqs}, return_tensors="pt")
             batch["labels"] = torch.tensor([rows[i]["label"] for i in indices])
             return batch
