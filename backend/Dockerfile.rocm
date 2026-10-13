@@ -39,9 +39,11 @@ RUN sed -i '/^[[:space:]]*"torch[>=<]/d; /^[[:space:]]*"torchvision[>=<]/d; /^[[
 
 RUN for i in 1 2 3; do \
       uv pip install --system --no-cache \
-        https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl \
+        https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl \
       && break || sleep 5; \
     done
+
+RUN python -c "import numpy, scipy, spacy; from transformers.generation import GenerationMixin; assert int(numpy.__version__.split('.')[0]) >= 2, numpy.__version__; spacy.load('en_core_web_sm'); print('ml stack ok', numpy.__version__, scipy.__version__, spacy.__version__)"
 
 COPY backend/ /app/
 
