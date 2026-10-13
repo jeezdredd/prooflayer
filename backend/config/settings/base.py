@@ -100,6 +100,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "users.authentication.ApiKeyAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -114,6 +115,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "common.throttling.StaffBypassAnonRateThrottle",
         "common.throttling.StaffBypassUserRateThrottle",
+        "common.throttling.ApiKeyRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "20/hour",
@@ -123,6 +125,7 @@ REST_FRAMEWORK = {
         "login": "20/hour",
         "resend_verification": "5/hour",
         "widget": "120/hour",
+        "api": "120/min",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

@@ -31,6 +31,7 @@ const FeedDetailPage = lazy(() => import("./pages/FeedDetailPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const RefundPage = lazy(() => import("./pages/RefundPage"));
+const DevelopersPage = lazy(() => import("./pages/DevelopersPage"));
 
 function PageLoader() {
   return (
@@ -82,6 +83,7 @@ function AppRoutes() {
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/review" element={<ReviewQueuePage />} />
               <Route path="/factcheck" element={<FactCheckPage />} />
+              <Route path="/developers" element={<DevelopersPage />} />
             </Route>
           </Route>
         </Route>

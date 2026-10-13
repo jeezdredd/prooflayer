@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import timedelta
 
@@ -88,3 +89,59 @@ class EmailLog(models.Model):
 
     def __str__(self):
         return f"{self.kind} {self.status} {self.to_email}"
+
+
+API_KEY_PREFIX = "pl_"
+API_KEY_VISIBLE_CHARS = 11
+
+
+def _hash_api_key(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+class ApiKey(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="api_keys")
+    name = models.CharField(max_length=80)
+    prefix = models.CharField(max_length=16, db_index=True)
+    key_hash = models.CharField(max_length=64, unique=True)
+    webhook_url = models.URLField(max_length=500, blank=True)
+    webhook_secret = models.CharField(max_length=64, blank=True)
+    last_webhook_at = models.DateTimeField(null=True, blank=True)
+    last_webhook_status = models.CharField(max_length=40, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "api_keys"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.prefix}... ({self.user.email})"
+
+    @property
+    def is_active(self) -> bool:
+        return self.revoked_at is None
+
+    @classmethod
+    def issue(cls, user, name: str, webhook_url: str = "") -> tuple["ApiKey", str]:
+        raw = API_KEY_PREFIX + secrets.token_urlsafe(32)
+        key = cls.objects.create(
+            user=user,
+            name=name,
+            prefix=raw[:API_KEY_VISIBLE_CHARS],
+            key_hash=_hash_api_key(raw),
+            webhook_url=webhook_url,
+            webhook_secret=cls.new_webhook_secret() if webhook_url else "",
+        )
+        return key, raw
+
+    @staticmethod
+    def new_webhook_secret() -> str:
+        return "whsec_" + secrets.token_hex(24)
+
+    @classmethod
+    def lookup(cls, raw: str) -> "ApiKey | None":
+        if not raw or not raw.startswith(API_KEY_PREFIX):
+            return None
+        return cls.objects.select_related("user").filter(key_hash=_hash_api_key(raw)).first()

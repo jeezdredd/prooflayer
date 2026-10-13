@@ -5,7 +5,7 @@ from django.utils.html import format_html
 
 from unfold.admin import ModelAdmin
 
-from .models import EmailLog, User
+from .models import ApiKey, EmailLog, User
 
 
 class EmailUserCreationForm(UserCreationForm):
@@ -73,4 +73,16 @@ class EmailLogAdmin(ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ApiKey)
+class ApiKeyAdmin(ModelAdmin):
+    list_display = ("prefix", "name", "user", "created_at", "last_used_at", "revoked_at", "last_webhook_status")
+    list_filter = ("revoked_at",)
+    search_fields = ("prefix", "name", "user__email")
+    readonly_fields = ("prefix", "key_hash", "webhook_secret", "created_at", "last_used_at", "last_webhook_at", "last_webhook_status")
+    exclude = ()
+
+    def has_add_permission(self, request):
         return False

@@ -115,6 +115,13 @@ def _pin_host(host: str, addresses: list[str]):
 _REDIRECT_CODES = {301, 302, 303, 307, 308}
 
 
+def safe_post(url, *, data, headers=None, timeout=10):
+    """POST to a public URL with the validated addresses pinned. Never follows redirects."""
+    host, addresses = resolve_and_validate(url)
+    with _pin_host(host, addresses):
+        return requests.post(url, data=data, headers=headers, timeout=timeout, allow_redirects=False)
+
+
 def safe_get(url, *, timeout=10, stream=True, headers=None, max_redirects=3):
     current = url
     for _ in range(max_redirects + 1):

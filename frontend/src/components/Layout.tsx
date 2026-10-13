@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import {
   Upload, LayoutDashboard, ScrollText, Users, GitCompareArrows,
-  Code2, Activity, Shield, LogOut, Home, Menu, X, Layers, Globe, CreditCard,
+  Code2, Activity, Shield, LogOut, Home, Menu, X, Layers, Globe, CreditCard, KeyRound,
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
@@ -26,9 +26,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/feed", label: "Public Feed", code: "05", Icon: Globe },
   { to: "/compare", label: "Compare", code: "06", Icon: GitCompareArrows },
   { to: "/embed", label: "Embed", code: "07", Icon: Code2 },
-  { to: "/pricing", label: "Pricing", code: "08", Icon: CreditCard },
-  { to: "/status", label: "Status", code: "09", Icon: Activity },
-  { to: "/credits", label: "Credits", code: "10", Icon: Layers },
+  { to: "/developers", label: "API", code: "08", Icon: KeyRound },
+  { to: "/pricing", label: "Pricing", code: "09", Icon: CreditCard },
+  { to: "/status", label: "Status", code: "10", Icon: Activity },
+  { to: "/credits", label: "Credits", code: "11", Icon: Layers },
 ];
 
 function Time() {
@@ -131,7 +132,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                   />
                 )}
                 <Shield size={16} strokeWidth={1.5} />
-                <span className="text-ink-500 mr-1 tabular-nums">11</span>
+                <span className="text-ink-500 mr-1 tabular-nums">12</span>
                 <span>Review</span>
               </>
             )}

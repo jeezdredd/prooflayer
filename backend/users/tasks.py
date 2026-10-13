@@ -1,13 +1,19 @@
 import logging
 
+import requests
+
 from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
+from common.url_safety import UnsafeUrlError, safe_post
+from content.models import Submission
+
 from .emails import deliver
-from .models import EmailVerificationToken
+from .models import ApiKey, EmailVerificationToken
+from .webhooks import build_payload, encode
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -141,3 +147,42 @@ def send_verification_email(user_id: int) -> str:
 
     logger.info("verification email %s user=%s", status, user_id)
     return status
+
+
+WEBHOOK_TIMEOUT = 10
+WEBHOOK_RETRYABLE_STATUS = 500
+
+
+class WebhookRetryable(Exception):
+    pass
+
+
+@shared_task(
+    queue="default",
+    autoretry_for=(WebhookRetryable, requests.RequestException),
+    retry_backoff=30,
+    retry_backoff_max=600,
+    max_retries=3,
+)
+def deliver_submission_webhook(submission_id):
+    submission = Submission.objects.select_related("api_key").filter(id=submission_id).first()
+    key = submission.api_key if submission else None
+    if key is None or not key.is_active or not key.webhook_url or not key.webhook_secret:
+        return "skipped"
+    body, headers = encode(build_payload(submission), key.webhook_secret)
+    try:
+        response = safe_post(key.webhook_url, data=body, headers=headers, timeout=WEBHOOK_TIMEOUT)
+    except UnsafeUrlError:
+        _record(key, "blocked_url")
+        return "blocked_url"
+    except requests.RequestException:
+        _record(key, "network_error")
+        raise
+    _record(key, str(response.status_code))
+    if response.status_code >= WEBHOOK_RETRYABLE_STATUS:
+        raise WebhookRetryable(f"receiver returned {response.status_code}")
+    return str(response.status_code)
+
+
+def _record(key, status_text):
+    ApiKey.objects.filter(pk=key.pk).update(last_webhook_at=timezone.now(), last_webhook_status=status_text[:40])

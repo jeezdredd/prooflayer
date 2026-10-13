@@ -1,5 +1,7 @@
 import client from "./client";
 import type {
+  ApiKey,
+  ApiKeyCreated,
   FactCheckStatus,
   PaginatedResponse,
   ProvenanceResult,
@@ -160,3 +162,9 @@ export const reanalyzeSubmission = (id: string) =>
 
 export const togglePublic = (id: string) =>
   client.post<{ is_public: boolean }>(`/content/submissions/${id}/toggle-public/`, {});
+
+export const apiKeys = {
+  list: () => client.get<ApiKey[]>("/auth/api-keys/"),
+  create: (data: { name: string; webhook_url?: string }) => client.post<ApiKeyCreated>("/auth/api-keys/", data),
+  revoke: (id: number) => client.delete(`/auth/api-keys/${id}/`),
+};

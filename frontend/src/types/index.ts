@@ -194,3 +194,20 @@ export interface SubscriptionInfo {
   stripe_subscription_id: string;
   current_period_end: string | null;
 }
+
+export interface ApiKey {
+  id: number;
+  name: string;
+  prefix: string;
+  webhook_url: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  last_webhook_at: string | null;
+  last_webhook_status: string;
+}
+
+export interface ApiKeyCreated extends ApiKey {
+  key: string;
+  webhook_secret: string;
+}

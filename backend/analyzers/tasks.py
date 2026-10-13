@@ -11,6 +11,7 @@ from content.models import Submission
 from content.storage_utils import local_file
 
 from users.emails import deliver
+from users.tasks import deliver_submission_webhook
 
 from .aggregator import aggregate
 from .ensemble import ensemble_info
@@ -194,6 +195,8 @@ def aggregate_verdicts(result_ids, submission_id):
         "final_score", "final_verdict", "status", "status_message",
         "tribunal_version", "tribunal_fingerprint",
     ])
+    if submission.api_key_id:
+        deliver_submission_webhook.delay(str(submission.id))
     _publish_status(
         submission_id, "",
         status="completed",

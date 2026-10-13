@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-13 (b): Phase B - **API keys + webhooks** for Pro (`users.ApiKey`, hashed, shown once; `Api-Key`/`X-API-Key` auth; 120/min per-key throttle; plan downgrade disables keys; keys cannot manage keys). Webhooks signed `HMAC(secret, ts.body)`, delivered via new `safe_post` (IP-pinned, no redirects), retries on 5xx. `/developers` page. See [[api/api-keys]].
+
 - 2026-10-13: Phase A of the Classroom/API plan. Tier flags were never enforced on the backend (`can_compare` etc. only went to the frontend) - new `billing/permissions.py` (`HasTierFeature`, `CanCompare`, `CanUseApi`, `CanEmbed`, 402 `upgrade_required`, staff bypass, inactive subscription loses features). Also found `SubmissionViewSet.get_permissions` returned a hard `IsAuthenticated` for every non-create action, silently discarding any `@action(permission_classes=...)` - now `super()`. Submissions stamped with `tribunal_version`/`tribunal_fingerprint` at aggregation; detail returns the stamp + `is_current`; re-analyze endpoint + button. Hoisted function-level imports out of my own tests/modules (CLAUDE.md rule). Plan: `~/.claude/plans/groovy-popping-prism.md`.
 
 - 2026-09-15 (b): **Tribunal 1.2** - calibration for the retrained custom_detector. Held-out real tail: p95 0.848, max 0.975; AI p10 0.984 -> threshold 0.98 = 0% FPR / 90% TPR. Shipped `calibration.json` in the model dir (`load_calibration` in custom_detector, knots `(0.98->0.50, 0.981->0.80)`), weight stays 3.5 (4.5+ produced a false fake on holdout). Result: real->suspicious 8 -> 1, real->fake 0, caught 103 -> 97, AI->authentic 4 -> 9, AUC 0.995. `make ship-retrained` rsyncs the json with the model. See [[concepts/tribunal]].
