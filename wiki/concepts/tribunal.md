@@ -49,6 +49,23 @@ return `ensemble: null`.
   `dataset/hf` (2022 diffusiondb) and `dataset/openfake` (20 current generators). The numbers
   go in the changelog below, not in prose elsewhere.
 
+## Phase F result (2026-10-13): not shipped
+
+Retrained custom_detector (CF backbone, 1/3/5 epochs) on openfake + hf + openfake_big (1400 more
+images, 1 duplicate removed, none overlapping openfake_test) plus a retrained CLIP probe. Measured
+through the real aggregate() on openfake_test (245) and a separate calibration pool:
+
+| config | openfake_test caught /145 | AI->authentic | real->fake | calib pool caught /149 |
+|---|---|---|---|---|
+| 1.3 shipped (custom 3.5 / probe 2.5) | 108 | 6 | 0 | 127 |
+| 1.3 models, probe weight 3.5 | 111 | 5 | 0 | 127 |
+| candidate e3 + new probe, best weights | 105 to 108 | 6 to 7 | 0 | 124 to 125 |
+
+More data of the same kind did not help, and the probe-weight gain on openfake_test did not
+reproduce on the calibration pool (fit-on-test optimism). Decision: keep 1.3 for images. The
+candidate stays in ~/.cache/huggingface/prooflayer-retrained-candidate for reference. Next gains
+need a new signal (another backbone or frequency-domain features), not more OpenFake samples.
+
 ## Changelog
 
 ### 1.4 - 2026-10-13
