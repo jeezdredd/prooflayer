@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-13 (c): Phase C - **batch upload** (`content.Batch`, `content/intake.py` now owns quota + submission creation for single, batch and re-analyze). ZIP: basename-only (traversal), member/total/ratio caps, junk skipped and reported. Whole-batch quota check, no partial batches. CSV export with formula-injection guard. `/batches/:id` page. See [[api/batches]].
+
 - 2026-10-13 (b): Phase B - **API keys + webhooks** for Pro (`users.ApiKey`, hashed, shown once; `Api-Key`/`X-API-Key` auth; 120/min per-key throttle; plan downgrade disables keys; keys cannot manage keys). Webhooks signed `HMAC(secret, ts.body)`, delivered via new `safe_post` (IP-pinned, no redirects), retries on 5xx. `/developers` page. See [[api/api-keys]].
 
 - 2026-10-13: Phase A of the Classroom/API plan. Tier flags were never enforced on the backend (`can_compare` etc. only went to the frontend) - new `billing/permissions.py` (`HasTierFeature`, `CanCompare`, `CanUseApi`, `CanEmbed`, 402 `upgrade_required`, staff bypass, inactive subscription loses features). Also found `SubmissionViewSet.get_permissions` returned a hard `IsAuthenticated` for every non-create action, silently discarding any `@action(permission_classes=...)` - now `super()`. Submissions stamped with `tribunal_version`/`tribunal_fingerprint` at aggregation; detail returns the stamp + `is_current`; re-analyze endpoint + button. Hoisted function-level imports out of my own tests/modules (CLAUDE.md rule). Plan: `~/.claude/plans/groovy-popping-prism.md`.

@@ -211,3 +211,22 @@ export interface ApiKeyCreated extends ApiKey {
   key: string;
   webhook_secret: string;
 }
+
+export interface BatchItem {
+  id: string;
+  original_filename: string;
+  mime_type: string;
+  status: string;
+  final_verdict: string;
+  final_score: number | null;
+  tribunal_version: string;
+}
+
+export interface BatchDetail {
+  id: string;
+  name: string;
+  created_at: string;
+  skipped: { name: string; reason: string }[];
+  summary: { total: number; done: number; by_status: Record<string, number>; by_verdict: Record<string, number> };
+  items: BatchItem[];
+}

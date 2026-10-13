@@ -10,6 +10,10 @@ const ALLOWED_TYPES = [
   "text/plain",
 ];
 
+const ZIP_TYPES = ["application/zip", "application/x-zip-compressed"];
+
+const isZip = (f: File) => ZIP_TYPES.includes(f.type) || f.name.toLowerCase().endsWith(".zip");
+
 const MAX_SIZE = 500 * 1024 * 1024;
 
 const FORMAT_GROUPS = [
@@ -21,10 +25,11 @@ const FORMAT_GROUPS = [
 
 interface UploadFormProps {
   onFileSelect: (file: File) => void;
+  onBatchSelect?: (files: File[]) => void;
   disabled?: boolean;
 }
 
-export default function UploadForm({ onFileSelect, disabled }: UploadFormProps) {
+export default function UploadForm({ onFileSelect, onBatchSelect, disabled }: UploadFormProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [hoverGroup, setHoverGroup] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,22 +51,35 @@ export default function UploadForm({ onFileSelect, disabled }: UploadFormProps) 
     [onFileSelect],
   );
 
+  const route = useCallback(
+    (list: FileList | null | undefined) => {
+      const files = Array.from(list ?? []);
+      if (files.length === 0) return;
+      if (onBatchSelect && (files.length > 1 || isZip(files[0]))) {
+        setError(null);
+        onBatchSelect(files);
+        return;
+      }
+      validateAndSubmit(files[0]);
+    },
+    [onBatchSelect, validateAndSubmit],
+  );
+
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) validateAndSubmit(file);
+      route(e.dataTransfer.files);
     },
-    [validateAndSubmit],
+    [route],
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) validateAndSubmit(file);
+      route(e.target.files);
+      e.target.value = "";
     },
-    [validateAndSubmit],
+    [route],
   );
 
   return (
@@ -164,7 +182,8 @@ export default function UploadForm({ onFileSelect, disabled }: UploadFormProps) 
         <input
           ref={inputRef}
           type="file"
-          accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.avi,.mkv,.webm,.mp3,.wav,.ogg,.flac,.m4a,.txt"
+          accept={`.jpg,.jpeg,.png,.webp,.mp4,.mov,.avi,.mkv,.webm,.mp3,.wav,.ogg,.flac,.m4a,.txt${onBatchSelect ? ",.zip" : ""}`}
+          multiple={Boolean(onBatchSelect)}
           onChange={handleChange}
           className="hidden"
         />

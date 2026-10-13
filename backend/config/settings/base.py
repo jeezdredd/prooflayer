@@ -126,6 +126,7 @@ REST_FRAMEWORK = {
         "resend_verification": "5/hour",
         "widget": "120/hour",
         "api": "120/min",
+        "batch": "10/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

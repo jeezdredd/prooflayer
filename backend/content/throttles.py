@@ -13,3 +13,7 @@ class UploadRateThrottle(UserRateThrottle):
 
 class WidgetRateThrottle(AnonRateThrottle):
     scope = "widget"
+
+
+class BatchRateThrottle(UploadRateThrottle):
+    scope = "batch"

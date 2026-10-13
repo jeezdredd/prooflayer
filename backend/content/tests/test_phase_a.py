@@ -147,7 +147,7 @@ class TestReanalyze:
         assert response.status_code == 404
         mock_delay.assert_not_called()
 
-    @patch("content.views.uploads_this_month", return_value=10_000)
+    @patch("content.intake.uploads_this_month", return_value=10_000)
     @patch("content.views.dispatch_analysis.delay")
     def test_quota_exhausted_blocks(self, mock_delay, mock_uploads):
         user = UserFactory(is_verified=True)

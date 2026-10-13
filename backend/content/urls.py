@@ -1,6 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
+from .batch_views import BatchViewSet
+
 from .views import (
     AnalyzeUrlView,
     PublicFeedView,
@@ -14,6 +16,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register("submissions", SubmissionViewSet, basename="submission")
+router.register("batches", BatchViewSet, basename="batch")
 
 urlpatterns = [
     path("", include(router.urls)),

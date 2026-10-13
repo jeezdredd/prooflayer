@@ -1,6 +1,7 @@
 import client from "./client";
 import type {
   ApiKey,
+  BatchDetail,
   ApiKeyCreated,
   FactCheckStatus,
   PaginatedResponse,
@@ -167,4 +168,15 @@ export const apiKeys = {
   list: () => client.get<ApiKey[]>("/auth/api-keys/"),
   create: (data: { name: string; webhook_url?: string }) => client.post<ApiKeyCreated>("/auth/api-keys/", data),
   revoke: (id: number) => client.delete(`/auth/api-keys/${id}/`),
+};
+
+export const batches = {
+  create: (files: File[], name = "") => {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    if (name) form.append("name", name);
+    return client.post<BatchDetail>("/content/batches/", form, { headers: { "Content-Type": "multipart/form-data" } });
+  },
+  detail: (id: string) => client.get<BatchDetail>(`/content/batches/${id}/`),
+  exportCsv: (id: string) => client.get<Blob>(`/content/batches/${id}/export.csv/`, { responseType: "blob" }),
 };

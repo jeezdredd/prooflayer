@@ -29,6 +29,7 @@ from .serializers import (
     SubmissionListSerializer,
     VerdictOverrideSerializer,
 )
+from .intake import QuotaExceeded, check_quota, create_submission
 from .throttles import UploadRateThrottle, WidgetRateThrottle
 from .validators import validate_file_size, validate_mime_type
 from analyzers.models import AnalysisResult
@@ -99,39 +100,20 @@ class SubmissionViewSet(
         return super().get_permissions()
 
     def create(self, request, *args, **kwargs):
-        if not (request.user.is_staff or request.user.is_superuser):
-            sub = get_or_create_subscription(request.user)
-            used = uploads_this_month(request.user)
-            if used >= sub.uploads_per_month:
-                return Response(
-                    {
-                        "detail": f"Monthly upload limit reached ({sub.uploads_per_month} uploads). Upgrade to Pro for more.",
-                        "code": "upload_limit_reached",
-                        "limit": sub.uploads_per_month,
-                        "used": used,
-                        "tier": sub.tier,
-                    },
-                    status=status.HTTP_402_PAYMENT_REQUIRED,
-                )
-
         file = request.FILES.get("file")
         if not file:
             return Response({"file": ["No file provided."]}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            check_quota(request.user)
+        except QuotaExceeded as exc:
+            return Response(exc.as_response_data(), status=status.HTTP_402_PAYMENT_REQUIRED)
 
         validate_file_size(file)
         mime_type = validate_mime_type(file)
-
-        submission = Submission.objects.create(
-            user=request.user,
-            file=file,
-            original_filename=file.name,
-            mime_type=mime_type,
-            file_size=file.size,
+        submission = create_submission(
+            request.user, file, mime_type,
             api_key=request.auth if isinstance(request.auth, ApiKey) else None,
         )
-
-        process_submission.delay(str(submission.id))
-
         serializer = SubmissionCreateSerializer(submission)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -176,14 +158,10 @@ class SubmissionViewSet(
         submission = self.get_object()
         if submission.status not in (Submission.Status.COMPLETED, Submission.Status.FAILED):
             return Response({"detail": "Submission is still being analyzed."}, status=status.HTTP_409_CONFLICT)
-        user = request.user
-        if not (user.is_staff or user.is_superuser):
-            sub = get_or_create_subscription(user)
-            if uploads_this_month(user) >= sub.uploads_per_month:
-                return Response(
-                    {"detail": "Monthly upload limit reached.", "code": "upload_limit_reached"},
-                    status=status.HTTP_402_PAYMENT_REQUIRED,
-                )
+        try:
+            check_quota(request.user)
+        except QuotaExceeded as exc:
+            return Response(exc.as_response_data(), status=status.HTTP_402_PAYMENT_REQUIRED)
         AnalysisResult.objects.filter(submission=submission).delete()
         cache.delete(AGGREGATION_LOCK_KEY.format(submission_id=submission.id))
         submission.status = Submission.Status.PROCESSING

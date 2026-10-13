@@ -9,6 +9,21 @@ from pgvector.django import HnswIndex, VectorField
 CLIP_EMBED_DIM = 512
 
 
+class Batch(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="batches")
+    name = models.CharField(max_length=120, blank=True)
+    skipped = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "submission_batches"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name or self.id} ({self.user_id})"
+
+
 class Submission(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending"
@@ -51,6 +66,13 @@ class Submission(models.Model):
         max_length=10,
         blank=True,
         choices=[("real", "Real"), ("fake", "Fake")],
+    )
+    batch = models.ForeignKey(
+        Batch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="submissions",
     )
     api_key = models.ForeignKey(
         "users.ApiKey",

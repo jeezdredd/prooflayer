@@ -32,6 +32,7 @@ const TermsPage = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const RefundPage = lazy(() => import("./pages/RefundPage"));
 const DevelopersPage = lazy(() => import("./pages/DevelopersPage"));
+const BatchPage = lazy(() => import("./pages/BatchPage"));
 
 function PageLoader() {
   return (
@@ -84,6 +85,7 @@ function AppRoutes() {
               <Route path="/review" element={<ReviewQueuePage />} />
               <Route path="/factcheck" element={<FactCheckPage />} />
               <Route path="/developers" element={<DevelopersPage />} />
+              <Route path="/batches/:id" element={<BatchPage />} />
             </Route>
           </Route>
         </Route>

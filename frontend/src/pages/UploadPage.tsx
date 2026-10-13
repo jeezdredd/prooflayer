@@ -8,6 +8,7 @@ import { useUploadFile, useSubmissionDetail } from "../hooks/useUpload";
 import { useUploadStore } from "../stores/uploadStore";
 import { useShaderStore } from "../stores/shaderStore";
 import { toast } from "../components/ui/Toast";
+import { batches } from "../api/endpoints";
 
 export default function UploadPage() {
   const { status, progress, submissionId, reset } = useUploadStore();
@@ -29,6 +30,26 @@ export default function UploadPage() {
       navigate(`/results/${submissionId}`);
     }
   }, [submissionId, status, navigate]);
+
+  const [batchUploading, setBatchUploading] = useState(false);
+
+  const handleBatchSelect = async (files: File[]) => {
+    reset();
+    triggerBoost();
+    setBatchUploading(true);
+    try {
+      const res = await batches.create(files);
+      const skipped = res.data.skipped.length;
+      toast.success(`${res.data.summary.total} files queued${skipped ? `, ${skipped} skipped` : ""}`);
+      navigate(`/batches/${res.data.id}`);
+    } catch (err: unknown) {
+      const data = (err as { response?: { status?: number; data?: { code?: string; detail?: string; files?: string[] } } })?.response;
+      if (data?.status === 402) toast.error(data.data?.detail || "Monthly limit reached");
+      else toast.error(data?.data?.files?.[0] || "Batch upload failed");
+    } finally {
+      setBatchUploading(false);
+    }
+  };
 
   const handleFileSelect = (file: File) => {
     reset();
@@ -67,8 +88,12 @@ export default function UploadPage() {
       >
         <UploadForm
           onFileSelect={handleFileSelect}
-          disabled={status === "uploading" || status === "processing"}
+          onBatchSelect={handleBatchSelect}
+          disabled={batchUploading || status === "uploading" || status === "processing"}
         />
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mt-3">
+          {batchUploading ? "uploading batch…" : "drop several files or a ZIP to check them as one batch (up to 100)"}
+        </p>
       </motion.div>
 
       <AnimatePresence mode="wait">
