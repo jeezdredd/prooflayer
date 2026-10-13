@@ -450,7 +450,7 @@ export default function LandingPage() {
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Suspense fallback={<div className="case-card crop-marks aspect-[4/5] md:aspect-[16/9]" />}>
+            <Suspense fallback={<div className="aspect-[4/5] md:aspect-[16/9]" />}>
               <TribunalBrain
                 members={ANALYZERS}
                 activeCode={openCheck}

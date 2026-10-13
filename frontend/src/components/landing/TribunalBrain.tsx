@@ -88,7 +88,8 @@ void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   float depth = -mv.z;
   float twinkle = 0.84 + 0.16 * sin(uTime * (0.5 + aSeed * 1.6) + aSeed * 40.0);
-  vec3 base = vec3(0.58, 0.64, 1.0) * (0.022 + 0.34 * pow(aShade, 1.25)) * twinkle;
+  vec3 base = vec3(0.58, 0.64, 1.0) * (0.026 + 0.42 * pow(aShade, 1.25)) * twinkle;
+  float spark = pow(max(0.0, sin(uTime * (0.35 + aSeed * 1.9) + aSeed * 91.0)), 160.0) * step(0.82, aSeed);
   vec3 tint = vec3(0.0);
   for (int i = 0; i < MEMBERS; i++) {
     float d = distance(position, uMember[i]);
@@ -97,8 +98,8 @@ void main() {
   float scanD = (position.y - uScan) / 0.035;
   float scan = exp(-scanD * scanD) * (0.25 + aShade);
   float fade = clamp(1.2 - (depth - uCamDist) * 1.15, 0.12, 1.0);
-  vColor = (base + tint * 0.55 + vec3(0.13, 0.83, 0.93) * scan * 0.22) * fade;
-  gl_PointSize = (0.0085 + 0.004 * aShade + scan * 0.006) * uSize / depth;
+  vColor = (base + tint * 0.55 + vec3(0.13, 0.83, 0.93) * scan * 0.22 + vec3(0.75, 0.9, 1.0) * spark * 0.9) * fade;
+  gl_PointSize = (0.0085 + 0.004 * aShade + scan * 0.006 + spark * 0.009) * uSize / depth;
   gl_Position = projectionMatrix * mv;
 }`;
 
@@ -729,7 +730,7 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
   };
 
   return (
-    <figure ref={wrapRef} className="relative case-card crop-marks px-4 sm:px-6 pt-4 pb-4 select-none">
+    <figure ref={wrapRef} className="relative select-none">
       <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 w-full h-full" aria-hidden="true" />
       <figcaption className="relative flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">
         <span>
@@ -743,10 +744,11 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
         </span>
       </figcaption>
 
-      <div className="relative grid md:grid-cols-[minmax(0,1fr)_minmax(0,2.6fr)_minmax(0,1fr)] gap-2 mt-2">
+      <div className="relative grid md:grid-cols-[minmax(0,0.9fr)_minmax(0,3.2fr)_minmax(0,0.9fr)] gap-2 mt-2">
         <ol className="hidden md:flex flex-col justify-center gap-3 pr-2">{columns.back.map((i) => callout(i, "back"))}</ol>
 
-        <div ref={stageRef} className="relative aspect-[20/23] md:aspect-[5/4] w-full overflow-hidden">
+        <div ref={stageRef} className="relative aspect-[20/23] md:aspect-[4/3] w-full">
+          <div aria-hidden="true" className="brain-aura pointer-events-none absolute inset-[8%_6%_22%_6%] rounded-full" />
           <canvas ref={glRef} className="absolute inset-0 w-full h-full" aria-hidden="true" />
           {failed && (
             <div className="absolute inset-0 grid place-items-center font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600">
@@ -783,7 +785,7 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -4, filter: "blur(4px)" }}
                 transition={{ duration: 0.35 }}
-                className={`font-display text-lg leading-tight mt-0.5 ${ruled ? current.tone : "text-ink-600 italic"}`}
+                className={`font-display text-lg leading-tight mt-0.5 ${ruled ? current.tone : "text-ink-400 italic"}`}
               >
                 {ruled ? current.verdict : "deliberating"}
               </motion.div>
