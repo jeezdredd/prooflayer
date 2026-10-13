@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-13 (e): **Tribunal 1.3** - new member `clip_probe` (logistic regression on the CLIP B/32 embedding provenance already stores; first independent backbone). Held-out AUC 0.980, real max 0.696. Weight 2.5 + step calibration at 0.70, split-validated. Ensemble on openfake_test: caught 97 -> 108/145, AI->authentic 9 -> 6, real->fake 0, AUC 0.998; gpt-image-2 0 -> 50%, sora-2 29 -> 43%, veo-3 25 -> 38%. L/14 measured (0.986) and rejected on cost. `make ship-retrained` now ships `clip_probe/` too. See [[analyzers/clip-probe]].
+
 - 2026-10-13 (d): Phase D - **Classroom** (new `classroom` app; Education creates, anyone joins by code; class uploads billed to the teacher via `uploads_this_month`; teacher sees only class work, never personal; delete/publish author-only; lapsed teacher plan pauses class uploads with 403) and **PDF/DOCX submissions** (`common/documents.py`, `llm_text` reads them, word counts in metadata, libmagic-as-zip DOCX detection). See [[services/classroom]].
 
 - 2026-10-13 (c): Phase C - **batch upload** (`content.Batch`, `content/intake.py` now owns quota + submission creation for single, batch and re-analyze). ZIP: basename-only (traversal), member/total/ratio caps, junk skipped and reported. Whole-batch quota check, no partial batches. CSV export with formula-injection guard. `/batches/:id` page. See [[api/batches]].

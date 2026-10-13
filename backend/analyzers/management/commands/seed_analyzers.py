@@ -19,7 +19,8 @@ _FALLBACK_VERSIONS = {
     "analyzers.implementations.llm_analyzer": "1.1.0",
     "analyzers.implementations.audio_analyzer": "1.2.0",
     "analyzers.implementations.llm_image_analyzer": "1.7.0",
-    "analyzers.implementations.custom_detector": "1.2.0",
+    "analyzers.implementations.custom_detector": "1.3.0",
+    "analyzers.implementations.clip_probe": "1.0.0",
     "analyzers.implementations.clip_detector": "2.0.0",
 }
 
@@ -97,6 +98,13 @@ ANALYZERS = [
         "weight": 1.0,
         "queue": "ml",
         "timeout": 180,
+    },
+    {
+        "name": "clip_probe",
+        "analyzer_class": "analyzers.implementations.clip_probe.CLIPProbeDetector",
+        "weight": 2.5,
+        "queue": "ml",
+        "timeout": 120,
     },
     {
         "name": "custom_detector",

@@ -114,11 +114,17 @@ seed-server:
 # hf_cache volume on the server. The worker reloads on the next inference (path change
 # is detected), no restart needed. MODEL_DIR defaults to the local HF cache location.
 MODEL_DIR ?= $(HOME)/.cache/huggingface/prooflayer-retrained/image
+PROBE_DIR ?= $(HOME)/.cache/huggingface/prooflayer-retrained/clip_probe
 ship-retrained:
 	@test -f "$(MODEL_DIR)/model.safetensors" || (echo "no model at $(MODEL_DIR)"; exit 1)
 	ssh $(SERVER) "mkdir -p ~/retrained-upload"
 	rsync -av --delete --exclude 'checkpoint-*' --exclude 'training_args.bin' "$(MODEL_DIR)/" $(SERVER):~/retrained-upload/
 	$(SSH) "docker run --rm -v deploy_hf_cache:/hf -v ~/retrained-upload:/src:ro alpine sh -c 'mkdir -p /hf/prooflayer-retrained && rm -rf /hf/prooflayer-retrained/image && cp -r /src /hf/prooflayer-retrained/image && ls -la /hf/prooflayer-retrained/image'"
+	@if [ -f "$(PROBE_DIR)/head.json" ]; then \
+		ssh $(SERVER) "mkdir -p ~/probe-upload" && \
+		rsync -av --delete "$(PROBE_DIR)/" $(SERVER):~/probe-upload/ && \
+		ssh $(SERVER) "docker run --rm -v deploy_hf_cache:/hf -v ~/probe-upload:/src:ro alpine sh -c 'rm -rf /hf/prooflayer-retrained/clip_probe && cp -r /src /hf/prooflayer-retrained/clip_probe && ls -la /hf/prooflayer-retrained/clip_probe'"; \
+	else echo "no clip probe at $(PROBE_DIR), skipped"; fi
 
 seed-analyzers-server:
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_analyzers"

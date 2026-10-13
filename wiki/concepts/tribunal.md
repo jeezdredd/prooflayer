@@ -51,6 +51,22 @@ return `ensemble: null`.
 
 ## Changelog
 
+### 1.3 - 2026-10-13
+New member [[analyzers/clip-probe]] (weight 2.5): a logistic-regression probe on the CLIP
+ViT-B/32 embedding that provenance already stores, so it costs one dot product. First member
+on a backbone different from community_forensics / custom_detector. Calibrated with a step just
+above the highest real-photo score.
+
+| set | version | ensemble AUC | AI caught | AI called authentic | real called fake | real suspicious |
+|---|---|---|---|---|---|---|
+| openfake_test | 1.2 | 0.995 | 97/145 (67%) | 9 | 0/100 | 1 |
+| openfake_test | **1.3** | **0.998** | **108/145 (74%)** | **6** | **0/100** | 1 |
+| diffusiondb | 1.3 | 1.000 | 60/60 | 0 | 0/60 | 0 |
+
+The blind spots moved: gpt-image-2 0% -> 50%, sora-2 29% -> 43%, veo-3 25% -> 38%; flux.2-klein
+stays at 25% and is the weakest generator now.
+
+
 ### 1.2 - 2026-09-15
 Calibration for the retrained member ([[analyzers/custom_detector]]): `calibration.json`
 next to the weights maps everything a real photo ever scored (<= 0.975) to <= 0.50 and lifts
