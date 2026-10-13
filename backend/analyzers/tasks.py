@@ -128,6 +128,7 @@ def run_analyzer(self, submission_id, config_id):
 
         meta = dict(submission.metadata or {})
         meta["submission_id"] = str(submission_id)
+        meta["mime_type"] = submission.mime_type
         with local_file(submission.file) as path:
             output = analyzer.analyze(path, meta)
         execution_time = time.time() - start_time

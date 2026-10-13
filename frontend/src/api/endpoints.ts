@@ -1,6 +1,10 @@
 import client from "./client";
 import type {
   ApiKey,
+  ClassMember,
+  ClassStats,
+  ClassSubmission,
+  Classroom,
   BatchDetail,
   ApiKeyCreated,
   FactCheckStatus,
@@ -39,9 +43,10 @@ export const auth = {
 };
 
 export const content = {
-  upload: (file: File, onProgress?: (progress: number) => void) => {
+  upload: (file: File, onProgress?: (progress: number) => void, classroom?: string | null) => {
     const formData = new FormData();
     formData.append("file", file);
+    if (classroom) formData.append("classroom", classroom);
     return client.post<Submission>("/content/submissions/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
       onUploadProgress: (e) => {
@@ -171,12 +176,29 @@ export const apiKeys = {
 };
 
 export const batches = {
-  create: (files: File[], name = "") => {
+  create: (files: File[], name = "", classroom?: string | null) => {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
     if (name) form.append("name", name);
+    if (classroom) form.append("classroom", classroom);
     return client.post<BatchDetail>("/content/batches/", form, { headers: { "Content-Type": "multipart/form-data" } });
   },
   detail: (id: string) => client.get<BatchDetail>(`/content/batches/${id}/`),
   exportCsv: (id: string) => client.get<Blob>(`/content/batches/${id}/export.csv/`, { responseType: "blob" }),
+};
+
+export const classrooms = {
+  list: () => client.get<Classroom[]>("/classroom/classrooms/"),
+  create: (name: string) => client.post<Classroom>("/classroom/classrooms/", { name }),
+  detail: (id: string) => client.get<Classroom>(`/classroom/classrooms/${id}/`),
+  update: (id: string, data: Partial<Pick<Classroom, "name" | "archived">>) => client.patch<Classroom>(`/classroom/classrooms/${id}/`, data),
+  join: (code: string) => client.post<Classroom>("/classroom/join/", { code }),
+  leave: (id: string) => client.post(`/classroom/classrooms/${id}/leave/`, {}),
+  rotateCode: (id: string) => client.post<{ join_code: string }>(`/classroom/classrooms/${id}/rotate-code/`, {}),
+  roster: (id: string) => client.get<ClassMember[]>(`/classroom/classrooms/${id}/roster/`),
+  removeMember: (id: string, userId: number) => client.delete(`/classroom/classrooms/${id}/members/${userId}/`),
+  submissions: (id: string, params?: { student?: number; verdict?: string }) =>
+    client.get<ClassSubmission[]>(`/classroom/classrooms/${id}/submissions/`, { params }),
+  stats: (id: string) => client.get<ClassStats>(`/classroom/classrooms/${id}/stats/`),
+  exportCsv: (id: string) => client.get<Blob>(`/classroom/classrooms/${id}/export.csv/`, { responseType: "blob" }),
 };

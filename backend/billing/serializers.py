@@ -15,6 +15,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "can_compare",
             "can_embed",
             "can_api",
+            "can_classroom",
             "uploads_per_month",
         )
         read_only_fields = fields

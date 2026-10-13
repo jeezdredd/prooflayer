@@ -5,6 +5,9 @@ import requests as http_requests
 from django.conf import settings
 
 from analyzers.base import AnalysisOutput, BaseAnalyzer
+from common.documents import DOCUMENT_MIMES, read_text
+
+TEXT_LIMIT = 5000
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +32,13 @@ class LLMTextAnalyzer(BaseAnalyzer):
     version = "1.0.0"
 
     def supported_mime_types(self) -> list[str]:
-        return ["text/plain"]
+        return ["text/plain", *DOCUMENT_MIMES]
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
         try:
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                text = f.read(5000)
+            text = read_text(file_path, metadata.get("mime_type", "text/plain"), TEXT_LIMIT)
         except Exception as exc:
-            return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": str(exc)})
+            return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": f"cannot read text: {exc}"})
 
         if len(text.strip()) < 50:
             return AnalysisOutput(confidence=0.5, verdict="inconclusive", evidence={"reason": "text too short"})

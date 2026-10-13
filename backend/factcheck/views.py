@@ -1,9 +1,5 @@
-import io
 import logging
-import zipfile
 
-import docx
-import pypdf
 import requests as http_requests
 import trafilatura
 from django.core.cache import cache
@@ -13,6 +9,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.documents import extract_docx, extract_pdf
 from common.url_safety import UnsafeUrlError, safe_get
 from users.permissions import IsVerifiedUser
 
@@ -23,8 +20,6 @@ logger = logging.getLogger(__name__)
 
 DOC_MAX_BYTES = 10 * 1024 * 1024
 URL_FETCH_MAX_BYTES = 1024 * 1024
-DOCX_MAX_UNCOMPRESSED = 100 * 1024 * 1024
-PDF_MAX_PAGES = 300
 
 
 class FactCheckView(APIView):
@@ -141,9 +136,9 @@ class FactCheckExtractDocView(APIView):
         mime = (f.content_type or "").lower()
         try:
             if "pdf" in mime or name.endswith(".pdf"):
-                text = _extract_pdf(data)
+                text = extract_pdf(data)
             elif "word" in mime or "officedocument" in mime or name.endswith(".docx"):
-                text = _extract_docx(data)
+                text = extract_docx(data)
             else:
                 return Response(
                     {"error": "unsupported format (PDF/DOCX only)"},
@@ -165,25 +160,3 @@ class FactCheckExtractDocView(APIView):
             )
         return Response({"text": text})
 
-
-def _extract_pdf(data: bytes) -> str:
-    reader = pypdf.PdfReader(io.BytesIO(data))
-    parts = []
-    for page in reader.pages[:PDF_MAX_PAGES]:
-        try:
-            parts.append(page.extract_text() or "")
-        except Exception:
-            continue
-    return "\n".join(parts)
-
-
-def _extract_docx(data: bytes) -> str:
-    try:
-        with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            uncompressed = sum(zi.file_size for zi in zf.infolist())
-    except zipfile.BadZipFile as exc:
-        raise ValueError("Invalid DOCX file") from exc
-    if uncompressed > DOCX_MAX_UNCOMPRESSED:
-        raise ValueError("Document too large when decompressed")
-    doc = docx.Document(io.BytesIO(data))
-    return "\n".join(p.text for p in doc.paragraphs if p.text)

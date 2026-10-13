@@ -1,8 +1,13 @@
 import mimetypes
+import zipfile
 
 import magic
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
+
+from common.documents import DOCX_MIME
+
+DOCX_MARKER = "word/document.xml"
 
 MIME_ALIASES = {
     "audio/mp3": "audio/mpeg",
@@ -12,6 +17,19 @@ MIME_ALIASES = {
     "video/x-mp4": "video/mp4",
     "image/jpg": "image/jpeg",
 }
+
+
+def _is_docx(file) -> bool:
+    """libmagic often reports DOCX as plain ZIP; accept it only if it really is a Word package."""
+    if not (getattr(file, "name", "") or "").lower().endswith(".docx"):
+        return False
+    try:
+        with zipfile.ZipFile(file) as archive:
+            return DOCX_MARKER in archive.namelist()
+    except zipfile.BadZipFile:
+        return False
+    finally:
+        file.seek(0)
 
 
 def validate_mime_type(file):
@@ -24,6 +42,8 @@ def validate_mime_type(file):
             mime = guessed
 
     mime = MIME_ALIASES.get(mime, mime)
+    if mime == "application/zip" and _is_docx(file):
+        mime = DOCX_MIME
 
     if mime not in settings.ALLOWED_MIME_TYPES:
         raise ValidationError(

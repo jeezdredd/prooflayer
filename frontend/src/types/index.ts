@@ -191,6 +191,7 @@ export interface SubscriptionInfo {
   can_compare: boolean;
   can_embed: boolean;
   can_api: boolean;
+  can_classroom: boolean;
   stripe_subscription_id: string;
   current_period_end: string | null;
 }
@@ -229,4 +230,49 @@ export interface BatchDetail {
   skipped: { name: string; reason: string }[];
   summary: { total: number; done: number; by_status: Record<string, number>; by_verdict: Record<string, number> };
   items: BatchItem[];
+}
+
+export interface Classroom {
+  id: string;
+  name: string;
+  role: "teacher" | "student";
+  join_code: string | null;
+  owner_name: string;
+  student_count: number;
+  archived: boolean;
+  created_at: string;
+}
+
+export interface ClassMember {
+  user_id: number;
+  username: string;
+  email: string;
+  joined_at: string;
+  total: number;
+  flagged: number;
+  last_submission_at: string | null;
+}
+
+export interface ClassSubmission {
+  id: string;
+  original_filename: string;
+  mime_type: string;
+  status: string;
+  final_verdict: string;
+  final_score: number | null;
+  tribunal_version: string;
+  created_at: string;
+  student_id: number;
+  student: string;
+  words: number | null;
+}
+
+export interface ClassStats {
+  students: number;
+  total: number;
+  completed: number;
+  flagged: number;
+  flagged_share: number;
+  by_verdict: Record<string, number>;
+  timeline: { date: string; total: number; flagged: number }[];
 }

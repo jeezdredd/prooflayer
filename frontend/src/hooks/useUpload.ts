@@ -8,9 +8,9 @@ export function useUploadFile() {
   const { setProgress, setSubmissionId, setStatus, setError } = useUploadStore();
 
   return useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: ({ file, classroom }: { file: File; classroom?: string | null }) => {
       setStatus("uploading");
-      return content.upload(file, setProgress);
+      return content.upload(file, setProgress, classroom);
     },
     onSuccess: (res) => {
       setSubmissionId(res.data.id);

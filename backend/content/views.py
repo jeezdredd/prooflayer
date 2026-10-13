@@ -7,11 +7,12 @@ import requests as http_requests
 from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.db.models import Count, Avg
+from django.db.models import Avg, Count, Q
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 
 from users.models import ApiKey
@@ -29,6 +30,8 @@ from .serializers import (
     SubmissionListSerializer,
     VerdictOverrideSerializer,
 )
+from classroom.access import classroom_for_upload, quota_owner
+
 from .intake import QuotaExceeded, check_quota, create_submission
 from .throttles import UploadRateThrottle, WidgetRateThrottle
 from .validators import validate_file_size, validate_mime_type
@@ -80,7 +83,10 @@ class SubmissionViewSet(
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        return Submission.objects.filter(user=self.request.user)
+        user = self.request.user
+        if self.action == "list":
+            return Submission.objects.filter(user=user)
+        return Submission.objects.filter(Q(user=user) | Q(classroom__owner=user)).distinct()
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -103,8 +109,9 @@ class SubmissionViewSet(
         file = request.FILES.get("file")
         if not file:
             return Response({"file": ["No file provided."]}, status=status.HTTP_400_BAD_REQUEST)
+        classroom = classroom_for_upload(request.user, request.data.get("classroom"))
         try:
-            check_quota(request.user)
+            check_quota(quota_owner(request.user, classroom))
         except QuotaExceeded as exc:
             return Response(exc.as_response_data(), status=status.HTTP_402_PAYMENT_REQUIRED)
 
@@ -113,6 +120,7 @@ class SubmissionViewSet(
         submission = create_submission(
             request.user, file, mime_type,
             api_key=request.auth if isinstance(request.auth, ApiKey) else None,
+            classroom=classroom,
         )
         serializer = SubmissionCreateSerializer(submission)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -120,6 +128,8 @@ class SubmissionViewSet(
     @action(detail=True, methods=["post"], url_path="toggle-public")
     def toggle_public(self, request, id=None):
         submission = self.get_object()
+        if submission.user_id != request.user.id:
+            return Response({"detail": "Only the author can change visibility."}, status=status.HTTP_403_FORBIDDEN)
         if submission.status != "completed":
             return Response({"detail": "Only completed submissions can be made public."}, status=status.HTTP_400_BAD_REQUEST)
         submission.is_public = not submission.is_public
@@ -159,7 +169,7 @@ class SubmissionViewSet(
         if submission.status not in (Submission.Status.COMPLETED, Submission.Status.FAILED):
             return Response({"detail": "Submission is still being analyzed."}, status=status.HTTP_409_CONFLICT)
         try:
-            check_quota(request.user)
+            check_quota(quota_owner(request.user, submission.classroom))
         except QuotaExceeded as exc:
             return Response(exc.as_response_data(), status=status.HTTP_402_PAYMENT_REQUIRED)
         AnalysisResult.objects.filter(submission=submission).delete()
@@ -173,6 +183,8 @@ class SubmissionViewSet(
         return Response({"id": str(submission.id), "status": submission.status}, status=status.HTTP_202_ACCEPTED)
 
     def perform_destroy(self, instance):
+        if instance.user_id != self.request.user.id:
+            raise PermissionDenied("Only the author can delete a submission.")
         if instance.file:
             instance.file.delete(save=False)
         if instance.thumbnail:

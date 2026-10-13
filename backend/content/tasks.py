@@ -3,6 +3,8 @@ import logging
 from celery import shared_task
 from django.core.files.base import ContentFile
 
+from common.documents import DOCUMENT_MIMES, document_stats, read_text
+
 from .models import Submission
 from .services import (
     check_known_fake,
@@ -33,7 +35,11 @@ MIME_LABELS = {
     "audio/flac": "audio",
     "audio/mp4": "audio",
     "text/plain": "text",
+    "application/pdf": "document",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "document",
 }
+
+DOCUMENT_STATS_LIMIT = 2_000_000
 
 
 def _set_status(submission, message):
@@ -82,6 +88,11 @@ def process_submission(self, submission_id):
         _set_status(submission, "Extracting metadata...")
         with local_file(submission.file) as path:
             metadata = extract_metadata(path)
+            if submission.mime_type == "text/plain" or submission.mime_type in DOCUMENT_MIMES:
+                try:
+                    metadata["document"] = document_stats(read_text(path, submission.mime_type, DOCUMENT_STATS_LIMIT))
+                except Exception:
+                    logger.warning("document stats failed for %s", submission.id, exc_info=True)
             submission.metadata = metadata
 
             thumb_buffer = generate_thumbnail(path)

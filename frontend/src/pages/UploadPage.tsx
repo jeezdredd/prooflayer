@@ -8,7 +8,8 @@ import { useUploadFile, useSubmissionDetail } from "../hooks/useUpload";
 import { useUploadStore } from "../stores/uploadStore";
 import { useShaderStore } from "../stores/shaderStore";
 import { toast } from "../components/ui/Toast";
-import { batches } from "../api/endpoints";
+import { batches, classrooms as classroomApi } from "../api/endpoints";
+import { useQuery } from "@tanstack/react-query";
 
 export default function UploadPage() {
   const { status, progress, submissionId, reset } = useUploadStore();
@@ -32,13 +33,20 @@ export default function UploadPage() {
   }, [submissionId, status, navigate]);
 
   const [batchUploading, setBatchUploading] = useState(false);
+  const [classroom, setClassroom] = useState<string>("");
+  const { data: myClasses = [] } = useQuery({
+    queryKey: ["classrooms"],
+    queryFn: () => classroomApi.list().then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const uploadTargets = myClasses.filter((c) => !c.archived);
 
   const handleBatchSelect = async (files: File[]) => {
     reset();
     triggerBoost();
     setBatchUploading(true);
     try {
-      const res = await batches.create(files);
+      const res = await batches.create(files, "", classroom || null);
       const skipped = res.data.skipped.length;
       toast.success(`${res.data.summary.total} files queued${skipped ? `, ${skipped} skipped` : ""}`);
       navigate(`/batches/${res.data.id}`);
@@ -55,7 +63,7 @@ export default function UploadPage() {
     reset();
     setPendingFile(file);
     triggerBoost();
-    upload.mutate(file, {
+    upload.mutate({ file, classroom: classroom || null }, {
       onSuccess: () => toast.success(`${file.name} uploaded`),
       onError: () => toast.error("Upload failed"),
     });
@@ -91,6 +99,23 @@ export default function UploadPage() {
           onBatchSelect={handleBatchSelect}
           disabled={batchUploading || status === "uploading" || status === "processing"}
         />
+        {uploadTargets.length > 0 && (
+          <label className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400">
+            Submit to
+            <select
+              value={classroom}
+              onChange={(e) => setClassroom(e.target.value)}
+              className="bg-ink-950 border border-[var(--line-strong)] px-2 py-1 normal-case tracking-normal text-ink-100 focus:border-signal-amber outline-none"
+            >
+              <option value="">my own checks</option>
+              {uploadTargets.map((c) => (
+                <option key={c.id} value={c.id}>
+                  class: {c.name}{c.role === "teacher" ? " (teacher)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mt-3">
           {batchUploading ? "uploading batch…" : "drop several files or a ZIP to check them as one batch (up to 100)"}
         </p>

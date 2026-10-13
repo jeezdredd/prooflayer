@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import {
   Upload, LayoutDashboard, ScrollText, Users, GitCompareArrows,
-  Code2, Activity, Shield, LogOut, Home, Menu, X, Layers, Globe, CreditCard, KeyRound,
+  Code2, Activity, Shield, LogOut, Home, Menu, X, Layers, Globe, CreditCard, KeyRound, GraduationCap,
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
@@ -22,14 +22,15 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/upload", label: "Verify", code: "01", Icon: Upload },
   { to: "/dashboard", label: "Dashboard", code: "02", Icon: LayoutDashboard },
   { to: "/factcheck", label: "Fact Check", code: "03", Icon: ScrollText },
-  { to: "/community-fakes", label: "Community", code: "04", Icon: Users },
-  { to: "/feed", label: "Public Feed", code: "05", Icon: Globe },
-  { to: "/compare", label: "Compare", code: "06", Icon: GitCompareArrows },
-  { to: "/embed", label: "Embed", code: "07", Icon: Code2 },
-  { to: "/developers", label: "API", code: "08", Icon: KeyRound },
-  { to: "/pricing", label: "Pricing", code: "09", Icon: CreditCard },
-  { to: "/status", label: "Status", code: "10", Icon: Activity },
-  { to: "/credits", label: "Credits", code: "11", Icon: Layers },
+  { to: "/classroom", label: "Classroom", code: "04", Icon: GraduationCap },
+  { to: "/community-fakes", label: "Community", code: "05", Icon: Users },
+  { to: "/feed", label: "Public Feed", code: "06", Icon: Globe },
+  { to: "/compare", label: "Compare", code: "07", Icon: GitCompareArrows },
+  { to: "/embed", label: "Embed", code: "08", Icon: Code2 },
+  { to: "/developers", label: "API", code: "09", Icon: KeyRound },
+  { to: "/pricing", label: "Pricing", code: "10", Icon: CreditCard },
+  { to: "/status", label: "Status", code: "11", Icon: Activity },
+  { to: "/credits", label: "Credits", code: "12", Icon: Layers },
 ];
 
 function Time() {
@@ -132,7 +133,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                   />
                 )}
                 <Shield size={16} strokeWidth={1.5} />
-                <span className="text-ink-500 mr-1 tabular-nums">12</span>
+                <span className="text-ink-500 mr-1 tabular-nums">13</span>
                 <span>Review</span>
               </>
             )}

@@ -8,6 +8,8 @@ const ALLOWED_TYPES = [
   "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm",
   "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/mp4",
   "text/plain",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
 const ZIP_TYPES = ["application/zip", "application/x-zip-compressed"];
@@ -20,7 +22,7 @@ const FORMAT_GROUPS = [
   { label: "Image", formats: ["JPEG", "PNG", "WEBP"], color: "text-signal-cyan", Icon: Image },
   { label: "Video", formats: ["MP4", "MOV", "MKV", "WEBM"], color: "text-signal-amber", Icon: Film },
   { label: "Audio", formats: ["MP3", "WAV", "OGG", "FLAC"], color: "text-signal-violet", Icon: AudioLines },
-  { label: "Text", formats: ["TXT"], color: "text-signal-sage", Icon: FileText },
+  { label: "Text", formats: ["TXT", "PDF", "DOCX"], color: "text-signal-sage", Icon: FileText },
 ];
 
 interface UploadFormProps {
@@ -182,7 +184,7 @@ export default function UploadForm({ onFileSelect, onBatchSelect, disabled }: Up
         <input
           ref={inputRef}
           type="file"
-          accept={`.jpg,.jpeg,.png,.webp,.mp4,.mov,.avi,.mkv,.webm,.mp3,.wav,.ogg,.flac,.m4a,.txt${onBatchSelect ? ",.zip" : ""}`}
+          accept={`.jpg,.jpeg,.png,.webp,.mp4,.mov,.avi,.mkv,.webm,.mp3,.wav,.ogg,.flac,.m4a,.txt,.pdf,.docx${onBatchSelect ? ",.zip" : ""}`}
           multiple={Boolean(onBatchSelect)}
           onChange={handleChange}
           className="hidden"

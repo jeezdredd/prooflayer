@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-13 (d): Phase D - **Classroom** (new `classroom` app; Education creates, anyone joins by code; class uploads billed to the teacher via `uploads_this_month`; teacher sees only class work, never personal; delete/publish author-only; lapsed teacher plan pauses class uploads with 403) and **PDF/DOCX submissions** (`common/documents.py`, `llm_text` reads them, word counts in metadata, libmagic-as-zip DOCX detection). See [[services/classroom]].
+
 - 2026-10-13 (c): Phase C - **batch upload** (`content.Batch`, `content/intake.py` now owns quota + submission creation for single, batch and re-analyze). ZIP: basename-only (traversal), member/total/ratio caps, junk skipped and reported. Whole-batch quota check, no partial batches. CSV export with formula-injection guard. `/batches/:id` page. See [[api/batches]].
 
 - 2026-10-13 (b): Phase B - **API keys + webhooks** for Pro (`users.ApiKey`, hashed, shown once; `Api-Key`/`X-API-Key` auth; 120/min per-key throttle; plan downgrade disables keys; keys cannot manage keys). Webhooks signed `HMAC(secret, ts.body)`, delivered via new `safe_post` (IP-pinned, no redirects), retries on 5xx. `/developers` page. See [[api/api-keys]].

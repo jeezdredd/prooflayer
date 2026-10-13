@@ -1,9 +1,12 @@
 import io
+import zipfile
+
 import pytest
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.exceptions import ValidationError
 
+from common.documents import DOCX_MIME
 from content.validators import validate_file_size, validate_mime_type
 
 
@@ -50,3 +53,27 @@ class TestValidateFileSize:
         f.size = 100
         with pytest.raises(ValidationError, match="File too large"):
             validate_file_size(f)
+
+
+class TestDocxDetection:
+    def _zip(self, name, members):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            for member in members:
+                zf.writestr(member, "x")
+        return SimpleUploadedFile(name, buf.getvalue(), content_type="application/zip")
+
+    def test_word_package_named_docx_is_docx(self):
+        f = self._zip("essay.docx", ["[Content_Types].xml", "word/document.xml"])
+        assert validate_mime_type(f) == DOCX_MIME
+        assert f.tell() == 0
+
+    def test_plain_zip_renamed_to_docx_is_rejected(self):
+        f = self._zip("essay.docx", ["evil.exe"])
+        with pytest.raises(ValidationError):
+            validate_mime_type(f)
+
+    def test_word_package_without_docx_name_is_rejected(self):
+        f = self._zip("archive.zip", ["word/document.xml"])
+        with pytest.raises(ValidationError):
+            validate_mime_type(f)

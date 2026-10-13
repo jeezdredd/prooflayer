@@ -142,7 +142,7 @@ class TestFactCheckExtractDocView:
         response = self.client.post(self.url, {"file": f}, format="multipart")
         assert response.status_code == 415
 
-    @patch("factcheck.views._extract_pdf", return_value="extracted pdf text")
+    @patch("factcheck.views.extract_pdf", return_value="extracted pdf text")
     def test_pdf_returns_text(self, mock_pdf):
         f = io.BytesIO(b"%PDF-1.4 minimal")
         f.name = "doc.pdf"

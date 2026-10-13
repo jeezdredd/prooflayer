@@ -68,6 +68,10 @@ class Subscription(models.Model):
         return self.tier in (self.Tier.PRO, self.Tier.EDUCATION, self.Tier.ENTERPRISE)
 
     @property
+    def can_classroom(self) -> bool:
+        return self.tier == self.Tier.EDUCATION
+
+    @property
     def can_api(self) -> bool:
         return self.tier in (self.Tier.PRO, self.Tier.EDUCATION, self.Tier.ENTERPRISE)
 
@@ -78,8 +82,15 @@ def get_or_create_subscription(user) -> Subscription:
 
 
 def uploads_this_month(user) -> int:
+    """Uploads charged to `user` this month.
+
+    A student's upload into a classroom is charged to the classroom owner (the teacher's
+    Education plan), not to the student, so it is excluded from the student's own count.
+    """
     now = timezone.now()
-    return user.submissions.filter(
+    submission_model = user.submissions.model
+    return submission_model.objects.filter(
+        models.Q(user=user, classroom__isnull=True) | models.Q(classroom__owner=user),
         created_at__year=now.year,
         created_at__month=now.month,
     ).count()

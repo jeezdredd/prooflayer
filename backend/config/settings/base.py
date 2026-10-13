@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "pgvector.django",
     "channels",
     "billing",
+    "classroom",
 ]
 
 MIDDLEWARE = [
@@ -168,6 +169,8 @@ ALLOWED_MIME_TYPES = [
     "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm",
     "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/mp4",
     "text/plain",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024

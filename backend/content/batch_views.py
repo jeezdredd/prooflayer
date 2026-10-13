@@ -6,6 +6,7 @@ from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from classroom.access import classroom_for_upload, quota_owner
 from users.models import ApiKey
 from users.permissions import IsVerifiedUser
 
@@ -98,19 +99,21 @@ class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.Retrie
                 {"files": ["None of the files are a supported type."], "skipped": intake.skipped},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        classroom = classroom_for_upload(request.user, request.data.get("classroom"))
         try:
-            check_quota(request.user, requested=len(intake.accepted))
+            check_quota(quota_owner(request.user, classroom), requested=len(intake.accepted))
         except QuotaExceeded as exc:
             return Response(exc.as_response_data(), status=status.HTTP_402_PAYMENT_REQUIRED)
 
         batch = Batch.objects.create(
             user=request.user,
             name=(request.data.get("name") or "")[:120],
+            classroom=classroom,
             skipped=intake.skipped,
         )
         api_key = request.auth if isinstance(request.auth, ApiKey) else None
         for upload, mime_type in intake.accepted:
-            create_submission(request.user, upload, mime_type, batch=batch, api_key=api_key)
+            create_submission(request.user, upload, mime_type, batch=batch, api_key=api_key, classroom=classroom)
         return Response(BatchSerializer(batch).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"], url_path="export.csv")

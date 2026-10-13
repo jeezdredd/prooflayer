@@ -33,6 +33,8 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const RefundPage = lazy(() => import("./pages/RefundPage"));
 const DevelopersPage = lazy(() => import("./pages/DevelopersPage"));
 const BatchPage = lazy(() => import("./pages/BatchPage"));
+const ClassroomPage = lazy(() => import("./pages/ClassroomPage"));
+const ClassroomDetailPage = lazy(() => import("./pages/ClassroomDetailPage"));
 
 function PageLoader() {
   return (
@@ -86,6 +88,8 @@ function AppRoutes() {
               <Route path="/factcheck" element={<FactCheckPage />} />
               <Route path="/developers" element={<DevelopersPage />} />
               <Route path="/batches/:id" element={<BatchPage />} />
+              <Route path="/classroom" element={<ClassroomPage />} />
+              <Route path="/classroom/:id" element={<ClassroomDetailPage />} />
             </Route>
           </Route>
         </Route>
