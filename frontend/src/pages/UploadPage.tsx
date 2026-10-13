@@ -85,7 +85,7 @@ export default function UploadPage() {
           Verify <span className="italic text-iris">Content</span>.
         </h1>
         <p className="text-ink-400 mt-4 max-w-xl leading-relaxed">
-          Submit image, video, audio, or text. Nine analyzers run in parallel.
+          Submit image, video, audio, or text. Ten analyzers run in parallel.
         </p>
       </motion.div>
 

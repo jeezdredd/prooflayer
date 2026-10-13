@@ -145,6 +145,52 @@ class TestOrgClassVisibility:
 
 
 @pytest.mark.django_db
+class TestAdminSupervision:
+    def _setup(self):
+        owner, org = _school()
+        teacher = UserFactory(is_verified=True)
+        OrgMember.objects.create(organization=org, user=teacher, role=OrgMember.Role.TEACHER)
+        cls = Classroom.create_for(teacher, "History", organization=org)
+        student = UserFactory(is_verified=True)
+        Membership.objects.create(classroom=cls, user=student)
+        work = SubmissionFactory(user=student, classroom=cls)
+        return owner, org, teacher, cls, student, work
+
+    def test_admin_runs_any_class_of_the_school(self):
+        owner, _, _, cls, student, work = self._setup()
+        client = _client(owner)
+        detail = client.get(reverse("classroom-detail", kwargs={"id": cls.id}))
+        assert detail.status_code == 200
+        assert detail.data["role"] == "teacher"
+        assert detail.data["join_code"] == cls.join_code
+        assert client.get(reverse("classroom-roster", kwargs={"id": cls.id})).data[0]["user_id"] == student.id
+        assert client.get(reverse("classroom-stats", kwargs={"id": cls.id})).status_code == 200
+        assert [row["id"] for row in client.get(reverse("classroom-submissions", kwargs={"id": cls.id})).data] == [str(work.id)]
+        assert client.get(reverse("submission-detail", kwargs={"id": work.id})).status_code == 200
+
+    def test_fellow_teacher_cannot_see_another_teachers_class(self):
+        _, org, _, cls, _, work = self._setup()
+        colleague = UserFactory(is_verified=True)
+        OrgMember.objects.create(organization=org, user=colleague, role=OrgMember.Role.TEACHER)
+        client = _client(colleague)
+        assert client.get(reverse("classroom-detail", kwargs={"id": cls.id})).status_code == 404
+        assert client.get(reverse("submission-detail", kwargs={"id": work.id})).status_code == 404
+
+    def test_admin_of_another_school_sees_nothing(self):
+        _, _, _, cls, _, work = self._setup()
+        other_owner = _edu_user()
+        Organization.create_for(other_owner, "Other", "other-school")
+        client = _client(other_owner)
+        assert client.get(reverse("classroom-detail", kwargs={"id": cls.id})).status_code == 404
+        assert client.get(reverse("submission-detail", kwargs={"id": work.id})).status_code == 404
+
+    def test_admin_does_not_see_students_personal_uploads(self):
+        owner, _, _, _, student, _ = self._setup()
+        private = SubmissionFactory(user=student)
+        assert _client(owner).get(reverse("submission-detail", kwargs={"id": private.id})).status_code == 404
+
+
+@pytest.mark.django_db
 @patch("content.intake.process_submission.delay")
 class TestOrgBilling:
     def test_upload_into_org_class_charges_org_owner_not_teacher(self, _delay):

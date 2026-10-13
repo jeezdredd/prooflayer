@@ -32,7 +32,6 @@ class JWTAuthMiddleware:
 
 
 def ws_allowed_origins(settings) -> list[str]:
-    """Same hosts AllowedHostsOriginValidator would accept, plus the classroom subdomain."""
     hosts = list(settings.ALLOWED_HOSTS)
     if settings.DEBUG and not hosts:
         hosts = ["localhost", "127.0.0.1", "[::1]"]

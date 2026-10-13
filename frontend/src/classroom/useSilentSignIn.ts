@@ -19,7 +19,6 @@ function signInFromCookie(): Promise<void> {
   return attempt;
 }
 
-/** The refresh cookie lives on the API host, so a session from prooflayer.cloud carries over here. */
 export function useSilentSignIn(): boolean {
   const [ready, setReady] = useState(false);
 

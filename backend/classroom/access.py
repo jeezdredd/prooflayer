@@ -8,7 +8,6 @@ from .models import Classroom, Membership, OrgMember
 
 
 def supervised_q(user, prefix: str = "") -> Q:
-    """Classes a user may run: their own, plus every class of a school they administer."""
     return Q(**{f"{prefix}owner": user}) | Q(**{
         f"{prefix}organization__members__user": user,
         f"{prefix}organization__members__role": OrgMember.Role.ADMIN,

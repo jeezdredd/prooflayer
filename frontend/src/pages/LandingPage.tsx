@@ -5,24 +5,26 @@ import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useIn
 import {
   ScanLine, Eye, Film, AudioLines, Type, Sparkles,
   Brain, Fingerprint, History, SearchCheck, Globe, Users2,
-  Gavel, Scale, GraduationCap, Layers, ShieldCheck,
+  Gavel, Scale, GraduationCap, Layers, ShieldCheck, Network,
 } from "lucide-react";
 import ShaderBackground from "../components/ui/ShaderBackground";
+import TribunalBrain, { type BrainMember } from "../components/landing/TribunalBrain";
 import client from "../api/client";
 import { useAuthStore } from "../stores/authStore";
 
 const TRIBUNAL_FALLBACK = "Tribunal 1.3";
 
-const ANALYZERS = [
-  { code: "01", name: "Metadata & Provenance", tag: "EXIF · PNG params · C2PA", desc: "EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have.", Icon: Fingerprint },
-  { code: "02", name: "Error Level Analysis", tag: "splicing, not synthesis", desc: "Re-saves at fixed JPEG quality and looks for localised recompression outliers. Flags splicing and editing; it never votes on whether an image is AI.", Icon: ScanLine },
-  { code: "03", name: "Community Forensics ViT", tag: "2.7M images · 4,803 generators", desc: "ViT-S/16 trained on 2.7M images from 4,803 generators. Runs on a native-resolution crop plus a global view; its score is calibrated against twenty 2026 generators.", Icon: Brain },
-  { code: "04", name: "Retrained Detector", tag: "learns from your corrections", desc: "Fine-tuned from the human review queue and our own labelled sets, so verdicts you correct today change the model tomorrow. Sees Flux 2, Sora 2 and GPT Image where the rest of the bench is blind.", Icon: GraduationCap },
-  { code: "05", name: "AI Ensemble", tag: "two classifiers, photo gate", desc: "Two independent image classifiers behind a photographic-content gate, so screenshots and diagrams are not judged by models trained on photos.", Icon: Layers },
-  { code: "06", name: "Vision LLM", tag: "must name the defect", desc: "A cautious forensic prompt. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.", Icon: Eye },
-  { code: "07", name: "Video Frame Sampler", tag: "whole clip, median verdict", desc: "Frames sampled across the whole clip, not the first eight seconds, each scored by the forensics ViT. The clip gets the median.", Icon: Film },
-  { code: "08", name: "Audio Spectrogram", tag: "vocoder artifacts", desc: "MFCC variance, spectral flatness, pitch, noise floor. Vocoder artifacts and synthetic-voice patterns raise flags and a probability.", Icon: AudioLines },
-  { code: "09", name: "Text LLM", tag: "authorship signals", desc: "AI authorship from perplexity, sentence rhythm, and discourse markers.", Icon: Type },
+const ANALYZERS: (BrainMember & { desc: string; Icon: typeof Brain })[] = [
+  { code: "01", short: "Metadata", kind: "provenance", name: "Metadata & Provenance", tag: "EXIF · PNG params · C2PA", desc: "EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have.", Icon: Fingerprint },
+  { code: "02", short: "ELA", kind: "image", name: "Error Level Analysis", tag: "splicing, not synthesis", desc: "Re-saves at fixed JPEG quality and looks for localised recompression outliers. Flags splicing and editing; it never votes on whether an image is AI.", Icon: ScanLine },
+  { code: "03", short: "Forensics ViT", kind: "image", name: "Community Forensics ViT", tag: "2.7M images · 4,803 generators", desc: "ViT-S/16 trained on 2.7M images from 4,803 generators. Runs on a native-resolution crop plus a global view; its score is calibrated against twenty 2026 generators.", Icon: Brain },
+  { code: "04", short: "Retrained", kind: "image", name: "Retrained Detector", tag: "learns from your corrections", desc: "Fine-tuned from the human review queue and our own labelled sets, so verdicts you correct today change the model tomorrow. Sees Flux 2, Sora 2 and GPT Image where the rest of the bench is blind.", Icon: GraduationCap },
+  { code: "05", short: "CLIP Probe", kind: "image", name: "CLIP Probe", tag: "independent backbone", desc: "A linear probe on CLIP embeddings, a different network from the forensics models, so when it agrees with them the agreement means something. Calibrated so real photos stay below the line.", Icon: Network },
+  { code: "06", short: "AI Ensemble", kind: "image", name: "AI Ensemble", tag: "two classifiers, photo gate", desc: "Two independent image classifiers behind a photographic-content gate, so screenshots and diagrams are not judged by models trained on photos.", Icon: Layers },
+  { code: "07", short: "Vision LLM", kind: "image", name: "Vision LLM", tag: "must name the defect", desc: "A cautious forensic prompt. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.", Icon: Eye },
+  { code: "08", short: "Video", kind: "video", name: "Video Frame Sampler", tag: "whole clip, median verdict", desc: "Frames sampled across the whole clip, not the first eight seconds, each scored by the forensics ViT. The clip gets the median.", Icon: Film },
+  { code: "09", short: "Audio", kind: "audio", name: "Audio Spectrogram", tag: "vocoder artifacts", desc: "MFCC variance, spectral flatness, pitch, noise floor. Vocoder artifacts and synthetic-voice patterns raise flags and a probability.", Icon: AudioLines },
+  { code: "10", short: "Text LLM", kind: "text", name: "Text LLM", tag: "authorship signals", desc: "AI authorship from perplexity, sentence rhythm, and discourse markers. Reads PDF and DOCX too.", Icon: Type },
 ];
 
 const TRIBUNAL_RULES = [
@@ -61,7 +63,7 @@ const FEATURES = [
 ];
 
 const NUMBERS = [
-  { v: "09", l: "Active analyzers" },
+  { v: "10", l: "Active analyzers" },
   { v: "≈4s", l: "Median image verdict" },
   { v: "500MB", l: "Max upload" },
   { v: "REST", l: "Open API" },
@@ -250,7 +252,7 @@ export default function LandingPage() {
                 className="mt-10 text-lg text-ink-200 max-w-xl leading-relaxed"
               >
                 Forensic verification lab for synthetic media.
-                Nine analyzers cross-examine every file and publish evidence, not just verdicts.
+                Ten analyzers cross-examine every file and publish evidence, not just verdicts.
               </motion.p>
 
               <motion.div
@@ -422,16 +424,36 @@ export default function LandingPage() {
                 {tribunalLabel}
               </div>
               <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
-                Nine judges<span className="italic text-iris">,</span>
+                Ten judges<span className="italic text-iris">,</span>
                 <br />
                 one verdict.
               </h2>
             </div>
             <p className="max-w-md text-ink-200 leading-relaxed">
-              Our own detection system. Nine independent checks, a vote weighted by measured
-              reliability, and a human when the bench is split.
-              <span className="block mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">tap any card to expand</span>
+              Our own detection system. Ten independent checks fire into one weighted vote, and a
+              human takes over when the bench is split.
+              <span className="block mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">point at or tap a neuron to see what it checks</span>
             </p>
+          </motion.div>
+
+          <motion.div
+            className="mb-14 -mx-2 sm:mx-0"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <TribunalBrain
+              members={ANALYZERS}
+              activeCode={openCheck}
+              verdictLabel={tribunalLabel}
+              onSelect={(code) => {
+                setOpenCheck(code);
+                requestAnimationFrame(() =>
+                  document.getElementById(`judge-${code}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                );
+              }}
+            />
           </motion.div>
 
           <motion.div
@@ -493,7 +515,7 @@ export default function LandingPage() {
               const Icon = a.Icon;
               const open = openCheck === a.code;
               return (
-                <motion.div key={a.code} variants={fadeUp} transition={{ duration: 0.6 }}>
+                <motion.div key={a.code} id={`judge-${a.code}`} variants={fadeUp} transition={{ duration: 0.6 }} className="scroll-mt-24">
                   <button
                     type="button"
                     onClick={() => setOpenCheck(open ? null : a.code)}
