@@ -1,6 +1,9 @@
 import client from "./client";
 import type {
   ApiKey,
+  ClassroomHub,
+  OrgTeacher,
+  Organization,
   ClassMember,
   ClassStats,
   ClassSubmission,
@@ -201,4 +204,16 @@ export const classrooms = {
     client.get<ClassSubmission[]>(`/classroom/classrooms/${id}/submissions/`, { params }),
   stats: (id: string) => client.get<ClassStats>(`/classroom/classrooms/${id}/stats/`),
   exportCsv: (id: string) => client.get<Blob>(`/classroom/classrooms/${id}/export.csv/`, { responseType: "blob" }),
+};
+
+export const orgs = {
+  hub: () => client.get<ClassroomHub>("/classroom/hub/"),
+  create: (name: string, slug: string) => client.post<Organization>("/classroom/orgs/", { name, slug }),
+  detail: (slug: string) => client.get<Organization>(`/classroom/orgs/${slug}/`),
+  joinAsTeacher: (slug: string, code: string) => client.post<Organization>(`/classroom/orgs/${slug}/join-teacher/`, { code }),
+  rotateTeacherCode: (slug: string) => client.post<{ teacher_code: string }>(`/classroom/orgs/${slug}/rotate-teacher-code/`, {}),
+  teachers: (slug: string) => client.get<OrgTeacher[]>(`/classroom/orgs/${slug}/teachers/`),
+  removeTeacher: (slug: string, userId: number) => client.delete(`/classroom/orgs/${slug}/teachers/${userId}/`),
+  classes: (slug: string) => client.get<Classroom[]>(`/classroom/orgs/${slug}/classes/`),
+  createClass: (slug: string, name: string) => client.post<Classroom>(`/classroom/orgs/${slug}/classes/`, { name }),
 };

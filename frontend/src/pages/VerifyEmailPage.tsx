@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { auth } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 import ShaderBackground from "../components/ui/ShaderBackground";
+import { postAuthPath } from "../appMode";
 
 type Status = "pending" | "ok" | "fail";
 
@@ -64,7 +65,7 @@ export default function VerifyEmailPage() {
             <h1 className="font-display text-2xl text-white">Email verified</h1>
             <p className="text-sm text-ink-400">{message}</p>
             <Link
-              to="/upload"
+              to={postAuthPath()}
               className="mt-4 inline-block bg-white text-black px-6 py-2.5 text-sm font-medium hover:bg-ink-200 transition"
             >
               Continue to ProofLayer

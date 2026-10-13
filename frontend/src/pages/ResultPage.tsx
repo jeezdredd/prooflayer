@@ -10,6 +10,7 @@ import ProvenancePanel from "../components/ProvenancePanel";
 import { Skeleton, SkeletonText } from "../components/ui/Skeleton";
 import { toast } from "../components/ui/Toast";
 import { reanalyzeSubmission, togglePublic } from "../api/endpoints";
+import { IS_CLASSROOM_APP } from "../appMode";
 
 function DownloadReportButton({ submissionId }: { submissionId: string }) {
   const [loading, setLoading] = useState(false);
@@ -168,8 +169,8 @@ export default function ResultPage() {
     return (
       <div className="text-center py-20">
         <p className="text-ink-400 font-mono text-sm">Submission not found.</p>
-        <Link to="/upload" className="mt-2 inline-block text-iris hover:text-iris-light underline text-sm">
-          Go back to upload
+        <Link to={IS_CLASSROOM_APP ? "/" : "/upload"} className="mt-2 inline-block text-iris hover:text-iris-light underline text-sm">
+          {IS_CLASSROOM_APP ? "Back to your classes" : "Go back to upload"}
         </Link>
       </div>
     );
@@ -179,13 +180,21 @@ export default function ResultPage() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em]">
-          <Link to="/dashboard" className="text-ink-400 hover:text-ink-100 transition">
-            &larr; Dashboard
-          </Link>
-          <span className="text-ink-700">/</span>
-          <Link to="/upload" className="text-iris hover:text-iris-light transition">
-            Verify another
-          </Link>
+          {IS_CLASSROOM_APP ? (
+            <Link to="/" className="text-ink-400 hover:text-ink-100 transition">
+              &larr; Classes
+            </Link>
+          ) : (
+            <>
+              <Link to="/dashboard" className="text-ink-400 hover:text-ink-100 transition">
+                &larr; Dashboard
+              </Link>
+              <span className="text-ink-700">/</span>
+              <Link to="/upload" className="text-iris hover:text-iris-light transition">
+                Verify another
+              </Link>
+            </>
+          )}
         </div>
         {submission.status === "processing" && connected && (
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-signal-sage">

@@ -7,7 +7,7 @@ import requests as http_requests
 from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import generics, mixins, status, viewsets
@@ -30,7 +30,7 @@ from .serializers import (
     SubmissionListSerializer,
     VerdictOverrideSerializer,
 )
-from classroom.access import classroom_for_upload, quota_owner
+from classroom.access import classroom_for_upload, quota_owner, visible_submissions_q
 
 from .intake import QuotaExceeded, check_quota, create_submission
 from .throttles import UploadRateThrottle, WidgetRateThrottle
@@ -86,7 +86,7 @@ class SubmissionViewSet(
         user = self.request.user
         if self.action == "list":
             return Submission.objects.filter(user=user)
-        return Submission.objects.filter(Q(user=user) | Q(classroom__owner=user)).distinct()
+        return Submission.objects.filter(visible_submissions_q(user)).distinct()
 
     def get_serializer_class(self):
         if self.action == "create":

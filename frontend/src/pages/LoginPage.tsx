@@ -107,7 +107,7 @@ export default function LoginPage() {
           <div className="dot-divider mx-6" />
           <div className="px-6 py-4 text-center font-mono text-[11px] text-ink-500">
             No clearance?{" "}
-            <Link to="/register" className="text-signal-amber hover:underline">
+            <Link to={`/register${window.location.search}`} className="text-signal-amber hover:underline">
               Request access →
             </Link>
           </div>

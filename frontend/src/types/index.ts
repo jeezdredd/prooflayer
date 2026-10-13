@@ -241,6 +241,32 @@ export interface Classroom {
   student_count: number;
   archived: boolean;
   created_at: string;
+  organization_slug: string | null;
+  organization_name: string | null;
+}
+
+export interface Organization {
+  name: string;
+  slug: string;
+  role: "admin" | "teacher" | "student" | null;
+  teacher_code?: string;
+  plan_active?: boolean;
+}
+
+export interface OrgTeacher {
+  user_id: number;
+  username: string;
+  email: string;
+  role: "admin" | "teacher";
+  classes: number;
+  joined_at: string;
+}
+
+export interface ClassroomHub {
+  organizations: Organization[];
+  enrolled: Classroom[];
+  personal_classes: Classroom[];
+  can_create_organization: boolean;
 }
 
 export interface ClassMember {

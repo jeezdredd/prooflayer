@@ -25,6 +25,10 @@ CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_raw.split(",") if o.strip()] or
     "https://prooflayer.cloud",
     "https://www.prooflayer.cloud",
 ]
+CLASSROOM_URL = os.environ.get("CLASSROOM_URL", "https://classroom.prooflayer.cloud").rstrip("/")
+if CLASSROOM_URL and CLASSROOM_URL not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(CLASSROOM_URL)
+WS_EXTRA_ORIGINS = [h for h in [urllib.parse.urlparse(CLASSROOM_URL).hostname] if h]
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 

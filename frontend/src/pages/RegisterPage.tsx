@@ -105,7 +105,7 @@ export default function RegisterPage() {
           <div className="dot-divider mx-6" />
           <div className="px-6 py-4 text-center font-mono text-[11px] text-ink-500">
             Already cleared?{" "}
-            <Link to="/login" className="text-signal-cyan hover:underline">
+            <Link to={`/login${window.location.search}`} className="text-signal-cyan hover:underline">
               Sign in →
             </Link>
           </div>

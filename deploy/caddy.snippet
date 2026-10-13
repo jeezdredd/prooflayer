@@ -12,6 +12,12 @@ http://prooflayer.cloud {
     }
 }
 
+# ===== Classroom (same SPA; the frontend switches shell on the hostname) =====
+http://classroom.prooflayer.cloud {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8080
+}
+
 # ===== Backend API =====
 http://api.prooflayer.cloud {
     encode zstd gzip

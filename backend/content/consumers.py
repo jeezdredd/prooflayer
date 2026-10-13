@@ -3,16 +3,17 @@ import logging
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from classroom.access import can_view_submission
+
 logger = logging.getLogger(__name__)
 
 
 @database_sync_to_async
-def _get_submission_owner_id(sub_id: str) -> int | None:
-    from content.models import Submission
+def _may_watch(user, sub_id: str) -> bool:
     try:
-        return Submission.objects.values_list("user_id", flat=True).get(id=sub_id)
-    except (Submission.DoesNotExist, Exception):
-        return None
+        return can_view_submission(user, sub_id)
+    except Exception:
+        return False
 
 
 class SubmissionConsumer(AsyncJsonWebsocketConsumer):
@@ -24,8 +25,7 @@ class SubmissionConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        owner_id = await _get_submission_owner_id(sub_id)
-        if owner_id is None or (owner_id != user.id and not user.is_staff):
+        if not await _may_watch(user, sub_id):
             await self.close(code=4003)
             return
 

@@ -13,6 +13,7 @@ import LandingPage from "./pages/LandingPage";
 import { NotFoundPage, ForbiddenPage, ServerErrorPage } from "./pages/ErrorPages";
 import { ToastContainer } from "./components/ui/Toast";
 import ConsentBanner from "./components/ConsentBanner";
+import { CLASSROOM_URL, IS_CLASSROOM_APP } from "./appMode";
 
 const UploadPage = lazy(() => import("./pages/UploadPage"));
 const ResultPage = lazy(() => import("./pages/ResultPage"));
@@ -33,8 +34,7 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const RefundPage = lazy(() => import("./pages/RefundPage"));
 const DevelopersPage = lazy(() => import("./pages/DevelopersPage"));
 const BatchPage = lazy(() => import("./pages/BatchPage"));
-const ClassroomPage = lazy(() => import("./pages/ClassroomPage"));
-const ClassroomDetailPage = lazy(() => import("./pages/ClassroomDetailPage"));
+const ClassroomRoutes = lazy(() => import("./classroom/ClassroomApp"));
 
 function PageLoader() {
   return (
@@ -49,6 +49,13 @@ const queryClient = new QueryClient({
     queries: { staleTime: 30_000, retry: 1 },
   },
 });
+
+function ToClassroom() {
+  useEffect(() => {
+    window.location.replace(CLASSROOM_URL);
+  }, []);
+  return <PageLoader />;
+}
 
 function AppRoutes() {
   const { hydrate } = useAuthStore();
@@ -69,6 +76,7 @@ function AppRoutes() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/refund" element={<RefundPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/classroom/*" element={<ToClassroom />} />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/500" element={<ServerErrorPage />} />
         <Route element={<ProtectedRoute />}>
@@ -88,8 +96,6 @@ function AppRoutes() {
               <Route path="/factcheck" element={<FactCheckPage />} />
               <Route path="/developers" element={<DevelopersPage />} />
               <Route path="/batches/:id" element={<BatchPage />} />
-              <Route path="/classroom" element={<ClassroomPage />} />
-              <Route path="/classroom/:id" element={<ClassroomDetailPage />} />
             </Route>
           </Route>
         </Route>
@@ -104,7 +110,13 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ErrorBoundary>
-          <AppRoutes />
+          {IS_CLASSROOM_APP ? (
+            <Suspense fallback={<PageLoader />}>
+              <ClassroomRoutes />
+            </Suspense>
+          ) : (
+            <AppRoutes />
+          )}
         </ErrorBoundary>
         <ToastContainer />
         <ConsentBanner />

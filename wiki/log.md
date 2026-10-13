@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-13] classroom-subdomain | Schools, classroom.prooflayer.cloud, admin supervision
+
+- Source: backend/classroom (models, access, org_views), frontend/src/classroom, local browser run of anonymous, student and admin flows
+- Pages updated: [[services/classroom]], [[hot]]
+
 ## [2026-09-15] tribunal-1.2-calibration | Per-model calibration file for the retrained detector
 
 - Source: regenerated eval JSON on dataset/openfake_test, generator+real split holdout

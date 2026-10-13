@@ -452,7 +452,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.6 }}
                   onClick={() => setOpenRule(open ? null : i)}
                   aria-expanded={open}
-                  className="bg-[var(--bg)] p-5 text-left group hover:bg-ink-800/60 transition-colors"
+                  className="bg-ink-950 p-5 text-left group hover:bg-ink-800/60 transition-colors"
                 >
                   <motion.div
                     className="text-signal-amber/80 mb-4 inline-flex"

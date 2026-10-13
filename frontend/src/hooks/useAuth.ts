@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
+import { postAuthPath } from "../appMode";
 
 export function useLogin() {
   const { setUser, setAccess } = useAuthStore();
@@ -13,7 +14,7 @@ export function useLogin() {
       setAccess(res.data.access);
       const me = await auth.me();
       setUser(me.data);
-      navigate("/upload");
+      navigate(postAuthPath());
     },
   });
 }
@@ -28,7 +29,7 @@ export function useRegister() {
     onSuccess: (res) => {
       setAccess(res.data.access);
       setUser(res.data.user);
-      navigate("/upload");
+      navigate(postAuthPath());
     },
   });
 }

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .access import can_supervise
 from .models import Classroom, Membership
 
 
@@ -8,15 +9,28 @@ class ClassroomSerializer(serializers.ModelSerializer):
     join_code = serializers.SerializerMethodField()
     owner_name = serializers.CharField(source="owner.username", read_only=True)
     student_count = serializers.IntegerField(read_only=True, default=0)
+    organization_slug = serializers.CharField(source="organization.slug", read_only=True, default=None)
+    organization_name = serializers.CharField(source="organization.name", read_only=True, default=None)
 
     class Meta:
         model = Classroom
-        fields = ("id", "name", "role", "join_code", "owner_name", "student_count", "archived", "created_at")
-        read_only_fields = ("id", "role", "join_code", "owner_name", "student_count", "created_at")
+        fields = (
+            "id", "name", "role", "join_code", "owner_name", "student_count", "archived", "created_at",
+            "organization_slug", "organization_name",
+        )
+        read_only_fields = (
+            "id", "role", "join_code", "owner_name", "student_count", "created_at",
+            "organization_slug", "organization_name",
+        )
 
     def _is_owner(self, obj) -> bool:
         request = self.context.get("request")
-        return bool(request and obj.owner_id == request.user.id)
+        if not request:
+            return False
+        cache = self.context.setdefault("_supervises", {})
+        if obj.pk not in cache:
+            cache[obj.pk] = can_supervise(obj, request.user)
+        return cache[obj.pk]
 
     def get_role(self, obj):
         return "teacher" if self._is_owner(obj) else "student"

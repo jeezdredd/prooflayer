@@ -64,7 +64,7 @@ function TeacherView({ id }: { id: string }) {
     mutationFn: () => classrooms.update(id, { archived: !cls?.archived }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["classrooms"] });
-      navigate("/classroom");
+      navigate(cls?.organization_slug ? `/${cls.organization_slug}` : "/");
     },
   });
 
@@ -113,7 +113,7 @@ function TeacherView({ id }: { id: string }) {
             ["Flagged", String(stats.flagged)],
             ["Flagged share", `${Math.round(stats.flagged_share * 100)}%`],
           ].map(([label, value]) => (
-            <div key={label} className="bg-[var(--bg)] p-4">
+            <div key={label} className="bg-ink-950 p-4">
               <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{label}</div>
               <div className="font-display text-3xl text-ink-50 mt-1 tabular-nums">{value}</div>
             </div>
@@ -180,7 +180,7 @@ function StudentView({ id }: { id: string }) {
     mutationFn: () => classrooms.leave(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["classrooms"] });
-      navigate("/classroom");
+      navigate(cls?.organization_slug ? `/${cls.organization_slug}` : "/");
     },
   });
   if (!cls) return <p className="text-ink-500">Loading…</p>;
@@ -190,10 +190,10 @@ function StudentView({ id }: { id: string }) {
         <div>
           <span className="label-mono">Classroom · {cls.owner_name}</span>
           <h1 className="font-display text-4xl text-white mt-2">{cls.name}</h1>
-          <p className="text-sm text-ink-400 mt-2">Pick this class under "Submit to" on the Verify page. Your teacher sees only what you submit here.</p>
+          <p className="text-sm text-ink-400 mt-2">Your teacher sees only what you submit to this class, never your personal checks.</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/upload" className="border border-signal-amber/60 text-signal-amber px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] hover:bg-signal-amber/10">Submit work</Link>
+          <Link to="submit" className="border border-signal-amber/60 text-signal-amber px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] hover:bg-signal-amber/10">Submit work</Link>
           <button type="button" onClick={() => exit.mutate()} className="border border-[var(--line-strong)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 hover:text-signal-blood">Leave</button>
         </div>
       </div>

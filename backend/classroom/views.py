@@ -18,6 +18,7 @@ from content.batch_views import csv_safe
 from content.models import Submission
 from users.permissions import IsVerifiedUser
 
+from .access import can_supervise, supervised_q
 from .models import Classroom, Membership
 from .serializers import ClassroomSerializer, ClassSubmissionSerializer, MemberSerializer
 
@@ -45,15 +46,15 @@ class ClassroomViewSet(
     def get_queryset(self):
         user = self.request.user
         return (
-            Classroom.objects.filter(Q(owner=user) | Q(memberships__user=user))
+            Classroom.objects.filter(supervised_q(user) | Q(memberships__user=user))
             .annotate(student_count=Count("memberships", distinct=True))
-            .select_related("owner")
+            .select_related("owner", "organization")
             .distinct()
         )
 
     def _owned(self):
         classroom = self.get_object()
-        if classroom.owner_id != self.request.user.id:
+        if not can_supervise(classroom, self.request.user):
             raise PermissionDenied("Only the teacher can do this.")
         return classroom
 
@@ -62,7 +63,7 @@ class ClassroomViewSet(
         serializer.instance = Classroom.objects.annotate(student_count=Count("memberships")).get(pk=classroom.pk)
 
     def perform_update(self, serializer):
-        if serializer.instance.owner_id != self.request.user.id:
+        if not can_supervise(serializer.instance, self.request.user):
             raise PermissionDenied("Only the teacher can edit the classroom.")
         serializer.save()
 
@@ -106,7 +107,7 @@ class ClassroomViewSet(
 
     def _class_submissions(self, classroom):
         qs = Submission.objects.filter(classroom=classroom).select_related("user")
-        if classroom.owner_id != self.request.user.id:
+        if not can_supervise(classroom, self.request.user):
             return qs.filter(user=self.request.user)
         params = self.request.query_params
         if params.get("student"):

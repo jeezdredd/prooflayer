@@ -1,7 +1,7 @@
 ---
 type: service
 created: 2026-10-13
-source: backend/classroom/, backend/common/documents.py, frontend/src/pages/Classroom*.tsx
+source: backend/classroom/, backend/common/documents.py, frontend/src/classroom/, frontend/src/pages/ClassroomDetailPage.tsx
 ---
 
 # Classroom
@@ -15,6 +15,39 @@ Tribunal; students submit into the class.
   alphabet (no 0/O/1/I), `archived`. `rotate_code` / `create_for` retry on the unique collision.
 - `classroom.Membership`: (classroom, user) unique.
 - `Submission.classroom` and `Batch.classroom`, nullable, `SET_NULL`.
+- `classroom.Organization`: a school. `name`, unique `slug` (3-40 chars, `[a-z0-9-]`, no hyphen at
+  the ends, not in `RESERVED_SLUGS`), `owner` (PROTECT), 8-char `teacher_code`.
+- `classroom.OrgMember`: (organization, user, role `admin` | `teacher`). The creator becomes admin.
+- `Classroom.organization`: nullable. `Classroom.billing_owner` is the school's owner when set,
+  else the teacher.
+
+## Subdomain
+
+Classroom lives on its own host, `classroom.prooflayer.cloud`, and each school gets
+`classroom.prooflayer.cloud/<slug>`. Same SPA bundle: `frontend/src/appMode.ts` sets
+`IS_CLASSROOM_APP` from the hostname (or `VITE_APP_MODE=classroom` locally), and `App.tsx` renders
+`classroom/ClassroomApp.tsx` instead of the main routes. The main app's `/classroom/*` redirects to
+the subdomain.
+
+| route | page |
+|---|---|
+| `/` | hub: join a class, schools, enrolled classes, own classes without a school, create a school (Education) |
+| `/:slug` | school page; public name for anonymous visitors, join forms for signed-in outsiders, class list (admin: all, teacher: own, student: enrolled), admin panel with teacher code, teachers, plan state |
+| `/:slug/c/:id`, `/c/:id` | `ClassroomDetailPage` (teacher or student view) |
+| `.../submit` | hand in work into that class (single, batch, ZIP, PDF/DOCX) |
+| `/results/:id`, `/batches/:id` | reused result and batch pages, with classroom-aware back links |
+
+- **Sign-in carries over.** The refresh cookie sits on `api.prooflayer.cloud` (SameSite=Lax), which
+  is same-site with both frontends, so `classroom/useSilentSignIn.ts` calls `auth/refresh` once on
+  load (one shared promise; the refresh token rotates, so StrictMode's double effect must not fire
+  two refreshes) and then `auth/me`.
+- `?next=` after login/register is honoured on both hosts, local paths only (`appMode.safeNext`).
+- Prod settings append `CLASSROOM_URL` to `CORS_ALLOWED_ORIGINS` and its host to
+  `WS_EXTRA_ORIGINS`; `config/asgi.py` validates WebSocket origins against `ALLOWED_HOSTS` plus
+  that list (`content.ws_auth.ws_allowed_origins`), so live result updates work from the subdomain
+  even when `ALLOWED_HOSTS` is a closed list.
+- Caddy needs a `http://classroom.prooflayer.cloud` block proxying to the frontend (see
+  `deploy/caddy.snippet`). Cloudflare's wildcard DNS already routes it.
 
 ## Rules
 
@@ -23,15 +56,19 @@ Tribunal; students submit into the class.
 | Education plan or staff | create classes (`Subscription.can_classroom`, 402 otherwise) |
 | any verified user | join by code (case-insensitive), leave |
 | teacher | roster with per-student totals/flagged, stats, filtered submissions, CSV, rotate code, archive, take a student out |
+| school admin | everything a teacher can, on every class of the school (`classroom.access.supervised_q` / `can_supervise`); teacher code, remove teachers |
+| school teacher | create classes in the school under the school's plan, without a plan of their own |
 | student | upload into the class (single, batch, PDF/DOCX), see only their own class submissions |
 
-- **Billing:** a class upload is charged to the **teacher's** quota.
-  `billing.uploads_this_month(user)` = own personal uploads + every upload into classes the user
-  owns. A student's class uploads do not count against the student.
+- **Billing:** a class upload is charged to the class's `billing_owner` (school owner, else the
+  teacher). `billing.uploads_this_month(user)` = own personal uploads + uploads into the user's
+  classes without a school + uploads into every class of schools the user owns. A student's class uploads do not count against the student.
 - If the teacher's plan lapses, uploads into their classes return 403 rather than silently
   falling back to the students' own quota (`classroom.access.classroom_for_upload`).
-- **Privacy:** the teacher can open a student's submission only if it was made into the
-  teacher's class (`SubmissionViewSet.get_queryset` = own OR `classroom__owner`). Personal uploads
+- **Privacy:** the teacher can open a student's submission only if it was made into a class they
+  supervise (`SubmissionViewSet.get_queryset` = `classroom.access.visible_submissions_q`: own OR
+  class owner OR admin of the class's school; the WebSocket consumer uses the same rule). A fellow
+  teacher of the same school sees nothing of another teacher's class. Personal uploads
   stay invisible. The teacher's own dashboard list (`action == "list"`) shows only the teacher's
   uploads. Delete and toggle-public stay author-only (403 for the teacher).
 
@@ -46,8 +83,7 @@ as `application/zip`; `content.validators._is_docx` accepts it as DOCX only when
 
 ## UI
 
-`/classroom` (sidebar 04): join by code, create (Education), Teaching / Enrolled lists.
-`/classroom/:id`: teacher view (join code with copy/rotate, CSV, archive, stats strip, roster,
+Sidebar 04 on the main app links out to the subdomain. Class page: teacher view (join code with copy/rotate, CSV, archive, stats strip, roster,
 flagged-first submissions with student filter) or student view (own class submissions, Submit
 work, Leave). Verify page shows a "Submit to" picker when the user belongs to any active class.
 
