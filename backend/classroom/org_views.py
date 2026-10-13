@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from billing.models import get_or_create_subscription
 from billing.permissions import tier_allows
 from users.permissions import IsVerifiedUser
 
@@ -37,12 +38,19 @@ def _require_admin(org, user):
         raise PermissionDenied("Only the organization admin can do this.")
 
 
+def _owner_plan(owner):
+    return None if owner.is_staff else get_or_create_subscription(owner).plan
+
+
 def org_payload(org: Organization, user) -> dict:
     role = _role(org, user)
     data = {"name": org.name, "slug": org.slug, "role": role}
     if role == OrgMember.Role.ADMIN:
         data["teacher_code"] = org.teacher_code
         data["plan_active"] = tier_allows(org.owner, "can_classroom")
+        plan = _owner_plan(org.owner)
+        data["teacher_seats"] = plan.teacher_seats if plan else None
+        data["teacher_seats_used"] = OrgMember.objects.filter(organization__owner=org.owner).values("user").distinct().count()
     return data
 
 
@@ -71,6 +79,15 @@ class OrganizationListView(APIView):
                 {"detail": "Creating an organization needs the Education plan.", "code": "upgrade_required"},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
+        plan = _owner_plan(request.user)
+        if plan and Organization.objects.filter(owner=request.user).count() >= plan.schools:
+            return Response(
+                {
+                    "detail": f"The {plan.name} plan includes {plan.schools} school address{'es' if plan.schools != 1 else ''}. University includes 10.",
+                    "code": "upgrade_required",
+                },
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
         name = (request.data.get("name") or "").strip()[:120]
         if not name:
             raise ValidationError({"name": ["Required."]})
@@ -94,6 +111,14 @@ class OrganizationJoinTeacherView(APIView):
         org = _org(slug)
         if (request.data.get("code") or "").strip().upper() != org.teacher_code:
             raise NotFound("Wrong teacher code.")
+        plan = _owner_plan(org.owner)
+        already_seated = OrgMember.objects.filter(organization__owner=org.owner, user=request.user).exists()
+        if plan and not already_seated:
+            used = OrgMember.objects.filter(organization__owner=org.owner).values("user").distinct().count()
+            if used >= plan.teacher_seats:
+                raise PermissionDenied(
+                    f"All {plan.teacher_seats} teacher seats on this school's {plan.name} plan are taken. Ask the admin to free one or upgrade."
+                )
         _, created = OrgMember.objects.get_or_create(organization=org, user=request.user, defaults={"role": OrgMember.Role.TEACHER})
         return Response(org_payload(org, request.user), status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 

@@ -9,6 +9,7 @@ from PIL import Image
 from rest_framework.test import APIClient
 
 from billing.models import Subscription, get_or_create_subscription, uploads_this_month
+from billing.plans import PLANS
 from classroom.models import JOIN_CODE_LENGTH, Classroom, Membership
 from common.documents import DOCX_MIME, document_stats, extract_text
 from content.models import Submission
@@ -130,7 +131,7 @@ class TestClassUploads:
 
     def test_teacher_quota_exhausted_blocks_student(self, _delay):
         _, classroom, student = _class_with_student()
-        with patch("content.intake.uploads_this_month", return_value=2000):
+        with patch("content.intake.uploads_this_month", return_value=PLANS["education"].uploads_per_month):
             response = _client(student).post(
                 reverse("submission-list"), {"file": _jpeg(), "classroom": str(classroom.id)}, format="multipart"
             )

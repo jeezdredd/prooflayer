@@ -5,7 +5,7 @@ import { Building2, GraduationCap, LogIn, Plus, Users } from "lucide-react";
 import { classrooms, orgs } from "../api/endpoints";
 import type { Classroom } from "../types";
 import { toast } from "../components/ui/Toast";
-import { classPath, errorText, INPUT, ACTION, SECTION_LABEL } from "./shared";
+import { classPath, errorText, INPUT, ACTION, SECTION_LABEL, MAIN_URL } from "./shared";
 
 function ClassRow({ c }: { c: Classroom }) {
   return (
@@ -127,8 +127,8 @@ export default function HubPage() {
           </form>
         ) : (
           <p className="text-sm text-ink-400">
-            A school address needs the Education plan. Teachers invited to an existing school can skip this.{" "}
-            <a href="https://prooflayer.cloud/pricing" className="underline hover:text-ink-100">See plans</a>
+            A school address needs the School or University plan. Teachers invited to an existing school can skip this.{" "}
+            <a href={`${MAIN_URL}/pricing`} className="underline hover:text-ink-100">See plans</a>
           </p>
         )}
       </section>

@@ -224,6 +224,12 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")
 PADDLE_WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "")
 PADDLE_PRO_PRICE_ID = os.environ.get("PADDLE_PRO_PRICE_ID", "")
+PADDLE_PRICE_IDS = {
+    f"{plan}:{interval}": os.environ.get(f"PADDLE_PRICE_{plan.upper()}_{interval.upper()}", "")
+    for plan in ("pro", "education", "university", "enterprise")
+    for interval in ("month", "year")
+}
+PADDLE_PRICE_IDS["pro:month"] = PADDLE_PRICE_IDS["pro:month"] or PADDLE_PRO_PRICE_ID
 
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
 SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT", "production")

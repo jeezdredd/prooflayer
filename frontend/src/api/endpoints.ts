@@ -1,6 +1,9 @@
 import client from "./client";
 import type {
   ApiKey,
+  BillingInterval,
+  PlanInfo,
+  PlanKey,
   ClassroomHub,
   OrgTeacher,
   Organization,
@@ -162,7 +165,8 @@ export const feed = {
 
 export const billing = {
   subscription: () => client.get<SubscriptionInfo>("/billing/subscription/"),
-  checkout: () => client.post<{ url: string }>("/billing/checkout/", {}),
+  plans: () => client.get<{ plans: PlanInfo[]; intervals: BillingInterval[] }>("/billing/plans/"),
+  checkout: (plan: PlanKey, interval: BillingInterval) => client.post<{ url: string }>("/billing/checkout/", { plan, interval }),
   portal: () => client.post<{ url: string }>("/billing/portal/", {}),
 };
 

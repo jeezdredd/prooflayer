@@ -181,8 +181,35 @@ export interface PublicSubmission {
   created_at: string;
 }
 
+export type PlanKey = "free" | "pro" | "education" | "university" | "enterprise";
+export type BillingInterval = "month" | "year";
+
+export interface PlanInfo {
+  key: PlanKey;
+  name: string;
+  audience: string;
+  monthly_usd: number;
+  yearly_usd: number;
+  uploads_per_month: number;
+  api_per_minute: number;
+  teacher_seats: number;
+  schools: number;
+  compare: boolean;
+  embed: boolean;
+  api: boolean;
+  vlm: boolean;
+  pdf: boolean;
+  priority_support: boolean;
+  sla: boolean;
+  on_premise: boolean;
+  self_serve: boolean;
+  classroom: boolean;
+  highlights: string[];
+  checkout: Record<BillingInterval, boolean>;
+}
+
 export interface SubscriptionInfo {
-  tier: "free" | "pro" | "education" | "enterprise";
+  tier: PlanKey;
   status: "active" | "past_due" | "cancelled" | "trialing";
   uploads_used: number;
   uploads_limit: number;
@@ -251,6 +278,8 @@ export interface Organization {
   role: "admin" | "teacher" | "student" | null;
   teacher_code?: string;
   plan_active?: boolean;
+  teacher_seats?: number | null;
+  teacher_seats_used?: number;
 }
 
 export interface OrgTeacher {

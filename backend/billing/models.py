@@ -4,12 +4,15 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from .plans import Plan, plan_for
+
 
 class Subscription(models.Model):
     class Tier(models.TextChoices):
         FREE = "free", "Free"
         PRO = "pro", "Pro"
-        EDUCATION = "education", "Education"
+        EDUCATION = "education", "Education: School"
+        UNIVERSITY = "university", "Education: University"
         ENTERPRISE = "enterprise", "Enterprise"
 
     class Status(models.TextChoices):
@@ -43,37 +46,36 @@ class Subscription(models.Model):
         return self.status in (self.Status.ACTIVE, self.Status.TRIALING)
 
     @property
+    def plan(self) -> Plan:
+        return plan_for(self.tier)
+
+    @property
     def uploads_per_month(self) -> int:
-        return {
-            self.Tier.FREE: 50,
-            self.Tier.PRO: 500,
-            self.Tier.EDUCATION: 2000,
-            self.Tier.ENTERPRISE: 999999,
-        }.get(self.tier, 50)
+        return self.plan.uploads_per_month
 
     @property
     def can_use_vlm(self) -> bool:
-        return self.tier in (self.Tier.PRO, self.Tier.EDUCATION, self.Tier.ENTERPRISE)
+        return self.plan.vlm
 
     @property
     def can_download_pdf(self) -> bool:
-        return self.tier in (self.Tier.PRO, self.Tier.EDUCATION, self.Tier.ENTERPRISE)
+        return self.plan.pdf
 
     @property
     def can_compare(self) -> bool:
-        return self.tier in (self.Tier.PRO, self.Tier.EDUCATION, self.Tier.ENTERPRISE)
+        return self.plan.compare
 
     @property
     def can_embed(self) -> bool:
-        return self.tier in (self.Tier.PRO, self.Tier.EDUCATION, self.Tier.ENTERPRISE)
+        return self.plan.embed
 
     @property
     def can_classroom(self) -> bool:
-        return self.tier == self.Tier.EDUCATION
+        return self.plan.classroom
 
     @property
     def can_api(self) -> bool:
-        return self.tier in (self.Tier.PRO, self.Tier.EDUCATION, self.Tier.ENTERPRISE)
+        return self.plan.api
 
 
 def get_or_create_subscription(user) -> Subscription:

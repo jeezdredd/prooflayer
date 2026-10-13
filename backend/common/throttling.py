@@ -1,5 +1,6 @@
 from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle, UserRateThrottle
 
+from billing.models import get_or_create_subscription
 from users.models import ApiKey
 
 
@@ -23,6 +24,14 @@ class ApiKeyRateThrottle(SimpleRateThrottle):
     """Per-key budget for requests authenticated with an API key; no-op for browser sessions."""
 
     scope = "api"
+
+    def allow_request(self, request, view):
+        key = getattr(request, "auth", None)
+        if isinstance(key, ApiKey):
+            per_minute = get_or_create_subscription(key.user).plan.api_per_minute
+            if per_minute:
+                self.num_requests, self.duration = per_minute, 60
+        return super().allow_request(request, view)
 
     def get_cache_key(self, request, view):
         key = getattr(request, "auth", None)

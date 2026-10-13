@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Subscription, get_or_create_subscription, uploads_this_month
+from .plans import INTERVALS, PLANS, catalog, price_id, tier_for_price
 from .serializers import SubscriptionSerializer
 
 logger = logging.getLogger(__name__)
@@ -38,21 +39,42 @@ class SubscriptionView(APIView):
         return Response(data)
 
 
+class PlanCatalogView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        return Response({"plans": catalog(), "intervals": list(INTERVALS)})
+
+
 class CreateCheckoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        price_id = settings.PADDLE_PRO_PRICE_ID
-        if not price_id or not settings.PADDLE_API_KEY:
-            return Response({"detail": "Paddle not configured"}, status=500)
+        plan_key = request.data.get("plan") or "pro"
+        interval = request.data.get("interval") or "month"
+        plan = PLANS.get(plan_key)
+        if plan is None or not plan.self_serve or interval not in INTERVALS:
+            return Response({"detail": "Unknown plan."}, status=400)
+        price = price_id(plan_key, interval)
+        if not price or not settings.PADDLE_API_KEY:
+            return Response(
+                {"detail": "This plan is not open for online checkout yet. Write to hello@prooflayer.cloud.", "code": "contact_sales"},
+                status=409,
+            )
 
         frontend_url = settings.FRONTEND_URL.rstrip("/")
         sub = get_or_create_subscription(request.user)
+        if sub.paddle_subscription_id and sub.is_active and sub.tier != Subscription.Tier.FREE:
+            return Response(
+                {"detail": "You already have a paid plan. Change it in the billing portal.", "code": "manage_in_portal"},
+                status=409,
+            )
 
         payload = {
-            "items": [{"price_id": price_id, "quantity": 1}],
+            "items": [{"price_id": price, "quantity": 1}],
             "customer": {"email": request.user.email},
-            "custom_data": {"user_id": str(request.user.id)},
+            "custom_data": {"user_id": str(request.user.id), "plan": plan_key, "interval": interval},
             "checkout": {
                 "url": f"{frontend_url}/pricing",
             },
@@ -137,6 +159,15 @@ def _verify_paddle_signature(payload: bytes, signature_header: str, secret: str)
         return False
 
 
+def _tier_from_items(items: list) -> str | None:
+    for item in items:
+        price = (item.get("price") or {}).get("id") or item.get("price_id") or ""
+        tier = tier_for_price(price)
+        if tier:
+            return tier
+    return None
+
+
 def _handle_event(event: dict):
     event_type = event.get("event_type", "")
     data = event.get("data", {})
@@ -180,10 +211,14 @@ def _handle_event(event: dict):
             logger.warning("paddle webhook: no subscription for customer=%s user_id=%s", customer_id, user_id)
             return
 
+        tier = _tier_from_items(data.get("items") or [])
+        if tier is None:
+            logger.warning("paddle webhook: unknown price on subscription=%s, tier left as %s", sub_id, sub.tier)
+            tier = sub.tier
         sub.paddle_customer_id = customer_id
         sub.paddle_subscription_id = sub_id
         sub.status = new_status
-        sub.tier = Subscription.Tier.PRO
+        sub.tier = tier
         sub.current_period_end = period_end_dt
         sub.save(update_fields=["paddle_customer_id", "paddle_subscription_id", "status", "tier", "current_period_end"])
 

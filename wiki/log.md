@@ -2,6 +2,12 @@
 
 Newest at top.
 
+## [2026-10-13] pricing | Plan catalog, School and University tiers, Paddle price mapping
+
+- Source: backend/billing (plans, views, models), PricingPage
+- Pages created: [[services/pricing]]
+- Pages updated: [[hot]]
+
 ## [2026-10-13] classroom-subdomain | Schools, classroom.prooflayer.cloud, admin supervision
 
 - Source: backend/classroom (models, access, org_views), frontend/src/classroom, local browser run of anonymous, student and admin flows

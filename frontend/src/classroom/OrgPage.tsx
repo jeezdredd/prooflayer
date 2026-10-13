@@ -6,7 +6,7 @@ import { classrooms, orgs } from "../api/endpoints";
 import type { Organization } from "../types";
 import { useAuthStore } from "../stores/authStore";
 import { toast } from "../components/ui/Toast";
-import { ACTION, INPUT, SECTION_LABEL, classPath, errorText } from "./shared";
+import { ACTION, INPUT, MAIN_URL, SECTION_LABEL, classPath, errorText } from "./shared";
 
 function JoinForms({ org }: { org: Organization }) {
   const navigate = useNavigate();
@@ -126,7 +126,10 @@ function AdminPanel({ org }: { org: Organization }) {
 
   return (
     <section>
-      <div className={SECTION_LABEL}>Teachers</div>
+      <div className={`${SECTION_LABEL} flex justify-between`}>
+        <span>Teachers</span>
+        {org.teacher_seats ? <span className="tabular-nums">{org.teacher_seats_used} / {org.teacher_seats} seats</span> : null}
+      </div>
       <div className="flex items-center gap-2 border border-[var(--line-strong)] px-3 py-2 mb-4">
         <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">teacher code</span>
         <span className="font-mono tracking-[0.2em] text-ink-50 flex-1">{org.teacher_code}</span>
@@ -148,7 +151,7 @@ function AdminPanel({ org }: { org: Organization }) {
       {org.plan_active === false && (
         <p className="text-xs text-signal-blood mt-4">
           The Education plan on this school has lapsed: teachers cannot create classes and students cannot submit.{" "}
-          <a href="https://prooflayer.cloud/pricing" className="underline">Renew</a>
+          <a href={`${MAIN_URL}/pricing`} className="underline">Renew</a>
         </p>
       )}
     </section>
