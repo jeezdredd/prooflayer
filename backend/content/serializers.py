@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from analyzers.ensemble import ensemble_info
+from plagiarism.serializers import report_payload
 
 from .models import Submission, VerdictOverride
 
@@ -116,6 +117,7 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
     expected_analyzers = serializers.SerializerMethodField()
     ensemble = serializers.SerializerMethodField()
+    originality = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -136,12 +138,17 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "dhash",
             "file_url",
             "ensemble",
+            "originality",
             "analysis_results",
             "similar_submissions",
             "expected_analyzers",
             "created_at",
             "updated_at",
         )
+
+    def get_originality(self, obj):
+        request = self.context.get("request")
+        return report_payload(obj, getattr(request, "user", None))
 
     def get_ensemble(self, obj):
         current = ensemble_info()

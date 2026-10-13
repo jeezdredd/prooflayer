@@ -1,0 +1,66 @@
+import logging
+from dataclasses import dataclass
+
+import requests
+from django.conf import settings
+from duckduckgo_search import DDGS
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class Hit:
+    url: str
+    title: str
+    snippet: str
+
+
+def _searxng(query: str, limit: int) -> list[Hit]:
+    base = getattr(settings, "SEARXNG_URL", "").rstrip("/")
+    if not base:
+        return []
+    resp = requests.get(f"{base}/search", params={"q": query, "format": "json"}, timeout=15)
+    resp.raise_for_status()
+    rows = resp.json().get("results", [])[:limit]
+    return [Hit(r.get("url", ""), r.get("title", ""), r.get("content", "")) for r in rows if r.get("url")]
+
+
+def _ddg(query: str, limit: int) -> list[Hit]:
+    with DDGS() as ddgs:
+        rows = list(ddgs.text(query, max_results=limit))
+    return [Hit(r.get("href", ""), r.get("title", ""), r.get("body", "")) for r in rows if r.get("href")]
+
+
+def _brave(query: str, limit: int) -> list[Hit]:
+    key = getattr(settings, "BRAVE_SEARCH_API_KEY", "")
+    if not key:
+        return []
+    resp = requests.get(
+        "https://api.search.brave.com/res/v1/web/search",
+        params={"q": query, "count": limit},
+        headers={"X-Subscription-Token": key, "Accept": "application/json"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    rows = resp.json().get("web", {}).get("results", [])
+    return [Hit(r.get("url", ""), r.get("title", ""), r.get("description", "")) for r in rows if r.get("url")]
+
+
+PROVIDERS = {"searxng": _searxng, "ddg": _ddg, "brave": _brave}
+
+
+def provider_chain() -> list[str]:
+    configured = getattr(settings, "PLAGIARISM_SEARCH_PROVIDERS", ["searxng", "ddg"])
+    return [p for p in configured if p in PROVIDERS]
+
+
+def search(query: str, limit: int = 5) -> list[Hit]:
+    for name in provider_chain():
+        try:
+            hits = PROVIDERS[name](query, limit)
+        except Exception as exc:
+            logger.warning("plagiarism search via %s failed: %s", name, exc)
+            continue
+        if hits:
+            return hits
+    return []

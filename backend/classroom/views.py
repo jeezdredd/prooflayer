@@ -27,6 +27,13 @@ TIMELINE_DAYS = 30
 CanCreateClassroom = tier_feature("can_classroom", "Classroom")
 
 
+def _originality(submission) -> str:
+    report = getattr(submission, "plagiarism_report", None)
+    if report is None or report.originality is None:
+        return ""
+    return f"{report.originality:.1f}"
+
+
 class ClassroomViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -108,7 +115,7 @@ class ClassroomViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _class_submissions(self, classroom):
-        qs = Submission.objects.filter(classroom=classroom).select_related("user")
+        qs = Submission.objects.filter(classroom=classroom).select_related("user", "plagiarism_report")
         if not can_supervise(classroom, self.request.user):
             return qs.filter(user=self.request.user)
         params = self.request.query_params
@@ -158,14 +165,14 @@ class ClassroomViewSet(
         classroom = self._owned()
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(("student", "email", "submission_id", "original_filename", "status", "final_verdict", "final_score", "tribunal_version", "words", "created_at"))
-        for s in Submission.objects.filter(classroom=classroom).select_related("user").order_by("user__username", "-created_at"):
+        writer.writerow(("student", "email", "submission_id", "original_filename", "status", "final_verdict", "final_score", "tribunal_version", "words", "originality", "created_at"))
+        for s in Submission.objects.filter(classroom=classroom).select_related("user", "plagiarism_report").order_by("user__username", "-created_at"):
             words = ((s.metadata or {}).get("document") or {}).get("words")
             writer.writerow([
                 csv_safe(s.user.username), csv_safe(s.user.email), csv_safe(s.id), csv_safe(s.original_filename),
                 csv_safe(s.status), csv_safe(s.final_verdict),
                 "" if s.final_score is None else f"{s.final_score:.4f}", csv_safe(s.tribunal_version),
-                "" if words is None else words, s.created_at.isoformat(),
+                "" if words is None else words, _originality(s), s.created_at.isoformat(),
             ])
         response = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="prooflayer_class_{classroom.id}.csv"'

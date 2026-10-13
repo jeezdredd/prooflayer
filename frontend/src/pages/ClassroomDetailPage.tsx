@@ -24,7 +24,10 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
           className="grid grid-cols-[1fr_auto] md:grid-cols-12 gap-3 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
           {showStudent && <span className="md:col-span-2 text-ink-300 truncate">{s.student}</span>}
           <span className={`${showStudent ? "md:col-span-5" : "md:col-span-7"} text-ink-50 truncate`}>{s.original_filename}</span>
-          <span className="md:col-span-2 font-mono text-[11px] text-ink-500 hidden md:block">{s.words != null ? `${s.words} words` : s.mime_type.split("/")[0]}</span>
+          <span className="md:col-span-2 font-mono text-[11px] text-ink-500 hidden md:block">
+            {s.words != null ? `${s.words} words` : s.mime_type.split("/")[0]}
+            {s.originality != null && <span className={s.originality < 60 ? "text-signal-blood" : s.originality < 85 ? "text-signal-amber" : "text-signal-sage"}> · {Math.round(s.originality)}% orig.</span>}
+          </span>
           <span className={`md:col-span-2 font-mono text-[11px] uppercase tracking-[0.12em] ${VERDICT_CLASS[s.final_verdict] || "text-ink-400"}`}>
             {s.status === "completed" ? s.final_verdict.replace("_", " ") || "-" : s.status}
           </span>

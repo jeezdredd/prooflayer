@@ -39,7 +39,8 @@ export function useSubmissionDetail(id: string | null) {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (data && (data.status === "completed" || data.status === "failed")) {
-        return false;
+        const originality = data.originality?.status;
+        return originality === "pending" || originality === "running" ? 5000 : false;
       }
       return 3000;
     },

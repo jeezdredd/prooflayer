@@ -1,9 +1,10 @@
 import logging
 
-from celery import shared_task
+from celery import current_app, shared_task
 from django.core.files.base import ContentFile
 
 from common.documents import DOCUMENT_MIMES, document_stats, read_text
+from plagiarism.models import PlagiarismReport
 
 from .models import Submission
 from .services import (
@@ -47,6 +48,18 @@ def _set_status(submission, message):
     submission.save(update_fields=["status_message"])
 
 
+def queue_originality_check(submission) -> None:
+    if submission.mime_type != "text/plain" and submission.mime_type not in DOCUMENT_MIMES:
+        return
+    PlagiarismReport.objects.update_or_create(
+        submission=submission, defaults={"status": PlagiarismReport.Status.PENDING, "error": ""},
+    )
+    try:
+        current_app.send_task("plagiarism.tasks.check_submission", args=[str(submission.id)])
+    except Exception:
+        logger.exception("could not queue originality check for %s", submission.id)
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=10)
 def process_submission(self, submission_id):
     try:
@@ -83,6 +96,7 @@ def process_submission(self, submission_id):
             ])
             clone_analysis_results(cached, submission)
             logger.info("Submission %s resolved from cache (source: %s)", submission_id, cached.id)
+            queue_originality_check(submission)
             return
 
         _set_status(submission, "Extracting metadata...")
@@ -139,6 +153,7 @@ def process_submission(self, submission_id):
         _set_status(submission, "Starting analyzers...")
         from analyzers.tasks import dispatch_analysis
         dispatch_analysis.delay(str(submission.id))
+        queue_originality_check(submission)
 
     except Exception as exc:
         logger.exception("Error processing submission %s", submission_id)

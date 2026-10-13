@@ -64,6 +64,11 @@ class ClassSubmissionSerializer(serializers.Serializer):
     student_id = serializers.IntegerField(source="user_id")
     student = serializers.CharField(source="user.username")
     words = serializers.SerializerMethodField()
+    originality = serializers.SerializerMethodField()
+
+    def get_originality(self, obj):
+        report = getattr(obj, "plagiarism_report", None)
+        return report.originality if report is not None and report.status == "done" else None
 
     def get_words(self, obj):
         return ((obj.metadata or {}).get("document") or {}).get("words")

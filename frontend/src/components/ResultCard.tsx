@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Submission } from "../types";
 import AnalyzerTimeline from "./AnalyzerTimeline";
 import TextReport from "./TextReport";
+import OriginalityPanel from "./OriginalityPanel";
 
 const CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -310,6 +311,7 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
         </div>
       )}
 
+      <OriginalityPanel submission={submission} />
       <TextReport submission={submission} />
 
       {/* Pipeline */}

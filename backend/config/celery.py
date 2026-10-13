@@ -36,9 +36,10 @@ app.conf.task_default_routing_key = "default"
 app.conf.task_routes = {
     "content.tasks.*": {"queue": "default"},
     "analyzers.tasks.aggregate_verdicts": {"queue": "default"},
+    "plagiarism.tasks.*": {"queue": "ml"},
 }
 
-app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports", "api", "factcheck"])
+app.autodiscover_tasks(lambda: ["content", "analyzers", "provenance", "users", "crowdsource", "reports", "api", "factcheck", "plagiarism"])
 
 app.conf.beat_schedule = {
     "nightly-postgres-backup": {

@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-13 (i): **Originality check (T2)** - new `plagiarism` app: winnowed shingle fingerprints (homoglyph/invisible-proof) in a GIN-indexed array, exact span alignment, e5-small sentence vectors for reworded and translated (ru/en/fr) matches, web search through self-hosted SearXNG (Google CSE API is closing), percentage + sources on the result page and in the class list. DDG alone rate-limits at once. See [[services/originality]].
+
 - 2026-10-13 (h): **Tribunal 1.4, text signals T1** - `text_evasion` (homoglyphs, invisible chars, hidden DOCX text), `text_grade_fit` (class year vs vocabulary via wordfreq: "декомпозиция" in grade 8), `text_style` (drift from the student's own earlier work + chatbot phrasebook). Grade fit and style are context-only: they can send work to review, never convict. ru/en/fr, pluggable. Plan for plagiarism (T2), Binoculars (T3), classifier (T4) in the plan file. See [[concepts/text-signals]].
 
 - 2026-10-13 (g): **Pricing** - one catalog in `billing/plans.py`: Free 0 / Pro $12 / School $49 / University $149 / Enterprise $399 a month, yearly = 10 months. New tier `university`; School 1 address + 30 teachers, University 10 faculties + 250 teachers (enforced); per-plan API rate; checkout by plan+interval, webhook maps price id to tier (was hard-coded `pro`). Pricing page renders from `/billing/plans/`. Paddle prices still to be created. See [[services/pricing]].

@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "channels",
     "billing",
     "classroom",
+    "plagiarism",
 ]
 
 MIDDLEWARE = [
@@ -223,6 +224,14 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/
 
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")
 PADDLE_WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "")
+SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
+BRAVE_SEARCH_API_KEY = os.environ.get("BRAVE_SEARCH_API_KEY", "")
+PLAGIARISM_SEARCH_PROVIDERS = [p.strip() for p in os.environ.get("PLAGIARISM_SEARCH_PROVIDERS", "searxng,brave,ddg").split(",") if p.strip()]
+PLAGIARISM_WEB_ENABLED = os.environ.get("PLAGIARISM_WEB_ENABLED", "1") == "1"
+PLAGIARISM_WEB_QUERIES = int(os.environ.get("PLAGIARISM_WEB_QUERIES", "8"))
+PLAGIARISM_WEB_PAGES = int(os.environ.get("PLAGIARISM_WEB_PAGES", "12"))
+PLAGIARISM_EMBED_MODEL = os.environ.get("PLAGIARISM_EMBED_MODEL", "intfloat/multilingual-e5-small")
+
 PADDLE_PRO_PRICE_ID = os.environ.get("PADDLE_PRO_PRICE_ID", "")
 PADDLE_PRICE_IDS = {
     f"{plan}:{interval}": os.environ.get(f"PADDLE_PRICE_{plan.upper()}_{interval.upper()}", "")

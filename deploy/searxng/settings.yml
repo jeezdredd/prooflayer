@@ -1,0 +1,27 @@
+use_default_settings: true
+
+general:
+  instance_name: "prooflayer-originality"
+
+server:
+  limiter: false
+  image_proxy: false
+  public_instance: false
+
+search:
+  safe_search: 0
+  formats:
+    - html
+    - json
+
+engines:
+  - name: google
+    disabled: false
+  - name: bing
+    disabled: false
+  - name: duckduckgo
+    disabled: false
+  - name: yandex
+    disabled: false
+  - name: brave
+    disabled: false

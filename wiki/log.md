@@ -2,6 +2,12 @@
 
 Newest at top.
 
+## [2026-10-13] originality | Plagiarism check with fingerprints, semantic and web matching
+
+- Source: backend/plagiarism, live DDG test, e5 similarity probe (translations 0.93-0.95, unrelated 0.79)
+- Pages created: [[services/originality]]
+- Pages updated: [[hot]]
+
 ## [2026-10-13] text-signals | Evasion, age fit, style drift for student texts
 
 - Source: backend/analyzers/text, text_signals.py, hand checks in three languages

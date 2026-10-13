@@ -35,7 +35,34 @@ export interface ExpectedAnalyzer {
   description: string;
 }
 
+export interface OriginalityMatch {
+  source: "internal" | "web";
+  kind: "exact" | "paraphrase" | "translation";
+  matched_chars: number;
+  share: number;
+  spans: [number, number][];
+  excerpts: string[];
+  similarity: number | null;
+  url?: string;
+  title?: string;
+  submission_id?: string;
+  author?: string;
+  classroom?: string | null;
+  submitted_at?: string;
+}
+
+export interface OriginalityReport {
+  status: "pending" | "running" | "done" | "failed";
+  originality: number | null;
+  matched_chars: number;
+  total_chars: number;
+  web_searched: boolean;
+  checked_at: string;
+  matches: OriginalityMatch[];
+}
+
 export interface Submission {
+  originality?: OriginalityReport | null;
   id: string;
   original_filename: string;
   mime_type: string;
@@ -321,6 +348,7 @@ export interface ClassSubmission {
   student_id: number;
   student: string;
   words: number | null;
+  originality: number | null;
 }
 
 export interface ClassStats {
