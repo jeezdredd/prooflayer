@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from analyzers.ensemble import ensemble_info
+
 from .models import Submission, VerdictOverride
 
 ANALYZER_DESCRIPTIONS = {
@@ -142,10 +144,19 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
         )
 
     def get_ensemble(self, obj):
-        from analyzers.ensemble import ensemble_info
-
-        info = ensemble_info()
-        return {"name": info["name"], "version": info["version"], "label": info["label"], "fingerprint": info["fingerprint"]}
+        current = ensemble_info()
+        version = obj.tribunal_version
+        if not version:
+            return None
+        return {
+            "name": current["name"],
+            "version": version,
+            "label": f"{current['name']} {version}",
+            "fingerprint": obj.tribunal_fingerprint,
+            "current_version": current["version"],
+            "current_fingerprint": current["fingerprint"],
+            "is_current": obj.tribunal_fingerprint == current["fingerprint"] and version == current["version"],
+        }
 
     def get_file_url(self, obj):
         request = self.context.get("request")

@@ -13,6 +13,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
+from analyzers.ensemble import ensemble_info
+from analyzers.roster import describe_drift, roster_drift
 from api.models import Feedback
 from users.models import EmailLog
 
@@ -136,14 +138,10 @@ def _probe_email() -> dict[str, Any]:
 
 
 def _probe_analyzers() -> dict[str, Any]:
-    from analyzers.roster import describe_drift, roster_drift
-
     try:
         report = roster_drift()
     except Exception as exc:
         return {"status": "down", "error": str(exc)[:120]}
-    from analyzers.ensemble import ensemble_info
-
     info = ensemble_info()
     out = {
         "status": "ok" if report["in_sync"] else "down",

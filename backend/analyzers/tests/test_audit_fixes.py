@@ -1,9 +1,12 @@
 import io
+import json
 
+import numpy as np
 import pytest
 from PIL import Image
 
 from analyzers.aggregator import _has_manipulation_signal, aggregate
+from analyzers.implementations.custom_detector import apply_calibration, load_calibration, training_meta
 from analyzers.implementations.ela_analyzer import ELAAnalyzer
 from analyzers.implementations.metadata_analyzer import MetadataAnalyzer
 from analyzers.implementations.video_analyzer import _frame_positions
@@ -184,7 +187,6 @@ class TestElaDoesNotVoteOnAiAxis:
     """
 
     def test_flat_image_is_inconclusive(self, tmp_path):
-        import numpy as np
 
         path = _jpeg(tmp_path, "flat.jpg", lambda: Image.new("RGB", (256, 256), (120, 120, 120)))
         output = ELAAnalyzer().analyze(path, {})
@@ -192,7 +194,6 @@ class TestElaDoesNotVoteOnAiAxis:
         assert np is not None
 
     def test_noisy_image_is_inconclusive(self, tmp_path):
-        import numpy as np
 
         rng = np.random.default_rng(7)
         arr = rng.integers(0, 255, (256, 256, 3), dtype=np.uint8)
@@ -307,11 +308,9 @@ class TestWeightedDisagreement:
 
 class TestRetrainedProvenance:
     def test_training_meta_is_read_and_trimmed(self, tmp_path):
-        import json as _json
 
-        from analyzers.implementations.custom_detector import training_meta
 
-        (tmp_path / "training_meta.json").write_text(_json.dumps({
+        (tmp_path / "training_meta.json").write_text(json.dumps({
             "base_model": "buildborderless/CommunityForensics-DeepfakeDet-ViT",
             "trained_at": "2026-09-04T15:54:10+00:00",
             "epochs": 3,
@@ -327,7 +326,6 @@ class TestRetrainedProvenance:
         assert "secret_internal_field" not in meta
 
     def test_missing_or_corrupt_meta_is_empty(self, tmp_path):
-        from analyzers.implementations.custom_detector import training_meta
 
         assert training_meta(str(tmp_path)) == {}
         (tmp_path / "training_meta.json").write_text("{not json")
@@ -394,17 +392,14 @@ class TestSingleDominantVoter:
 
 class TestCustomDetectorCalibration:
     def test_missing_file_means_raw(self, tmp_path):
-        from analyzers.implementations.custom_detector import apply_calibration, load_calibration
 
         assert load_calibration(str(tmp_path)) is None
         assert apply_calibration(0.42, None) == 0.42
 
     def test_knots_are_loaded_and_applied(self, tmp_path):
-        import json as _json
 
-        from analyzers.implementations.custom_detector import apply_calibration, load_calibration
 
-        (tmp_path / "calibration.json").write_text(_json.dumps({"knots": [[0, 0], [0.5, 0.2], [1, 1]]}))
+        (tmp_path / "calibration.json").write_text(json.dumps({"knots": [[0, 0], [0.5, 0.2], [1, 1]]}))
         knots = load_calibration(str(tmp_path))
         assert knots == [(0.0, 0.0), (0.5, 0.2), (1.0, 1.0)]
         assert apply_calibration(0.5, knots) == pytest.approx(0.2)
@@ -413,7 +408,6 @@ class TestCustomDetectorCalibration:
 
     @pytest.mark.parametrize("bad", ['{"knots": [[0.1, 0], [1, 1]]}', '{"knots": [[0, 0], [0.9, 0.5], [0.5, 0.6], [1, 1]]}', '{"knots": [[0, 0]]}', "{not json", '{"nope": 1}'])
     def test_invalid_knots_are_rejected(self, tmp_path, bad):
-        from analyzers.implementations.custom_detector import load_calibration
 
         (tmp_path / "calibration.json").write_text(bad)
         assert load_calibration(str(tmp_path)) is None

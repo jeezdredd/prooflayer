@@ -13,12 +13,14 @@ from content.storage_utils import local_file
 from users.emails import deliver
 
 from .aggregator import aggregate
+from .ensemble import ensemble_info
 from .models import AnalyzerConfig, AnalysisResult
 from .registry import load_analyzer_class
 
 logger = logging.getLogger(__name__)
 
 AGGREGATION_LOCK_TTL = 600
+AGGREGATION_LOCK_KEY = "aggregating:{submission_id}"
 
 
 def _publish_status(submission_id, status_message="", status=None, final_score=None, final_verdict=None, event=None, analyzer=None, verdict=None):
@@ -159,7 +161,7 @@ def run_analyzer(self, submission_id, config_id):
 
 @shared_task
 def aggregate_verdicts(result_ids, submission_id):
-    if not cache.add(f"aggregating:{submission_id}", 1, AGGREGATION_LOCK_TTL):
+    if not cache.add(AGGREGATION_LOCK_KEY.format(submission_id=submission_id), 1, AGGREGATION_LOCK_TTL):
         logger.info("Submission %s aggregation already in flight, skipping", submission_id)
         return
 
@@ -183,9 +185,15 @@ def aggregate_verdicts(result_ids, submission_id):
         submission.final_score = score
         submission.final_verdict = verdict
 
+    tribunal = ensemble_info()
+    submission.tribunal_version = tribunal["version"]
+    submission.tribunal_fingerprint = tribunal["fingerprint"]
     submission.status = Submission.Status.COMPLETED
     submission.status_message = ""
-    submission.save(update_fields=["final_score", "final_verdict", "status", "status_message"])
+    submission.save(update_fields=[
+        "final_score", "final_verdict", "status", "status_message",
+        "tribunal_version", "tribunal_fingerprint",
+    ])
     _publish_status(
         submission_id, "",
         status="completed",

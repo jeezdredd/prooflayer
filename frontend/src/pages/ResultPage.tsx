@@ -9,7 +9,7 @@ import ReportButton from "../components/ReportButton";
 import ProvenancePanel from "../components/ProvenancePanel";
 import { Skeleton, SkeletonText } from "../components/ui/Skeleton";
 import { toast } from "../components/ui/Toast";
-import { togglePublic } from "../api/endpoints";
+import { reanalyzeSubmission, togglePublic } from "../api/endpoints";
 
 function DownloadReportButton({ submissionId }: { submissionId: string }) {
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,35 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
       className="font-mono text-[10px] uppercase tracking-[0.14em] border border-iris/60 text-iris hover:bg-iris/10 px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5"
     >
       {loading ? "…" : "↓"} PDF Report
+    </button>
+  );
+}
+
+function ReanalyzeButton({ submissionId }: { submissionId: string }) {
+  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      await reanalyzeSubmission(submissionId);
+      await queryClient.invalidateQueries({ queryKey: ["submission", submissionId] });
+      toast.success("Re-analyzing with the current Tribunal");
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      toast.error(code === "upload_limit_reached" ? "Monthly limit reached" : "Could not start re-analysis");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="font-mono text-[10px] uppercase tracking-[0.14em] border border-signal-amber/40 text-signal-amber px-3 py-1.5 transition hover:bg-signal-amber/10 disabled:opacity-50"
+    >
+      {loading ? "…" : "↻"} Re-analyze
     </button>
   );
 }
@@ -166,6 +195,9 @@ export default function ResultPage() {
         )}
         {submission.status === "completed" && (
           <div className="flex items-center gap-2">
+            {submission.ensemble && !submission.ensemble.is_current && (
+              <ReanalyzeButton submissionId={submission.id} />
+            )}
             <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />
             <DownloadReportButton submissionId={submission.id} />
             <ReportButton submissionId={submission.id} />

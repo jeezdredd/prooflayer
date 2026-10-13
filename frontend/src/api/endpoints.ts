@@ -155,5 +155,8 @@ export const billing = {
   portal: () => client.post<{ url: string }>("/billing/portal/", {}),
 };
 
+export const reanalyzeSubmission = (id: string) =>
+  client.post<{ id: string; status: string }>(`/content/submissions/${id}/reanalyze/`, {});
+
 export const togglePublic = (id: string) =>
   client.post<{ is_public: boolean }>(`/content/submissions/${id}/toggle-public/`, {});

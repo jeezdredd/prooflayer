@@ -30,7 +30,11 @@ from .serializers import (
 )
 from .throttles import UploadRateThrottle, WidgetRateThrottle
 from .validators import validate_file_size, validate_mime_type
+from analyzers.models import AnalysisResult
+from analyzers.tasks import AGGREGATION_LOCK_KEY, dispatch_analysis
 from billing.models import get_or_create_subscription, uploads_this_month
+from billing.permissions import CanCompare
+from django.core.cache import cache
 from content.tasks import process_submission
 
 User = get_user_model()
@@ -91,7 +95,7 @@ class SubmissionViewSet(
     def get_permissions(self):
         if self.action == "create":
             return [IsVerifiedUser()]
-        return [IsAuthenticated()]
+        return super().get_permissions()
 
     def create(self, request, *args, **kwargs):
         if not (request.user.is_staff or request.user.is_superuser):
@@ -138,7 +142,7 @@ class SubmissionViewSet(
         submission.save(update_fields=["is_public"])
         return Response({"is_public": submission.is_public})
 
-    @action(detail=False, methods=["get"], url_path="compare")
+    @action(detail=False, methods=["get"], url_path="compare", permission_classes=[CanCompare])
     def compare(self, request):
         ids = (request.query_params.get("ids") or "").split(",")
         ids = [i.strip() for i in ids if i.strip()][:2]
@@ -164,6 +168,29 @@ class SubmissionViewSet(
         response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
+
+    @action(detail=True, methods=["post"], url_path="reanalyze")
+    def reanalyze(self, request, id=None):
+        submission = self.get_object()
+        if submission.status not in (Submission.Status.COMPLETED, Submission.Status.FAILED):
+            return Response({"detail": "Submission is still being analyzed."}, status=status.HTTP_409_CONFLICT)
+        user = request.user
+        if not (user.is_staff or user.is_superuser):
+            sub = get_or_create_subscription(user)
+            if uploads_this_month(user) >= sub.uploads_per_month:
+                return Response(
+                    {"detail": "Monthly upload limit reached.", "code": "upload_limit_reached"},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+        AnalysisResult.objects.filter(submission=submission).delete()
+        cache.delete(AGGREGATION_LOCK_KEY.format(submission_id=submission.id))
+        submission.status = Submission.Status.PROCESSING
+        submission.final_score = None
+        submission.final_verdict = ""
+        submission.status_message = "Re-analyzing with current Tribunal..."
+        submission.save(update_fields=["status", "final_score", "final_verdict", "status_message"])
+        dispatch_analysis.delay(str(submission.id))
+        return Response({"id": str(submission.id), "status": submission.status}, status=status.HTTP_202_ACCEPTED)
 
     def perform_destroy(self, instance):
         if instance.file:

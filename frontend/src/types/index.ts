@@ -51,7 +51,7 @@ export interface Submission {
   file_url: string | null;
   analysis_results: AnalysisResult[];
   expected_analyzers: ExpectedAnalyzer[];
-  ensemble?: EnsembleInfo;
+  ensemble?: EnsembleInfo | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +61,9 @@ export interface EnsembleInfo {
   version: string;
   label: string;
   fingerprint: string;
+  current_version: string;
+  current_fingerprint: string;
+  is_current: boolean;
 }
 
 export interface SubmissionListItem {

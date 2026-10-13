@@ -1,5 +1,7 @@
 import hashlib
 
+from analyzers.management.commands.seed_analyzers import ANALYZERS
+
 ENSEMBLE_NAME = "Tribunal"
 ENSEMBLE_SLUG = "tribunal"
 ENSEMBLE_VERSION = "1.2"
@@ -24,8 +26,6 @@ def roster_fingerprint(entries) -> str:
 
 
 def ensemble_info() -> dict:
-    from analyzers.management.commands.seed_analyzers import ANALYZERS
-
     return {
         "name": ENSEMBLE_NAME,
         "slug": ENSEMBLE_SLUG,

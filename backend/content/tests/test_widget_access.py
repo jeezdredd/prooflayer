@@ -3,6 +3,8 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from content.models import Submission
+from content.throttles import WidgetRateThrottle
+from content.views import WidgetEmbedView
 from users.tests.factories import UserFactory
 
 from .factories import SubmissionFactory
@@ -44,9 +46,7 @@ class TestWidgetEmbedAccess:
         assert response.data["verdict"] == "authentic"
 
     def test_widget_is_throttled(self):
-        from content.throttles import WidgetRateThrottle
 
         assert WidgetRateThrottle.scope == "widget"
-        from content.views import WidgetEmbedView
 
         assert WidgetEmbedView.throttle_classes == [WidgetRateThrottle]

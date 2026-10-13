@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
+from common.url_safety import UnsafeUrlError, _local, safe_get, validate_public_url
 
 
 def _addrinfo(*addresses):
@@ -78,5 +78,4 @@ class TestSafeGetPinning:
             mock_get.return_value.headers = {}
             safe_get("https://example.com/img.jpg")
 
-        from common.url_safety import _local
         assert getattr(_local, "pinned", None) is None

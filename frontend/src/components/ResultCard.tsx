@@ -230,6 +230,11 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
               title={`roster ${submission.ensemble.fingerprint}`}
             >
               verdict by {submission.ensemble.label}
+              {!submission.ensemble.is_current && (
+                <span className="block text-signal-amber/80 normal-case tracking-normal">
+                  current {submission.ensemble.name} {submission.ensemble.current_version}
+                </span>
+              )}
             </div>
           )}
           {isProcessing && (

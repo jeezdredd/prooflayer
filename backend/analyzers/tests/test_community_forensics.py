@@ -1,4 +1,3 @@
-import io
 import tempfile
 from unittest.mock import MagicMock, patch
 
@@ -6,6 +5,7 @@ import pytest
 import torch
 from PIL import Image
 
+from analyzers.implementations import community_forensics as cf
 from analyzers.implementations.community_forensics import CommunityForensicsDetector
 
 
@@ -121,9 +121,6 @@ class TestCalibration:
         assert calibrate(7.0) == 1.0
 
     def test_analyzer_reports_raw_and_calibrated(self, tmp_path):
-        from unittest.mock import patch
-        from analyzers.implementations import community_forensics as cf
-        from PIL import Image
 
         path = tmp_path / "x.jpg"
         Image.new("RGB", (64, 64), (10, 20, 30)).save(path, format="JPEG")

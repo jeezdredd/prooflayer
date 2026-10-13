@@ -30,6 +30,14 @@ Code: `analyzers/ensemble.py` - `ENSEMBLE_NAME`, `ENSEMBLE_VERSION`, `ensemble_i
 
 ## Versioning
 
+Since 2026-10-13 every submission is **stamped** at aggregation time with `tribunal_version` and
+`tribunal_fingerprint`. The detail response returns that stamp (not the live Tribunal) plus
+`current_version` and `is_current`; the result page shows "verdict by Tribunal 1.1 / current 1.3"
+and a **Re-analyze** button when the stamp is stale (`POST /content/submissions/<id>/reanalyze/`,
+owner or staff, counts against the monthly quota). Submissions judged before the stamp existed
+return `ensemble: null`.
+
+
 - `version` is bumped by hand when the tribunal's *behaviour* changes: membership, weights,
   aggregation rules, calibration, a retrained member. Bug fixes that do not change verdicts on
   the eval sets do not bump it.

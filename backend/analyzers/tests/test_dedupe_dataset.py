@@ -1,4 +1,5 @@
 import os
+import random
 
 from django.core.management import call_command
 from PIL import Image
@@ -7,7 +8,6 @@ from analyzers.management.commands.dedupe_dataset import find_collisions
 
 
 def _img(path, seed):
-    import random
 
     rng = random.Random(seed)
     img = Image.new("RGB", (64, 64))

@@ -1,11 +1,10 @@
+from analyzers.management.commands.seed_analyzers import ANALYZERS
 from analyzers.models import AnalyzerConfig
 
 WEIGHT_TOLERANCE = 1e-6
 
 
 def expected_roster() -> dict[str, dict]:
-    from analyzers.management.commands.seed_analyzers import ANALYZERS
-
     return {entry["name"]: entry for entry in ANALYZERS}
 
 

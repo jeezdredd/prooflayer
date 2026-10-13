@@ -1,3 +1,6 @@
+from contextlib import ExitStack
+from unittest.mock import patch
+
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -35,7 +38,11 @@ class TestEnsembleIdentity:
 class TestEnsembleExposure:
     def test_submission_detail_carries_ensemble(self):
         user = UserFactory(is_verified=True)
-        sub = SubmissionFactory(user=user, status=Submission.Status.COMPLETED)
+        info = ensemble_info()
+        sub = SubmissionFactory(
+            user=user, status=Submission.Status.COMPLETED,
+            tribunal_version=info["version"], tribunal_fingerprint=info["fingerprint"],
+        )
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.get(reverse("submission-detail", kwargs={"id": sub.id}))
@@ -44,9 +51,6 @@ class TestEnsembleExposure:
         assert response.data["ensemble"]["fingerprint"] == roster_fingerprint(ANALYZERS)
 
     def test_status_probe_names_the_ensemble(self):
-        from unittest.mock import patch
-        from contextlib import ExitStack
-
         client = APIClient()
         patches = [
             patch("api.system_views._probe_db", return_value={"status": "ok"}),

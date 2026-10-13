@@ -1,5 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 from django.core.management import call_command
+from django.db import ProgrammingError
 
 from analyzers.checks import analyzer_roster_check
 from analyzers.models import AnalyzerConfig
@@ -111,8 +114,6 @@ class TestAnalyzerRosterSystemCheck:
         assert "ela" in warnings[0].msg
 
     def test_silent_when_table_unavailable(self):
-        from unittest.mock import patch
-        from django.db import ProgrammingError
 
         with patch("analyzers.checks.roster_drift", side_effect=ProgrammingError("no table")):
             assert analyzer_roster_check(None) == []

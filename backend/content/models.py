@@ -52,6 +52,8 @@ class Submission(models.Model):
         blank=True,
         choices=[("real", "Real"), ("fake", "Fake")],
     )
+    tribunal_version = models.CharField(max_length=16, blank=True)
+    tribunal_fingerprint = models.CharField(max_length=16, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

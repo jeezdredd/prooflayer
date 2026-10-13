@@ -1,9 +1,10 @@
 from contextlib import ExitStack
+from unittest.mock import patch
 
 import pytest
+from django.core.management import call_command
 from django.urls import reverse
 from rest_framework.test import APIClient
-from unittest.mock import patch
 
 from users.tests.factories import UserFactory
 
@@ -181,7 +182,6 @@ class TestAnalyzerRosterProbe:
         assert response.data["overall"] == "degraded"
 
     def test_seeded_roster_is_ok(self):
-        from django.core.management import call_command
 
         call_command("seed_analyzers", verbosity=0)
         with ExitStack() as stack:
