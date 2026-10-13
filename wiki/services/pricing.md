@@ -14,13 +14,15 @@ Yearly = 10 x monthly (two months free).
 |---|---|---|---|---|---|---|
 | Free (`free`) | 0 | 0 | 50 | none | no | - |
 | Pro (`pro`) | $12 | $120 | 500 | 120 | no | - |
-| School (`education`) | $49 | $490 | 3 000 | 120 | 1 address | 30 |
-| University (`university`) | $149 | $1 490 | 15 000 | 300 | 10 addresses (faculties) | 250 |
-| Enterprise (`enterprise`) | $399 | $3 990 | 50 000 | 600 | no | - |
+| School (`education`) | $250 | $2 500 | 3 000 | 120 | 1 address | 30 |
+| University (`university`) | $500 | $5 000 | 15 000 | 300 | 10 addresses (faculties) | 250 |
+| Enterprise (`enterprise`) | contact sales | - | 50 000 default | 600 | no | - |
 
-Reasoning: School sits near what one teacher pays for a single-seat AI checker, but covers the
-whole staff; University is 3x School for 5x the volume and 10 faculties; Enterprise is the price
-of a small team tool, with volume beyond 50 000 negotiated by email. Students are never charged.
+2026-10-13: owner raised School to $250 and University to $500 (first draft was $49 / $149) and
+made Enterprise sales-led (`monthly_usd=None`, `self_serve=False`, page shows "Custom" and
+"Talk to sales"). Enterprise can still be billed through Paddle if `PADDLE_PRICE_ENTERPRISE_*`
+ids are set and the subscription is created by hand; the webhook maps it. Students are never
+charged.
 
 - **Tier value `education` is the School plan** (kept for existing rows); `university` is new
   (migration `billing/0003`).

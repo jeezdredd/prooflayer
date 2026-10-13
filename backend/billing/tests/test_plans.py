@@ -39,13 +39,19 @@ def _on_plan(tier):
 
 
 class TestCatalogShape:
-    def test_school_below_university_below_enterprise(self):
-        assert PLANS["pro"].monthly_usd < PLANS["education"].monthly_usd < PLANS["university"].monthly_usd < PLANS["enterprise"].monthly_usd
+    def test_school_below_university(self):
+        assert PLANS["pro"].monthly_usd < PLANS["education"].monthly_usd < PLANS["university"].monthly_usd
         assert PLANS["education"].uploads_per_month < PLANS["university"].uploads_per_month < PLANS["enterprise"].uploads_per_month
+
+    def test_enterprise_is_sales_led(self):
+        enterprise = PLANS["enterprise"]
+        assert enterprise.monthly_usd is None and enterprise.yearly_usd is None
+        assert not enterprise.self_serve
 
     def test_yearly_is_ten_months(self):
         for plan in PLANS.values():
-            assert plan.yearly_usd == plan.monthly_usd * 10
+            if plan.monthly_usd is not None:
+                assert plan.yearly_usd == plan.monthly_usd * 10
 
     def test_only_education_plans_get_classroom(self):
         assert {k for k, p in PLANS.items() if p.classroom} == {"education", "university"}
@@ -62,6 +68,7 @@ class TestCatalogEndpoint:
         assert plans["university"]["checkout"] == {"month": True, "year": False}
         assert plans["free"]["checkout"] == {"month": False, "year": False}
         assert plans["education"]["name"] == "School"
+        assert plans["enterprise"]["checkout"] == {"month": False, "year": False}
         assert plans["university"]["classroom"] is True
 
 

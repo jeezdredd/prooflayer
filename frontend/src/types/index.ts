@@ -215,8 +215,8 @@ export interface PlanInfo {
   key: PlanKey;
   name: string;
   audience: string;
-  monthly_usd: number;
-  yearly_usd: number;
+  monthly_usd: number | null;
+  yearly_usd: number | null;
   uploads_per_month: number;
   api_per_minute: number;
   teacher_seats: number;

@@ -51,7 +51,7 @@ PLANS: dict[str, Plan] = {
         ),
         Plan(
             key="education", name="School", audience="Schools, colleges and lyceums.",
-            monthly_usd=49, yearly_usd=490, uploads_per_month=3000, api_per_minute=120, teacher_seats=30, schools=1,
+            monthly_usd=250, yearly_usd=2500, uploads_per_month=3000, api_per_minute=120, teacher_seats=30, schools=1,
             compare=True, embed=True, api=True, vlm=True, pdf=True,
             priority_support=True, sla=False, on_premise=False, self_serve=True,
             highlights=(
@@ -61,7 +61,7 @@ PLANS: dict[str, Plan] = {
         ),
         Plan(
             key="university", name="University", audience="Universities and faculties.",
-            monthly_usd=149, yearly_usd=1490, uploads_per_month=15000, api_per_minute=300, teacher_seats=250, schools=10,
+            monthly_usd=500, yearly_usd=5000, uploads_per_month=15000, api_per_minute=300, teacher_seats=250, schools=10,
             compare=True, embed=True, api=True, vlm=True, pdf=True,
             priority_support=True, sla=False, on_premise=False, self_serve=True,
             highlights=(
@@ -71,11 +71,11 @@ PLANS: dict[str, Plan] = {
         ),
         Plan(
             key="enterprise", name="Enterprise", audience="Newsrooms, platforms, trust and safety teams.",
-            monthly_usd=399, yearly_usd=3990, uploads_per_month=50000, api_per_minute=600, teacher_seats=0, schools=0,
+            monthly_usd=None, yearly_usd=None, uploads_per_month=50000, api_per_minute=600, teacher_seats=0, schools=0,
             compare=True, embed=True, api=True, vlm=True, pdf=True,
-            priority_support=True, sla=True, on_premise=True, self_serve=True,
+            priority_support=True, sla=True, on_premise=True, self_serve=False,
             highlights=(
-                "50 000 checks a month, more on request", "600 API requests a minute per key",
+                "Volume and price agreed with you", "600 API requests a minute per key",
                 "99.5% uptime SLA", "On-premise deployment on request",
             ),
         ),

@@ -203,6 +203,7 @@ export default function PricingPage() {
             const featured = plan.key === "pro";
             const price = billingInterval === "year" ? plan.yearly_usd : plan.monthly_usd;
             const canPay = plan.checkout[billingInterval];
+            const isFree = plan.key === "free";
             const loading = checkoutPlan === plan.key;
             return (
               <motion.div
@@ -229,11 +230,11 @@ export default function PricingPage() {
 
                 <div className="mb-5">
                   <div className="flex items-baseline gap-1.5">
-                    <span className={`font-display text-3xl ${featured ? "text-ink-50" : "text-ink-200"}`}>${fmt(price)}</span>
-                    <span className="font-mono text-[11px] text-ink-600">{plan.monthly_usd ? (billingInterval === "year" ? "/ year" : "/ month") : "forever"}</span>
+                    <span className={`font-display text-3xl ${featured ? "text-ink-50" : "text-ink-200"}`}>{price == null ? "Custom" : `$${fmt(price)}`}</span>
+                    <span className="font-mono text-[11px] text-ink-600">{isFree ? "forever" : price == null ? "pricing" : billingInterval === "year" ? "/ year" : "/ month"}</span>
                   </div>
                   <div className="font-mono text-[10px] text-ink-600 h-4 mt-1">
-                    {billingInterval === "year" && plan.monthly_usd ? `≈ $${Math.round(plan.yearly_usd / 12)} a month` : ""}
+                    {billingInterval === "year" && !isFree && plan.yearly_usd != null ? `≈ $${fmt(Math.round(plan.yearly_usd / 12))} a month` : ""}
                   </div>
                   <p className="font-mono text-[11px] text-ink-500 mt-2 leading-relaxed">{plan.audience}</p>
                 </div>
@@ -250,15 +251,15 @@ export default function PricingPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!plan.monthly_usd || current) return;
+                    if (isFree || current) return;
                     if (canPay) handleCheckout(plan);
                     else mailSales(plan);
                   }}
-                  disabled={!plan.monthly_usd || current || loading}
+                  disabled={isFree || current || loading}
                   aria-label={`${plan.name} plan`}
                   className={`w-full py-3 font-mono text-[11px] uppercase tracking-[0.14em] transition-all ${look.button} disabled:opacity-40 disabled:cursor-default`}
                 >
-                  {!plan.monthly_usd
+                  {isFree
                     ? "Free forever"
                     : current
                     ? "Current plan"
@@ -322,7 +323,7 @@ export default function PricingPage() {
             { q: "School or University?", a: "School covers one school address and 30 teachers. University covers up to 10 faculties, each with its own address, and 250 teachers. Students are always free and unlimited." },
             { q: "Who pays for student uploads?", a: "The school's plan. Students never need to upgrade, and their personal checks stay private from teachers." },
             { q: "Can I cancel anytime?", a: "Yes. Cancel in the billing portal and keep access until the period ends." },
-            { q: "Need more volume or an invoice?", a: `Enterprise scales past 50 000 checks a month. Write to ${SALES_EMAIL} for invoicing, purchase orders or on-premise.` },
+            { q: "Need more volume or an invoice?", a: `Enterprise is priced for your volume, with invoicing, purchase orders and on-premise. Write to ${SALES_EMAIL}.` },
           ].map(({ q, a }) => (
             <div key={q} className="p-6 bg-ink-950">
               <div className="font-mono text-[11px] text-ink-200 mb-2">{q}</div>
