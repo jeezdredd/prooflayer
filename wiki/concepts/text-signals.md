@@ -25,3 +25,29 @@ the statistical detector come in T3 (see the plan in `~/.claude/plans/groovy-pop
 
 Teacher UI: class year selector on class creation and in the class header; `TextReport` on the
 result page lists each finding with the offending words.
+
+## Phase T3: Binoculars statistical detector (2026-10-13, not shipped)
+
+`analyzers/text/binoculars.py` scores text as performer log-perplexity over observer/performer
+cross-perplexity (Hans et al. 2024), 512-token windows, lower means more machine-like.
+`eval_text_detectors` scores `dataset/text_eval`, sets per-language thresholds on the calib split
+(1% and 5% human FPR) and writes monotone knots; `text_binoculars` reads them. The analyzer is
+written and tested but **not registered in `seed_analyzers`**, because the measurement failed.
+
+Qwen3-1.7B-Base / Qwen3-1.7B, 150 texts per class per split, threshold at 1% human FPR on calib:
+
+| lang | AUC | AI caught @1% | human flagged on test | humanized caught |
+|---|---|---|---|---|
+| en (DAIGT essays) | 0.66 | 37% | 4.0% | 5-44% by mode |
+| en textsight 2026 | | 12% | 11% of human wiki text | |
+| ru (CoAT) | 0.09 (inverted) | 0% | 4.0% | 0% |
+| fr (MMGT rewrites) | 0.80 | 4% | 0% | 0% |
+
+Reading: small-model Binoculars does not separate 2026 generators from human text, the 1% human
+threshold does not transfer across domains (4% on test essays, 11% on wiki text), and Russian is
+inverted on CoAT (machine texts score *higher*), which is a dataset artifact, not a usable rule.
+Shipping it would add false accusations. Next step is T4, a supervised multilingual classifier
+trained on current generators plus humanized variants, measured on the same frozen test split.
+Scores are cached in `dataset/text_scores/` so later pairs can be compared without rescoring.
+Prod note: two 1.7B models per Celery child do not fit the 16 GB worker at concurrency 4; any
+model-based text member needs its own single-slot queue.

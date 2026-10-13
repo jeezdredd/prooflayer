@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-13] text-t3 | Binoculars detector measured, not shipped
+
+- Source: eval_text_detectors on dataset/text_eval with Qwen3-1.7B pair
+- Pages updated: [[concepts/text-signals]]
+
 ## [2026-10-13] privacy-legal | Retention, deletion, consent, legal pages
 
 - Source: code changes in content/users/analyzers/plagiarism/billing, two reviewer workflows over the legal pages
