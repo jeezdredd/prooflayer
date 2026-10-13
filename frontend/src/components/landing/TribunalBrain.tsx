@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import * as THREE from "three";
+import { buildBrain, mulberry32, pointOnFiber, type V3 } from "./brain/model";
 
 export type MemberKind = "provenance" | "image" | "video" | "audio" | "text";
 
@@ -18,527 +20,657 @@ interface Props {
   verdictLabel: string;
 }
 
-type RGB = [number, number, number];
-
-const W = 1000;
-const H = 680;
-
-const KIND_COLOR: Record<MemberKind, RGB> = {
-  provenance: [74, 222, 128],
-  image: [245, 176, 66],
-  video: [232, 121, 249],
-  audio: [167, 139, 250],
-  text: [34, 211, 238],
+const KIND_RGB: Record<MemberKind, V3> = {
+  provenance: [0.29, 0.87, 0.5],
+  image: [0.96, 0.69, 0.26],
+  video: [0.91, 0.47, 0.98],
+  audio: [0.65, 0.55, 0.98],
+  text: [0.13, 0.83, 0.93],
 };
-const CORE_COLOR: RGB = [34, 211, 238];
-const VERDICT_COLOR: RGB = [245, 176, 66];
-const AMBIENT_COLOR: RGB = [200, 210, 255];
+const KIND_HEX: Record<MemberKind, string> = {
+  provenance: "#4ade80",
+  image: "#f5b042",
+  video: "#e879f9",
+  audio: "#a78bfa",
+  text: "#22d3ee",
+};
+const KIND_AREA: Record<MemberKind, string> = {
+  provenance: "prefrontal · memory",
+  image: "visual cortex",
+  video: "motion area",
+  audio: "auditory cortex",
+  text: "language area",
+};
+const KIND_LABEL: Record<MemberKind, string> = {
+  provenance: "Provenance",
+  image: "Image",
+  video: "Video",
+  audio: "Audio",
+  text: "Text",
+};
 
-const OUTLINE: [number, number][] = [
-  [150, 330], [120, 240], [165, 150], [260, 80], [390, 40], [530, 32], [670, 55], [790, 115],
-  [870, 210], [885, 300], [850, 370], [800, 405], [830, 440], [815, 500], [740, 525], [660, 505],
-  [612, 478], [602, 540], [598, 598], [548, 598], [545, 520], [530, 470], [450, 455], [350, 450],
-  [250, 425], [185, 385],
+const MEMBER_DIRS: V3[] = [
+  [-0.38, 0.42, 0.82],
+  [-0.36, 0.02, -0.93],
+  [-0.3, 0.36, -0.88],
+  [-0.48, 0.62, -0.62],
+  [-0.62, -0.18, -0.76],
+  [-0.2, 0.62, -0.76],
+  [-0.68, -0.5, -0.4],
+  [-0.86, 0.08, -0.48],
+  [-0.92, -0.26, 0.08],
+  [-0.8, 0.02, 0.52],
 ];
 
-const MEMBER_SPOTS: [number, number][] = [
-  [185, 250], [255, 145], [375, 88], [515, 72], [655, 96], [770, 172], [830, 290], [300, 388],
-  [440, 410], [745, 372],
+const CASES = [
+  { id: "0507", file: "img_4232.png", verdict: "Synthetic", score: "0.87", rgb: [1, 0.34, 0.45] as V3, tone: "text-signal-blood" },
+  { id: "0508", file: "DSC_1187.jpg", verdict: "Authentic", score: "0.12", rgb: [0.29, 0.87, 0.5] as V3, tone: "text-signal-sage" },
+  { id: "0509", file: "press_still.webp", verdict: "Needs review", score: "split", rgb: [0.96, 0.69, 0.26] as V3, tone: "text-signal-amber" },
 ];
 
-const CORE: [number, number] = [520, 300];
-const STEM: [number, number][] = [[556, 395], [570, 470], [573, 535]];
-const VERDICT: [number, number] = [573, 592];
+const FOV = 32;
+const CENTER_Y = -0.24;
+const TRAIL = 7;
+const MAX_PULSES = 90;
 
-interface Node {
-  x: number;
-  y: number;
-  kind: "inter" | "member" | "core" | "stem" | "verdict";
-  heat: number;
+const CORTEX_VERT = `
+uniform float uTime;
+uniform float uSize;
+uniform float uCamDist;
+uniform float uScan;
+uniform vec3 uMember[MEMBERS];
+uniform vec3 uMemberColor[MEMBERS];
+uniform float uMemberHeat[MEMBERS];
+attribute float aShade;
+attribute float aSeed;
+varying vec3 vColor;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  float depth = -mv.z;
+  float twinkle = 0.84 + 0.16 * sin(uTime * (0.5 + aSeed * 1.6) + aSeed * 40.0);
+  vec3 base = vec3(0.58, 0.64, 1.0) * (0.022 + 0.34 * pow(aShade, 1.25)) * twinkle;
+  vec3 tint = vec3(0.0);
+  for (int i = 0; i < MEMBERS; i++) {
+    float d = distance(position, uMember[i]);
+    tint += uMemberColor[i] * uMemberHeat[i] * exp(-d * d / 0.02);
+  }
+  float scanD = (position.y - uScan) / 0.035;
+  float scan = exp(-scanD * scanD) * (0.25 + aShade);
+  float fade = clamp(1.2 - (depth - uCamDist) * 1.15, 0.12, 1.0);
+  vColor = (base + tint * 0.55 + vec3(0.13, 0.83, 0.93) * scan * 0.22) * fade;
+  gl_PointSize = (0.0085 + 0.004 * aShade + scan * 0.006) * uSize / depth;
+  gl_Position = projectionMatrix * mv;
+}`;
+
+const CORTEX_FRAG = `
+varying vec3 vColor;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float d = dot(c, c) * 4.0;
+  if (d > 1.0) discard;
+  vec3 col = vColor * pow(1.0 - d, 1.5);
+  gl_FragColor = vec4(col, max(col.r, max(col.g, col.b)));
+}`;
+
+const LINE_VERT = `
+uniform float uCamDist;
+attribute vec3 aColor;
+varying vec3 vColor;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vColor = aColor * clamp(1.25 - (-mv.z - uCamDist) * 1.0, 0.2, 1.0);
+  gl_Position = projectionMatrix * mv;
+}`;
+
+const LINE_FRAG = `
+varying vec3 vColor;
+void main() {
+  gl_FragColor = vec4(vColor, max(vColor.r, max(vColor.g, vColor.b)));
+}`;
+
+const GLOW_VERT = `
+uniform float uSize;
+uniform float uCamDist;
+attribute vec3 aColor;
+attribute float aSize;
+attribute float aAlpha;
+varying vec3 vColor;
+varying float vAlpha;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  float depth = -mv.z;
+  vColor = aColor;
+  vAlpha = aAlpha * clamp(1.3 - (depth - uCamDist) * 0.9, 0.3, 1.0);
+  gl_PointSize = aSize * uSize / depth;
+  gl_Position = projectionMatrix * mv;
+}`;
+
+const GLOW_FRAG = `
+varying vec3 vColor;
+varying float vAlpha;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float d = dot(c, c) * 4.0;
+  if (d > 1.0) discard;
+  float halo = exp(-d * 5.0) * (1.0 - d);
+  float hot = exp(-d * 70.0);
+  vec3 col = (vColor * halo * 0.8 + vec3(1.0) * hot * 0.9) * vAlpha;
+  gl_FragColor = vec4(col, max(col.r, max(col.g, col.b)));
+}`;
+
+function lightMaterial(vertexShader: string, fragmentShader: string, uniforms: Record<string, THREE.IUniform>, defines?: Record<string, number>) {
+  return new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader,
+    uniforms,
+    defines,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.CustomBlending,
+    blendEquation: THREE.AddEquation,
+    blendSrc: THREE.OneFactor,
+    blendDst: THREE.OneFactor,
+  });
 }
 
-interface Edge {
-  a: number;
-  b: number;
-  heat: number;
-  color: RGB;
+function haloGeometry(seed: number) {
+  const rand = mulberry32(seed);
+  const pos: number[] = [];
+  const shade: number[] = [];
+  const seeds: number[] = [];
+  const rings: [number, number, number][] = [
+    [1.08, 0.1, 0.0],
+    [1.22, -0.45, 1.1],
+  ];
+  for (const [radius, tilt, phase] of rings) {
+    for (let i = 0; i < 900; i++) {
+      const a = (i / 900) * Math.PI * 2;
+      if (Math.sin(a * 36 + phase) > 0.35) continue;
+      const x = Math.cos(a) * radius;
+      const z = Math.sin(a) * radius * 0.82;
+      pos.push(x, -0.12 + z * Math.sin(tilt) * 0.3, z * Math.cos(tilt));
+      shade.push(0.35 + rand() * 0.25);
+      seeds.push(rand());
+    }
+  }
+  for (let i = 0; i < 420; i++) {
+    const r = 0.9 + rand() * 0.75;
+    const t = rand() * Math.PI * 2;
+    const u = rand() * 2 - 1;
+    const s = Math.sqrt(1 - u * u);
+    pos.push(Math.cos(t) * s * r, u * r * 0.8 - 0.25, Math.sin(t) * s * r);
+    shade.push(0.1 + rand() * 0.35);
+    seeds.push(rand());
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.setAttribute("aShade", new THREE.BufferAttribute(new Float32Array(shade), 1));
+  geo.setAttribute("aSeed", new THREE.BufferAttribute(new Float32Array(seeds), 1));
+  return geo;
 }
 
-interface Impulse {
-  path: number[];
-  lengths: number[];
-  total: number;
-  d: number;
+interface Pulse {
+  fiber: number;
+  t: number;
   speed: number;
-  color: RGB;
+  color: V3;
   strength: number;
-  toCore: boolean;
-  lastSeg: number;
+  reverse: boolean;
+  arrive?: () => void;
 }
-
-interface Graph {
-  nodes: Node[];
-  edges: Edge[];
-  adj: Map<number, { to: number; edge: number }[]>;
-  coreIdx: number;
-  verdictIdx: number;
-  stemPath: number[];
-  memberIdx: number[];
-  memberPaths: number[][];
-  outline: Path2D;
-  fissure: Path2D;
-}
-
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function smoothClosedPath(points: [number, number][]): Path2D {
-  const path = new Path2D();
-  const n = points.length;
-  path.moveTo(points[0][0], points[0][1]);
-  for (let i = 0; i < n; i++) {
-    const p0 = points[(i - 1 + n) % n];
-    const p1 = points[i];
-    const p2 = points[(i + 1) % n];
-    const p3 = points[(i + 2) % n];
-    path.bezierCurveTo(
-      p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
-      p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6,
-      p2[0], p2[1],
-    );
-  }
-  path.closePath();
-  return path;
-}
-
-function dist(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function buildGraph(memberCount: number): Graph {
-  const outline = smoothClosedPath(OUTLINE);
-  const fissure = new Path2D();
-  fissure.moveTo(235, 372);
-  fissure.bezierCurveTo(330, 330, 470, 350, 640, 292);
-  fissure.moveTo(690, 120);
-  fissure.bezierCurveTo(640, 190, 660, 240, 620, 300);
-  fissure.moveTo(410, 60);
-  fissure.bezierCurveTo(430, 130, 400, 190, 430, 250);
-
-  const probe = document.createElement("canvas").getContext("2d");
-  const inside = (x: number, y: number) => (probe ? probe.isPointInPath(outline, x, y) : true);
-
-  const nodes: Node[] = [];
-  const memberIdx: number[] = [];
-  for (let i = 0; i < memberCount; i++) {
-    const [x, y] = MEMBER_SPOTS[i % MEMBER_SPOTS.length];
-    memberIdx.push(nodes.length);
-    nodes.push({ x, y, kind: "member", heat: 0 });
-  }
-  const coreIdx = nodes.length;
-  nodes.push({ x: CORE[0], y: CORE[1], kind: "core", heat: 0 });
-  const stemIdx = STEM.map(([x, y]) => {
-    nodes.push({ x, y, kind: "stem", heat: 0 });
-    return nodes.length - 1;
-  });
-  const verdictIdx = nodes.length;
-  nodes.push({ x: VERDICT[0], y: VERDICT[1], kind: "verdict", heat: 0 });
-
-  const rand = mulberry32(239);
-  let inter = 0;
-  for (let guard = 0; inter < 92 && guard < 20000; guard++) {
-    const x = 120 + rand() * 770;
-    const y = 30 + rand() * 500;
-    if (!inside(x, y)) continue;
-    if (y > 455 && x > 520 && x < 620) continue;
-    if (nodes.some((n) => dist(n, { x, y }) < (n.kind === "inter" ? 40 : 52))) continue;
-    nodes.push({ x, y, kind: "inter", heat: 0 });
-    inter++;
-  }
-
-  const edgeKey = new Set<string>();
-  const edges: Edge[] = [];
-  const addEdge = (a: number, b: number) => {
-    if (a === b) return;
-    const key = a < b ? `${a}-${b}` : `${b}-${a}`;
-    if (edgeKey.has(key)) return;
-    edgeKey.add(key);
-    edges.push({ a, b, heat: 0, color: AMBIENT_COLOR });
-  };
-
-  const brain = nodes.map((n, i) => ({ n, i })).filter(({ n }) => n.kind === "inter" || n.kind === "member" || n.kind === "core");
-  for (const { n, i } of brain) {
-    brain
-      .filter(({ i: j }) => j !== i)
-      .map(({ n: m, i: j }) => ({ j, d: dist(n, m) }))
-      .filter(({ d }) => d < 150)
-      .sort((p, q) => p.d - q.d)
-      .slice(0, n.kind === "inter" ? 3 : 4)
-      .forEach(({ j }) => addEdge(i, j));
-  }
-
-  const parent = nodes.map((_, i) => i);
-  const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
-  for (const e of edges) parent[find(e.a)] = find(e.b);
-  for (;;) {
-    const coreRoot = find(coreIdx);
-    let best: { a: number; b: number; d: number } | null = null;
-    for (const { n, i } of brain) {
-      if (find(i) === coreRoot) continue;
-      for (const { n: m, i: j } of brain) {
-        if (find(j) !== coreRoot) continue;
-        const d = dist(n, m);
-        if (!best || d < best.d) best = { a: i, b: j, d };
-      }
-    }
-    if (!best) break;
-    addEdge(best.a, best.b);
-    parent[find(best.a)] = find(best.b);
-  }
-
-  const stemPath = [coreIdx, ...stemIdx, verdictIdx];
-  for (let s = 0; s < stemPath.length - 1; s++) addEdge(stemPath[s], stemPath[s + 1]);
-
-  const adj = new Map<number, { to: number; edge: number }[]>();
-  edges.forEach((e, idx) => {
-    if (!adj.has(e.a)) adj.set(e.a, []);
-    if (!adj.has(e.b)) adj.set(e.b, []);
-    adj.get(e.a)!.push({ to: e.b, edge: idx });
-    adj.get(e.b)!.push({ to: e.a, edge: idx });
-  });
-
-  const distTo = nodes.map(() => Infinity);
-  const prev = nodes.map(() => -1);
-  const done = nodes.map(() => false);
-  distTo[coreIdx] = 0;
-  for (;;) {
-    let u = -1;
-    for (let i = 0; i < nodes.length; i++) if (!done[i] && distTo[i] < Infinity && (u < 0 || distTo[i] < distTo[u])) u = i;
-    if (u < 0) break;
-    done[u] = true;
-    for (const { to } of adj.get(u) ?? []) {
-      if (nodes[to].kind === "stem" || nodes[to].kind === "verdict") continue;
-      const nd = distTo[u] + dist(nodes[u], nodes[to]) * (nodes[u].kind === "member" ? 3 : 1);
-      if (nd < distTo[to]) {
-        distTo[to] = nd;
-        prev[to] = u;
-      }
-    }
-  }
-  const memberPaths = memberIdx.map((m) => {
-    const path = [m];
-    let cur = m;
-    while (cur !== coreIdx && prev[cur] >= 0) {
-      cur = prev[cur];
-      path.push(cur);
-    }
-    return path;
-  });
-
-  return { nodes, edges, adj, coreIdx, verdictIdx, stemPath, memberIdx, memberPaths, outline, fissure };
-}
-
-function edgeBetween(g: Graph, a: number, b: number): number {
-  return g.adj.get(a)?.find((x) => x.to === b)?.edge ?? -1;
-}
-
-function makeImpulse(g: Graph, path: number[], color: RGB, strength: number, speed: number, toCore: boolean): Impulse {
-  const lengths: number[] = [0];
-  for (let i = 1; i < path.length; i++) lengths.push(lengths[i - 1] + dist(g.nodes[path[i - 1]], g.nodes[path[i]]));
-  return { path, lengths, total: lengths[lengths.length - 1], d: 0, speed, color, strength, toCore, lastSeg: 0 };
-}
-
-function pointAt(g: Graph, imp: Impulse, d: number): [number, number] {
-  const clamped = Math.max(0, Math.min(imp.total, d));
-  let i = 1;
-  while (i < imp.lengths.length - 1 && imp.lengths[i] < clamped) i++;
-  const a = g.nodes[imp.path[i - 1]];
-  const b = g.nodes[imp.path[i]];
-  const seg = imp.lengths[i] - imp.lengths[i - 1] || 1;
-  const t = (clamped - imp.lengths[i - 1]) / seg;
-  return [a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t];
-}
-
-function glowSprite(color: RGB): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = c.height = 64;
-  const ctx = c.getContext("2d")!;
-  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.18, `rgba(${color[0]},${color[1]},${color[2]},0.9)`);
-  g.addColorStop(0.5, `rgba(${color[0]},${color[1]},${color[2]},0.22)`);
-  g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 64, 64);
-  return c;
-}
-
-const rgba = (c: RGB, a: number) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
 export default function TribunalBrain({ members, activeCode, onSelect, verdictLabel }: Props) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const redrawRef = useRef<(() => void) | null>(null);
+  const wrapRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const glRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const verdictRef = useRef<HTMLDivElement>(null);
+  const nodeRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const calloutRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const focusRef = useRef<number | null>(null);
+  const redrawRef = useRef<(() => void) | null>(null);
   const reduceMotion = useReducedMotion();
   const [hovered, setHovered] = useState<number | null>(null);
-  const graph = useMemo(() => (typeof document === "undefined" ? null : buildGraph(members.length)), [members.length]);
+  const [caseIdx, setCaseIdx] = useState(0);
+  const [ruled, setRuled] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const dirs = useMemo(
+    () =>
+      members.map((_, i): V3 => {
+        if (i < MEMBER_DIRS.length) return MEMBER_DIRS[i];
+        const a = i * 2.399;
+        return [-0.7, Math.sin(a) * 0.5, Math.cos(a) * 0.7];
+      }),
+    [members],
+  );
+  const model = useMemo(() => buildBrain(dirs), [dirs]);
+  const columns = useMemo(() => {
+    const order = members.map((_, i) => i).sort((a, b) => model.members[b][1] - model.members[a][1]);
+    return {
+      back: order.filter((i) => model.members[i][2] <= -0.3),
+      front: order.filter((i) => model.members[i][2] > -0.3),
+    };
+  }, [members, model]);
+  const kinds = useMemo(() => Array.from(new Set(members.map((m) => m.kind))), [members]);
 
   const activeIndex = activeCode ? members.findIndex((m) => m.code === activeCode) : -1;
   const focusIndex = hovered ?? (activeIndex >= 0 ? activeIndex : null);
   focusRef.current = focusIndex;
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = glRef.current;
+    const stage = stageRef.current;
     const wrap = wrapRef.current;
-    if (!canvas || !wrap || !graph) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const overlay = overlayRef.current;
+    if (!canvas || !stage || !wrap || !overlay) return;
+    const octx = overlay.getContext("2d");
 
-    const sprites = new Map<string, HTMLCanvasElement>();
-    const sprite = (c: RGB) => {
-      const key = c.join(",");
-      let s = sprites.get(key);
-      if (!s) {
-        s = glowSprite(c);
-        sprites.set(key, s);
-      }
-      return s;
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
+    } catch {
+      setFailed(true);
+      return;
+    }
+    renderer.setClearColor(0x000000, 0);
+
+    const n = members.length;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 20);
+    const group = new THREE.Group();
+    scene.add(group);
+
+    const memberHeat = new Array(n).fill(0);
+    const cortexUniforms = {
+      uTime: { value: 0 },
+      uSize: { value: 1000 },
+      uCamDist: { value: 4 },
+      uScan: { value: 0 },
+      uMember: { value: model.members.map((m) => new THREE.Vector3(...m)) },
+      uMemberColor: { value: members.map((m) => new THREE.Vector3(...KIND_RGB[m.kind])) },
+      uMemberHeat: { value: memberHeat },
     };
+    const cortexGeo = new THREE.BufferGeometry();
+    cortexGeo.setAttribute("position", new THREE.BufferAttribute(model.positions, 3));
+    cortexGeo.setAttribute("aShade", new THREE.BufferAttribute(model.shade, 1));
+    cortexGeo.setAttribute("aSeed", new THREE.BufferAttribute(model.seeds, 1));
+    const cortexMat = lightMaterial(CORTEX_VERT, CORTEX_FRAG, cortexUniforms, { MEMBERS: Math.max(1, n) });
+    group.add(new THREE.Points(cortexGeo, cortexMat));
 
-    let scale = 1;
+    const haloGeo = haloGeometry(77);
+    const halo = new THREE.Points(haloGeo, cortexMat);
+    halo.frustumCulled = false;
+    scene.add(halo);
+
+    const fiberOffset: number[] = [];
+    let vertexCount = 0;
+    for (const f of model.fibers) {
+      fiberOffset.push(vertexCount);
+      vertexCount += (f.count - 1) * 2;
+    }
+    const linePos = new Float32Array(vertexCount * 3);
+    const lineT = new Float32Array(vertexCount);
+    const baseColor = new Float32Array(vertexCount * 3);
+    const memberOfFiber = new Map<number, number>();
+    model.memberFibers.forEach((f, i) => memberOfFiber.set(f, i));
+    model.fibers.forEach((f, fi) => {
+      const member = memberOfFiber.get(fi);
+      const isStem = fi === model.stemFiber;
+      const intensity = member !== undefined ? 0.08 : isStem ? 0.1 : 0.05;
+      const tint: V3 = member !== undefined ? KIND_RGB[members[member].kind] : f.base;
+      for (let s = 0; s < f.count - 1; s++) {
+        for (let k = 0; k < 2; k++) {
+          const v = fiberOffset[fi] + s * 2 + k;
+          const p = s + k;
+          linePos[v * 3] = f.points[p * 3];
+          linePos[v * 3 + 1] = f.points[p * 3 + 1];
+          linePos[v * 3 + 2] = f.points[p * 3 + 2];
+          lineT[v] = p / (f.count - 1);
+          const taper = 0.55 + 0.45 * Math.sin(Math.PI * lineT[v]);
+          baseColor[v * 3] = tint[0] * intensity * taper;
+          baseColor[v * 3 + 1] = tint[1] * intensity * taper;
+          baseColor[v * 3 + 2] = tint[2] * intensity * taper;
+        }
+      }
+    });
+    const lineColor = new Float32Array(baseColor);
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute("position", new THREE.BufferAttribute(linePos, 3));
+    const lineColorAttr = new THREE.BufferAttribute(lineColor, 3).setUsage(THREE.DynamicDrawUsage);
+    lineGeo.setAttribute("aColor", lineColorAttr);
+    const lineUniforms = { uCamDist: { value: 4 } };
+    const lineMat = lightMaterial(LINE_VERT, LINE_FRAG, lineUniforms);
+    group.add(new THREE.LineSegments(lineGeo, lineMat));
+
+    const glowCap = n + 2 + MAX_PULSES * (TRAIL + 1);
+    const glowPos = new Float32Array(glowCap * 3);
+    const glowColor = new Float32Array(glowCap * 3);
+    const glowSize = new Float32Array(glowCap);
+    const glowAlpha = new Float32Array(glowCap);
+    const glowGeo = new THREE.BufferGeometry();
+    const glowAttrs = [
+      new THREE.BufferAttribute(glowPos, 3).setUsage(THREE.DynamicDrawUsage),
+      new THREE.BufferAttribute(glowColor, 3).setUsage(THREE.DynamicDrawUsage),
+      new THREE.BufferAttribute(glowSize, 1).setUsage(THREE.DynamicDrawUsage),
+      new THREE.BufferAttribute(glowAlpha, 1).setUsage(THREE.DynamicDrawUsage),
+    ];
+    glowGeo.setAttribute("position", glowAttrs[0]);
+    glowGeo.setAttribute("aColor", glowAttrs[1]);
+    glowGeo.setAttribute("aSize", glowAttrs[2]);
+    glowGeo.setAttribute("aAlpha", glowAttrs[3]);
+    const glowUniforms = { uSize: { value: 1000 }, uCamDist: { value: 4 } };
+    const glowMat = lightMaterial(GLOW_VERT, GLOW_FRAG, glowUniforms);
+    const glowPoints = new THREE.Points(glowGeo, glowMat);
+    glowPoints.frustumCulled = false;
+    group.add(glowPoints);
+
+    let stageW = 1;
+    let stageH = 1;
+    let stageX = 0;
+    let stageY = 0;
+    let anchors: ({ x: number; y: number; dir: number } | null)[] = [];
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const cssW = wrap.clientWidth;
-      canvas.width = Math.round(cssW * dpr);
-      canvas.height = Math.round(((cssW * H) / W) * dpr);
-      canvas.style.height = `${(cssW * H) / W}px`;
-      scale = (cssW / W) * dpr;
-    };
-    resize();
-
-    const impulses: Impulse[] = [];
-    const memberTimers = members.map((_, i) => 0.4 + i * 0.35 + Math.random() * 1.2);
-    let ambientTimer = 0.2;
-    let coreCharge = 0;
-    let running = true;
-    let visible = true;
-    let last = performance.now();
-    let raf = 0;
-
-    const fireMember = (i: number, strength: number) => {
-      const path = graph.memberPaths[i];
-      if (path.length < 2) return;
-      impulses.push(makeImpulse(graph, path, KIND_COLOR[members[i].kind], strength, 210 + Math.random() * 70, true));
-      graph.nodes[path[0]].heat = Math.min(1, graph.nodes[path[0]].heat + 0.9 * strength);
-    };
-
-    const fireAmbient = () => {
-      const start = Math.floor(Math.random() * graph.nodes.length);
-      if (graph.nodes[start].kind !== "inter") return;
-      const path = [start];
-      let cur = start;
-      const hops = 2 + Math.floor(Math.random() * 3);
-      for (let h = 0; h < hops; h++) {
-        const options = (graph.adj.get(cur) ?? []).filter(({ to }) => !path.includes(to) && graph.nodes[to].kind === "inter");
-        if (!options.length) break;
-        cur = options[Math.floor(Math.random() * options.length)].to;
-        path.push(cur);
-      }
-      if (path.length > 1) impulses.push(makeImpulse(graph, path, AMBIENT_COLOR, 0.35, 120 + Math.random() * 60, false));
-    };
-
-    const draw = (animated: boolean) => {
-      ctx.setTransform(scale, 0, 0, scale, 0, 0);
-      ctx.clearRect(0, 0, W, H);
-
-      const focus = focusRef.current;
-      const focusColor = focus !== null ? KIND_COLOR[members[focus].kind] : null;
-      const focusEdges = new Set<number>();
-      if (focus !== null) {
-        const p = graph.memberPaths[focus];
-        for (let i = 1; i < p.length; i++) focusEdges.add(edgeBetween(graph, p[i - 1], p[i]));
-        for (let i = 1; i < graph.stemPath.length; i++) focusEdges.add(edgeBetween(graph, graph.stemPath[i - 1], graph.stemPath[i]));
-      }
-
-      const glow = ctx.createRadialGradient(CORE[0], CORE[1], 20, CORE[0], CORE[1], 460);
-      glow.addColorStop(0, "rgba(167,139,250,0.07)");
-      glow.addColorStop(1, "rgba(167,139,250,0)");
-      ctx.fillStyle = glow;
-      ctx.fill(graph.outline);
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = "rgba(255,255,255,0.13)";
-      ctx.stroke(graph.outline);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = "rgba(255,255,255,0.05)";
-      ctx.stroke(graph.fissure);
-
-      ctx.lineWidth = 0.7;
-      ctx.strokeStyle = "rgba(255,255,255,0.075)";
-      ctx.beginPath();
-      for (const e of graph.edges) {
-        const a = graph.nodes[e.a];
-        const b = graph.nodes[e.b];
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-      }
-      ctx.stroke();
-
-      ctx.globalCompositeOperation = "lighter";
-      graph.edges.forEach((e, idx) => {
-        const onFocus = focusEdges.has(idx);
-        const lit = Math.max(e.heat, onFocus ? (animated ? 0.28 : 0.45) : 0);
-        if (lit < 0.02) return;
-        const a = graph.nodes[e.a];
-        const b = graph.nodes[e.b];
-        ctx.lineWidth = 0.8 + lit * 1.4;
-        ctx.strokeStyle = rgba(onFocus && focusColor ? focusColor : e.color, Math.min(0.75, lit * 0.7));
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
+      stageW = Math.max(1, stage.clientWidth);
+      stageH = Math.max(1, stage.clientHeight);
+      renderer.setPixelRatio(dpr);
+      renderer.setSize(stageW, stageH, false);
+      const aspect = stageW / stageH;
+      camera.aspect = aspect;
+      const tan = Math.tan((FOV * Math.PI) / 360);
+      const dist = Math.max(1.02 / tan, 1.0 / (tan * aspect));
+      camera.position.set(0, CENTER_Y, dist);
+      camera.lookAt(0, CENTER_Y, 0);
+      camera.updateProjectionMatrix();
+      const pxSize = (stageH * dpr) / (2 * tan);
+      cortexUniforms.uSize.value = pxSize;
+      glowUniforms.uSize.value = pxSize;
+      cortexUniforms.uCamDist.value = dist;
+      lineUniforms.uCamDist.value = dist;
+      glowUniforms.uCamDist.value = dist;
+      const wrapRect = wrap.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      stageX = stageRect.left - wrapRect.left;
+      stageY = stageRect.top - wrapRect.top;
+      overlay.width = Math.round(wrapRect.width * dpr);
+      overlay.height = Math.round(wrapRect.height * dpr);
+      octx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+      anchors = members.map((_, i) => {
+        const el = calloutRefs.current[i];
+        if (!el || el.offsetParent === null) return null;
+        const r = el.getBoundingClientRect();
+        const left = r.left + r.width / 2 < stageRect.left + stageRect.width / 2;
+        return { x: (left ? r.right : r.left) - wrapRect.left, y: r.top + 9 - wrapRect.top, dir: left ? 1 : -1 };
       });
-
-      for (const n of graph.nodes) {
-        if (n.kind !== "inter" && n.kind !== "stem") continue;
-        ctx.fillStyle = `rgba(220,225,255,${0.28 + n.heat * 0.6})`;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, 1.7 + n.heat * 1.6, 0, Math.PI * 2);
-        ctx.fill();
-        if (n.heat > 0.05) {
-          const s = 14 + n.heat * 18;
-          ctx.globalAlpha = n.heat * 0.5;
-          ctx.drawImage(sprite(AMBIENT_COLOR), n.x - s / 2, n.y - s / 2, s, s);
-          ctx.globalAlpha = 1;
-        }
-      }
-
-      graph.memberIdx.forEach((ni, i) => {
-        const n = graph.nodes[ni];
-        const c = KIND_COLOR[members[i].kind];
-        const h = Math.max(n.heat, focus === i ? 0.55 : 0);
-        const s = 34 + h * 46;
-        ctx.globalAlpha = 0.35 + h * 0.65;
-        ctx.drawImage(sprite(c), n.x - s / 2, n.y - s / 2, s, s);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = rgba(c, 0.95);
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, 4.2 + h * 1.8, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      const core = graph.nodes[graph.coreIdx];
-      const coreSize = 70 + core.heat * 70;
-      ctx.globalAlpha = 0.55 + core.heat * 0.45;
-      ctx.drawImage(sprite(CORE_COLOR), core.x - coreSize / 2, core.y - coreSize / 2, coreSize, coreSize);
-
-      const verdict = graph.nodes[graph.verdictIdx];
-      const vSize = 46 + verdict.heat * 80;
-      ctx.globalAlpha = 0.45 + verdict.heat * 0.55;
-      ctx.drawImage(sprite(VERDICT_COLOR), verdict.x - vSize / 2, verdict.y - vSize / 2, vSize, vSize);
-      ctx.globalAlpha = 1;
-
-      for (const imp of impulses) {
-        const steps = 9;
-        for (let k = steps; k >= 1; k--) {
-          const [x, y] = pointAt(graph, imp, imp.d - k * 7);
-          ctx.fillStyle = rgba(imp.color, (1 - k / (steps + 1)) * 0.5 * imp.strength);
-          ctx.beginPath();
-          ctx.arc(x, y, 1.3 + (1 - k / steps) * 1.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        const [hx, hy] = pointAt(graph, imp, imp.d);
-        const s = 18 + 14 * imp.strength;
-        ctx.globalAlpha = Math.min(1, 0.4 + imp.strength);
-        ctx.drawImage(sprite(imp.color), hx - s / 2, hy - s / 2, s, s);
-        ctx.globalAlpha = 1;
-      }
-      ctx.globalCompositeOperation = "source-over";
     };
 
+    const rand = mulberry32(42);
+    const pulses: Pulse[] = [];
+    let coreHeat = 0;
+    let verdictHeat = 0;
+    let verdictRgb: V3 = [1, 1, 1];
+    let ambientTimer = 0.3;
+    let focusTimer = 0;
+    let caseNo = 0;
+    let schedule: number[] = [];
+    let fired: boolean[] = [];
+    let caseClock = 0;
+    let pending = 0;
+    let holdTimer = -1;
+
+    const fire = (fiber: number, color: V3, strength: number, worldSpeed: number, reverse: boolean, arrive?: () => void) => {
+      if (pulses.length >= MAX_PULSES) {
+        const dropped = pulses.findIndex((p) => !p.arrive);
+        pulses.splice(dropped >= 0 ? dropped : 0, 1);
+      }
+      pulses.push({ fiber, t: 0, speed: worldSpeed / model.fibers[fiber].length, color, strength, reverse, arrive });
+    };
+    const fireMember = (i: number, strength: number, arrive?: () => void) => {
+      memberHeat[i] = Math.min(1, memberHeat[i] + strength);
+      fire(model.memberFibers[i], KIND_RGB[members[i].kind], strength, 0.8 + rand() * 0.2, false, arrive);
+    };
+    const startCase = (idx: number) => {
+      caseNo = idx;
+      caseClock = 0;
+      holdTimer = -1;
+      pending = n;
+      const order = members.map((_, i) => i).sort(() => rand() - 0.5);
+      schedule = new Array(n).fill(0);
+      order.forEach((m, rank) => (schedule[m] = 0.5 + rank * 0.26 + rand() * 0.12));
+      fired = new Array(n).fill(false);
+      setCaseIdx(idx);
+      setRuled(false);
+    };
+    const onVote = () => {
+      coreHeat = Math.min(1.4, coreHeat + 0.22);
+      pending -= 1;
+      if (pending > 0) return;
+      const c = CASES[caseNo];
+      fire(model.stemFiber, c.rgb, 1.2, 0.7, false, () => {
+        verdictHeat = 1;
+        verdictRgb = c.rgb;
+        holdTimer = 3.4;
+        setRuled(true);
+      });
+    };
+
+    const tmp: V3 = [0, 0, 0];
     const step = (dt: number) => {
-      const decay = Math.exp(-dt * 1.6);
-      const slow = Math.exp(-dt * 1.1);
-      for (const e of graph.edges) e.heat *= decay;
-      for (const n of graph.nodes) n.heat *= n.kind === "core" || n.kind === "verdict" ? slow : decay;
+      const decay = Math.exp(-dt * 1.8);
+      for (let i = 0; i < n; i++) memberHeat[i] *= decay;
+      coreHeat *= Math.exp(-dt * 1.2);
+      verdictHeat *= Math.exp(-dt * 0.35);
+
+      caseClock += dt;
+      for (let i = 0; i < n; i++) {
+        if (!fired[i] && caseClock >= schedule[i]) {
+          fired[i] = true;
+          fireMember(i, 0.9, onVote);
+        }
+      }
+      if (holdTimer > 0) {
+        holdTimer -= dt;
+        if (holdTimer <= 0) startCase((caseNo + 1) % CASES.length);
+      }
 
       const focus = focusRef.current;
-      memberTimers.forEach((t, i) => {
-        memberTimers[i] = t - dt;
-        if (memberTimers[i] > 0) return;
-        fireMember(i, focus === i ? 1 : 0.85);
-        const mean = focus === i ? 0.9 : focus !== null ? 4.2 : 2.6;
-        memberTimers[i] = mean * (0.55 + Math.random() * 0.9);
-      });
+      if (focus !== null && focus < n) {
+        focusTimer -= dt;
+        if (focusTimer <= 0) {
+          fireMember(focus, 1);
+          focusTimer = 1.1;
+        }
+      } else {
+        focusTimer = 0;
+      }
+
       ambientTimer -= dt;
       if (ambientTimer <= 0) {
-        fireAmbient();
-        ambientTimer = 0.18 + Math.random() * 0.35;
+        const f = model.ambientFibers[Math.floor(rand() * model.ambientFibers.length)];
+        const b = model.fibers[f].base;
+        fire(f, [b[0] * 0.8, b[1] * 0.8, b[2] * 0.9], 0.38 + rand() * 0.25, 0.45 + rand() * 0.3, rand() < 0.5);
+        ambientTimer = 0.07 + rand() * 0.16;
       }
 
-      for (let i = impulses.length - 1; i >= 0; i--) {
-        const imp = impulses[i];
-        imp.d += imp.speed * dt;
-        let seg = 1;
-        while (seg < imp.lengths.length - 1 && imp.lengths[seg] < imp.d) seg++;
-        for (let s = imp.lastSeg; s < seg; s++) {
-          const e = edgeBetween(graph, imp.path[s], imp.path[s + 1]);
-          if (e >= 0) {
-            graph.edges[e].heat = Math.min(1, graph.edges[e].heat + 0.85 * imp.strength);
-            graph.edges[e].color = imp.color;
-          }
-          if (s > 0) graph.nodes[imp.path[s]].heat = Math.min(1, graph.nodes[imp.path[s]].heat + 0.5 * imp.strength);
+      for (let i = pulses.length - 1; i >= 0; i--) {
+        const p = pulses[i];
+        p.t += p.speed * dt;
+        if (p.t >= 1) {
+          pulses.splice(i, 1);
+          p.arrive?.();
         }
-        imp.lastSeg = Math.max(imp.lastSeg, seg);
-        if (imp.d < imp.total) continue;
-        const end = imp.path[imp.path.length - 1];
-        graph.nodes[end].heat = Math.min(1, graph.nodes[end].heat + 0.35 * imp.strength);
-        if (imp.toCore && end === graph.coreIdx) {
-          coreCharge += imp.strength;
-          if (coreCharge >= 2.4) {
-            coreCharge = 0;
-            impulses.push(makeImpulse(graph, graph.stemPath, VERDICT_COLOR, 1, 160, false));
-          }
-        }
-        impulses.splice(i, 1);
       }
     };
 
+    const memberWorld = new THREE.Vector3();
+    const project = new THREE.Vector3();
+    const render = (time: number, px: number, py: number) => {
+      const yaw = Math.PI / 2 + 0.42 * Math.sin(time * 0.15) + px;
+      const pitch = 0.2 + 0.05 * Math.sin(time * 0.11 + 1.3) + py;
+      group.rotation.set(pitch, yaw, 0);
+      group.updateMatrixWorld();
+      halo.rotation.set(pitch * 0.6, time * 0.06 + px * 0.5, 0.08);
+      cortexUniforms.uTime.value = time;
+      cortexUniforms.uScan.value = -0.95 + (0.5 - 0.5 * Math.cos(time * 0.32)) * 1.6;
+
+      const focus = focusRef.current;
+      lineColor.set(baseColor);
+      const lightFiber = (fi: number, color: V3, amount: (t: number) => number) => {
+        const f = model.fibers[fi];
+        const start = fiberOffset[fi];
+        const end = start + (f.count - 1) * 2;
+        for (let v = start; v < end; v++) {
+          const a = amount(lineT[v]);
+          if (a <= 0.002) continue;
+          lineColor[v * 3] += color[0] * a;
+          lineColor[v * 3 + 1] += color[1] * a;
+          lineColor[v * 3 + 2] += color[2] * a;
+        }
+      };
+      if (focus !== null && focus < n) lightFiber(model.memberFibers[focus], KIND_RGB[members[focus].kind], () => 0.22);
+      if (focus !== null) lightFiber(model.stemFiber, [0.6, 0.65, 0.95], () => 0.1);
+
+      let g = 0;
+      const glow = (p: V3, c: V3, size: number, alpha: number) => {
+        glowPos[g * 3] = p[0];
+        glowPos[g * 3 + 1] = p[1];
+        glowPos[g * 3 + 2] = p[2];
+        glowColor[g * 3] = c[0];
+        glowColor[g * 3 + 1] = c[1];
+        glowColor[g * 3 + 2] = c[2];
+        glowSize[g] = size;
+        glowAlpha[g] = alpha;
+        g++;
+      };
+
+      for (const p of pulses) {
+        const head = p.reverse ? 1 - p.t : p.t;
+        lightFiber(p.fiber, p.color, (t) => {
+          const behind = p.reverse ? t - head : head - t;
+          if (behind < -0.02) return 0;
+          return p.strength * 0.55 * Math.exp(-Math.max(0, behind) * 7);
+        });
+        const f = model.fibers[p.fiber];
+        for (let k = TRAIL; k >= 1; k--) {
+          const tt = p.reverse ? head + k * 0.018 : head - k * 0.018;
+          if (tt < 0 || tt > 1) continue;
+          pointOnFiber(f, tt, tmp);
+          glow(tmp, p.color, 0.022 * (1 - k / (TRAIL + 1)) * (0.6 + p.strength * 0.5), (1 - k / (TRAIL + 1)) * 0.6 * p.strength);
+        }
+        pointOnFiber(f, head, tmp);
+        glow(tmp, p.color, 0.05 + 0.04 * p.strength, Math.min(1, 0.35 + p.strength * 0.6));
+      }
+      lineColorAttr.needsUpdate = true;
+
+      members.forEach((m, i) => {
+        const h = Math.max(memberHeat[i], focus === i ? 0.75 : 0);
+        glow(model.members[i], KIND_RGB[m.kind], 0.07 + h * 0.09, 0.55 + h * 0.45);
+      });
+      glow(model.core, [0.13, 0.83, 0.93], 0.16 + coreHeat * 0.14, 0.45 + Math.min(1, coreHeat) * 0.55);
+      glow(model.verdict, verdictRgb, 0.12 + verdictHeat * 0.16, 0.4 + verdictHeat * 0.6);
+      glowGeo.setDrawRange(0, g);
+      for (const a of glowAttrs) a.needsUpdate = true;
+      for (let i = 0; i < n; i++) cortexUniforms.uMemberHeat.value[i] = Math.max(memberHeat[i], focus === i ? 0.6 : 0);
+
+      renderer.render(scene, camera);
+
+      if (octx) octx.clearRect(0, 0, overlay.width, overlay.height);
+      members.forEach((m, i) => {
+        memberWorld.set(...model.members[i]).applyMatrix4(group.matrixWorld);
+        const facing = memberWorld.z > -0.15;
+        project.copy(memberWorld).project(camera);
+        const x = ((project.x + 1) / 2) * stageW;
+        const y = ((1 - project.y) / 2) * stageH;
+        const node = nodeRefs.current[i];
+        if (node) {
+          node.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+          node.style.opacity = facing || focus === i ? "1" : "0.45";
+        }
+        const anchor = anchors[i];
+        if (!octx || !anchor) return;
+        const nx = stageX + x;
+        const ny = stageY + y;
+        const lit = Math.max(memberHeat[i] * 0.6, focus === i ? 0.9 : 0);
+        const c = KIND_RGB[m.kind];
+        octx.strokeStyle = lit > 0.05
+          ? `rgba(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)},${0.18 + lit * 0.6})`
+          : `rgba(255,255,255,${facing ? 0.13 : 0.07})`;
+        octx.lineWidth = 1;
+        octx.beginPath();
+        octx.moveTo(anchor.x + anchor.dir * 6, anchor.y);
+        octx.lineTo(anchor.x + anchor.dir * 22, anchor.y);
+        octx.lineTo(nx, ny);
+        octx.stroke();
+      });
+      memberWorld.set(...model.verdict).applyMatrix4(group.matrixWorld);
+      project.copy(memberWorld).project(camera);
+      if (verdictRef.current) {
+        const vx = ((project.x + 1) / 2) * stageW;
+        const vy = ((1 - project.y) / 2) * stageH;
+        verdictRef.current.style.transform = `translate(${vx}px, ${vy + 18}px) translateX(-50%)`;
+      }
+    };
+
+    resize();
+    const ro = new ResizeObserver(() => {
+      resize();
+      if (reduceMotion) render(0, 0, 0);
+    });
+    ro.observe(wrap);
+
+    let visible = true;
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+    });
+    io.observe(wrap);
+
+    let targetX = 0;
+    let targetY = 0;
+    let px = 0;
+    let py = 0;
+    const onPointer = (e: PointerEvent) => {
+      const r = wrap.getBoundingClientRect();
+      targetX = ((e.clientX - r.left) / r.width - 0.5) * 0.22;
+      targetY = ((e.clientY - r.top) / r.height - 0.5) * 0.12;
+    };
+    const onLeave = () => {
+      targetX = 0;
+      targetY = 0;
+    };
+    wrap.addEventListener("pointermove", onPointer);
+    wrap.addEventListener("pointerleave", onLeave);
+
+    let raf = 0;
+    let last = performance.now();
+    let clock = 0;
+    let running = true;
     const loop = (now: number) => {
       if (!running) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (visible) {
+      if (visible && !document.hidden) {
+        clock += dt;
+        const ease = 1 - Math.exp(-dt * 3);
+        px += (targetX - px) * ease;
+        py += (targetY - py) * ease;
         step(dt);
-        draw(true);
+        render(clock, px, py);
       }
       raf = requestAnimationFrame(loop);
     };
 
-    redrawRef.current = reduceMotion ? () => draw(false) : null;
-
-    const ro = new ResizeObserver(() => {
-      resize();
-      draw(!reduceMotion);
-    });
-    ro.observe(wrap);
-
-    const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      last = performance.now();
-    });
-    io.observe(wrap);
-
-    if (reduceMotion) draw(false);
-    else raf = requestAnimationFrame(loop);
+    if (reduceMotion) {
+      verdictHeat = 0.8;
+      verdictRgb = CASES[0].rgb;
+      setRuled(true);
+      redrawRef.current = () => render(0, 0, 0);
+      render(0, 0, 0);
+    } else {
+      startCase(0);
+      raf = requestAnimationFrame(loop);
+    }
 
     return () => {
       running = false;
@@ -546,70 +678,161 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
       cancelAnimationFrame(raf);
       ro.disconnect();
       io.disconnect();
+      wrap.removeEventListener("pointermove", onPointer);
+      wrap.removeEventListener("pointerleave", onLeave);
+      cortexGeo.dispose();
+      haloGeo.dispose();
+      cortexMat.dispose();
+      lineGeo.dispose();
+      lineMat.dispose();
+      glowGeo.dispose();
+      glowMat.dispose();
+      renderer.dispose();
     };
-  }, [graph, members, reduceMotion]);
+  }, [model, members, reduceMotion]);
 
   useEffect(() => {
     redrawRef.current?.();
   }, [focusIndex]);
 
-  if (!graph) return null;
-
   const focusMember = focusIndex !== null ? members[focusIndex] : null;
+  const current = CASES[caseIdx];
+
+  const callout = (i: number, side: "back" | "front") => {
+    const m = members[i];
+    const on = focusIndex === i;
+    return (
+      <li key={m.code}>
+        <button
+          ref={(el) => {
+            calloutRefs.current[i] = el;
+          }}
+          type="button"
+          aria-pressed={activeCode === m.code}
+          onMouseEnter={() => setHovered(i)}
+          onMouseLeave={() => setHovered(null)}
+          onFocus={() => setHovered(i)}
+          onBlur={() => setHovered(null)}
+          onClick={() => onSelect(m.code)}
+          className={`group block w-full py-1.5 focus:outline-none ${side === "back" ? "text-right" : "text-left"}`}
+        >
+          <span className="block font-mono text-[10px] uppercase tracking-[0.14em] leading-[18px]">
+            {side === "front" && <span className="inline-block w-1.5 h-1.5 rounded-full mr-2 align-middle" style={{ background: KIND_HEX[m.kind] }} />}
+            <span className="text-ink-600 tabular-nums mr-1.5">{m.code}</span>
+            <span className={`transition-colors duration-300 ${on ? "text-ink-50" : "text-ink-300 group-hover:text-ink-100"}`}>{m.short}</span>
+            {side === "back" && <span className="inline-block w-1.5 h-1.5 rounded-full ml-2 align-middle" style={{ background: KIND_HEX[m.kind] }} />}
+          </span>
+          <span className="block font-mono text-[9px] uppercase tracking-[0.16em] text-ink-600">{KIND_AREA[m.kind]}</span>
+        </button>
+      </li>
+    );
+  };
 
   return (
-    <div ref={wrapRef} className="relative w-full select-none">
-      <canvas ref={canvasRef} className="block w-full" aria-hidden="true" />
-      {graph.memberIdx.map((ni, i) => {
-        const n = graph.nodes[ni];
-        const m = members[i];
-        const leftSide = n.x < CORE[0];
-        return (
-          <button
-            key={m.code}
-            type="button"
-            aria-label={`${m.name}: ${m.tag}`}
-            aria-pressed={activeCode === m.code}
-            onMouseEnter={() => setHovered(i)}
-            onMouseLeave={() => setHovered(null)}
-            onFocus={() => setHovered(i)}
-            onBlur={() => setHovered(null)}
-            onClick={() => onSelect(m.code)}
-            className="absolute -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-full focus:outline-none focus-visible:ring-1 focus-visible:ring-signal-amber/70"
-            style={{ left: `${(n.x / W) * 100}%`, top: `${(n.y / H) * 100}%` }}
-          >
-            <span
-              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-300 ${
-                leftSide ? "right-full mr-1 text-right" : "left-full ml-1 text-left"
-              } ${focusIndex === i ? "text-ink-50" : "text-ink-300"}`}
+    <figure ref={wrapRef} className="relative case-card crop-marks px-4 sm:px-6 pt-4 pb-4 select-none">
+      <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 w-full h-full" aria-hidden="true" />
+      <figcaption className="relative flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">
+        <span>
+          Fig. 03 <span className="text-ink-700 mx-1.5">/</span> {verdictLabel}
+          <span className="hidden sm:inline text-ink-700 mx-1.5">/</span>
+          <span className="hidden sm:inline">left lateral view</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-signal-sage pulse-dot" />
+          in session
+        </span>
+      </figcaption>
+
+      <div className="relative grid md:grid-cols-[minmax(0,1fr)_minmax(0,2.6fr)_minmax(0,1fr)] gap-2 mt-2">
+        <ol className="hidden md:flex flex-col justify-center gap-3 pr-2">{columns.back.map((i) => callout(i, "back"))}</ol>
+
+        <div ref={stageRef} className="relative aspect-[20/23] md:aspect-[5/4] w-full overflow-hidden">
+          <canvas ref={glRef} className="absolute inset-0 w-full h-full" aria-hidden="true" />
+          {failed && (
+            <div className="absolute inset-0 grid place-items-center font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600">
+              3D view unavailable on this device
+            </div>
+          )}
+          {members.map((m, i) => (
+            <button
+              key={m.code}
+              ref={(el) => {
+                nodeRefs.current[i] = el;
+              }}
+              type="button"
+              aria-label={`${m.name}: ${m.tag}`}
+              aria-pressed={activeCode === m.code}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              onFocus={() => setHovered(i)}
+              onBlur={() => setHovered(null)}
+              onClick={() => onSelect(m.code)}
+              className="absolute left-0 top-0 w-8 h-8 rounded-full transition-opacity duration-500 focus:outline-none focus-visible:ring-1 focus-visible:ring-signal-amber/70"
             >
-              <span className="text-ink-500 mr-1.5 tabular-nums">{m.code}</span>
-              <span className="hidden sm:inline">{m.short}</span>
-            </span>
-          </button>
-        );
-      })}
-      <div
-        className="pointer-events-none absolute -translate-x-1/2 font-mono text-[9px] uppercase tracking-[0.2em] text-signal-cyan/70 whitespace-nowrap"
-        style={{ left: `${(CORE[0] / W) * 100}%`, top: `${((CORE[1] + 30) / H) * 100}%` }}
-      >
-        weighted vote
+              <span className="md:hidden pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-0.5 font-mono text-[9px] tabular-nums text-ink-400">
+                {m.code}
+              </span>
+            </button>
+          ))}
+          <div ref={verdictRef} className="pointer-events-none absolute left-0 top-0 text-center whitespace-nowrap">
+            <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-500">Verdict</div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={ruled ? current.id : "pending"}
+                initial={{ opacity: 0, y: 4, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -4, filter: "blur(4px)" }}
+                transition={{ duration: 0.35 }}
+                className={`font-display text-lg leading-tight mt-0.5 ${ruled ? current.tone : "text-ink-600 italic"}`}
+              >
+                {ruled ? current.verdict : "deliberating"}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+
+        <ol className="hidden md:flex flex-col justify-center gap-3 pl-2">{columns.front.map((i) => callout(i, "front"))}</ol>
       </div>
-      <div
-        className="pointer-events-none absolute -translate-x-1/2 text-center whitespace-nowrap"
-        style={{ left: `${(VERDICT[0] / W) * 100}%`, top: `${((VERDICT[1] + 22) / H) * 100}%` }}
-      >
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal-amber">Verdict</div>
-        <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-600 mt-0.5">{verdictLabel}</div>
+
+      <div className="relative mt-3 pt-3 border-t border-[var(--line)] flex flex-wrap items-start justify-between gap-x-8 gap-y-3 min-h-[3.25rem]">
+        <ul className="flex flex-wrap gap-x-4 gap-y-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">
+          {kinds.map((k) => (
+            <li key={k} className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: KIND_HEX[k] }} />
+              {KIND_LABEL[k]}
+            </li>
+          ))}
+        </ul>
+        <div className="text-right max-w-full sm:max-w-[60%]" aria-live="polite">
+          <AnimatePresence mode="wait">
+            {focusMember ? (
+              <motion.div key={`m-${focusMember.code}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                <div className="font-display text-lg text-ink-50 leading-tight">{focusMember.name}</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 mt-0.5">
+                  {focusMember.tag} <span className="text-ink-700 mx-1">/</span> {KIND_AREA[focusMember.kind]}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div key={`c-${current.id}-${ruled}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="font-mono text-[10px] uppercase tracking-[0.14em]">
+                <div className="text-ink-500 ticker">
+                  Case/2026-{current.id} <span className="text-ink-700 mx-1">·</span> {current.file}
+                </div>
+                <div className="mt-1">
+                  {ruled ? (
+                    <>
+                      <span className={current.tone}>{current.verdict}</span>
+                      <span className="text-ink-600 ml-2 tabular-nums">{current.score}</span>
+                      {current.score === "split" && <span className="text-ink-500 ml-2">→ sent to a human reviewer</span>}
+                    </>
+                  ) : (
+                    <span className="text-ink-400">{members.length} judges voting</span>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-      <div className="pointer-events-none absolute left-0 bottom-0 max-w-[44%] min-h-[3.5rem]" aria-live="polite">
-        {focusMember && (
-          <>
-            <div className="font-display text-lg sm:text-2xl text-ink-50 leading-tight">{focusMember.name}</div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 mt-1">{focusMember.tag}</div>
-          </>
-        )}
-      </div>
-    </div>
+    </figure>
   );
 }

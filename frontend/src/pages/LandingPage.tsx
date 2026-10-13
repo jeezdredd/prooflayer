@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useInView, animate } from "motion/react";
 import {
@@ -8,7 +8,9 @@ import {
   Gavel, Scale, GraduationCap, Layers, ShieldCheck, Network,
 } from "lucide-react";
 import ShaderBackground from "../components/ui/ShaderBackground";
-import TribunalBrain, { type BrainMember } from "../components/landing/TribunalBrain";
+import type { BrainMember } from "../components/landing/TribunalBrain";
+
+const TribunalBrain = lazy(() => import("../components/landing/TribunalBrain"));
 import client from "../api/client";
 import { useAuthStore } from "../stores/authStore";
 
@@ -204,7 +206,8 @@ export default function LandingPage() {
               </Link>
             )}
             <MagneticBtn to={authedCta} className="btn-forensic">
-              {authedLabel}
+              <span className="sm:hidden">{user ? "Dashboard →" : "Start →"}</span>
+              <span className="hidden sm:inline">{authedLabel}</span>
             </MagneticBtn>
           </div>
         </div>
@@ -441,23 +444,25 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.div
-            className="mb-14 -mx-2 sm:mx-0"
+            className="mb-14"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            <TribunalBrain
-              members={ANALYZERS}
-              activeCode={openCheck}
-              verdictLabel={tribunalLabel}
-              onSelect={(code) => {
-                setOpenCheck(code);
-                requestAnimationFrame(() =>
-                  document.getElementById(`judge-${code}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
-                );
-              }}
-            />
+            <Suspense fallback={<div className="case-card crop-marks aspect-[4/5] md:aspect-[16/9]" />}>
+              <TribunalBrain
+                members={ANALYZERS}
+                activeCode={openCheck}
+                verdictLabel={tribunalLabel}
+                onSelect={(code) => {
+                  setOpenCheck(code);
+                  requestAnimationFrame(() =>
+                    document.getElementById(`judge-${code}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                  );
+                }}
+              />
+            </Suspense>
           </motion.div>
 
           <motion.div
