@@ -4,8 +4,13 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from rest_framework.routers import SimpleRouter
 
+from api.roadmap_views import RoadmapItemViewSet
 from api.system_views import RecordVisitView, SystemStatusView, FeedbackView
+
+roadmap_router = SimpleRouter()
+roadmap_router.register("api/v1/system/roadmap", RoadmapItemViewSet, basename="roadmap")
 
 
 def health(request):
@@ -26,6 +31,7 @@ urlpatterns = [
     path("api/v1/system/status/", SystemStatusView.as_view(), name="system-status"),
     path("api/v1/system/visit/", RecordVisitView.as_view(), name="system-visit"),
     path("api/v1/system/feedback/", FeedbackView.as_view(), name="system-feedback"),
+    *roadmap_router.urls,
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),

@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-13] landing | Workspace showcase, editable roadmap, 3D brain
+
+- Source: frontend landing rework, api.RoadmapItem
+- Pages updated: [[api/endpoints]]
+
 ## [2026-10-13] text-t3 | Binoculars detector measured, not shipped
 
 - Source: eval_text_detectors on dataset/text_eval with Qwen3-1.7B pair

@@ -4,15 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useInView, animate } from "motion/react";
 import {
   ScanLine, Eye, Film, AudioLines, Type, Sparkles,
-  Brain, Fingerprint, History, SearchCheck, Globe, Users2,
+  Brain, Fingerprint,
   Gavel, Scale, GraduationCap, Layers, ShieldCheck, Network,
 } from "lucide-react";
 import ShaderBackground from "../components/ui/ShaderBackground";
 import type { BrainMember } from "../components/landing/TribunalBrain";
-
-const TribunalBrain = lazy(() => import("../components/landing/TribunalBrain"));
+import Roadmap from "../components/landing/Roadmap";
+import Workspace from "../components/landing/Workspace";
 import client from "../api/client";
 import { useAuthStore } from "../stores/authStore";
+
+const TribunalBrain = lazy(() => import("../components/landing/TribunalBrain"));
 
 const TRIBUNAL_FALLBACK = "Tribunal 1.4";
 
@@ -36,33 +38,6 @@ const TRIBUNAL_RULES = [
   { Icon: Fingerprint, title: "Every verdict is traceable", body: "Each result carries the Tribunal version and a fingerprint of the exact roster and weights that produced it." },
 ];
 
-
-const FEATURES = [
-  {
-    Icon: History,
-    title: "Results Archive",
-    desc: "Every submission stored with full evidence. Browse, filter, re-examine.",
-    accent: "text-signal-cyan",
-  },
-  {
-    Icon: SearchCheck,
-    title: "Fact-Check Engine",
-    desc: "Cross-reference claims against live sources. Linked evidence per assertion.",
-    accent: "text-signal-amber",
-  },
-  {
-    Icon: Globe,
-    title: "Provenance Trail",
-    desc: "Reverse-image search and origin detection. Track publication history.",
-    accent: "text-signal-violet",
-  },
-  {
-    Icon: Users2,
-    title: "Community Layer",
-    desc: "Crowdsource votes alongside machine verdicts. Human signal where models disagree.",
-    accent: "text-signal-sage",
-  },
-];
 
 const NUMBERS = [
   { v: "10", l: "Active analyzers" },
@@ -589,7 +564,7 @@ export default function LandingPage() {
         {/* FEATURES BEYOND UPLOAD */}
         <section className="pb-28">
           <motion.div
-            className="mb-14"
+            className="mb-10"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -599,49 +574,19 @@ export default function LandingPage() {
               <span className="w-1.5 h-1.5 bg-signal-fuchsia rounded-full pulse-dot" />
               Beyond the Upload
             </div>
-            <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
-              A full <span className="italic text-iris">forensic</span>
-              <br />
-              workspace.
-            </h2>
+            <div className="flex items-end justify-between flex-wrap gap-6">
+              <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
+                A full <span className="italic text-iris">forensic</span>
+                <br />
+                workspace.
+              </h2>
+              <p className="max-w-md text-ink-200 leading-relaxed">
+                The verdict is where the work starts. Pick who you are and see what you get after the upload.
+              </p>
+            </div>
           </motion.div>
 
-          <motion.div
-            className="grid md:grid-cols-2 gap-px bg-[var(--line-strong)] border border-[var(--line-strong)]"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
-            variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-          >
-            {FEATURES.map((f) => {
-              const Icon = f.Icon;
-              return (
-                <motion.div
-                  key={f.title}
-                  variants={fadeUp}
-                  transition={{ duration: 0.6 }}
-                  whileHover="hover"
-                  className="bg-ink-950 p-6 sm:p-8 group cursor-default"
-                >
-                  <motion.div
-                    className={`${f.accent} mb-4`}
-                    variants={{ hover: { scale: 1.1, x: 2 } }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <Icon size={20} strokeWidth={1.5} />
-                  </motion.div>
-                  <motion.div
-                    className="font-display text-3xl text-ink-50 mb-3"
-                    variants={{ hover: { x: 4 } }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    {f.title}
-                  </motion.div>
-                  <p className="text-sm text-ink-300 leading-relaxed">{f.desc}</p>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+          <Workspace />
         </section>
 
         {/* EMBED WIDGET */}
@@ -692,6 +637,8 @@ export default function LandingPage() {
             </pre>
           </motion.div>
         </section>
+
+        <Roadmap />
 
         {/* CTA */}
         <section className="py-28 text-center relative overflow-hidden border-t border-[var(--line)]">

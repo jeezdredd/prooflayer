@@ -112,7 +112,14 @@ See [[services/factcheck]] for full details.
 
 ```
 GET /api/v1/system/status/   -> see [[api/system-status]]
+GET    /api/v1/system/roadmap/        public: published items; staff: all
+POST   /api/v1/system/roadmap/        staff only {title, body<=600, status: exploring|building|beta, eta, position, is_published}
+PATCH  /api/v1/system/roadmap/<id>/   staff only
+DELETE /api/v1/system/roadmap/<id>/   staff only
 ```
+
+The landing "Coming soon" block reads the roadmap; staff see Edit and "+ Add roadmap item" inline
+on the landing, and the same rows are in Django admin (`api.RoadmapItem`, list-editable).
 
 ## OpenAPI
 
