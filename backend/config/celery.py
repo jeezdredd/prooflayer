@@ -53,6 +53,11 @@ app.conf.beat_schedule = {
         "args": ("image",),
         "options": {"queue": "ml"},
     },
+    "purge-expired-personal-files": {
+        "task": "content.tasks.purge_expired_personal_files",
+        "schedule": crontab(hour=4, minute=0),
+        "options": {"queue": "default"},
+    },
     "rescue-stuck-submissions": {
         "task": "analyzers.tasks.rescue_stuck_submissions",
         "schedule": 300,

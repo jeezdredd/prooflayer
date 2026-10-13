@@ -3,17 +3,26 @@ from django.utils.html import format_html
 
 from unfold.admin import ModelAdmin
 
+from analyzers.training import snapshot
+
 from .models import KnownFakeHash, Submission
 
 
+def _approve(queryset, label):
+    eligible = queryset.filter(status="completed", classroom__isnull=True)
+    eligible.update(approved_for_training=True, verified_label=label)
+    for submission in eligible.select_related("user"):
+        snapshot(submission)
+
+
 def approve_as_real(modeladmin, request, queryset):
-    queryset.filter(status="completed").update(approved_for_training=True, verified_label="real")
+    _approve(queryset, "real")
 
 approve_as_real.short_description = "Approve selected as REAL (for training)"
 
 
 def approve_as_fake(modeladmin, request, queryset):
-    queryset.filter(status="completed").update(approved_for_training=True, verified_label="fake")
+    _approve(queryset, "fake")
 
 approve_as_fake.short_description = "Approve selected as FAKE (for training)"
 

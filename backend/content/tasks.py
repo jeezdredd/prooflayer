@@ -7,6 +7,7 @@ from common.documents import DOCUMENT_MIMES, document_stats, read_text
 from plagiarism.models import PlagiarismReport
 
 from .models import Submission
+from .retention import purge_expired_files
 from .services import (
     check_known_fake,
     clone_analysis_results,
@@ -161,3 +162,10 @@ def process_submission(self, submission_id):
         submission.status_message = ""
         submission.save(update_fields=["status", "status_message"])
         raise self.retry(exc=exc)
+
+
+@shared_task
+def purge_expired_personal_files():
+    purged = purge_expired_files()
+    logger.info("retention: purged %d personal files", purged)
+    return purged

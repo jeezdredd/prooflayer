@@ -13,6 +13,7 @@ class TextFingerprint(models.Model):
     language = models.CharField(max_length=8, blank=True)
     text = models.TextField()
     fingerprints = ArrayField(models.BigIntegerField(), default=list)
+    in_repository = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

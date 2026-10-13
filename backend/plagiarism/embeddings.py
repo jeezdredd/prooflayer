@@ -1,11 +1,18 @@
 import threading
 
-import torch
-import torch.nn.functional as F
 from django.conf import settings
-from transformers import AutoModel, AutoTokenizer
 
-from analyzers._device import get_device, inputs_to_device
+try:
+    import torch
+    import torch.nn.functional as F
+    from transformers import AutoModel, AutoTokenizer
+
+    from analyzers._device import get_device, inputs_to_device
+except Exception as exc:
+    torch = F = AutoModel = AutoTokenizer = get_device = inputs_to_device = None
+    IMPORT_ERROR: Exception | None = exc
+else:
+    IMPORT_ERROR = None
 
 _lock = threading.Lock()
 _model = None
@@ -13,8 +20,14 @@ _tokenizer = None
 BATCH = 32
 
 
+class EmbeddingsUnavailable(RuntimeError):
+    pass
+
+
 def _load():
     global _model, _tokenizer
+    if IMPORT_ERROR is not None:
+        raise EmbeddingsUnavailable(f"text embeddings unavailable: {IMPORT_ERROR}")
     with _lock:
         if _model is None:
             name = getattr(settings, "PLAGIARISM_EMBED_MODEL", "intfloat/multilingual-e5-small")

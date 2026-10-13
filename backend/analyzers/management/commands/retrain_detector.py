@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from django.core.management.base import BaseCommand
 from django.db import DatabaseError
 
+from analyzers.models import TrainingSample
+from content.storage_utils import local_file
+
 logger = logging.getLogger(__name__)
 
 RETRAIN_MODEL_DIR = os.environ.get(
@@ -99,17 +102,8 @@ class Command(BaseCommand):
         parser.add_argument("--learning-rate", type=float, default=2e-5)
 
     def handle(self, *args, **options):
-        from content.models import Submission
-
         media_type = options["media_type"]
-        mime_types = MEDIA_TYPES[media_type]
-
-        qs = Submission.objects.filter(
-            approved_for_training=True,
-            verified_label__in=["real", "fake"],
-            mime_type__in=mime_types,
-            status="completed",
-        )
+        qs = TrainingSample.objects.filter(media_type=media_type)
 
         extra_files = _collect_extra(options["extra_dir"])
         try:
@@ -117,10 +111,10 @@ class Command(BaseCommand):
         except DatabaseError as exc:
             if not extra_files:
                 raise
-            self.stderr.write(f"Submission query failed ({str(exc).splitlines()[0][:80]}); training on --extra-dir only")
-            qs = Submission.objects.none()
+            self.stderr.write(f"Training sample query failed ({str(exc).splitlines()[0][:80]}); training on --extra-dir only")
+            qs = TrainingSample.objects.none()
             count = 0
-        self.stdout.write(f"Found {count} approved {media_type} submissions, {len(extra_files)} extra files")
+        self.stdout.write(f"Found {count} {media_type} training samples, {len(extra_files)} extra files")
 
         if count + len(extra_files) < options["min_samples"]:
             self.stderr.write(
@@ -136,31 +130,30 @@ class Command(BaseCommand):
             os.makedirs(os.path.join(dataset_dir, "real"), exist_ok=True)
             os.makedirs(os.path.join(dataset_dir, "fake"), exist_ok=True)
 
-            from content.storage_utils import local_file
 
             copied = 0
-            for submission in qs:
-                if not submission.file:
+            for sample in qs:
+                if not sample.file:
                     continue
 
-                dst_dir = os.path.join(dataset_dir, submission.verified_label)
+                dst_dir = os.path.join(dataset_dir, sample.label)
                 try:
-                    with local_file(submission.file) as src:
+                    with local_file(sample.file) as src:
                         if media_type == "image":
-                            dst = os.path.join(dst_dir, f"{submission.id}.jpg")
+                            dst = os.path.join(dst_dir, f"{sample.id}.jpg")
                             shutil.copy2(src, dst)
                             copied += 1
 
                         elif media_type == "video":
-                            extracted = self._extract_frames(src, dst_dir, str(submission.id), submission.verified_label)
+                            extracted = self._extract_frames(src, dst_dir, str(sample.id), sample.label)
                             copied += extracted
 
                         elif media_type == "audio":
-                            spec_path = self._audio_to_spectrogram(src, dst_dir, str(submission.id))
+                            spec_path = self._audio_to_spectrogram(src, dst_dir, str(sample.id))
                             if spec_path:
                                 copied += 1
                 except Exception as exc:
-                    self.stderr.write(f"Skipping {submission.id}: {exc}")
+                    self.stderr.write(f"Skipping {sample.id}: {exc}")
                     continue
 
             for src, label in extra_files:

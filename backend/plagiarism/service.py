@@ -9,7 +9,7 @@ from analyzers.text.language import CYRILLIC_RE, LATIN_RE, detect_language
 from common.documents import read_text
 from content.storage_utils import local_file
 
-from .embeddings import embed
+from .embeddings import EmbeddingsUnavailable, embed
 from .models import PlagiarismReport, SentenceVector, TextFingerprint
 from .shingles import covered_spans, merge_spans, shingle_hashes, span_chars, text_chars, tokenize, winnow
 from .web import web_matches
@@ -54,12 +54,15 @@ def sentence_language(sentence: str, default: str) -> str:
 
 
 def index(submission, text: str, language: str, hashes: list[int], sents: list[tuple[int, int, str]], vectors: list[list[float]]):
+    in_repository = submission.classroom_id is not None
     with transaction.atomic():
         TextFingerprint.objects.update_or_create(
             submission=submission,
-            defaults={"language": language, "text": text, "fingerprints": winnow(hashes)},
+            defaults={"language": language, "text": text, "fingerprints": winnow(hashes), "in_repository": in_repository},
         )
         SentenceVector.objects.filter(submission=submission).delete()
+        if not in_repository:
+            return
         SentenceVector.objects.bulk_create([
             SentenceVector(submission=submission, position=i, start=s, end=e, language=sentence_language(text_, language), embedding=v)
             for i, ((s, e, text_), v) in enumerate(zip(sents, vectors))
@@ -71,7 +74,7 @@ def internal_exact(submission, tokens, hashes) -> list[dict]:
     if not fingerprints:
         return []
     rows = (
-        TextFingerprint.objects.filter(fingerprints__overlap=list(fingerprints))
+        TextFingerprint.objects.filter(in_repository=True, fingerprints__overlap=list(fingerprints))
         .exclude(submission__user_id=submission.user_id)
         .values_list("submission_id", "fingerprints", "text", "submission__created_at")[:CANDIDATES]
     )
@@ -135,7 +138,11 @@ def run_check(submission) -> PlagiarismReport:
         tokens = tokenize(text)
         hashes = shingle_hashes(tokens)
         sents = sentence_spans(text)
-        vectors = embed([s for _, _, s in sents])
+        try:
+            vectors = embed([s for _, _, s in sents])
+        except EmbeddingsUnavailable as exc:
+            logger.error("originality check without semantic matching: %s", exc)
+            vectors = []
         index(submission, text, language, hashes, sents, vectors)
 
         matches = internal_exact(submission, tokens, hashes)

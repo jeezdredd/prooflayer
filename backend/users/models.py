@@ -29,6 +29,8 @@ class User(AbstractUser):
     avatar = models.ImageField(upload_to="avatars/", blank=True)
     bio = models.TextField(max_length=500, blank=True)
     is_verified = models.BooleanField(default=False)
+    allow_training = models.BooleanField(default=False)
+    training_consent_at = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]

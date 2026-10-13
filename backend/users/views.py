@@ -8,6 +8,10 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from analyzers.training import forget
+from classroom.models import Organization
+from content.models import Submission
+
 from .models import EmailVerificationToken
 from .serializers import RegisterSerializer, UserSerializer
 from .tasks import send_verification_email
@@ -121,6 +125,28 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+    def delete(self, request):
+        user = request.user
+        if not user.check_password(request.data.get("password") or ""):
+            return Response({"detail": "Password is incorrect."}, status=status.HTTP_403_FORBIDDEN)
+        schools = list(Organization.objects.filter(owner=user).values_list("name", flat=True))
+        if schools:
+            return Response(
+                {"detail": f"You own {', '.join(schools)}. Delete the school or ask support to hand it over first.", "code": "owns_organization"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        for submission in Submission.objects.filter(user=user).only("file", "thumbnail").iterator(chunk_size=200):
+            if submission.file:
+                submission.file.delete(save=False)
+            if submission.thumbnail:
+                submission.thumbnail.delete(save=False)
+        if request.data.get("forget_training"):
+            forget(user.id)
+        user.delete()
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        _clear_refresh_cookie(response)
+        return response
 
 
 class VerifyEmailView(APIView):

@@ -37,6 +37,7 @@ from .throttles import UploadRateThrottle, WidgetRateThrottle
 from .validators import validate_file_size, validate_mime_type
 from analyzers.models import AnalysisResult
 from analyzers.tasks import AGGREGATION_LOCK_KEY, dispatch_analysis
+from analyzers.training import snapshot
 from billing.models import get_or_create_subscription, uploads_this_month
 from billing.permissions import CanCompare
 from django.core.cache import cache
@@ -168,6 +169,11 @@ class SubmissionViewSet(
         submission = self.get_object()
         if submission.status not in (Submission.Status.COMPLETED, Submission.Status.FAILED):
             return Response({"detail": "Submission is still being analyzed."}, status=status.HTTP_409_CONFLICT)
+        if not submission.file:
+            return Response(
+                {"detail": "The file was deleted under the retention policy; upload it again to re-check."},
+                status=status.HTTP_409_CONFLICT,
+            )
         try:
             check_quota(quota_owner(request.user, submission.classroom))
         except QuotaExceeded as exc:
@@ -266,9 +272,13 @@ class VerdictOverrideView(APIView):
         new_label = label_map.get(new_verdict)
         if new_label:
             submission.verified_label = new_label
-            submission.approved_for_training = True
-            updated_fields += ["verified_label", "approved_for_training"]
+            updated_fields.append("verified_label")
+            if submission.classroom_id is None:
+                submission.approved_for_training = True
+                updated_fields.append("approved_for_training")
         submission.save(update_fields=updated_fields)
+        if submission.approved_for_training:
+            snapshot(submission)
 
         return Response(
             VerdictOverrideSerializer(submission.verdict_overrides.first()).data,

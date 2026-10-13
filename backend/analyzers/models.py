@@ -86,3 +86,23 @@ class RetrainRun(models.Model):
 
     def __str__(self):
         return f"{self.media_type} {self.status} {self.started_at:%Y-%m-%d}"
+
+
+class TrainingSample(models.Model):
+    class Label(models.TextChoices):
+        REAL = "real", "Real"
+        FAKE = "fake", "Fake"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file = models.FileField(upload_to="training/%Y/%m/")
+    media_type = models.CharField(max_length=10, db_index=True)
+    mime_type = models.CharField(max_length=100)
+    label = models.CharField(max_length=4, choices=Label.choices)
+    sha256 = models.CharField(max_length=64, db_index=True)
+    source_ref = models.CharField(max_length=64, db_index=True)
+    source_submission = models.UUIDField(unique=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "training_samples"
+        ordering = ["-created_at"]

@@ -8,6 +8,7 @@ from django.test import override_settings
 from classroom.models import Classroom, Membership
 from content.tasks import queue_originality_check
 from content.tests.factories import SubmissionFactory
+from plagiarism.embeddings import EmbeddingsUnavailable
 from plagiarism.models import PlagiarismReport
 from plagiarism.search import Hit
 from plagiarism.serializers import report_payload
@@ -44,7 +45,13 @@ def fake_embed(sentences):
     return out
 
 
-def _text_submission(user, text, classroom=None, name="essay.txt"):
+def _class(level=8):
+    return Classroom.create_for(UserFactory(), "Class", level=level)
+
+
+def _text_submission(user, text, classroom=None, name="essay.txt", personal=False):
+    if classroom is None and not personal:
+        classroom = _class()
     return SubmissionFactory(
         user=user, classroom=classroom, mime_type="text/plain", original_filename=name,
         file=ContentFile(text.encode("utf-8"), name=name),
@@ -128,6 +135,33 @@ class TestReportPrivacy:
         student_view = report_payload(copy, b)["matches"][0]
         assert student_view["title"] == "Another ProofLayer submission"
         assert "author" not in student_view
+
+
+@pytest.mark.django_db
+@patch("plagiarism.service.embed", side_effect=fake_embed)
+class TestRepository:
+    def test_personal_checks_are_compared_but_not_stored(self, _embed):
+        personal = _text_submission(UserFactory(), ESSAY, personal=True)
+        run_check(personal)
+        assert not personal.text_fingerprint.in_repository
+        assert not personal.sentence_vectors.exists()
+        report = run_check(_text_submission(UserFactory(), ESSAY))
+        assert report.originality == 100.0
+
+    def test_personal_check_still_finds_class_sources(self, _embed):
+        run_check(_text_submission(UserFactory(), ESSAY))
+        report = run_check(_text_submission(UserFactory(), ESSAY, personal=True))
+        assert report.originality < 10
+
+
+@pytest.mark.django_db
+@patch("plagiarism.service.embed", side_effect=EmbeddingsUnavailable("torch missing"))
+class TestWithoutEmbeddings:
+    def test_exact_matching_still_works(self, _embed):
+        run_check(_text_submission(UserFactory(), ESSAY))
+        report = run_check(_text_submission(UserFactory(), ESSAY))
+        assert report.status == PlagiarismReport.Status.DONE
+        assert report.originality < 10
 
 
 @pytest.mark.django_db

@@ -6,7 +6,9 @@ from typing import Any
 import redis
 import requests
 from django.conf import settings
+from django.core.cache import cache
 from django.db import connection
+from django.db.models import Max
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -16,6 +18,7 @@ from rest_framework.views import APIView
 from analyzers.ensemble import ensemble_info
 from analyzers.roster import describe_drift, roster_drift
 from api.models import Feedback
+from content.models import Submission
 from users.models import EmailLog
 
 PROBE_TIMEOUT = 2.0
@@ -280,6 +283,32 @@ def _last_retrain() -> dict | None:
         return None
 
 
+TIMING_CACHE_KEY = "status:verdict_timing"
+TIMING_MIN_SAMPLES = 20
+
+
+def _verdict_timing() -> dict[str, Any]:
+    cached = cache.get(TIMING_CACHE_KEY)
+    if cached is not None:
+        return cached
+    since = timezone.now() - timedelta(days=14)
+    rows = (
+        Submission.objects.filter(status=Submission.Status.COMPLETED, mime_type__startswith="image/", created_at__gte=since)
+        .annotate(done=Max("analysis_results__created_at"))
+        .exclude(done=None)
+        .order_by("-created_at")
+        .values_list("created_at", "done")[:300]
+    )
+    durations = sorted((done - created).total_seconds() for created, done in rows if done >= created)
+    result = {"samples": len(durations), "image_median_s": None, "window_days": 14}
+    if len(durations) >= TIMING_MIN_SAMPLES:
+        mid = len(durations) // 2
+        median = durations[mid] if len(durations) % 2 else (durations[mid - 1] + durations[mid]) / 2
+        result["image_median_s"] = round(median, 1)
+    cache.set(TIMING_CACHE_KEY, result, 600)
+    return result
+
+
 class SystemStatusView(APIView):
     permission_classes = [AllowAny]
 
@@ -300,4 +329,5 @@ class SystemStatusView(APIView):
             "checked_at": time.time(),
             "services": services,
             "last_retrain": _last_retrain(),
+            "verdict_timing": _verdict_timing(),
         })

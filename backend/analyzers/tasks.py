@@ -15,7 +15,7 @@ from users.tasks import deliver_submission_webhook
 
 from .aggregator import aggregate
 from .ensemble import ensemble_info
-from .models import AnalyzerConfig, AnalysisResult
+from .models import AnalysisResult, AnalyzerConfig, TrainingSample
 from .registry import load_analyzer_class
 
 logger = logging.getLogger(__name__)
@@ -241,19 +241,12 @@ def run_weekly_retrain(
     from django.utils import timezone
     from io import StringIO
 
-    from content.models import Submission
     from .models import RetrainRun
 
     if min_samples_override is not None:
         min_samples = int(min_samples_override)
     else:
         min_samples = getattr(settings, "RETRAIN_MIN_NEW_SAMPLES", 50)
-    media_types_map = {
-        "image": ["image/jpeg", "image/png", "image/webp"],
-        "video": ["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"],
-        "audio": ["audio/mpeg", "audio/wav", "audio/ogg", "audio/flac"],
-    }
-    mimes = media_types_map.get(media_type, media_types_map["image"])
 
     last_success = (
         RetrainRun.objects.filter(media_type=media_type, status=RetrainRun.Status.SUCCESS)
@@ -262,13 +255,7 @@ def run_weekly_retrain(
     )
     since = last_success.finished_at if last_success and last_success.finished_at else timezone.now() - timedelta(days=365)
 
-    qs = Submission.objects.filter(
-        approved_for_training=True,
-        verified_label__in=["real", "fake"],
-        mime_type__in=mimes,
-        status="completed",
-        created_at__gte=since,
-    )
+    qs = TrainingSample.objects.filter(media_type=media_type, created_at__gte=since)
     samples = qs.count()
 
     run = RetrainRun.objects.create(

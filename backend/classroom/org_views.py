@@ -1,5 +1,6 @@
 import re
 
+from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
@@ -9,6 +10,7 @@ from rest_framework.views import APIView
 
 from billing.models import get_or_create_subscription
 from billing.permissions import tier_allows
+from content.models import Batch, Submission
 from users.permissions import IsVerifiedUser
 
 from .models import RESERVED_SLUGS, SLUG_PATTERN, Classroom, Membership, Organization, OrgMember
@@ -114,6 +116,23 @@ class OrganizationDetailView(APIView):
 
     def get(self, request, slug):
         return Response(org_payload(_org(slug), request.user))
+
+    def delete(self, request, slug):
+        org = _org(slug)
+        if not request.user.is_authenticated or org.owner_id != request.user.id:
+            raise PermissionDenied("Only the owner can delete the school.")
+        if not request.user.check_password(request.data.get("password") or ""):
+            raise PermissionDenied("Password is incorrect.")
+        with transaction.atomic():
+            for submission in Submission.objects.filter(classroom__organization=org).iterator(chunk_size=200):
+                if submission.file:
+                    submission.file.delete(save=False)
+                if submission.thumbnail:
+                    submission.thumbnail.delete(save=False)
+            Submission.objects.filter(classroom__organization=org).delete()
+            Batch.objects.filter(classroom__organization=org).delete()
+            org.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class OrganizationJoinTeacherView(APIView):

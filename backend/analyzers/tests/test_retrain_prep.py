@@ -76,9 +76,9 @@ class TestOfflineRetrain:
             __import__("os").makedirs(output_dir, exist_ok=True)
 
         broken_qs = MagicMock()
-        broken_qs.count.side_effect = ProgrammingError("column submissions.approved_for_training does not exist")
+        broken_qs.count.side_effect = ProgrammingError("relation training_samples does not exist")
         with (
-            patch("content.models.Submission.objects.filter", return_value=broken_qs),
+            patch("analyzers.models.TrainingSample.objects.filter", return_value=broken_qs),
             patch.object(retrain_detector.Command, "_finetune", fake_finetune),
             patch.object(retrain_detector, "RETRAIN_MODEL_DIR", str(tmp_path / "models")),
         ):
@@ -88,6 +88,6 @@ class TestOfflineRetrain:
     def test_db_error_without_extra_dirs_is_fatal(self):
         broken_qs = MagicMock()
         broken_qs.count.side_effect = ProgrammingError("no column")
-        with patch("content.models.Submission.objects.filter", return_value=broken_qs):
+        with patch("analyzers.models.TrainingSample.objects.filter", return_value=broken_qs):
             with pytest.raises(ProgrammingError):
                 call_command("retrain_detector", media_type="image", min_samples=1)
