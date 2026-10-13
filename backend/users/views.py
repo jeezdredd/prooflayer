@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
@@ -9,10 +10,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from analyzers.training import forget
-from classroom.models import Organization
+from api.models import Feedback
+from billing.models import Subscription
+from classroom.models import Classroom, Organization
 from content.models import Submission
 
-from .models import EmailVerificationToken
+from .models import EmailLog, EmailVerificationToken
 from .serializers import RegisterSerializer, UserSerializer
 from .tasks import send_verification_email
 
@@ -136,17 +139,38 @@ class MeView(generics.RetrieveUpdateAPIView):
                 {"detail": f"You own {', '.join(schools)}. Delete the school or ask support to hand it over first.", "code": "owns_organization"},
                 status=status.HTTP_409_CONFLICT,
             )
-        for submission in Submission.objects.filter(user=user).only("file", "thumbnail").iterator(chunk_size=200):
-            if submission.file:
-                submission.file.delete(save=False)
-            if submission.thumbnail:
-                submission.thumbnail.delete(save=False)
-        if request.data.get("forget_training"):
-            forget(user.id)
-        user.delete()
+        sub = Subscription.objects.filter(user=user).first()
+        if sub and sub.paddle_subscription_id and sub.is_active and sub.tier != Subscription.Tier.FREE:
+            return Response(
+                {"detail": "Cancel your paid subscription in the billing portal first, so you are not charged again.", "code": "active_subscription"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        with transaction.atomic():
+            for classroom in Classroom.objects.filter(owner=user).select_related("organization"):
+                if classroom.organization_id:
+                    classroom.owner_id = classroom.organization.owner_id
+                    classroom.save(update_fields=["owner"])
+                else:
+                    _delete_submissions(Submission.objects.filter(classroom=classroom))
+                    classroom.delete()
+            _delete_submissions(Submission.objects.filter(user=user))
+            Feedback.objects.filter(user=user).delete()
+            EmailLog.objects.filter(user=user).delete()
+            if request.data.get("forget_training"):
+                forget(user.id)
+            user.delete()
         response = Response(status=status.HTTP_204_NO_CONTENT)
         _clear_refresh_cookie(response)
         return response
+
+
+def _delete_submissions(queryset) -> None:
+    for submission in queryset.only("file", "thumbnail").iterator(chunk_size=200):
+        if submission.file:
+            submission.file.delete(save=False)
+        if submission.thumbnail:
+            submission.thumbnail.delete(save=False)
+    queryset.delete()
 
 
 class VerifyEmailView(APIView):

@@ -133,6 +133,8 @@ class SubmissionViewSet(
             return Response({"detail": "Only the author can change visibility."}, status=status.HTTP_403_FORBIDDEN)
         if submission.status != "completed":
             return Response({"detail": "Only completed submissions can be made public."}, status=status.HTTP_400_BAD_REQUEST)
+        if submission.classroom_id and not submission.is_public:
+            return Response({"detail": "Work handed in to a class cannot be made public."}, status=status.HTTP_403_FORBIDDEN)
         submission.is_public = not submission.is_public
         submission.save(update_fields=["is_public"])
         return Response({"is_public": submission.is_public})

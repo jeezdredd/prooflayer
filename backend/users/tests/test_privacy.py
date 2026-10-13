@@ -151,3 +151,44 @@ class TestTrainingCorpus:
         purge_expired_files()
         sample.refresh_from_db()
         assert sample.file
+
+
+@pytest.mark.django_db
+class TestDeletionEdgeCases:
+    def test_teacher_leaving_hands_school_classes_to_the_owner(self):
+        owner = _user()
+        org = Organization.create_for(owner, "Lyceum", "lyceum-handover")
+        teacher = _user()
+        classroom = Classroom.create_for(teacher, "8A", organization=org)
+        work = SubmissionFactory(classroom=classroom)
+        assert _client(teacher).delete(reverse("me"), {"password": PASSWORD}, format="json").status_code == 204
+        classroom.refresh_from_db()
+        work.refresh_from_db()
+        assert classroom.owner_id == owner.id
+        assert work.classroom_id == classroom.id
+
+    def test_personal_class_work_is_deleted_not_orphaned(self):
+        teacher = _user()
+        classroom = Classroom.create_for(teacher, "Tutoring")
+        work = SubmissionFactory(classroom=classroom)
+        _client(teacher).delete(reverse("me"), {"password": PASSWORD}, format="json")
+        assert not Submission.objects.filter(pk=work.pk).exists()
+
+    def test_active_paid_subscription_blocks_deletion(self):
+        user = _user()
+        sub = get_or_create_subscription(user)
+        sub.tier = Subscription.Tier.PRO
+        sub.paddle_subscription_id = "sub_live"
+        sub.save(update_fields=["tier", "paddle_subscription_id"])
+        response = _client(user).delete(reverse("me"), {"password": PASSWORD}, format="json")
+        assert response.status_code == 409
+        assert response.data["code"] == "active_subscription"
+
+    def test_class_work_cannot_be_made_public(self):
+        student = _user()
+        classroom = Classroom.create_for(UserFactory(), "8A")
+        work = SubmissionFactory(user=student, classroom=classroom, status="completed")
+        response = _client(student).post(reverse("submission-toggle-public", kwargs={"id": work.id}))
+        assert response.status_code == 403
+        work.refresh_from_db()
+        assert not work.is_public
