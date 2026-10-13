@@ -140,7 +140,7 @@ class MeView(generics.RetrieveUpdateAPIView):
                 status=status.HTTP_409_CONFLICT,
             )
         sub = Subscription.objects.filter(user=user).first()
-        if sub and sub.paddle_subscription_id and sub.is_active and sub.tier != Subscription.Tier.FREE:
+        if sub and sub.paddle_subscription_id and sub.is_active and sub.tier != Subscription.Tier.FREE and not sub.cancel_scheduled:
             return Response(
                 {"detail": "Cancel your paid subscription in the billing portal first, so you are not charged again.", "code": "active_subscription"},
                 status=status.HTTP_409_CONFLICT,

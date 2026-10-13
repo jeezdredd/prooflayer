@@ -27,7 +27,7 @@ import type {
 } from "../types";
 
 export const auth = {
-  register: (data: { email: string; username: string; password: string; password_confirm: string }) =>
+  register: (data: { email: string; username: string; password: string; password_confirm: string; allow_training?: boolean }) =>
     client.post<{ user: User; access: string }>("/auth/register/", data),
 
   login: (data: { email: string; password: string }) =>
@@ -40,6 +40,9 @@ export const auth = {
   me: () => client.get<User>("/auth/me/"),
 
   updateMe: (data: Partial<User>) => client.patch<User>("/auth/me/", data),
+
+  deleteMe: (password: string, forgetTraining: boolean) =>
+    client.delete("/auth/me/", { data: { password, forget_training: forgetTraining } }),
 
   verifyEmail: (token: string) =>
     client.post<{ detail: string; email?: string }>("/auth/verify-email/", { token }),
@@ -214,6 +217,7 @@ export const orgs = {
   hub: () => client.get<ClassroomHub>("/classroom/hub/"),
   create: (name: string, slug: string) => client.post<Organization>("/classroom/orgs/", { name, slug }),
   detail: (slug: string) => client.get<Organization>(`/classroom/orgs/${slug}/`),
+  remove: (slug: string, password: string) => client.delete(`/classroom/orgs/${slug}/`, { data: { password } }),
   joinAsTeacher: (slug: string, code: string) => client.post<Organization>(`/classroom/orgs/${slug}/join-teacher/`, { code }),
   rotateTeacherCode: (slug: string) => client.post<{ teacher_code: string }>(`/classroom/orgs/${slug}/rotate-teacher-code/`, {}),
   teachers: (slug: string) => client.get<OrgTeacher[]>(`/classroom/orgs/${slug}/teachers/`),

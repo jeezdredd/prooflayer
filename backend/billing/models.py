@@ -32,6 +32,7 @@ class Subscription(models.Model):
     paddle_customer_id = models.CharField(max_length=64, blank=True, db_index=True)
     paddle_subscription_id = models.CharField(max_length=64, blank=True, db_index=True)
     current_period_end = models.DateTimeField(null=True, blank=True)
+    cancel_scheduled = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

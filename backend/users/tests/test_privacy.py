@@ -183,6 +183,8 @@ class TestDeletionEdgeCases:
         response = _client(user).delete(reverse("me"), {"password": PASSWORD}, format="json")
         assert response.status_code == 409
         assert response.data["code"] == "active_subscription"
+        Subscription.objects.filter(user=user).update(cancel_scheduled=True)
+        assert _client(user).delete(reverse("me"), {"password": PASSWORD}, format="json").status_code == 204
 
     def test_class_work_cannot_be_made_public(self):
         student = _user()

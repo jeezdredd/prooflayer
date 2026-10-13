@@ -165,6 +165,9 @@ function AgentFooter({ onLogout }: { onLogout: () => void }) {
         <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-600 mt-2 ticker">
           CASE/{caseId} · <Time />
         </div>
+        <Link to="/account" className="mt-2 inline-block font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 hover:text-signal-amber">
+          Account &amp; privacy →
+        </Link>
       </div>
       <motion.button
         onClick={onLogout}

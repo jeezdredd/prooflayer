@@ -33,6 +33,8 @@ const TermsPage = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const RefundPage = lazy(() => import("./pages/RefundPage"));
 const DevelopersPage = lazy(() => import("./pages/DevelopersPage"));
+const AccountPage = lazy(() => import("./pages/AccountPage"));
+const DataProcessingPage = lazy(() => import("./pages/DataProcessingPage"));
 const BatchPage = lazy(() => import("./pages/BatchPage"));
 const ClassroomRoutes = lazy(() => import("./classroom/ClassroomApp"));
 
@@ -75,6 +77,7 @@ function AppRoutes() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/refund" element={<RefundPage />} />
+        <Route path="/data-processing" element={<DataProcessingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/classroom/*" element={<ToClassroom />} />
         <Route path="/403" element={<ForbiddenPage />} />
@@ -87,6 +90,7 @@ function AppRoutes() {
             <Route path="/results/:id" element={<ResultPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/credits" element={<CreditsPage />} />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/feed" element={<FeedPage />} />
             <Route path="/feed/:id" element={<FeedDetailPage />} />
             <Route element={<ProtectedRoute requireVerified />}>

@@ -9,11 +9,14 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [allowTraining, setAllowTraining] = useState(false);
   const register = useRegister();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    register.mutate({ email, username, password, password_confirm: passwordConfirm });
+    if (!acceptTerms) return;
+    register.mutate({ email, username, password, password_confirm: passwordConfirm, allow_training: allowTraining });
   };
 
   return (
@@ -79,6 +82,21 @@ export default function RegisterPage() {
               </motion.div>
             ))}
 
+            <motion.div variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }} className="space-y-2.5">
+              <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-300 leading-relaxed cursor-pointer">
+                <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required className="mt-0.5" />
+                <span>
+                  I accept the <Link to="/terms" target="_blank" className="text-signal-amber hover:underline">Terms</Link> and
+                  have read the <Link to="/privacy" target="_blank" className="text-signal-amber hover:underline">Privacy Policy</Link>.
+                  If I am under 18, my parent or guardian agrees, or my school set up my account.
+                </span>
+              </label>
+              <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-500 leading-relaxed cursor-pointer">
+                <input type="checkbox" checked={allowTraining} onChange={(e) => setAllowTraining(e.target.checked)} className="mt-0.5" />
+                <span>Optional: let ProofLayer use reviewed copies of my personal uploads to train its detectors. Never class work; withdraw any time.</span>
+              </label>
+            </motion.div>
+
             {register.isError && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -94,8 +112,8 @@ export default function RegisterPage() {
             <motion.button
               variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
               type="submit"
-              disabled={register.isPending}
-              className="btn-forensic w-full justify-center"
+              disabled={register.isPending || !acceptTerms}
+              className="btn-forensic w-full justify-center disabled:opacity-40"
               whileTap={{ scale: 0.98 }}
             >
               {register.isPending ? "Issuing credentials…" : "Request Clearance →"}

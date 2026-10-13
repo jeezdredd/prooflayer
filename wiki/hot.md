@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-13 (j): **Privacy and legal pages** - retention job (personal files 90 days), self-service account and school deletion, opt-in training corpus separate from uploads (retrainer unaffected by deletions), repository = class work only, class work never public, deletion blocked while a paid subscription runs. Terms / Privacy / Refund rewritten and a Data Processing page for schools added, every claim checked against code by reviewer agents. Also: worker crash-loop fix (guarded transformers import), aggregator no longer says authentic on metadata alone, landing claims fixed (no "4s", no "free beta", not "open source"). See [[concepts/privacy-and-data]].
+
 - 2026-10-13 (i): **Originality check (T2)** - new `plagiarism` app: winnowed shingle fingerprints (homoglyph/invisible-proof) in a GIN-indexed array, exact span alignment, e5-small sentence vectors for reworded and translated (ru/en/fr) matches, web search through self-hosted SearXNG (Google CSE API is closing), percentage + sources on the result page and in the class list. DDG alone rate-limits at once. See [[services/originality]].
 
 - 2026-10-13 (h): **Tribunal 1.4, text signals T1** - `text_evasion` (homoglyphs, invisible chars, hidden DOCX text), `text_grade_fit` (class year vs vocabulary via wordfreq: "декомпозиция" in grade 8), `text_style` (drift from the student's own earlier work + chatbot phrasebook). Grade fit and style are context-only: they can send work to review, never convict. ru/en/fr, pluggable. Plan for plagiarism (T2), Binoculars (T3), classifier (T4) in the plan file. See [[concepts/text-signals]].

@@ -24,7 +24,7 @@ export function useRegister() {
   const navigate = useNavigate();
 
   return useMutation({
-    mutationFn: (data: { email: string; username: string; password: string; password_confirm: string }) =>
+    mutationFn: (data: { email: string; username: string; password: string; password_confirm: string; allow_training?: boolean }) =>
       auth.register(data),
     onSuccess: (res) => {
       setAccess(res.data.access);

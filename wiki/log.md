@@ -2,6 +2,12 @@
 
 Newest at top.
 
+## [2026-10-13] privacy-legal | Retention, deletion, consent, legal pages
+
+- Source: code changes in content/users/analyzers/plagiarism/billing, two reviewer workflows over the legal pages
+- Pages created: [[concepts/privacy-and-data]]
+- Pages updated: [[hot]]
+
 ## [2026-10-13] originality | Plagiarism check with fingerprints, semantic and web matching
 
 - Source: backend/plagiarism, live DDG test, e5 similarity probe (translations 0.93-0.95, unrelated 0.79)

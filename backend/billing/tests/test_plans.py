@@ -150,6 +150,14 @@ class TestWebhookTier:
         assert self._send(self._event(user, "pri_uni_m")).status_code == 200
         assert Subscription.objects.get(user=user).tier == Subscription.Tier.UNIVERSITY
 
+    def test_scheduled_cancel_is_recorded(self):
+        user = UserFactory()
+        event = self._event(user, "pri_uni_m")
+        event["data"]["scheduled_change"] = {"action": "cancel", "effective_at": "2026-11-13T00:00:00Z"}
+        self._send(event)
+        sub = Subscription.objects.get(user=user)
+        assert sub.cancel_scheduled and sub.is_active
+
     def test_unknown_price_keeps_the_tier(self):
         user = _on_plan(Subscription.Tier.PRO)
         self._send(self._event(user, "pri_mystery"))

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, GraduationCap, Plus, RefreshCw, UserMinus, Users } from "lucide-react";
+import { Copy, GraduationCap, Plus, RefreshCw, Trash2, UserMinus, Users } from "lucide-react";
 import { classrooms, orgs } from "../api/endpoints";
 import type { Organization } from "../types";
 import { useAuthStore } from "../stores/authStore";
@@ -164,7 +164,72 @@ function AdminPanel({ org }: { org: Organization }) {
           <a href={`${MAIN_URL}/pricing`} className="underline">Renew</a>
         </p>
       )}
+      {org.role === "admin" && <DeleteSchool org={org} />}
     </section>
+  );
+}
+
+function DeleteSchool({ org }: { org: Organization }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [confirmSlug, setConfirmSlug] = useState("");
+  const destroy = useMutation({
+    mutationFn: () => orgs.remove(org.slug, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classroom-hub"] });
+      toast.success(`${org.name} has been deleted`);
+      navigate("/");
+    },
+    onError: (err) => toast.error(errorText(err, "Could not delete the school")),
+  });
+  const ready = password.length > 0 && confirmSlug.trim() === org.slug && !destroy.isPending;
+
+  return (
+    <form
+      className="mt-10 border border-signal-blood/40 p-4"
+      onSubmit={(e) => { e.preventDefault(); if (ready) destroy.mutate(); }}
+    >
+      <div className={`${SECTION_LABEL} text-signal-blood`}>Delete school</div>
+      <p className="text-xs text-ink-400 mb-2">
+        This deletes {org.name}, all of its classes and all work handed in to them. It cannot be undone.
+      </p>
+      <p className="text-xs text-ink-500 mb-4">
+        Deleted data can remain in database backups for up to 14 days, after which the backups expire.
+      </p>
+      <label className="block text-xs text-ink-500 mb-1" htmlFor="delete-school-slug">
+        Type <span className="font-mono text-ink-100">{org.slug}</span> to confirm
+      </label>
+      <div className="flex mb-3">
+        <input
+          id="delete-school-slug"
+          value={confirmSlug}
+          onChange={(e) => setConfirmSlug(e.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={org.slug}
+          className={`${INPUT} font-mono`}
+        />
+      </div>
+      <label className="block text-xs text-ink-500 mb-1" htmlFor="delete-school-password">Your password</label>
+      <div className="flex gap-2">
+        <input
+          id="delete-school-password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          className={`${INPUT}`}
+        />
+        <button
+          type="submit"
+          disabled={!ready}
+          className="border border-signal-blood/60 text-signal-blood px-4 font-mono text-[11px] uppercase tracking-[0.14em] hover:bg-signal-blood/10 disabled:opacity-40 flex items-center gap-1.5"
+        >
+          <Trash2 size={13} /> Delete
+        </button>
+      </div>
+    </form>
   );
 }
 

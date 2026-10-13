@@ -7,6 +7,8 @@ export interface User {
   is_verified: boolean;
   is_staff: boolean;
   date_joined: string;
+  allow_training?: boolean;
+  training_consent_at?: string | null;
 }
 
 export interface Tokens {

@@ -64,7 +64,7 @@ const FEATURES = [
 
 const NUMBERS = [
   { v: "10", l: "Active analyzers" },
-  { v: "≈4s", l: "Median image verdict" },
+  { v: "3", l: "Languages for text checks" },
   { v: "500MB", l: "Max upload" },
   { v: "REST", l: "Open API" },
 ];
@@ -155,13 +155,17 @@ const fadeUp = {
 };
 
 export default function LandingPage() {
-  const { data: statusData } = useQuery<{ services?: { analyzers?: { ensemble?: string } } }>({
+  const { data: statusData } = useQuery<{ services?: { analyzers?: { ensemble?: string } }; verdict_timing?: { image_median_s: number | null; samples: number } }>({
     queryKey: ["system-status-ensemble"],
     queryFn: () => client.get("/system/status/").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
   const tribunalLabel = statusData?.services?.analyzers?.ensemble || TRIBUNAL_FALLBACK;
+  const medianVerdict = statusData?.verdict_timing?.image_median_s;
+  const numbers = medianVerdict != null
+    ? NUMBERS.map((n) => (n.l === "Languages for text checks" ? { v: `${Math.round(medianVerdict)}s`, l: "Median image verdict, last 14 days" } : n))
+    : NUMBERS;
   const [openRule, setOpenRule] = useState<number | null>(null);
   const [openCheck, setOpenCheck] = useState<string | null>(null);
   const user = useAuthStore((s) => s.user);
@@ -274,7 +278,7 @@ export default function LandingPage() {
                 </a>
                 <div className="flex items-center gap-2 ml-2 text-[11px] font-mono text-ink-500">
                   <span className="w-1.5 h-1.5 bg-signal-sage rounded-full pulse-dot" />
-                  Free during beta
+                  Free plan, no card
                 </div>
               </motion.div>
             </motion.div>
@@ -317,7 +321,7 @@ export default function LandingPage() {
                   <div className="space-y-2.5 mb-5">
                     {[
                       { l: "CF-VIT", v: "fake", c: "text-signal-blood", n: "0.91" },
-                      { l: "NPR-VIT", v: "fake", c: "text-signal-blood", n: "0.87" },
+                      { l: "CLIP", v: "fake", c: "text-signal-blood", n: "0.87" },
                       { l: "ELA", v: "suspicious", c: "text-signal-amber", n: "0.62" },
                       { l: "META", v: "stripped", c: "text-ink-400", n: "-" },
                     ].map((r, i) => (
@@ -339,7 +343,7 @@ export default function LandingPage() {
                   <div className="dot-divider mb-3" />
                   <div className="flex items-center justify-between font-mono text-[10px] text-ink-500">
                     <span>Aggregated · weighted ensemble</span>
-                    <span className="signal-amber">Reviewed by humans</span>
+                    <span className="signal-amber">Split cases go to a human</span>
                   </div>
                 </div>
               </TiltCard>
@@ -355,7 +359,7 @@ export default function LandingPage() {
           viewport={{ once: true, margin: "-100px" }}
           variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
         >
-          {NUMBERS.map((n) => (
+          {numbers.map((n) => (
             <motion.div
               key={n.l}
               variants={fadeUp}
@@ -697,7 +701,7 @@ export default function LandingPage() {
               Question <span className="italic text-iris">everything</span>.
             </h2>
             <p className="text-ink-200 mt-8 max-w-md mx-auto leading-relaxed">
-              Free during beta. Submit your first file in under thirty seconds.
+              Start on the free plan, no card needed. Schools and universities: see Classroom pricing.
             </p>
             <div className="mt-12">
               <MagneticBtn to={authedCta} className="btn-forensic inline-flex text-sm">
@@ -717,7 +721,7 @@ export default function LandingPage() {
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <a href="/pricing" className="hover:text-signal-amber transition-colors">Pricing</a>
             <a href="https://api.prooflayer.cloud/api/docs/" className="hover:text-signal-amber transition-colors">API Docs</a>
-            <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors">Source</a>
+            <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors" title="Public for transparency; all rights reserved">Source (view only)</a>
             <a href="/terms" className="hover:text-ink-300 transition-colors">Terms</a>
             <a href="/privacy" className="hover:text-ink-300 transition-colors">Privacy</a>
             <a href="/refund" className="hover:text-ink-300 transition-colors">Refund Policy</a>

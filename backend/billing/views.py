@@ -220,7 +220,8 @@ def _handle_event(event: dict):
         sub.status = new_status
         sub.tier = tier
         sub.current_period_end = period_end_dt
-        sub.save(update_fields=["paddle_customer_id", "paddle_subscription_id", "status", "tier", "current_period_end"])
+        sub.cancel_scheduled = ((data.get("scheduled_change") or {}).get("action") == "cancel")
+        sub.save(update_fields=["paddle_customer_id", "paddle_subscription_id", "status", "tier", "current_period_end", "cancel_scheduled"])
 
     elif event_type == "subscription.canceled":
         sub_id = data.get("id", "")
@@ -232,4 +233,5 @@ def _handle_event(event: dict):
             sub.status = Subscription.Status.CANCELLED
             sub.tier = Subscription.Tier.FREE
             sub.paddle_subscription_id = ""
-            sub.save(update_fields=["status", "tier", "paddle_subscription_id"])
+            sub.cancel_scheduled = False
+            sub.save(update_fields=["status", "tier", "paddle_subscription_id", "cancel_scheduled"])

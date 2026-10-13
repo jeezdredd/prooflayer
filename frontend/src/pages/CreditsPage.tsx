@@ -184,7 +184,7 @@ export default function CreditsPage() {
       </div>
 
       <div className="mt-10 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600">
-        ProofLayer is open-source. Contributions welcome.
+        ProofLayer's source code is public so anyone can see how verdicts are made. It is not open source: all rights reserved, and we do not accept outside contributions.
       </div>
     </div>
   );
