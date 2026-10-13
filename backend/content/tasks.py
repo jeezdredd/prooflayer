@@ -89,11 +89,12 @@ def process_submission(self, submission_id):
             submission.phash = cached.phash
             submission.dhash = cached.dhash
             submission.metadata = cached.metadata
+            submission.is_sensitive = cached.is_sensitive
             submission.status = Submission.Status.COMPLETED
             submission.status_message = ""
             submission.save(update_fields=[
                 "sha256_hash", "final_score", "final_verdict",
-                "is_known_fake", "phash", "dhash", "metadata", "status", "status_message",
+                "is_known_fake", "phash", "dhash", "metadata", "status", "status_message", "is_sensitive",
             ])
             clone_analysis_results(cached, submission)
             logger.info("Submission %s resolved from cache (source: %s)", submission_id, cached.id)

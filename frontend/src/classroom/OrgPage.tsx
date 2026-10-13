@@ -128,6 +128,14 @@ function AdminPanel({ org }: { org: Organization }) {
       toast.success("New teacher code issued; the old one no longer works");
     },
   });
+  const webSearch = useMutation({
+    mutationFn: (enabled: boolean) => orgs.updateSettings(org.slug, { web_search_enabled: enabled }).then((r) => r.data),
+    onSuccess: (data) => {
+      queryClient.setQueriesData({ queryKey: ["org", org.slug] }, data);
+      toast.success(data.web_search_enabled ? "Web search is on for new work" : "Web search is off");
+    },
+    onError: (err) => toast.error(errorText(err, "Could not save")),
+  });
   const remove = useMutation({
     mutationFn: (userId: number) => orgs.removeTeacher(org.slug, userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["org-teachers", org.slug] }),
@@ -158,6 +166,21 @@ function AdminPanel({ org }: { org: Organization }) {
           </div>
         ))}
       </div>
+      <label className="mt-8 flex items-start gap-3 border border-[var(--line-strong)] p-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={webSearch.isPending ? !!webSearch.variables : !!org.web_search_enabled}
+          disabled={webSearch.isPending}
+          onChange={(e) => webSearch.mutate(e.target.checked)}
+          className="mt-1 accent-amber-400"
+        />
+        <span>
+          <span className="block text-sm text-ink-100">Search the web for copied passages</span>
+          <span className="block text-xs text-ink-500 mt-1 leading-relaxed">
+            Sends up to 8 short sentences from each work to search engines outside Kazakhstan (Google, Bing, Yandex, DuckDuckGo, Brave). Off by default.
+          </span>
+        </span>
+      </label>
       {org.plan_active === false && (
         <p className="text-xs text-signal-blood mt-4">
           The Education plan on this school has lapsed: teachers cannot create classes and students cannot submit.{" "}

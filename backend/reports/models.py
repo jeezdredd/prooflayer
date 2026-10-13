@@ -15,6 +15,7 @@ class Report(models.Model):
         FAKE_CONTENT = "fake_content"
         MISLEADING = "misleading"
         COPYRIGHT = "copyright"
+        ADULT_CONTENT = "adult_content"
         SPAM = "spam"
         OTHER = "other"
 

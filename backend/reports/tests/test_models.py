@@ -19,4 +19,4 @@ class TestReportModel:
 
     def test_reason_choices(self):
         reasons = {c.value for c in Report.Reason}
-        assert reasons == {"fake_content", "misleading", "copyright", "spam", "other"}
+        assert reasons == {"fake_content", "misleading", "copyright", "adult_content", "spam", "other"}

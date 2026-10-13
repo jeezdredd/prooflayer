@@ -71,6 +71,11 @@ export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) 
                         cosine {cosine}
                       </span>
                     )}
+                    {r.is_sensitive && (
+                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-amber border border-signal-amber/40 px-2 py-0.5">
+                        Sensitive
+                      </span>
+                    )}
                   </div>
                   {r.title && (
                     <p className="text-sm text-ink-200 truncate">{r.title}</p>

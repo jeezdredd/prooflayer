@@ -9,7 +9,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
 from common.url_safety import UnsafeUrlError, safe_post
-from content.models import Submission
+from content.models import Submission, VerdictObjection
 
 from .emails import deliver
 from .models import ApiKey, EmailVerificationToken
@@ -146,6 +146,64 @@ def send_verification_email(user_id: int) -> str:
     status = deliver(msg, kind="verification", user=user)
 
     logger.info("verification email %s user=%s", status, user_id)
+    return status
+
+
+OBJECTION_SUBJECT = "Objection to an automated verdict"
+
+_OBJECTION_TEXT_TEMPLATE = """Hello,
+
+{student} objected to the automated verdict on "{title}"{classroom_line}.
+
+Reason:
+{reason}
+
+ProofLayer verdicts are probabilistic. A person has to review the work and answer the objection by {due}.
+
+Open the result: {link}
+
+- ProofLayer
+"""
+
+
+def _objection_recipients(objection):
+    classroom = objection.submission.classroom
+    if classroom is not None:
+        email = classroom.owner.email
+        return [email] if email else []
+    return [email for _name, email in getattr(settings, "ADMINS", []) if email]
+
+
+@shared_task(queue="default", autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_objection_notice(objection_id) -> str:
+    objection = (
+        VerdictObjection.objects.select_related("submission__classroom__owner", "author")
+        .filter(id=objection_id)
+        .first()
+    )
+    if objection is None:
+        return "missing"
+    recipients = _objection_recipients(objection)
+    if not recipients:
+        logger.info("objection notice skipped objection=%s (no recipient)", objection_id)
+        return "skipped"
+    classroom = objection.submission.classroom
+    text_body = _OBJECTION_TEXT_TEMPLATE.format(
+        student=objection.author.username or objection.author.email,
+        title=objection.submission.original_filename,
+        classroom_line=f" in {classroom.name}" if classroom else "",
+        reason=objection.reason,
+        due=timezone.localtime(objection.due_at).strftime("%Y-%m-%d %H:%M %Z"),
+        link=f"{settings.FRONTEND_URL}/results/{objection.submission_id}",
+    )
+    msg = EmailMultiAlternatives(
+        subject=OBJECTION_SUBJECT,
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=recipients,
+    )
+    status = deliver(msg, kind="objection", user=classroom.owner if classroom else None)
+    logger.info("objection notice %s objection=%s", status, objection_id)
     return status
 
 

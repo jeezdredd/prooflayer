@@ -103,7 +103,7 @@ export default function PrivacyPage() {
           <li>For work handed in to a class, the school or university decides why and how student data is processed (it is the controller). We process that data on its behalf (as processor) under our <Link to="/data-processing" className={link}>Data Processing terms</Link>.</li>
           <li>The institution is responsible for having a lawful basis and, where students are minors, for obtaining the consent of their parents or legal representatives.</li>
           <li>Teachers see only work handed in to their own classes, never a student's personal uploads. School admins see all classes of their school. Teachers of the same school do not see each other's classes.</li>
-          <li>Users under 18 may open a personal account only with the consent of a parent or legal representative, or when enrolled by their school.</li>
+          <li>Anyone may open an account. We record whether you said you are 18 or older and when you said it, and use it only to decide access to sensitive public material and publishing. Users under 18 should use ProofLayer with the permission of a parent or legal representative.</li>
           <li>Students and parents with questions about class work should contact the school first. We will help the school answer.</li>
         </ul>
       </section>

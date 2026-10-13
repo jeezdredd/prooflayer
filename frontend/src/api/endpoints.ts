@@ -22,12 +22,26 @@ import type {
   SubmissionListItem,
   SubscriptionInfo,
   User,
+  VerdictObjection,
+  ObjectionDecision,
+  ObjectionStatus,
   Vote,
   VoteStats,
 } from "../types";
+import { TERMS_VERSION } from "../legal";
+
+export interface RegisterPayload {
+  email: string;
+  username: string;
+  password: string;
+  password_confirm: string;
+  accept_terms: true;
+  is_adult: boolean;
+  allow_training?: boolean;
+}
 
 export const auth = {
-  register: (data: { email: string; username: string; password: string; password_confirm: string; allow_training?: boolean }) =>
+  register: (data: RegisterPayload) =>
     client.post<{ user: User; access: string }>("/auth/register/", data),
 
   login: (data: { email: string; password: string }) =>
@@ -40,6 +54,9 @@ export const auth = {
   me: () => client.get<User>("/auth/me/"),
 
   updateMe: (data: Partial<User>) => client.patch<User>("/auth/me/", data),
+
+  acceptTerms: (isAdult: boolean) =>
+    client.post<User>("/auth/accept-terms/", { version: TERMS_VERSION, is_adult: isAdult }),
 
   deleteMe: (password: string, forgetTraining: boolean) =>
     client.delete("/auth/me/", { data: { password, forget_training: forgetTraining } }),
@@ -176,8 +193,20 @@ export const billing = {
 export const reanalyzeSubmission = (id: string) =>
   client.post<{ id: string; status: string }>(`/content/submissions/${id}/reanalyze/`, {});
 
-export const togglePublic = (id: string) =>
-  client.post<{ is_public: boolean }>(`/content/submissions/${id}/toggle-public/`, {});
+export const togglePublic = (id: string, sensitive = false) =>
+  client.post<{ is_public: boolean; is_sensitive: boolean }>(
+    `/content/submissions/${id}/toggle-public/`,
+    sensitive ? { sensitive: true } : {},
+  );
+
+export const objections = {
+  create: (submissionId: string, reason: string) =>
+    client.post<VerdictObjection>(`/content/submissions/${submissionId}/objection/`, { reason }),
+  list: (params?: { status?: ObjectionStatus; page_size?: number }) =>
+    client.get<PaginatedResponse<VerdictObjection>>("/content/objections/", { params }),
+  respond: (id: string, decision: ObjectionDecision, response: string) =>
+    client.post<VerdictObjection>(`/content/objections/${id}/respond/`, { decision, response }),
+};
 
 export const apiKeys = {
   list: () => client.get<ApiKey[]>("/auth/api-keys/"),
@@ -225,4 +254,6 @@ export const orgs = {
   classes: (slug: string) => client.get<Classroom[]>(`/classroom/orgs/${slug}/classes/`),
   createClass: (slug: string, name: string, level: number | null) =>
     client.post<Classroom>(`/classroom/orgs/${slug}/classes/`, { name, level }),
+  updateSettings: (slug: string, data: { web_search_enabled: boolean }) =>
+    client.patch<Organization>(`/classroom/orgs/${slug}/settings/`, data),
 };

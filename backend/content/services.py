@@ -266,22 +266,32 @@ def clone_analysis_results(source_submission, target_submission):
         )
 
 
-def find_similar_submissions(submission, threshold=10):
+SIMILAR_SUBMISSIONS_SQL = """
+    SELECT *, bit_count((phash # %s)::bit(64)) AS distance
+    FROM submissions
+    WHERE id != %s AND phash IS NOT NULL
+    AND bit_count((phash # %s)::bit(64)) < %s
+    {sensitive_clause}
+    ORDER BY bit_count((phash # %s)::bit(64))
+    LIMIT 10
+"""
+
+
+def find_similar_submissions(submission, threshold=10, include_sensitive=True):
     from .models import Submission
     if submission.phash is None:
         return []
+    sql = SIMILAR_SUBMISSIONS_SQL.format(sensitive_clause="" if include_sensitive else "AND NOT is_sensitive")
     results = Submission.objects.raw(
-        """
-        SELECT *, bit_count((phash # %s)::bit(64)) AS distance
-        FROM submissions
-        WHERE id != %s AND phash IS NOT NULL
-        AND bit_count((phash # %s)::bit(64)) < %s
-        ORDER BY bit_count((phash # %s)::bit(64))
-        LIMIT 10
-        """,
+        sql,
         [submission.phash, submission.id, submission.phash, threshold, submission.phash],
     )
     return [
-        {"id": str(r.id), "distance": r.distance, "filename": r.original_filename}
+        {
+            "id": str(r.id),
+            "distance": r.distance,
+            "filename": r.original_filename,
+            "is_sensitive": r.is_sensitive,
+        }
         for r in results
     ]

@@ -17,6 +17,7 @@ class TestRegisterView:
             "username": "newuser",
             "password": "StrongPass123!",
             "password_confirm": "StrongPass123!",
+            "accept_terms": True,
         }
         response = self.client.post(self.url, data)
         assert response.status_code == 201
@@ -30,6 +31,7 @@ class TestRegisterView:
             "username": "newuser",
             "password": "StrongPass123!",
             "password_confirm": "DifferentPass123!",
+            "accept_terms": True,
         }
         response = self.client.post(self.url, data)
         assert response.status_code == 400
@@ -41,6 +43,7 @@ class TestRegisterView:
             "username": "another",
             "password": "StrongPass123!",
             "password_confirm": "StrongPass123!",
+            "accept_terms": True,
         }
         response = self.client.post(self.url, data)
         assert response.status_code == 400

@@ -218,3 +218,4 @@ docs/superpowers/
 # Local eval dataset and defense notes - never committed
 dataset/
 VIVA.md
+*.tsbuildinfo

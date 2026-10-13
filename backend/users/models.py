@@ -31,6 +31,10 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=False)
     allow_training = models.BooleanField(default=False)
     training_consent_at = models.DateTimeField(null=True, blank=True)
+    is_adult = models.BooleanField(default=False)
+    age_confirmed_at = models.DateTimeField(null=True, blank=True)
+    terms_version = models.CharField(max_length=20, blank=True)
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]

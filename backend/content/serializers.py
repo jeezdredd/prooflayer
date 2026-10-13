@@ -1,9 +1,11 @@
 from rest_framework import serializers
 
 from analyzers.ensemble import ensemble_info
+from common.age import can_view_sensitive
 from plagiarism.serializers import report_payload
 
 from .models import Submission, VerdictOverride
+from .objections import latest_objection_payload
 
 ANALYZER_DESCRIPTIONS = {
     "metadata": "Reads EXIF/XMP metadata. Looks for editing software signatures, missing camera fields, and timestamp inconsistencies.",
@@ -85,6 +87,7 @@ class PublicSubmissionSerializer(serializers.ModelSerializer):
             "final_score",
             "final_verdict",
             "is_known_fake",
+            "is_sensitive",
             "thumbnail_url",
             "uploader",
             "analysis_results",
@@ -118,6 +121,7 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
     expected_analyzers = serializers.SerializerMethodField()
     ensemble = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
+    objection = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -134,11 +138,13 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "final_verdict",
             "is_known_fake",
             "is_public",
+            "is_sensitive",
             "phash",
             "dhash",
             "file_url",
             "ensemble",
             "originality",
+            "objection",
             "analysis_results",
             "similar_submissions",
             "expected_analyzers",
@@ -149,6 +155,10 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
     def get_originality(self, obj):
         request = self.context.get("request")
         return report_payload(obj, getattr(request, "user", None))
+
+    def get_objection(self, obj):
+        request = self.context.get("request")
+        return latest_objection_payload(obj, getattr(request, "user", None))
 
     def get_ensemble(self, obj):
         current = ensemble_info()
@@ -179,7 +189,9 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
 
     def get_similar_submissions(self, obj):
         from .services import find_similar_submissions
-        return find_similar_submissions(obj)
+        request = self.context.get("request")
+        viewer = getattr(request, "user", None)
+        return find_similar_submissions(obj, include_sensitive=can_view_sensitive(viewer))
 
     def get_expected_analyzers(self, obj):
         return _expected_analyzers_for_mime(obj.mime_type or "")
@@ -227,6 +239,7 @@ class ReviewQueueSerializer(serializers.ModelSerializer):
             "file_size",
             "final_score",
             "final_verdict",
+            "is_sensitive",
             "thumbnail_url",
             "submitter_email",
             "override_count",

@@ -45,6 +45,7 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
         (None, {"fields": ("email", "username", "password")}),
         ("Personal", {"fields": ("first_name", "last_name", "avatar", "bio")}),
         ("Permissions", {"fields": ("is_verified", "is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+        ("Age and terms", {"fields": ("is_adult", "age_confirmed_at", "terms_version", "terms_accepted_at")}),
         ("Dates", {"fields": ("last_login", "date_joined")}),
     )
 

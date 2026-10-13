@@ -9,6 +9,9 @@ export interface User {
   date_joined: string;
   allow_training?: boolean;
   training_consent_at?: string | null;
+  is_adult?: boolean;
+  terms_version?: string;
+  needs_terms?: boolean;
 }
 
 export interface Tokens {
@@ -63,8 +66,28 @@ export interface OriginalityReport {
   matches: OriginalityMatch[];
 }
 
+export type ObjectionStatus = "open" | "answered";
+export type ObjectionDecision = "upheld" | "changed";
+
+export interface VerdictObjection {
+  id: string;
+  submission_id: string;
+  submission_title: string;
+  student: string;
+  classroom: string | null;
+  reason: string;
+  status: ObjectionStatus;
+  decision: ObjectionDecision | "";
+  response: string;
+  created_at: string;
+  due_at: string;
+  responded_at: string | null;
+  overdue: boolean;
+}
+
 export interface Submission {
   originality?: OriginalityReport | null;
+  objection?: VerdictObjection | null;
   id: string;
   original_filename: string;
   mime_type: string;
@@ -77,6 +100,7 @@ export interface Submission {
   final_verdict: string;
   is_known_fake: boolean;
   is_public: boolean;
+  is_sensitive?: boolean;
   file_url: string | null;
   analysis_results: AnalysisResult[];
   expected_analyzers: ExpectedAnalyzer[];
@@ -134,7 +158,7 @@ export interface Vote {
 export interface Report {
   id: string;
   submission: string;
-  reason: "fake_content" | "misleading" | "copyright" | "spam" | "other";
+  reason: "fake_content" | "misleading" | "copyright" | "adult_content" | "spam" | "other";
   description: string;
   status: "pending" | "reviewed" | "resolved" | "dismissed";
   created_at: string;
@@ -148,6 +172,7 @@ export interface ProvenanceResult {
   similarity_score: number | null;
   raw_data: Record<string, unknown>;
   found_at: string;
+  is_sensitive?: boolean;
 }
 
 export interface FactCheckClaim {
@@ -204,6 +229,7 @@ export interface PublicSubmission {
   final_score: number | null;
   final_verdict: string;
   is_known_fake: boolean;
+  is_sensitive?: boolean;
   thumbnail_url: string | null;
   uploader: UploaderProfile;
   analysis_results: AnalysisResult[];
@@ -310,6 +336,7 @@ export interface Organization {
   plan_active?: boolean;
   teacher_seats?: number | null;
   teacher_seats_used?: number;
+  web_search_enabled?: boolean;
 }
 
 export interface OrgTeacher {

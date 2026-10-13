@@ -21,9 +21,10 @@ export default function TermsPage() {
       <section>
         <h2 className="text-ink-100 text-base mb-3">2. Eligibility and age</h2>
         <ul className="list-disc list-inside space-y-1 text-ink-400">
-          <li>If you are 18 or older, you may create a personal account for yourself.</li>
-          <li>If you are under 18, you may use a personal account only with the consent of a parent or legal representative, or if your school or university has enrolled you through its classroom.</li>
-          <li>A parent or legal representative who gives consent is responsible for the minor's use of the Service.</li>
+          <li>Anyone may create an account. You tell us whether you are 18 or older; you can change this on your account page.</li>
+          <li>If you are under 18, use the Service with the permission of a parent or legal representative.</li>
+          <li>Other people's public uploads may include adult material. Uploads marked as sensitive are shown only to signed-in users who said they are 18 or older, and only users who said they are 18 or older can publish their own uploads to the public feed. If you change your answer to under 18, your public uploads are taken off the feed.</li>
+          <li>Telling us a false age is a breach of these Terms.</li>
           <li>You must not use the Service if the law of your country does not allow you to.</li>
         </ul>
       </section>

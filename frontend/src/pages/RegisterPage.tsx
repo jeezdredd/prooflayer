@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { useRegister } from "../hooks/useAuth";
 import ShaderBackground from "../components/ui/ShaderBackground";
+import { AGE_HINT, AGE_LABEL, legalHref } from "../legal";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -10,13 +11,22 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [isAdult, setIsAdult] = useState(false);
   const [allowTraining, setAllowTraining] = useState(false);
   const register = useRegister();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!acceptTerms) return;
-    register.mutate({ email, username, password, password_confirm: passwordConfirm, allow_training: allowTraining });
+    register.mutate({
+      email,
+      username,
+      password,
+      password_confirm: passwordConfirm,
+      accept_terms: true,
+      is_adult: isAdult,
+      allow_training: allowTraining,
+    });
   };
 
   return (
@@ -86,9 +96,15 @@ export default function RegisterPage() {
               <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-300 leading-relaxed cursor-pointer">
                 <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required className="mt-0.5" />
                 <span>
-                  I accept the <Link to="/terms" target="_blank" className="text-signal-amber hover:underline">Terms</Link> and
-                  have read the <Link to="/privacy" target="_blank" className="text-signal-amber hover:underline">Privacy Policy</Link>.
-                  If I am under 18, my parent or guardian agrees, or my school set up my account.
+                  I accept the <a href={legalHref("/terms")} target="_blank" rel="noopener noreferrer" className="text-signal-amber hover:underline">Terms</a> and
+                  have read the <a href={legalHref("/privacy")} target="_blank" rel="noopener noreferrer" className="text-signal-amber hover:underline">Privacy Policy</a>.
+                </span>
+              </label>
+              <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-300 leading-relaxed cursor-pointer">
+                <input type="checkbox" checked={isAdult} onChange={(e) => setIsAdult(e.target.checked)} className="mt-0.5" />
+                <span>
+                  {AGE_LABEL}
+                  <span className="block text-ink-500">{AGE_HINT}</span>
                 </span>
               </label>
               <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-500 leading-relaxed cursor-pointer">

@@ -53,6 +53,7 @@ def org_payload(org: Organization, user) -> dict:
         plan = _owner_plan(org.owner)
         data["teacher_seats"] = plan.teacher_seats if plan else None
         data["teacher_seats_used"] = OrgMember.objects.filter(organization__owner=org.owner).values("user").distinct().count()
+        data["web_search_enabled"] = org.web_search_enabled
     return data
 
 
@@ -161,6 +162,21 @@ class OrganizationRotateCodeView(APIView):
         org = _org(slug)
         _require_admin(org, request.user)
         return Response({"teacher_code": org.rotate_teacher_code()})
+
+
+class OrganizationSettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, slug):
+        org = _org(slug)
+        _require_admin(org, request.user)
+        if "web_search_enabled" in request.data:
+            value = request.data.get("web_search_enabled")
+            if not isinstance(value, bool):
+                raise ValidationError({"web_search_enabled": ["Must be true or false."]})
+            org.web_search_enabled = value
+            org.save(update_fields=["web_search_enabled"])
+        return Response(org_payload(org, request.user))
 
 
 class OrganizationTeachersView(APIView):

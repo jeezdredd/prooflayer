@@ -1,5 +1,6 @@
 import hashlib
 import uuid
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db import IntegrityError, models, transaction
@@ -68,6 +69,7 @@ class Submission(models.Model):
     clip_embedding = VectorField(dimensions=CLIP_EMBED_DIM, null=True, blank=True)
     source_url = models.URLField(max_length=2000, blank=True)
     is_public = models.BooleanField(default=False, db_index=True)
+    is_sensitive = models.BooleanField(default=False, db_index=True)
     approved_for_training = models.BooleanField(default=False, db_index=True)
     verified_label = models.CharField(
         max_length=10,
@@ -157,6 +159,75 @@ class VerdictOverride(models.Model):
 
     def __str__(self):
         return f"{self.submission_id} {self.previous_verdict}→{self.new_verdict}"
+
+
+OBJECTION_ANSWER_BUSINESS_DAYS = 3
+WEEKEND = (5, 6)
+
+
+def add_business_days(dt: datetime, n: int) -> datetime:
+    result = dt
+    added = 0
+    while added < n:
+        result += timedelta(days=1)
+        if result.weekday() not in WEEKEND:
+            added += 1
+    return result
+
+
+class VerdictObjection(models.Model):
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        ANSWERED = "answered", "Answered"
+
+    class Decision(models.TextChoices):
+        UPHELD = "upheld", "Upheld"
+        CHANGED = "changed", "Changed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="objections")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="verdict_objections",
+    )
+    reason = models.TextField(max_length=2000)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN, db_index=True)
+    decision = models.CharField(max_length=10, choices=Decision.choices, blank=True, default="")
+    response = models.TextField(blank=True)
+    responded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="answered_objections",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    due_at = models.DateTimeField()
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "verdict_objections"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["submission"],
+                condition=models.Q(status="open"),
+                name="one_open_objection_per_submission",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.submission_id} {self.status}"
+
+    def save(self, *args, **kwargs):
+        if self.due_at is None:
+            self.due_at = add_business_days(
+                timezone.localtime(self.created_at or timezone.now()), OBJECTION_ANSWER_BUSINESS_DAYS,
+            )
+        super().save(*args, **kwargs)
+
+    @property
+    def overdue(self) -> bool:
+        return self.status == self.Status.OPEN and timezone.now() > self.due_at
 
 
 class AnonymousQuota(models.Model):

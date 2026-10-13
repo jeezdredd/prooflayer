@@ -126,6 +126,15 @@ def internal_semantic(submission, language: str, sents, vectors) -> list[dict]:
     return list(by_source.values())
 
 
+def web_search_allowed(submission) -> bool:
+    if not getattr(settings, "PLAGIARISM_WEB_ENABLED", True):
+        return False
+    if submission.classroom_id is None:
+        return True
+    organization = submission.classroom.organization
+    return organization is not None and organization.web_search_enabled
+
+
 def run_check(submission) -> PlagiarismReport:
     report, _ = PlagiarismReport.objects.get_or_create(submission=submission)
     report.status = PlagiarismReport.Status.RUNNING
@@ -149,7 +158,7 @@ def run_check(submission) -> PlagiarismReport:
         exact_sources = {m["submission_id"] for m in matches}
         matches += [m for m in internal_semantic(submission, language, sents, vectors) if m["submission_id"] not in exact_sources]
         web_queries = 0
-        if getattr(settings, "PLAGIARISM_WEB_ENABLED", True):
+        if web_search_allowed(submission):
             web, web_queries = web_matches(text)
             matches += web
 

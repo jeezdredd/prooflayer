@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Globe, User, Calendar, ArrowLeft } from "lucide-react";
 import { feed } from "../api/endpoints";
 import { Skeleton } from "../components/ui/Skeleton";
+import SensitiveCover from "../components/SensitiveCover";
 
 function VerdictBadge({ verdict, score }: { verdict: string; score: number | null }) {
   const isAI = verdict === "ai_generated";
@@ -71,11 +72,13 @@ export default function FeedDetailPage() {
         <div className="lg:col-span-2 space-y-4">
           {isImage && item.thumbnail_url && (
             <div className="case-card overflow-hidden">
-              <img
-                src={item.thumbnail_url}
-                alt={item.original_filename}
-                className="w-full max-h-[500px] object-contain bg-ink-950"
-              />
+              <SensitiveCover sensitive={item.is_sensitive} className="min-h-[240px]">
+                <img
+                  src={item.thumbnail_url}
+                  alt={item.original_filename}
+                  className="w-full max-h-[500px] object-contain bg-ink-950"
+                />
+              </SensitiveCover>
             </div>
           )}
 
@@ -123,6 +126,11 @@ export default function FeedDetailPage() {
               Verdict
             </div>
             <VerdictBadge verdict={item.final_verdict} score={item.final_score} />
+            {item.is_sensitive && (
+              <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-signal-amber mt-3">
+                Marked as sensitive content
+              </div>
+            )}
           </div>
 
           <div className="case-card p-6 space-y-4">

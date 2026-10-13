@@ -41,3 +41,26 @@ change notice, breach notification to individuals, EU digital-content waiver vs 
 refunds on plan changes. Engineering open items: ip-api over http (switch to a local GeoIP
 database), Discord visit notices with full IPs (turn off for school sales), dormant TinEye /
 Google Vision / Google Fact Check code paths (keep keys unset).
+
+## Age, terms, objections (2026-10-13, after the owner's legal pack)
+
+Owner decision: the service is NOT 18+. Registration stays simple (email, username, password,
+accept terms, optional "I am 18 or older"). Age only gates material:
+- `User.is_adult` (self-declared, `age_confirmed_at` keeps the last confirmation even if the
+  user later unticks it), `common.age.can_view_sensitive(user)`.
+- `Submission.is_sensitive` (author ticks it when publishing, staff admin action). Anonymous
+  visitors and non-adults never get sensitive items: feed list/detail (404), widget, status view,
+  similar submissions, compare, provenance list, PDF report matches
+  (`content.sensitivity.for_viewer`, `provenance.visibility`). Adults get `is_sensitive` and the
+  UI blurs (`SensitiveCover`). Non-adults cannot publish; unticking 18+ unpublishes everything.
+  Cache-hit re-uploads copy `is_sensitive`. Report reason `adult_content` lets anyone flag it.
+- Terms version: `settings.TERMS_VERSION` (mirrored in `frontend/src/legal.ts`; change both).
+  `needs_terms` on the user; `TermsGate` blocks both app shells until `POST /auth/accept-terms/`.
+- Kazakhstan Law 94-V art. 19-1: `content.VerdictObjection`, the author objects to a verdict,
+  the class supervisor (or staff for personal uploads) answers; due in 3 business days; email to
+  the teacher. Verdicts show "Probabilistic assessment. A person makes the decision."
+- Cross-border minimisation: `Organization.web_search_enabled` (default off) gates the
+  originality web search for class work; personal uploads still search.
+Known gaps: no automatic NSFW detection yet (sensitive marking is manual or by report); the
+websocket progress channel does not check sensitivity (low risk: no media); terms acceptance is a
+UI gate, the API does not refuse calls from users with `needs_terms`.

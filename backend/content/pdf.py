@@ -2,10 +2,15 @@ import io
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from provenance.visibility import results_for_viewer, sensitive_match_ids
+
 
 def generate_report_pdf(submission, request=None):
     analysis_results = list(submission.analysis_results.select_related("analyzer").all())
     provenance_results = list(submission.provenance_results.all()) if hasattr(submission, "provenance_results") else []
+    provenance_results = results_for_viewer(
+        provenance_results, getattr(request, "user", None), sensitive_match_ids(provenance_results),
+    )
     factcheck = getattr(submission, "factcheck_result", None)
 
     verdict_colors = {

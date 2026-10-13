@@ -5,7 +5,7 @@ import pytest
 from django.core.files.base import ContentFile
 from django.test import override_settings
 
-from classroom.models import Classroom, Membership
+from classroom.models import Classroom, Membership, Organization
 from content.tasks import queue_originality_check
 from content.tests.factories import SubmissionFactory
 from plagiarism.embeddings import EmbeddingsUnavailable
@@ -108,11 +108,58 @@ class TestRunCheck:
     @patch("plagiarism.web.fetch_text", return_value="Some page. " + ESSAY + " Footer.")
     @patch("plagiarism.web.search", return_value=[Hit("https://example.org/essay", "Essay site", "")])
     def test_web_source_is_reported(self, _search, _fetch, _embed):
-        report = run_check(_text_submission(UserFactory(), ESSAY))
+        report = run_check(_text_submission(UserFactory(), ESSAY, personal=True))
         web = [m for m in report.matches if m["source"] == "web"]
         assert web and web[0]["url"] == "https://example.org/essay"
         assert report.originality < 10
         assert report.web_searched
+
+
+def _org_class(web_search_enabled):
+    owner = UserFactory()
+    org = Organization.create_for(owner, "Lyceum", f"lyceum-{owner.id}")
+    org.web_search_enabled = web_search_enabled
+    org.save(update_fields=["web_search_enabled"])
+    return Classroom.create_for(owner, "9A", organization=org)
+
+
+@pytest.mark.django_db
+@patch("plagiarism.service.embed", side_effect=fake_embed)
+@patch("plagiarism.web.fetch_text", return_value="")
+@patch("plagiarism.web.search", return_value=[Hit("https://example.org/essay", "Essay site", "")])
+class TestWebSearchPolicy:
+    @pytest.fixture(autouse=True)
+    def _web_on(self, settings):
+        settings.PLAGIARISM_WEB_ENABLED = True
+
+    def test_org_class_work_is_not_searched_by_default(self, search, _fetch, _embed):
+        report = run_check(_text_submission(UserFactory(), ESSAY, _org_class(False)))
+        assert report.status == PlagiarismReport.Status.DONE
+        search.assert_not_called()
+        assert not report.web_searched
+        assert report.web_queries == 0
+
+    def test_org_class_work_is_searched_when_the_school_allows_it(self, search, _fetch, _embed):
+        report = run_check(_text_submission(UserFactory(), ESSAY, _org_class(True)))
+        assert search.called
+        assert report.web_searched
+
+    def test_personal_upload_is_searched(self, search, _fetch, _embed):
+        report = run_check(_text_submission(UserFactory(), ESSAY, personal=True))
+        assert search.called
+        assert report.web_searched
+
+    def test_class_without_organization_is_not_searched(self, search, _fetch, _embed):
+        report = run_check(_text_submission(UserFactory(), ESSAY, _class()))
+        assert report.status == PlagiarismReport.Status.DONE
+        search.assert_not_called()
+        assert not report.web_searched
+
+    def test_global_switch_off_wins_over_school_setting(self, search, _fetch, _embed, settings):
+        settings.PLAGIARISM_WEB_ENABLED = False
+        run_check(_text_submission(UserFactory(), ESSAY, _org_class(True)))
+        run_check(_text_submission(UserFactory(), ESSAY, personal=True))
+        search.assert_not_called()
 
 
 @pytest.mark.django_db

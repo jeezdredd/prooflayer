@@ -33,16 +33,30 @@ def revoke_training_approval(modeladmin, request, queryset):
 revoke_training_approval.short_description = "Revoke training approval"
 
 
+def mark_sensitive(modeladmin, request, queryset):
+    queryset.update(is_sensitive=True)
+
+mark_sensitive.short_description = "Mark as sensitive"
+
+
+def unmark_sensitive(modeladmin, request, queryset):
+    queryset.update(is_sensitive=False)
+
+unmark_sensitive.short_description = "Unmark sensitive"
+
+
 @admin.register(Submission)
 class SubmissionAdmin(ModelAdmin):
     list_display = (
         "id", "user", "original_filename", "mime_type", "status_badge",
         "verdict_badge", "training_badge", "created_at",
     )
-    list_filter = ("status", "mime_type", "is_known_fake", "approved_for_training", "verified_label")
+    list_filter = (
+        "status", "mime_type", "is_known_fake", "is_public", "is_sensitive", "approved_for_training", "verified_label",
+    )
     search_fields = ("original_filename", "sha256_hash")
     readonly_fields = ("id", "sha256_hash", "metadata")
-    actions = [approve_as_real, approve_as_fake, revoke_training_approval]
+    actions = [approve_as_real, approve_as_fake, revoke_training_approval, mark_sensitive, unmark_sensitive]
     list_per_page = 50
 
     _BADGE_STYLE = (

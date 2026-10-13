@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../api/endpoints";
+import { auth, type RegisterPayload } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 import { postAuthPath } from "../appMode";
 
@@ -24,8 +24,7 @@ export function useRegister() {
   const navigate = useNavigate();
 
   return useMutation({
-    mutationFn: (data: { email: string; username: string; password: string; password_confirm: string; allow_training?: boolean }) =>
-      auth.register(data),
+    mutationFn: (data: RegisterPayload) => auth.register(data),
     onSuccess: (res) => {
       setAccess(res.data.access);
       setUser(res.data.user);

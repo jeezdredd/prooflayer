@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
+import TermsGate from "./TermsGate";
 import { FeedbackModal, FeedbackTrigger } from "./FeedbackModal";
 
 interface NavItem {
@@ -248,6 +249,7 @@ export default function Layout() {
         )}
       </AnimatePresence>
 
+      <TermsGate />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       {!feedbackOpen && <FeedbackTrigger onClick={() => setFeedbackOpen(true)} />}
 

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { auth } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 import { toast } from "../components/ui/Toast";
+import { AGE_HINT, AGE_LABEL } from "../legal";
 
 const LABEL = "font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500";
 
@@ -14,6 +15,7 @@ function errorDetail(err: unknown, fallback: string): string {
 export default function AccountPage() {
   const { user, setUser, logout } = useAuthStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [password, setPassword] = useState("");
   const [forgetTraining, setForgetTraining] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -23,6 +25,18 @@ export default function AccountPage() {
     onSuccess: (data) => {
       setUser(data);
       toast.success(data.allow_training ? "Thank you, consent recorded" : "Consent withdrawn; your training copies were deleted");
+    },
+    onError: () => toast.error("Could not save"),
+  });
+
+  const age = useMutation({
+    mutationFn: (isAdult: boolean) => auth.updateMe({ is_adult: isAdult }).then((r) => r.data),
+    onSuccess: (data) => {
+      setUser(data);
+      queryClient.setQueryData(["me", data.id], data);
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+      queryClient.invalidateQueries({ queryKey: ["feed-detail"] });
+      toast.success(data.is_adult ? "Saved: you are 18 or older" : "Saved: public uploads from others are hidden");
     },
     onError: () => toast.error("Could not save"),
   });
@@ -47,6 +61,23 @@ export default function AccountPage() {
       <section className="border-t border-[var(--line-strong)] py-6">
         <div className={LABEL}>Signed in as</div>
         <div className="text-ink-100 mt-1">{user.email}</div>
+      </section>
+
+      <section className="border-t border-[var(--line-strong)] py-6">
+        <div className={LABEL}>Age</div>
+        <label className="mt-3 flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!user.is_adult}
+            disabled={age.isPending}
+            onChange={(e) => age.mutate(e.target.checked)}
+            className="mt-1 accent-amber-400"
+          />
+          <span className="text-sm text-ink-300 leading-relaxed">
+            {AGE_LABEL}
+            <span className="block text-xs text-ink-500 mt-1">{AGE_HINT}</span>
+          </span>
+        </label>
       </section>
 
       <section className="border-t border-[var(--line-strong)] py-6">

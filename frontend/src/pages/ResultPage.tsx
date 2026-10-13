@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSubmissionDetail } from "../hooks/useUpload";
 import { useSubmissionWS } from "../hooks/useSubmissionWS";
@@ -7,10 +7,13 @@ import ResultCard from "../components/ResultCard";
 import VotingPanel from "../components/VotingPanel";
 import ReportButton from "../components/ReportButton";
 import ProvenancePanel from "../components/ProvenancePanel";
+import ObjectionPanel from "../components/ObjectionPanel";
 import { Skeleton, SkeletonText } from "../components/ui/Skeleton";
 import { toast } from "../components/ui/Toast";
 import { reanalyzeSubmission, togglePublic } from "../api/endpoints";
 import { IS_CLASSROOM_APP } from "../appMode";
+import { useAuthStore } from "../stores/authStore";
+import type { Submission } from "../types";
 
 function DownloadReportButton({ submissionId }: { submissionId: string }) {
   const [loading, setLoading] = useState(false);
@@ -85,35 +88,52 @@ function ReanalyzeButton({ submissionId }: { submissionId: string }) {
 
 function TogglePublicButton({ submissionId, isPublic }: { submissionId: string; isPublic: boolean }) {
   const [loading, setLoading] = useState(false);
+  const [sensitive, setSensitive] = useState(false);
+  const [adultRequired, setAdultRequired] = useState(false);
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const canPublish = !!(user?.is_adult || user?.is_staff) && !adultRequired;
 
   const handleToggle = async () => {
     setLoading(true);
     try {
-      const res = await togglePublic(submissionId);
-      queryClient.setQueryData(["submission", submissionId], (old: Record<string, unknown> | undefined) =>
-        old ? { ...old, is_public: res.data.is_public } : old
+      const res = await togglePublic(submissionId, !isPublic && sensitive);
+      queryClient.setQueryData(["submission", submissionId], (old: Submission | undefined) =>
+        old ? { ...old, is_public: res.data.is_public, is_sensitive: res.data.is_sensitive } : old
       );
       toast.success(res.data.is_public ? "Submission is now public" : "Submission set to private");
-    } catch {
-      toast.error("Failed to update visibility");
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { code?: string; detail?: string } } })?.response?.data;
+      if (data?.code === "adult_required") setAdultRequired(true);
+      toast.error(data?.detail || "Failed to update visibility");
     } finally {
       setLoading(false);
     }
   };
 
+  if (!isPublic && !canPublish) return null;
+
   return (
-    <button
-      onClick={handleToggle}
-      disabled={loading}
-      className={`font-mono text-[10px] uppercase tracking-[0.14em] border px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5 ${
-        isPublic
-          ? "border-signal-sage/60 text-signal-sage hover:bg-signal-sage/10"
-          : "border-ink-600 text-ink-400 hover:border-ink-400 hover:text-ink-200"
-      }`}
-    >
-      {loading ? "..." : isPublic ? "⬤ Public" : "○ Private"}
-    </button>
+    <div className="flex items-center gap-2">
+      {!isPublic && (
+        <label className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 cursor-pointer">
+          <input type="checkbox" checked={sensitive} onChange={(e) => setSensitive(e.target.checked)} />
+          Contains sensitive content
+        </label>
+      )}
+      <button
+        onClick={handleToggle}
+        disabled={loading}
+        title={isPublic ? "Make private" : "Publish to the public feed"}
+        className={`font-mono text-[10px] uppercase tracking-[0.14em] border px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5 ${
+          isPublic
+            ? "border-signal-sage/60 text-signal-sage hover:bg-signal-sage/10"
+            : "border-ink-600 text-ink-400 hover:border-ink-400 hover:text-ink-200"
+        }`}
+      >
+        {loading ? "..." : isPublic ? "⬤ Public" : "○ Private"}
+      </button>
+    </div>
   );
 }
 
@@ -121,6 +141,8 @@ export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
   const { data: submission, isLoading, isError } = useSubmissionDetail(id || null);
   const { connected, runningAnalyzers } = useSubmissionWS(id);
+  const location = useLocation();
+  const supervising = !!(location.state as { supervising?: boolean } | null)?.supervising;
 
   if (isLoading) {
     return (
@@ -207,13 +229,14 @@ export default function ResultPage() {
             {submission.ensemble && !submission.ensemble.is_current && (
               <ReanalyzeButton submissionId={submission.id} />
             )}
-            <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />
+            {!supervising && <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />}
             <DownloadReportButton submissionId={submission.id} />
             <ReportButton submissionId={submission.id} />
           </div>
         )}
       </div>
       <ResultCard submission={submission} runningAnalyzers={runningAnalyzers} />
+      <ObjectionPanel submission={submission} supervising={supervising} />
       {submission.status === "completed" && (
         <ProvenancePanel submissionId={submission.id} />
       )}

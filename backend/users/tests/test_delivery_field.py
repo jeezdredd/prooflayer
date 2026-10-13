@@ -17,6 +17,7 @@ def test_register_includes_delivery():
             "username": "newuser",
             "password": "Str0ngPass!23",
             "password_confirm": "Str0ngPass!23",
+            "accept_terms": True,
         },
         format="json",
     )

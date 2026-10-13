@@ -2,6 +2,7 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import { GraduationCap, LogOut } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { auth } from "../api/endpoints";
+import TermsGate from "../components/TermsGate";
 
 export default function ClassroomShell() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -43,6 +44,7 @@ export default function ClassroomShell() {
           </div>
         </div>
       </header>
+      <TermsGate />
       <main className="max-w-6xl mx-auto px-5 py-10">
         <Outlet />
       </main>

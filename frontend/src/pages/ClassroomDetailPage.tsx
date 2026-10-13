@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download, RefreshCw, UserMinus, Archive } from "lucide-react";
-import { classrooms } from "../api/endpoints";
-import type { ClassSubmission } from "../types";
+import { classrooms, objections } from "../api/endpoints";
+import type { ClassSubmission, VerdictObjection } from "../types";
 import { toast } from "../components/ui/Toast";
 import { LEVEL_OPTIONS } from "../classroom/shared";
+import { VERDICT_DISCLAIMER } from "../legal";
 
 const VERDICT_CLASS: Record<string, string> = {
   fake: "text-signal-blood", likely_fake: "text-signal-blood",
@@ -20,7 +21,7 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
   return (
     <div className="divide-y divide-[var(--line-strong)]">
       {rows.map((s) => (
-        <Link key={s.id} to={`/results/${s.id}`}
+        <Link key={s.id} to={`/results/${s.id}`} state={{ supervising: showStudent }}
           className="grid grid-cols-[1fr_auto] md:grid-cols-12 gap-3 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
           {showStudent && <span className="md:col-span-2 text-ink-300 truncate">{s.student}</span>}
           <span className={`${showStudent ? "md:col-span-5" : "md:col-span-7"} text-ink-50 truncate`}>{s.original_filename}</span>
@@ -28,8 +29,13 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
             {s.words != null ? `${s.words} words` : s.mime_type.split("/")[0]}
             {s.originality != null && <span className={s.originality < 60 ? "text-signal-blood" : s.originality < 85 ? "text-signal-amber" : "text-signal-sage"}> · {Math.round(s.originality)}% orig.</span>}
           </span>
-          <span className={`md:col-span-2 font-mono text-[11px] uppercase tracking-[0.12em] ${VERDICT_CLASS[s.final_verdict] || "text-ink-400"}`}>
-            {s.status === "completed" ? s.final_verdict.replace("_", " ") || "-" : s.status}
+          <span className="md:col-span-2 flex flex-col">
+            <span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${VERDICT_CLASS[s.final_verdict] || "text-ink-400"}`}>
+              {s.status === "completed" ? s.final_verdict.replace("_", " ") || "-" : s.status}
+            </span>
+            {s.status === "completed" && s.final_verdict && (
+              <span className="text-[10px] leading-snug text-ink-600 mt-0.5">{VERDICT_DISCLAIMER}</span>
+            )}
           </span>
           <span className="md:col-span-1 font-mono text-[11px] text-ink-400 text-right hidden md:block">
             {s.final_score != null ? `${Math.round(s.final_score * 100)}%` : ""}
@@ -37,6 +43,51 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
         </Link>
       ))}
     </div>
+  );
+}
+
+function ObjectionRows({ classId }: { classId: string }) {
+  const { data: all = [] } = useQuery({
+    queryKey: ["classroom-subs", classId, "all"],
+    queryFn: () => classrooms.submissions(classId).then((r) => r.data),
+    refetchInterval: 60000,
+  });
+  const { data: open = [] } = useQuery({
+    queryKey: ["objections", "open"],
+    queryFn: () => objections.list({ status: "open", page_size: 200 }).then((r) => r.data.results),
+    refetchInterval: 60000,
+  });
+  const ids = new Set(all.map((s) => s.id));
+  const rows: VerdictObjection[] = open.filter((o) => ids.has(o.submission_id));
+
+  return (
+    <section className="mb-8">
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">
+        Objections {rows.length > 0 && <span className="text-signal-amber">· {rows.length} open</span>}
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-ink-500">No open objections.</p>
+      ) : (
+        <div className="divide-y divide-[var(--line-strong)]">
+          {rows.map((o) => (
+            <Link key={o.id} to={`/results/${o.submission_id}`} state={{ supervising: true }}
+              className="grid grid-cols-[1fr_auto] md:grid-cols-12 gap-3 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
+              <span className="md:col-span-2 text-ink-300 truncate">{o.student}</span>
+              <span className="md:col-span-6 min-w-0">
+                <span className="block text-ink-50 truncate">{o.submission_title}</span>
+                <span className="block text-xs text-ink-500 truncate">{o.reason}</span>
+              </span>
+              <span className="md:col-span-4 flex items-center justify-end gap-2 font-mono text-[11px] text-ink-400">
+                {o.overdue && (
+                  <span className="border border-signal-blood/60 text-signal-blood px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]">Overdue</span>
+                )}
+                <span>answer by {new Date(o.due_at).toLocaleDateString()}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -146,6 +197,8 @@ function TeacherView({ id }: { id: string }) {
       <p className="text-xs text-ink-500 mb-6 max-w-2xl">
         Text verdicts come from a language-model check and are indicative only. Treat a flag as a reason to talk to the student, not as proof.
       </p>
+
+      <ObjectionRows classId={id} />
 
       <div className="grid lg:grid-cols-12 gap-8">
         <section className="lg:col-span-4">

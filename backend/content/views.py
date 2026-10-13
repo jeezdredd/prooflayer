@@ -7,7 +7,7 @@ import requests as http_requests
 from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import generics, mixins, status, viewsets
@@ -30,9 +30,17 @@ from .serializers import (
     SubmissionListSerializer,
     VerdictOverrideSerializer,
 )
-from classroom.access import classroom_for_upload, quota_owner, visible_submissions_q
+from classroom.access import classroom_for_upload, quota_owner, supervised_q, visible_submissions_q
+from common.age import can_view_sensitive
 
 from .intake import QuotaExceeded, check_quota, create_submission
+from .sensitivity import (
+    ADULT_REQUIRED_CODE,
+    ADULT_REQUIRED_DETAIL,
+    OptionalViewerAuthentication,
+    for_viewer,
+    parse_flag,
+)
 from .throttles import UploadRateThrottle, WidgetRateThrottle
 from .validators import validate_file_size, validate_mime_type
 from analyzers.models import AnalysisResult
@@ -87,7 +95,10 @@ class SubmissionViewSet(
         user = self.request.user
         if self.action == "list":
             return Submission.objects.filter(user=user)
-        return Submission.objects.filter(visible_submissions_q(user)).distinct()
+        if can_view_sensitive(user):
+            return Submission.objects.filter(visible_submissions_q(user)).distinct()
+        supervised = supervised_q(user, prefix="classroom__") & Q(is_sensitive=False)
+        return Submission.objects.filter(Q(user=user) | supervised).distinct()
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -133,11 +144,24 @@ class SubmissionViewSet(
             return Response({"detail": "Only the author can change visibility."}, status=status.HTTP_403_FORBIDDEN)
         if submission.status != "completed":
             return Response({"detail": "Only completed submissions can be made public."}, status=status.HTTP_400_BAD_REQUEST)
-        if submission.classroom_id and not submission.is_public:
+        if submission.is_public:
+            submission.is_public = False
+            submission.save(update_fields=["is_public"])
+            return Response({"is_public": False, "is_sensitive": submission.is_sensitive})
+        if submission.classroom_id:
             return Response({"detail": "Work handed in to a class cannot be made public."}, status=status.HTTP_403_FORBIDDEN)
-        submission.is_public = not submission.is_public
-        submission.save(update_fields=["is_public"])
-        return Response({"is_public": submission.is_public})
+        if not can_view_sensitive(request.user):
+            return Response(
+                {"detail": ADULT_REQUIRED_DETAIL, "code": ADULT_REQUIRED_CODE},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        submission.is_public = True
+        updated_fields = ["is_public"]
+        if parse_flag(request.data.get("sensitive")):
+            submission.is_sensitive = True
+            updated_fields.append("is_sensitive")
+        submission.save(update_fields=updated_fields)
+        return Response({"is_public": True, "is_sensitive": submission.is_sensitive})
 
     @action(detail=False, methods=["get"], url_path="compare", permission_classes=[CanCompare])
     def compare(self, request):
@@ -255,6 +279,11 @@ class VerdictOverrideView(APIView):
                 {"verdict": [f"Must be one of {sorted(ALLOWED_OVERRIDE_VERDICTS)}."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        sensitive = None
+        if "is_sensitive" in request.data:
+            sensitive = parse_flag(request.data.get("is_sensitive"))
+            if sensitive is None:
+                return Response({"is_sensitive": ["Must be a boolean."]}, status=status.HTTP_400_BAD_REQUEST)
 
         previous = submission.final_verdict
         VerdictOverride.objects.create(
@@ -271,6 +300,9 @@ class VerdictOverrideView(APIView):
             "likely_fake": "fake",
         }
         updated_fields = ["final_verdict", "updated_at"]
+        if sensitive is not None:
+            submission.is_sensitive = sensitive
+            updated_fields.append("is_sensitive")
         new_label = label_map.get(new_verdict)
         if new_label:
             submission.verified_label = new_label
@@ -290,14 +322,15 @@ class VerdictOverrideView(APIView):
 
 class PublicFeedView(generics.ListAPIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
+    authentication_classes = [OptionalViewerAuthentication]
 
     def get_serializer_class(self):
         return PublicSubmissionSerializer
 
     def get_queryset(self):
+        public = Submission.objects.filter(is_public=True, status=Submission.Status.COMPLETED)
         return (
-            Submission.objects.filter(is_public=True, status=Submission.Status.COMPLETED)
+            for_viewer(public, self.request.user)
             .select_related("user")
             .order_by("-created_at")[:100]
         )
@@ -305,14 +338,15 @@ class PublicFeedView(generics.ListAPIView):
 
 class PublicSubmissionDetailView(generics.RetrieveAPIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
+    authentication_classes = [OptionalViewerAuthentication]
     lookup_field = "id"
 
     def get_serializer_class(self):
         return PublicSubmissionSerializer
 
     def get_queryset(self):
-        return Submission.objects.filter(is_public=True, status=Submission.Status.COMPLETED).select_related("user")
+        public = Submission.objects.filter(is_public=True, status=Submission.Status.COMPLETED)
+        return for_viewer(public, self.request.user).select_related("user")
 
 
 class WidgetEmbedView(APIView):
@@ -326,6 +360,7 @@ class WidgetEmbedView(APIView):
                 sha256_hash=sha256,
                 status=Submission.Status.COMPLETED,
                 is_public=True,
+                is_sensitive=False,
             )
             .order_by("-created_at")
             .first()
@@ -445,7 +480,8 @@ class SubmissionStatusView(APIView):
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         user = request.user
         owns = user.is_authenticated and (sub.user_id == user.id or user.is_staff)
-        if not (sub.is_public or owns or sub.source_url):
+        public_for_viewer = sub.is_public and (not sub.is_sensitive or can_view_sensitive(user))
+        if not (public_for_viewer or owns or sub.source_url):
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         return Response({
             "id": str(sub.id),

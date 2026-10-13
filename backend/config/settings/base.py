@@ -225,6 +225,7 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")
 PADDLE_WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "")
 PERSONAL_FILE_RETENTION_DAYS = int(os.environ.get("PERSONAL_FILE_RETENTION_DAYS", "90"))
+TERMS_VERSION = "2026-10-13"
 
 SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
 BRAVE_SEARCH_API_KEY = os.environ.get("BRAVE_SEARCH_API_KEY", "")

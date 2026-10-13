@@ -4,6 +4,7 @@ import type { Submission } from "../types";
 import AnalyzerTimeline from "./AnalyzerTimeline";
 import TextReport from "./TextReport";
 import OriginalityPanel from "./OriginalityPanel";
+import { VERDICT_DISCLAIMER } from "../legal";
 
 const CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -237,6 +238,11 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
                   current {submission.ensemble.name} {submission.ensemble.current_version}
                 </span>
               )}
+            </div>
+          )}
+          {!isProcessing && (
+            <div className="text-[11px] leading-snug text-ink-500 mt-2 text-right max-w-[200px]">
+              {VERDICT_DISCLAIMER}
             </div>
           )}
           {isProcessing && (

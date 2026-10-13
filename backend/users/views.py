@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
@@ -14,9 +15,10 @@ from api.models import Feedback
 from billing.models import Subscription
 from classroom.models import Classroom, Organization
 from content.models import Submission
+from content.sensitivity import unpublish_all
 
 from .models import EmailLog, EmailVerificationToken
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import AcceptTermsSerializer, RegisterSerializer, UserSerializer, age_fields
 from .tasks import send_verification_email
 
 User = get_user_model()
@@ -162,6 +164,24 @@ class MeView(generics.RetrieveUpdateAPIView):
         response = Response(status=status.HTTP_204_NO_CONTENT)
         _clear_refresh_cookie(response)
         return response
+
+
+class AcceptTermsView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        serializer = AcceptTermsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        changes = {"terms_version": serializer.validated_data["version"], "terms_accepted_at": timezone.now()}
+        if "is_adult" in request.data and "is_adult" in serializer.validated_data:
+            changes.update(age_fields(user, serializer.validated_data["is_adult"]))
+        for field, value in changes.items():
+            setattr(user, field, value)
+        user.save(update_fields=list(changes))
+        if changes.get("is_adult") is False:
+            unpublish_all(user)
+        return Response(UserSerializer(user, context={"request": request}).data)
 
 
 def _delete_submissions(queryset) -> None:

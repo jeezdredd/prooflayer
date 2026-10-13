@@ -6,6 +6,8 @@ import { Globe, User, Calendar } from "lucide-react";
 import { feed } from "../api/endpoints";
 import type { PublicSubmission } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
+import SensitiveCover from "../components/SensitiveCover";
+import { useAuthStore } from "../stores/authStore";
 
 function VerdictBadge({ verdict, score }: { verdict: string; score: number | null }) {
   const isAI = verdict === "ai_generated";
@@ -38,11 +40,13 @@ function FeedCard({ item }: { item: PublicSubmission }) {
       <Link to={`/feed/${item.id}`} className="block">
         <div className="aspect-video bg-ink-900 relative overflow-hidden">
           {isImage && item.thumbnail_url ? (
-            <img
-              src={item.thumbnail_url}
-              alt={item.original_filename}
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-            />
+            <SensitiveCover sensitive={item.is_sensitive} className="w-full h-full">
+              <img
+                src={item.thumbnail_url}
+                alt={item.original_filename}
+                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+              />
+            </SensitiveCover>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-600">
@@ -55,8 +59,15 @@ function FeedCard({ item }: { item: PublicSubmission }) {
           </div>
         </div>
         <div className="p-4">
-          <div className="font-mono text-xs text-ink-200 truncate mb-3" title={item.original_filename}>
-            {item.original_filename}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-mono text-xs text-ink-200 truncate" title={item.original_filename}>
+              {item.original_filename}
+            </span>
+            {item.is_sensitive && (
+              <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-signal-amber border border-signal-amber/40 px-1.5 py-0.5">
+                Sensitive
+              </span>
+            )}
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-ink-500">
@@ -93,9 +104,11 @@ function FeedCardSkeleton() {
 
 export default function FeedPage() {
   const [page, setPage] = useState(1);
+  const { user } = useAuthStore();
+  const canSeeSensitive = !!(user?.is_adult || user?.is_staff);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["feed", page],
+    queryKey: ["feed", page, canSeeSensitive],
     queryFn: () => feed.list({ page: String(page) }).then((r) => r.data),
   });
 
@@ -112,6 +125,11 @@ export default function FeedPage() {
         <p className="text-ink-400 text-sm max-w-xl">
           Verified content shared by the ProofLayer community. Toggle &quot;Public&quot; on your results page to appear here.
         </p>
+        {!canSeeSensitive && (
+          <p className="text-ink-500 text-xs max-w-xl mt-2">
+            Items marked as sensitive are shown only to accounts that confirmed they are 18 or older.
+          </p>
+        )}
       </div>
 
       {isError && (
