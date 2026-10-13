@@ -202,8 +202,9 @@ services:
     image: ${SEARXNG_IMAGE:-searxng/searxng:latest}
     restart: unless-stopped
     volumes:
-      - ./searxng:/etc/searxng
+      - ./searxng:/etc/searxng:ro
     environment:
+      - FORCE_OWNERSHIP=false
       - SEARXNG_BASE_URL=http://searxng:8080/
       - SEARXNG_SECRET=${SEARXNG_SECRET:-change-me-searxng-secret}
 

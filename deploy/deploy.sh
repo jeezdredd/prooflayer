@@ -159,6 +159,7 @@ fi
 
 # ===== Cleanup old releases (keep last 5) =====
 log "pruning releases"
-ls -1dt "${RELEASES}"/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf
+ls -1dt "${RELEASES}"/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf \
+  || log "warn: some old release files could not be removed (owned by another user); fix with: sudo chown -R $(id -un) ${RELEASES}"
 
 log "deployed ${PROJECT} @ ${COMMIT} (release ${TS})"
