@@ -201,3 +201,23 @@ class TestContextAggregation:
             self._result(sub, "text_style", AnalysisResult.Verdict.INCONCLUSIVE, 0.9),
         ]
         assert aggregate(results)[1] == "authentic"
+
+
+@pytest.mark.django_db
+class TestNoContentDetector:
+    def test_metadata_alone_cannot_call_an_image_authentic(self):
+        sub = SubmissionFactory()
+        results = [
+            AnalysisResultFactory(submission=sub, analyzer=AnalyzerConfigFactory(name="metadata", weight=1.5), verdict=AnalysisResult.Verdict.AUTHENTIC, confidence=0.7),
+            AnalysisResultFactory(submission=sub, analyzer=AnalyzerConfigFactory(name="ela", weight=0.75), verdict=AnalysisResult.Verdict.INCONCLUSIVE, confidence=0.5),
+            AnalysisResultFactory(submission=sub, analyzer=AnalyzerConfigFactory(name="community_forensics", weight=3.5), verdict=AnalysisResult.Verdict.ERROR, confidence=0.0),
+        ]
+        assert aggregate(results) == (0.5, "inconclusive")
+
+    def test_metadata_ai_declaration_still_counts(self):
+        sub = SubmissionFactory()
+        results = [
+            AnalysisResultFactory(submission=sub, analyzer=AnalyzerConfigFactory(name="metadata", weight=1.5), verdict=AnalysisResult.Verdict.FAKE, confidence=0.95, evidence={"ai_probability": 0.95}),
+            AnalysisResultFactory(submission=sub, analyzer=AnalyzerConfigFactory(name="community_forensics", weight=3.5), verdict=AnalysisResult.Verdict.ERROR, confidence=0.0),
+        ]
+        assert aggregate(results)[1] != "authentic"

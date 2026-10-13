@@ -123,6 +123,16 @@ def _aggregate_core(results: list[AnalysisResult]) -> tuple[float, str]:
     if not valid_results:
         return 0.5, "inconclusive"
 
+    content_voices = [
+        r for r in valid_results
+        if r.analyzer.name not in MANIPULATION_ANALYZERS
+        and (_get_ai_probability(r) is not None or r.verdict in DECISIVE_VERDICTS)
+    ]
+    if not content_voices and not any(
+        r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS) for r in valid_results
+    ):
+        return 0.5, "inconclusive"
+
     decisive_results = [r for r in valid_results if r.verdict in DECISIVE_VERDICTS]
 
     total_weight = 0.0
