@@ -18,3 +18,12 @@ export function errorText(err: unknown, fallback: string): string {
   if (Array.isArray(first)) return String(first[0]);
   return fallback;
 }
+
+export const LEVEL_OPTIONS: { value: number; label: string }[] = [
+  ...Array.from({ length: 11 }, (_, i) => ({ value: i + 1, label: `Grade ${i + 1}` })),
+  ...Array.from({ length: 6 }, (_, i) => ({ value: 12 + i, label: `University year ${i + 1}` })),
+];
+
+export function levelLabel(level: number | null | undefined): string {
+  return LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? "Year not set";
+}

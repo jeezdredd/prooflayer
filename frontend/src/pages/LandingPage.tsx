@@ -12,7 +12,7 @@ import TribunalBrain, { type BrainMember } from "../components/landing/TribunalB
 import client from "../api/client";
 import { useAuthStore } from "../stores/authStore";
 
-const TRIBUNAL_FALLBACK = "Tribunal 1.3";
+const TRIBUNAL_FALLBACK = "Tribunal 1.4";
 
 const ANALYZERS: (BrainMember & { desc: string; Icon: typeof Brain })[] = [
   { code: "01", short: "Metadata", kind: "provenance", name: "Metadata & Provenance", tag: "EXIF · PNG params · C2PA", desc: "EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have.", Icon: Fingerprint },

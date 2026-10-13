@@ -79,6 +79,27 @@ ANALYZERS = [
         "timeout": 180,
     },
     {
+        "name": "text_evasion",
+        "analyzer_class": "analyzers.implementations.text_signals.TextEvasionAnalyzer",
+        "weight": 2.0,
+        "queue": "default",
+        "timeout": 60,
+    },
+    {
+        "name": "text_grade_fit",
+        "analyzer_class": "analyzers.implementations.text_signals.TextGradeFitAnalyzer",
+        "weight": 1.0,
+        "queue": "default",
+        "timeout": 60,
+    },
+    {
+        "name": "text_style",
+        "analyzer_class": "analyzers.implementations.text_signals.TextStyleAnalyzer",
+        "weight": 1.0,
+        "queue": "default",
+        "timeout": 60,
+    },
+    {
         "name": "audio_spectrogram",
         "analyzer_class": "analyzers.implementations.audio_analyzer.AudioSpectrogramAnalyzer",
         "weight": 2.0,

@@ -219,3 +219,26 @@ class TestOrgBilling:
         response = _client(student).post(reverse("submission-list"), {"file": _jpeg(), "classroom": str(cls.id)}, format="multipart")
         assert response.status_code == 403
         assert not Submission.objects.filter(classroom=cls).exists()
+
+
+@pytest.mark.django_db
+class TestClassLevel:
+    def test_teacher_sets_level_on_create_and_patch(self):
+        owner, org = _school()
+        created = _client(owner).post(reverse("org-classes", kwargs={"slug": org.slug}), {"name": "8A", "level": 8}, format="json")
+        assert created.status_code == 201
+        assert created.data["level"] == 8
+        url = reverse("classroom-detail", kwargs={"id": created.data["id"]})
+        assert _client(owner).patch(url, {"level": 13}, format="json").data["level"] == 13
+
+    @pytest.mark.parametrize("level", [0, 18, "eight"])
+    def test_out_of_range_level_rejected(self, level):
+        owner, org = _school()
+        response = _client(owner).post(reverse("org-classes", kwargs={"slug": org.slug}), {"name": "8A", "level": level}, format="json")
+        assert response.status_code == 400
+
+    def test_patch_rejects_bad_level(self):
+        owner, org = _school()
+        cls = Classroom.create_for(owner, "8A", organization=org)
+        response = _client(owner).patch(reverse("classroom-detail", kwargs={"id": cls.id}), {"level": 40}, format="json")
+        assert response.status_code == 400

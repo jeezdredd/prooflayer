@@ -51,6 +51,18 @@ return `ensemble: null`.
 
 ## Changelog
 
+### 1.4 - 2026-10-13
+
+Text members for Classroom. Image roster unchanged, so the image numbers of 1.3 still hold.
+
+- `text_evasion` (weight 2.0): homoglyphs from another alphabet inside words, invisible
+  characters, odd spaces, Unicode tags, DOCX runs that are hidden, white or under 2pt. Votes a
+  probability only when it finds something (0.6-0.97); otherwise abstains. Can convict only with
+  a second voter (share rule).
+- `text_grade_fit` and `text_style` are **context members** (`aggregator.CONTEXT_ANALYZERS`):
+  never in the score or the vote. A flag (`suspicious`, confidence >= 0.6) turns authentic /
+  inconclusive into `needs_review`. See [[concepts/text-signals]].
+
 ### 1.3 - 2026-10-13
 New member [[analyzers/clip-probe]] (weight 2.5): a logistic-regression probe on the CLIP
 ViT-B/32 embedding that provenance already stores, so it costs one dot product. First member

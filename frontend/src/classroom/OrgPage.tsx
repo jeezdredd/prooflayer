@@ -6,7 +6,7 @@ import { classrooms, orgs } from "../api/endpoints";
 import type { Organization } from "../types";
 import { useAuthStore } from "../stores/authStore";
 import { toast } from "../components/ui/Toast";
-import { ACTION, INPUT, MAIN_URL, SECTION_LABEL, classPath, errorText } from "./shared";
+import { ACTION, INPUT, LEVEL_OPTIONS, MAIN_URL, SECTION_LABEL, classPath, errorText, levelLabel } from "./shared";
 
 function JoinForms({ org }: { org: Organization }) {
   const navigate = useNavigate();
@@ -56,10 +56,11 @@ function ClassList({ org }: { org: Organization }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [name, setName] = useState("");
+  const [level, setLevel] = useState<number | "">("");
   const canCreate = org.role === "admin" || org.role === "teacher";
   const { data: list = [] } = useQuery({ queryKey: ["org-classes", org.slug], queryFn: () => orgs.classes(org.slug).then((r) => r.data) });
   const create = useMutation({
-    mutationFn: () => orgs.createClass(org.slug, name.trim()).then((r) => r.data),
+    mutationFn: () => orgs.createClass(org.slug, name.trim(), level === "" ? null : level).then((r) => r.data),
     onSuccess: (c) => {
       queryClient.invalidateQueries({ queryKey: ["org-classes", org.slug] });
       navigate(classPath(c));
@@ -81,7 +82,7 @@ function ClassList({ org }: { org: Organization }) {
           {visible.map((c) => (
             <Link key={c.id} to={classPath(c)} className="grid grid-cols-[auto_1fr_auto] gap-4 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
               <GraduationCap size={16} className="text-signal-sage/80" />
-              <span className="text-ink-50">{c.name}</span>
+              <span className="text-ink-50">{c.name} <span className="text-ink-500 text-sm">· {levelLabel(c.level)}</span></span>
               <span className="font-mono text-[11px] text-ink-500 flex items-center gap-1.5">
                 {org.role === "student" ? c.owner_name : <><Users size={12} /> {c.student_count}{org.role === "admin" && ` · ${c.owner_name}`}</>}
               </span>
@@ -100,6 +101,15 @@ function ClassList({ org }: { org: Organization }) {
       {canCreate && (
         <form className="flex gap-2 mt-4" onSubmit={(e) => { e.preventDefault(); if (name.trim()) create.mutate(); }}>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="History 10B, spring" className={INPUT} />
+          <select
+            value={level}
+            onChange={(e) => setLevel(e.target.value === "" ? "" : Number(e.target.value))}
+            aria-label="Year"
+            className="bg-ink-950 border border-[var(--line-strong)] px-2 text-ink-100 focus:border-signal-amber outline-none"
+          >
+            <option value="">Year…</option>
+            {LEVEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
           <button type="submit" disabled={!name.trim() || create.isPending} className={`${ACTION} flex items-center gap-1.5`}><Plus size={13} /> Class</button>
         </form>
       )}

@@ -59,7 +59,9 @@ class ClassroomViewSet(
         return classroom
 
     def perform_create(self, serializer):
-        classroom = Classroom.create_for(self.request.user, serializer.validated_data["name"])
+        classroom = Classroom.create_for(
+            self.request.user, serializer.validated_data["name"], level=serializer.validated_data.get("level"),
+        )
         serializer.instance = Classroom.objects.annotate(student_count=Count("memberships")).get(pk=classroom.pk)
 
     def perform_update(self, serializer):

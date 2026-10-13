@@ -5,6 +5,7 @@ import { Copy, Download, RefreshCw, UserMinus, Archive } from "lucide-react";
 import { classrooms } from "../api/endpoints";
 import type { ClassSubmission } from "../types";
 import { toast } from "../components/ui/Toast";
+import { LEVEL_OPTIONS } from "../classroom/shared";
 
 const VERDICT_CLASS: Record<string, string> = {
   fake: "text-signal-blood", likely_fake: "text-signal-blood",
@@ -68,6 +69,14 @@ function TeacherView({ id }: { id: string }) {
     },
   });
 
+  const setLevel = useMutation({
+    mutationFn: (level: number | null) => classrooms.update(id, { level }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classroom", id] });
+      toast.success("Class year saved; new work is checked against it");
+    },
+  });
+
   const exportCsv = async () => {
     try {
       const res = await classrooms.exportCsv(id);
@@ -100,6 +109,16 @@ function TeacherView({ id }: { id: string }) {
             <button type="button" aria-label="Copy code" onClick={() => navigator.clipboard.writeText(cls.join_code || "")} className="text-ink-400 hover:text-signal-amber"><Copy size={13} /></button>
             <button type="button" aria-label="New code" onClick={() => rotate.mutate()} className="text-ink-400 hover:text-signal-amber"><RefreshCw size={13} /></button>
           </div>
+          <select
+            value={cls.level ?? ""}
+            onChange={(e) => setLevel.mutate(e.target.value === "" ? null : Number(e.target.value))}
+            aria-label="Class year"
+            title="Used to check whether vocabulary fits the students' age"
+            className="bg-ink-950 border border-[var(--line-strong)] px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300 focus:border-signal-amber outline-none"
+          >
+            <option value="">Year not set</option>
+            {LEVEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
           <button type="button" onClick={exportCsv} className={BTN}><Download size={13} /> CSV</button>
           <button type="button" onClick={() => archive.mutate()} className={BTN}><Archive size={13} /> {cls.archived ? "Restore" : "Archive"}</button>
         </div>

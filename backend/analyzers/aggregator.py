@@ -25,6 +25,9 @@ DISAGREEMENT_MIN_MINORITY_SHARE = 0.3
 SINGLE_VOTER_MIN_SHARE = 0.5
 SINGLE_VOTER_MIN_PROB = 0.9
 AUTHENTIC_EDITED_AI_CEIL = 0.30
+CONTEXT_ANALYZERS = {"text_grade_fit", "text_style"}
+CONTEXT_FLAG_FLOOR = 0.6
+CONTEXT_ESCALATES = {"authentic", "authentic_edited", "inconclusive"}
 
 
 def _get_ai_probability(result) -> float | None:
@@ -105,6 +108,17 @@ def _has_manipulation_signal(valid_results) -> bool:
 
 
 def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
+    context = [r for r in results if r.analyzer.name in CONTEXT_ANALYZERS]
+    score, verdict = _aggregate_core([r for r in results if r.analyzer.name not in CONTEXT_ANALYZERS])
+    flagged = any(
+        r.verdict == AnalysisResult.Verdict.SUSPICIOUS and r.confidence >= CONTEXT_FLAG_FLOOR for r in context
+    )
+    if flagged and verdict in CONTEXT_ESCALATES:
+        return score, "needs_review"
+    return score, verdict
+
+
+def _aggregate_core(results: list[AnalysisResult]) -> tuple[float, str]:
     valid_results = [r for r in results if r.verdict != AnalysisResult.Verdict.ERROR]
     if not valid_results:
         return 0.5, "inconclusive"

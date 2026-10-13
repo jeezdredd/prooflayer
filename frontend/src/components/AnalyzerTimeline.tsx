@@ -14,6 +14,10 @@ const ANALYZER_LABELS: Record<string, string> = {
   npr_detector: "NPR Detector · ViT",
   siglip_detector: "SigLIP Detector",
   custom_detector: "ProofLayer Detector",
+  clip_probe: "CLIP Probe",
+  text_evasion: "Bypass Check",
+  text_grade_fit: "Age Fit",
+  text_style: "Style Consistency",
 };
 
 const ANALYZER_CODE: Record<string, string> = {
@@ -28,6 +32,10 @@ const ANALYZER_CODE: Record<string, string> = {
   npr_detector: "NPR",
   siglip_detector: "SIGL",
   custom_detector: "PL",
+  clip_probe: "CLIP",
+  text_evasion: "BYP",
+  text_grade_fit: "AGE",
+  text_style: "STY",
 };
 
 const ANALYZER_WEIGHTS: Record<string, number> = {
@@ -42,6 +50,10 @@ const ANALYZER_WEIGHTS: Record<string, number> = {
   npr_detector: 15,
   siglip_detector: 15,
   custom_detector: 20,
+  clip_probe: 5,
+  text_evasion: 1,
+  text_grade_fit: 2,
+  text_style: 2,
 };
 
 const ANALYZER_ETA_SECS: Record<string, number> = {
@@ -56,6 +68,10 @@ const ANALYZER_ETA_SECS: Record<string, number> = {
   siglip_detector: 15,
   ai_detector: 20,
   custom_detector: 15,
+  clip_probe: 3,
+  text_evasion: 2,
+  text_grade_fit: 3,
+  text_style: 3,
 };
 
 const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }> = {

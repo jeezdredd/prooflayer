@@ -198,7 +198,7 @@ export const classrooms = {
   list: () => client.get<Classroom[]>("/classroom/classrooms/"),
   create: (name: string) => client.post<Classroom>("/classroom/classrooms/", { name }),
   detail: (id: string) => client.get<Classroom>(`/classroom/classrooms/${id}/`),
-  update: (id: string, data: Partial<Pick<Classroom, "name" | "archived">>) => client.patch<Classroom>(`/classroom/classrooms/${id}/`, data),
+  update: (id: string, data: Partial<Pick<Classroom, "name" | "archived" | "level">>) => client.patch<Classroom>(`/classroom/classrooms/${id}/`, data),
   join: (code: string) => client.post<Classroom>("/classroom/join/", { code }),
   leave: (id: string) => client.post(`/classroom/classrooms/${id}/leave/`, {}),
   rotateCode: (id: string) => client.post<{ join_code: string }>(`/classroom/classrooms/${id}/rotate-code/`, {}),
@@ -219,5 +219,6 @@ export const orgs = {
   teachers: (slug: string) => client.get<OrgTeacher[]>(`/classroom/orgs/${slug}/teachers/`),
   removeTeacher: (slug: string, userId: number) => client.delete(`/classroom/orgs/${slug}/teachers/${userId}/`),
   classes: (slug: string) => client.get<Classroom[]>(`/classroom/orgs/${slug}/classes/`),
-  createClass: (slug: string, name: string) => client.post<Classroom>(`/classroom/orgs/${slug}/classes/`, { name }),
+  createClass: (slug: string, name: string, level: number | null) =>
+    client.post<Classroom>(`/classroom/orgs/${slug}/classes/`, { name, level }),
 };

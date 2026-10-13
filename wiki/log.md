@@ -2,6 +2,12 @@
 
 Newest at top.
 
+## [2026-10-13] text-signals | Evasion, age fit, style drift for student texts
+
+- Source: backend/analyzers/text, text_signals.py, hand checks in three languages
+- Pages created: [[concepts/text-signals]]
+- Pages updated: [[concepts/tribunal]], [[hot]]
+
 ## [2026-10-13] pricing | Plan catalog, School and University tiers, Paddle price mapping
 
 - Source: backend/billing (plans, views, models), PricingPage

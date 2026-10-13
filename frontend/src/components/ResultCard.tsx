@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import type { Submission } from "../types";
 import AnalyzerTimeline from "./AnalyzerTimeline";
+import TextReport from "./TextReport";
 
 const CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -308,6 +309,8 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
           <AudioVisualizer src={submission.file_url} />
         </div>
       )}
+
+      <TextReport submission={submission} />
 
       {/* Pipeline */}
       <div className="px-6 py-6">

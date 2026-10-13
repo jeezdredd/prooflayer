@@ -262,6 +262,7 @@ export interface BatchDetail {
 export interface Classroom {
   id: string;
   name: string;
+  level: number | null;
   role: "teacher" | "student";
   join_code: string | null;
   owner_name: string;

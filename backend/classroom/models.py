@@ -2,6 +2,7 @@ import secrets
 import uuid
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import IntegrityError, models, transaction
 
 JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -19,6 +20,10 @@ class Classroom(models.Model):
         "Organization", on_delete=models.CASCADE, null=True, blank=True, related_name="classrooms",
     )
     name = models.CharField(max_length=120)
+    level = models.PositiveSmallIntegerField(
+        null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(17)],
+        help_text="1-11 school year, 12-17 university year 1-6",
+    )
     join_code = models.CharField(max_length=JOIN_CODE_LENGTH, unique=True)
     archived = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -47,11 +52,13 @@ class Classroom(models.Model):
         return self.organization.owner if self.organization_id else self.owner
 
     @classmethod
-    def create_for(cls, owner, name: str, organization=None, attempts: int = 5) -> "Classroom":
+    def create_for(cls, owner, name: str, organization=None, level: int | None = None, attempts: int = 5) -> "Classroom":
         for _ in range(attempts):
             try:
                 with transaction.atomic():
-                    return cls.objects.create(owner=owner, name=name, organization=organization, join_code=new_join_code())
+                    return cls.objects.create(
+                        owner=owner, name=name, organization=organization, level=level, join_code=new_join_code(),
+                    )
             except IntegrityError:
                 continue
         raise RuntimeError("could not allocate a unique join code")

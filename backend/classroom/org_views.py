@@ -54,6 +54,18 @@ def org_payload(org: Organization, user) -> dict:
     return data
 
 
+def parse_level(raw) -> int | None:
+    if raw in (None, ""):
+        return None
+    try:
+        level = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError({"level": ["Must be 1-11 for a school year or 12-17 for university years 1-6."]}) from exc
+    if not 1 <= level <= 17:
+        raise ValidationError({"level": ["Must be 1-11 for a school year or 12-17 for university years 1-6."]})
+    return level
+
+
 def validate_slug(raw: str) -> str:
     slug = (raw or "").strip().lower()
     if not re.match(SLUG_PATTERN, slug):
@@ -185,7 +197,7 @@ class OrganizationClassesView(APIView):
         name = (request.data.get("name") or "").strip()[:120]
         if not name:
             raise ValidationError({"name": ["Required."]})
-        classroom = Classroom.create_for(request.user, name, organization=org)
+        classroom = Classroom.create_for(request.user, name, organization=org, level=parse_level(request.data.get("level")))
         classroom.student_count = 0
         return Response(ClassroomSerializer(classroom, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
