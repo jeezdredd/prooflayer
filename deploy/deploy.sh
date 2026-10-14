@@ -145,8 +145,12 @@ EOF
 
         # Caddy snippet (one-time setup expected, idempotent restart)
         if [[ -f "$RELEASE/deploy/caddy.snippet" ]]; then
-            sudo cp "$RELEASE/deploy/caddy.snippet" "/etc/caddy/sites/${PROJECT}.caddy"
-            sudo systemctl restart caddy
+            if cmp -s "$RELEASE/deploy/caddy.snippet" "/etc/caddy/sites/${PROJECT}.caddy"; then
+                log "caddy config unchanged"
+            else
+                sudo cp "$RELEASE/deploy/caddy.snippet" "/etc/caddy/sites/${PROJECT}.caddy"
+                sudo systemctl reload caddy
+            fi
         fi
         ;;
 
@@ -157,15 +161,19 @@ esac
 
 # ===== Healthcheck =====
 if [[ -n "$HEALTHCHECK" ]]; then
-    sleep 3
-    log "healthcheck: $HEALTHCHECK"
-    for i in 1 2 3 4 5; do
-        if curl -fsS --max-time 10 "$HEALTHCHECK" >/dev/null; then
-            log "healthcheck OK"
+    log "healthcheck: $HEALTHCHECK (waiting up to 3 minutes for the app to start)"
+    healthy=0
+    for i in $(seq 1 36); do
+        if curl -fsS --max-time 10 -o /dev/null "$HEALTHCHECK" 2>/dev/null; then
+            healthy=1
+            log "healthcheck OK after $((i * 5))s"
             break
         fi
-        sleep 3
+        sleep 5
     done
+    if [[ "$healthy" != 1 ]]; then
+        log "healthcheck FAILED after 3 minutes; check: docker compose -f compose.prod.yml logs backend"
+    fi
 fi
 
 # ===== Cleanup old releases (keep last 5) =====
