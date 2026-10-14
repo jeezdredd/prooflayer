@@ -51,10 +51,17 @@ def _ai_prob_from_outputs(model, probs) -> float:
     return ai_total / (ai_total + real_total)
 
 
+TOP_COLORS = 8
+MIN_UNIQUE_COLORS = 800
+MAX_TOP_COLORS_SHARE = 0.7
+
+
 def _photographic_score(image: Image.Image) -> dict:
-    img_small = image.resize((256, 256))
+    img_small = image.convert("RGB").resize((256, 256))
     arr = np.array(img_small).reshape(-1, 3)
-    unique_colors = len(np.unique(arr // 4, axis=0))
+    _, color_counts = np.unique(arr // 4, axis=0, return_counts=True)
+    unique_colors = len(color_counts)
+    top_share = float(np.sort(color_counts)[::-1][:TOP_COLORS].sum() / color_counts.sum())
 
     gray = np.array(img_small.convert("L"), dtype=np.float32)
     hist, _ = np.histogram(gray, bins=64, range=(0, 256))
@@ -63,10 +70,11 @@ def _photographic_score(image: Image.Image) -> dict:
 
     flat_score = float(np.mean(np.abs(np.diff(gray, axis=0))) + np.mean(np.abs(np.diff(gray, axis=1))))
 
-    is_photo = unique_colors > 4000 and entropy > 5.2 and flat_score > 5.0
+    is_photo = unique_colors >= MIN_UNIQUE_COLORS and top_share <= MAX_TOP_COLORS_SHARE
 
     return {
         "unique_colors_q4": int(unique_colors),
+        "top_colors_share": round(top_share, 3),
         "entropy": round(entropy, 3),
         "edge_density": round(flat_score, 3),
         "is_photographic": bool(is_photo),
@@ -96,7 +104,7 @@ def _run_one(name: str, idx: int, image: Image.Image) -> dict:
 
 class AIImageDetector(BaseAnalyzer):
     name = "ai_detector"
-    version = "2.1.0"
+    version = "2.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]

@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import pytest
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from analyzers.implementations.clip_detector import (
     AIImageDetector,
@@ -65,6 +65,27 @@ class TestPhotographicScore:
         img = Image.open(photographic_image_path)
         score = _photographic_score(img)
         assert score["is_photographic"] is True
+
+    def test_smooth_render_with_few_colors_is_photographic(self):
+        x = np.linspace(0, 1, 256)
+        red = np.tile(x * 255, (256, 1))
+        green = np.tile((x[:, None] * 120 + 60), (1, 256))
+        blue = np.full((256, 256), 90.0)
+        img = Image.fromarray(np.dstack([red, green, blue]).astype(np.uint8))
+        score = _photographic_score(img)
+        assert score["unique_colors_q4"] < 4000
+        assert score["is_photographic"] is True
+
+    def test_interface_screenshot_is_not_photographic(self):
+        img = Image.new("RGB", (1280, 800), "white")
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([0, 0, 1280, 60], fill=(30, 30, 40))
+        draw.rectangle([0, 60, 240, 800], fill=(245, 246, 248))
+        for y in range(100, 760, 28):
+            draw.text((280, y), "Lorem ipsum dolor sit amet, consectetur adipiscing elit " * 2, fill=(20, 20, 20))
+        score = _photographic_score(img)
+        assert score["top_colors_share"] > 0.7
+        assert score["is_photographic"] is False
 
 
 class TestAIProbFromOutputs:

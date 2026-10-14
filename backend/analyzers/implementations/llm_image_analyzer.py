@@ -34,6 +34,8 @@ VERDICT_CONFIDENCE = {
 
 WEAK_REASONING_CONFIDENCE = 0.35
 
+NO_DEFECT_NOTE = "No defect found is not evidence of a real photo, so the vision model abstains instead of voting authentic."
+
 MIN_REASONING_LEN = 20
 
 
@@ -84,7 +86,7 @@ If unsure, choose uncertain. Being wrong on a real photo is worse than being wro
 
 class LLMImageAnalyzer(BaseAnalyzer):
     name = "llm_vision"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -116,8 +118,6 @@ class LLMImageAnalyzer(BaseAnalyzer):
 
             if llm_verdict == "ai_generated":
                 verdict = "fake"
-            elif llm_verdict == "human_photo":
-                verdict = "authentic"
             elif llm_verdict == "model_failure":
                 verdict = "error"
             else:
@@ -126,7 +126,11 @@ class LLMImageAnalyzer(BaseAnalyzer):
             return AnalysisOutput(
                 confidence=llm_confidence,
                 verdict=verdict,
-                evidence={"llm_verdict": llm_verdict, "reasoning": reasoning},
+                evidence={
+                    "llm_verdict": llm_verdict,
+                    "reasoning": reasoning,
+                    **({"note": NO_DEFECT_NOTE} if llm_verdict == "human_photo" else {}),
+                },
             )
         except Exception as exc:
             logger.warning("LLM vision analysis failed: %s", exc)

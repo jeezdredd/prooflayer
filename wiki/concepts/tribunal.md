@@ -84,6 +84,16 @@ Image fixes after a real press photo (Nikon D3S EXIF, plain studio background) c
   suspicion.
 - Measure on `dataset/openfake_test` and `dataset/hf` before declaring the version; real -> fake
   must stay 0.
+- `ai_detector` 2.2.0: the screenshot gate now rejects only images with fewer than 800 colours
+  (64 levels per channel) or with 8 colours covering more than 70% of the frame. The old rule
+  (more than 4000 colours, entropy and edge thresholds) rejected 51 of 100 real photos and 70 of
+  145 AI images on `openfake_test`, so the ensemble sat out half of all images. The new rule
+  rejects 0 real photos and 6 near-flat AI images; UI screenshots and charts are still rejected.
+  A/B on the same local roster: ensemble scores 239 instead of 124 images, real -> likely_fake
+  1 -> 0, AI caught 58 -> 58, ensemble AUC 0.878 -> 0.884.
+- `llm_vision` 1.1.0: "no defect visible" (`human_photo`) no longer votes authentic; the vision
+  model abstains unless it names a concrete defect. A ChatGPT portrait got an authentic vote from
+  it while the verdict was likely AI.
 
 ### 1.6 - 2026-10-14
 
