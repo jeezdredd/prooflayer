@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-14] text-t4 | Supervised text classifier replaces llm_text (Tribunal 1.5)
+
+- Source: train_text_classifier v3 on dataset/text_t4 with pre-2022 Wikipedia contrast pairs, offline llm_text replica, aggregate() simulation
+- Pages updated: [[concepts/text-signals]], [[concepts/tribunal]], [[concepts/aggregation]], [[services/classroom]], [[services/celery-workers]]
+
 ## [2026-10-13] landing | Workspace showcase, editable roadmap, 3D brain
 
 - Source: frontend landing rework, api.RoadmapItem

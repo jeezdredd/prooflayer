@@ -14,7 +14,7 @@ endif
 .PHONY: help dev down logs ps build seed sh fe-sh \
         deploy-server deploy-bootstrap deploy-cf deploy-redeploy \
         seed-server seed-analyzers seed-analyzers-host seed-analyzers-server \
-        roster-check ship-retrained wiki
+        roster-check ship-retrained ship-text wiki
 
 help:
 	@echo "ProofLayer Makefile"
@@ -32,6 +32,7 @@ help:
 	@echo "  make seed-analyzers-server  same, on the remote server"
 	@echo "  make roster-check      report analyzer roster drift without writing"
 	@echo "  make ship-retrained    copy a retrained custom_detector into the server's hf_cache volume"
+	@echo "  make ship-text        copy the trained text classifier into the server's hf_cache volume"
 	@echo "  make sh                shell into backend container"
 	@echo "  make fe-sh             shell into frontend container"
 	@echo ""
@@ -115,6 +116,7 @@ seed-server:
 # is detected), no restart needed. MODEL_DIR defaults to the local HF cache location.
 MODEL_DIR ?= $(HOME)/.cache/huggingface/prooflayer-retrained/image
 PROBE_DIR ?= $(HOME)/.cache/huggingface/prooflayer-retrained/clip_probe
+TEXT_DIR ?= dataset/text_models/e5-small-t4
 ship-retrained:
 	@test -f "$(MODEL_DIR)/model.safetensors" || (echo "no model at $(MODEL_DIR)"; exit 1)
 	ssh $(SERVER) "mkdir -p ~/retrained-upload"
@@ -125,6 +127,12 @@ ship-retrained:
 		rsync -av --delete "$(PROBE_DIR)/" $(SERVER):~/probe-upload/ && \
 		ssh $(SERVER) "docker run --rm -v deploy_hf_cache:/hf -v ~/probe-upload:/src:ro alpine sh -c 'rm -rf /hf/prooflayer-retrained/clip_probe && cp -r /src /hf/prooflayer-retrained/clip_probe && ls -la /hf/prooflayer-retrained/clip_probe'"; \
 	else echo "no clip probe at $(PROBE_DIR), skipped"; fi
+
+ship-text:
+	@test -f "$(TEXT_DIR)/calibration.json" || (echo "no calibrated text model at $(TEXT_DIR)"; exit 1)
+	ssh $(SERVER) "mkdir -p ~/text-upload"
+	rsync -av --delete --exclude 'scores.jsonl' --exclude '*.log' "$(TEXT_DIR)/" $(SERVER):~/text-upload/
+	$(SSH) "docker run --rm -v deploy_hf_cache:/hf -v ~/text-upload:/src:ro alpine sh -c 'mkdir -p /hf/prooflayer-retrained && rm -rf /hf/prooflayer-retrained/text && cp -r /src /hf/prooflayer-retrained/text && ls -la /hf/prooflayer-retrained/text'"
 
 seed-analyzers-server:
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_analyzers"

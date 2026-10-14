@@ -76,7 +76,7 @@ the subdomain.
 
 PDF and DOCX are now first-class submissions (`ALLOWED_MIME_TYPES`). Extraction moved from
 `factcheck/views.py` to `common/documents.py` (page cap 300, DOCX uncompressed cap 100 MB).
-`llm_text` reads PDF/DOCX through `read_text`, and `process_submission` stores
+`text_classifier` reads PDF/DOCX through `read_text`, and `process_submission` stores
 `metadata.document = {characters, words}`. libmagic often reports a python-docx/LibreOffice file
 as `application/zip`; `content.validators._is_docx` accepts it as DOCX only when the name ends in
 `.docx` **and** the package contains `word/document.xml`.
@@ -87,6 +87,7 @@ Sidebar 04 on the main app links out to the subdomain. Class page: teacher view 
 flagged-first submissions with student filter) or student view (own class submissions, Submit
 work, Leave). Verify page shows a "Submit to" picker when the user belongs to any active class.
 
-> [!warning] Text detection is the weak link
-> Essays go through `llm_text`, a prompted 3B model. The teacher view says verdicts on text are
-> indicative only. A real text detector is the open item that matters most for this feature.
+> [!warning] Text verdicts are indicative
+> Since Tribunal 1.5 essays go through `text_classifier` (fine-tuned e5-small, see
+> [[concepts/text-signals]]): about 2-4% of human essays get `suspicious`, none get `fake` on the
+> held-out set. The teacher view still says a flag is a reason to talk to the student.

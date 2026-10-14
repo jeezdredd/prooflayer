@@ -46,7 +46,7 @@ PYTORCH_NO_CUDA_MEMORY_CACHING=1 / OMP_NUM_THREADS=2
 ## Queues
 
 - `default` - orchestration (`process_submission`, `dispatch_analysis`, `aggregate_verdicts`, factcheck) + light analyzers (metadata, ela)
-- `ml` - heavy detectors (siglip_detector, community_forensics, npr_detector, custom_detector, llm_vision, llm_text, video_frame, audio_spectrogram)
+- `ml` - heavy detectors (siglip_detector, community_forensics, npr_detector, custom_detector, llm_vision, text_classifier, video_frame, audio_spectrogram)
 - `reports` - PDF generation
 
 Worker subscribes to all three with `-Q default,ml,reports`.

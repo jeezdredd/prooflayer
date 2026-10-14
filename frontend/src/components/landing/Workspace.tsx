@@ -56,7 +56,7 @@ function PreviewHead({ left, right }: { left: string; right?: string }) {
 
 const EVIDENCE = (
   <div className={MONO}>
-    <PreviewHead left="Case/2026-0507 · img_4232.png" right="Tribunal 1.4 · fp 9c1e…" />
+    <PreviewHead left="Case/2026-0507 · img_4232.png" right="Tribunal 1.5 · fp 9c1e…" />
     {[
       ["Forensics ViT", "0.91", "×3.5", "blood"],
       ["Retrained", "0.88", "×3.5", "blood"],
@@ -219,7 +219,7 @@ const API = (
 <span className="text-ink-500">POST https://you.example/hook</span>{`
 X-ProofLayer-Signature: sha256=4f1c…
 { "verdict": "fake", "score": 0.87,
-  "tribunal_version": "1.4" }`}
+  "tribunal_version": "1.5" }`}
     </pre>
   </div>
 );

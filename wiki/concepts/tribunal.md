@@ -68,6 +68,20 @@ need a new signal (another backbone or frequency-domain features), not more Open
 
 ## Changelog
 
+### 1.5 - 2026-10-14
+
+Text: `llm_text` (prompted qwen2.5:3b) leaves the roster, `text_classifier` (weight 2.5) joins.
+Image roster unchanged.
+
+- `llm_text` measured offline on the text test split was inverted (en: 266/409 humans called AI,
+  618/851 AI texts called human). With `text_evasion` it flagged 79% / 65% / 37% of en / fr / ru
+  human essays and 4-41% of AI texts.
+- `text_classifier`: fine-tuned multilingual-e5-small, logit-margin score, per-language knots
+  capped at 0.89, so it alone gives `suspicious` at most. Same test split through `aggregate()`:
+  human -> fake 0 in every group, human flagged 2.8% / 4.3% / 2.0%, human wiki prose 3-16%, AI
+  flagged 91-100% across fresh, humanized, wiki-style and held-out gemma3-12b texts. Details in
+  [[concepts/text-signals]].
+
 ### 1.4 - 2026-10-13
 
 Text members for Classroom. Image roster unchanged, so the image numbers of 1.3 still hold.

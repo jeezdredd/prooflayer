@@ -51,3 +51,49 @@ trained on current generators plus humanized variants, measured on the same froz
 Scores are cached in `dataset/text_scores/` so later pairs can be compared without rescoring.
 Prod note: two 1.7B models per Celery child do not fit the 16 GB worker at concurrency 4; any
 model-based text member needs its own single-slot queue.
+
+## Phase T4: supervised classifier `text_classifier` (2026-10-14, Tribunal 1.5)
+
+`intfloat/multilingual-e5-small` fine-tuned as a two-class head (`train_text_classifier`) on
+`dataset/text_t4` (`build_text_train`): legacy human/AI corpora (DAIGT, COLING, CoAT, MMGT),
+fresh MLX generations (qwen3-4b, gemma3-4b, qwen2.5-7b, llama3.2-3b; gemma3-12b held out for test
+only), LLM-humanized rewrites of them, 1000 pre-2022 Wikipedia passages per language
+(`scripts/fetch_wiki_paragraphs.py`, revisions as of 2021-12-31) and matching wiki-style AI
+generations on the same titles. 14.3k train rows, group-balanced over (lang, label), random
+window and random length crops so text length cannot act as a label.
+
+Inference: `analyzers/text/classifier.py`, up to 4 windows of 512 tokens, score = mean logit
+margin (logit AI minus logit human; probabilities saturated at 0.9967). Calibration per language
+on the calib split: `t1` = 99th percentile of calib human, knots map the margin to
+`ai_probability` and top out at **0.89** (`--no-strict`), so the classifier alone never reaches
+the aggregator's single-voter 0.9 floor: on its own it can only say `suspicious`. A `fake` needs a
+second voter (in practice `text_evasion`). Short texts (< 120 tokens) abstain. Model lives in
+`RETRAIN_MODEL_DIR/text` (`make ship-text`).
+
+Test split (frozen `text_eval` test plus new held-out rows), classifier alone at `t1`:
+
+| lang | AUC | human FPR | wiki-pre2022 human | AI caught (fresh, humanized, wiki, held-out gemma3-12b) |
+|---|---|---|---|---|
+| en | 0.977 | 0% (n=254) | 1.3%; textsight wiki 9.7% | 94-100%; textsight-2026 36%, old Claude 36-52% |
+| ru | 0.9995 | 0.7% (n=298) | 0% | 97-100% |
+| fr | 0.995 | 2.3% (n=300) | 3.2% | 99-100% |
+
+Through the real `aggregate()` with `text_evasion` (sim over the same test rows):
+
+| | prod before (llm_text + evasion) | 1.5 (text_classifier 2.5 + evasion) |
+|---|---|---|
+| human -> fake | 0 (ru wiki 1/140) | **0 in every group** |
+| human flagged en / fr / ru | 79% / 65% / 37% | 2.8% / 4.3% / 2.0% |
+| human wiki text flagged | 43-65% | 3-16% |
+| AI flagged (generate, humanize, wiki) | 4-41% | 91-100% |
+| AI with character evasion -> fake | 22-35% | 32-39% |
+
+`llm_text` was replicated offline (same qwen2.5:3b prompt via MLX) and turned out **inverted**:
+it called 266/409 en human essays AI and 618/851 en AI texts human, with fr and ru alike. It is
+removed from the roster. Keeping it next to the classifier converted classifier false positives
+into `fake` (fr human 1.3%, wiki up to 3.2%).
+
+Earlier attempts: an allow-alone-fake "strict" threshold at the max calib human margin failed,
+because margins pile up near the ceiling (t1 5.65, strict 5.76) and 4/155 textsight wiki humans
+landed above it. Open: textsight-2026 en (frontier models) is caught only 36-39%; encyclopedic
+human prose still gets `suspicious` up to 16%.

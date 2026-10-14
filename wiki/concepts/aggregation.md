@@ -21,9 +21,10 @@ returns `None` if absent or non-numeric.
 - `custom_detector` (3.5 since Tribunal 1.1, retrained on 20 current generators - see [[analyzers/custom_detector]])
 - `ai_detector` (1.0 since Tribunal 1.1, via `ai_probability_avg`)
 - `video_frame` (2.0, median over sampled frames)
+- `text_classifier` (2.5 since Tribunal 1.5, knots cap at 0.89 so it never convicts alone - see [[concepts/text-signals]])
 
 **Rule-based** - verdict + confidence bucket, no raw probability:
-- `metadata` (1.5), `audio_spectrogram` (2.0), `llm_text` (2.5), `llm_vision` (1.5)
+- `metadata` (1.5), `audio_spectrogram` (2.0), `llm_vision` (1.5)
 
 **Manipulation-only** - never votes on the AI axis:
 - `ela` (0.75). Always returns `inconclusive`, so it is excluded from `DECISIVE_VERDICTS` and
