@@ -30,9 +30,14 @@ class Command(BaseCommand):
         parser.add_argument("--reset", action="store_true", help=f"delete existing @{DEMO_DOMAIN} users and their schools first")
         parser.add_argument("--timeout", type=int, default=600, help="seconds to wait for each work to be analysed")
         parser.add_argument("--no-wait", action="store_true", help="queue analysis without waiting")
+        parser.add_argument("--orgs", nargs="*", default=[], help="only these organization slugs")
 
     def handle(self, *args, **opts):
         data = json.loads(Path(opts["data"]).read_text(encoding="utf-8"))
+        if opts["orgs"]:
+            data["organizations"] = [o for o in data["organizations"] if o["slug"] in opts["orgs"]]
+            if not data["organizations"]:
+                raise CommandError(f"no organization matches {opts['orgs']}")
         if opts["reset"]:
             self._reset()
         elif User.objects.filter(email__endswith=f"@{DEMO_DOMAIN}").exists():

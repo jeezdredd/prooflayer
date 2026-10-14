@@ -166,6 +166,12 @@ class TestSeedDemo:
         assert User.objects.filter(email__endswith="@demo.prooflayer.cloud").count() == 2
         assert Organization.objects.filter(slug="demo-school-test").count() == 1
 
+    def test_orgs_filter(self, _delay, _vectors, tmp_path):
+        with pytest.raises(CommandError):
+            call_command("seed_demo", "--data", self._data(tmp_path), "--orgs", "missing", "--no-wait", stdout=io.StringIO())
+        call_command("seed_demo", "--data", self._data(tmp_path), "--orgs", "demo-school-test", "--no-wait", stdout=io.StringIO())
+        assert Organization.objects.filter(slug="demo-school-test").exists()
+
     def test_only_demo_domain_emails(self, _delay, _vectors, tmp_path):
         data = json.loads(json.dumps(DEMO))
         data["organizations"][0]["teacher"]["email"] = "real.person@example.com"
