@@ -110,6 +110,22 @@ class CookieTokenRefreshView(TokenRefreshView):
         return response
 
 
+
+class SessionView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+
+    def get(self, request):
+        raw = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
+        if not raw:
+            return Response({"user_id": None})
+        try:
+            token = RefreshToken(raw)
+        except TokenError:
+            return Response({"user_id": None})
+        value = token.get(settings.SIMPLE_JWT.get("USER_ID_CLAIM", "user_id"))
+        return Response({"user_id": int(value) if str(value).isdigit() else value})
+
 class LogoutView(APIView):
     permission_classes = (permissions.AllowAny,)
 

@@ -69,11 +69,25 @@ class TestFiles:
     def test_distribute_splits_and_skips_existing(self, layout, tmp_path):
         source = tmp_path / "fetched"
         for i in range(20):
-            _image(source / "ai_generated" / "gen" / f"{i}.jpg")
-        _image(source / "real" / "r.jpg")
+            path = source / "ai_generated" / "gen" / f"{i}.jpg"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(f"img{i}".encode())
+        (source / "real").mkdir(parents=True, exist_ok=True)
+        (source / "real" / "r.jpg").write_bytes(b"real")
         assert ar.distribute(source) == 21
         assert ar.image_count(layout["POOL"]) + ar.image_count(layout["CALIBRATION"]) == 21
         assert ar.image_count(layout["CALIBRATION"]) > 0
+
+    def test_same_file_name_from_a_later_fetch_is_not_lost(self, layout, tmp_path):
+        first = tmp_path / "first"
+        second = tmp_path / "second"
+        (first / "real").mkdir(parents=True)
+        (second / "real").mkdir(parents=True)
+        (first / "real" / "real__0001.png").write_bytes(b"one")
+        (second / "real" / "real__0001.png").write_bytes(b"two")
+        assert ar.distribute(first) == 1
+        assert ar.distribute(second) == 1
+        assert ar.image_count(layout["POOL"]) + ar.image_count(layout["CALIBRATION"]) == 2
 
     def test_trim_pool_drops_oldest(self, layout):
         for i in range(5):

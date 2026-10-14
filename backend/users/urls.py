@@ -9,6 +9,7 @@ from .views import (
     MeView,
     RegisterView,
     ResendVerificationView,
+    SessionView,
     VerifyEmailView,
 )
 
@@ -16,6 +17,7 @@ urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", CookieTokenObtainPairView.as_view(), name="login"),
     path("refresh/", CookieTokenRefreshView.as_view(), name="token-refresh"),
+    path("session/", SessionView.as_view(), name="session"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("me/", MeView.as_view(), name="me"),
     path("accept-terms/", AcceptTermsView.as_view(), name="accept-terms"),

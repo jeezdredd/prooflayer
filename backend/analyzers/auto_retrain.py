@@ -102,7 +102,7 @@ def gate(live: HoldoutMetrics, candidate: HoldoutMetrics) -> list[str]:
 
 
 def _bucket(path: Path) -> Path:
-    digest = int(hashlib.sha256(path.name.encode()).hexdigest(), 16)
+    digest = int(hashlib.sha256(path.read_bytes()).hexdigest(), 16)
     return CALIBRATION if digest % CALIBRATION_EVERY == 0 else POOL
 
 
@@ -115,7 +115,8 @@ def distribute(source: Path) -> int:
         for f in base.rglob("*"):
             if f.suffix.lower() not in IMAGE_EXTENSIONS:
                 continue
-            target = _bucket(f) / f.relative_to(source)
+            digest = hashlib.sha256(f.read_bytes()).hexdigest()[:24]
+            target = _bucket(f) / f.relative_to(source).parent / f"{digest}{f.suffix.lower()}"
             if target.exists():
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -132,7 +133,8 @@ def trim_pool(limit: int = MAX_POOL_FILES) -> int:
     return len(excess)
 
 
-def fetch_new(per_model: int, real: int, row_groups: int) -> int:
+def fetch_new(per_model: int, real: int, row_groups: int, counts: dict | None = None) -> int:
+    counts = {} if counts is None else counts
     state = read_state()
     start = int(state.get("row_group", FIRST_ROW_GROUP))
     with tempfile.TemporaryDirectory() as tmp:
@@ -146,12 +148,17 @@ def fetch_new(per_model: int, real: int, row_groups: int) -> int:
             max_passes=1,
             stdout=StringIO(),
         )
+        counts["downloaded"] = image_count(Path(tmp))
         for against in (HOLDOUT, POOL, CALIBRATION):
             if image_count(against):
                 call_command("dedupe_dataset", target=tmp, against=str(against), stdout=StringIO())
+        counts["after_dedupe"] = image_count(Path(tmp))
         moved = distribute(Path(tmp))
+    counts["added"] = moved
+    counts["row_group"] = start
     state["row_group"] = start + row_groups
     write_state(state)
+    logger.info("auto retrain fetch: %s", counts)
     return moved
 
 
@@ -249,23 +256,27 @@ def run(db_new_samples: int, epochs: int) -> Outcome:
         return Outcome("skipped", "held-out set is missing")
     if not (LIVE / "config.json").exists():
         return Outcome("skipped", "no live model to fine-tune")
+    counts: dict = {}
     fetched = fetch_new(
         per_model=getattr(settings, "AUTO_RETRAIN_PER_MODEL", 8),
         real=getattr(settings, "AUTO_RETRAIN_REAL", 120),
         row_groups=getattr(settings, "AUTO_RETRAIN_ROW_GROUPS", 1),
+        counts=counts,
     )
     trim_pool()
+    counts["pool"] = image_count(POOL)
+    counts["calibration"] = image_count(CALIBRATION)
     new_samples = fetched + db_new_samples
     needed = getattr(settings, "RETRAIN_MIN_NEW_SAMPLES", 50)
     if new_samples < needed:
-        return Outcome("skipped", f"only {new_samples} new approved samples, need {needed}", new_samples)
+        return Outcome("skipped", f"only {new_samples} new approved samples, need {needed}", new_samples, metrics={"fetch": counts})
     if not image_count(CALIBRATION):
-        return Outcome("skipped", "calibration set is empty", new_samples)
+        return Outcome("skipped", "calibration set is empty", new_samples, metrics={"fetch": counts})
     revision = train_candidate(epochs)
     knots = calibrate_candidate()
     live, candidate = holdout_metrics([LIVE, CANDIDATE])
     problems = gate(live, candidate)
-    metrics = {"live": asdict(live), "candidate": asdict(candidate), "knots": knots, "fetched": fetched, "db_samples": db_new_samples, "problems": problems}
+    metrics = {"live": asdict(live), "candidate": asdict(candidate), "knots": knots, "fetched": fetched, "db_samples": db_new_samples, "problems": problems, "fetch": counts}
     if problems:
         shutil.rmtree(CANDIDATE, ignore_errors=True)
         return Outcome("rejected", "; ".join(problems), new_samples, revision, metrics)

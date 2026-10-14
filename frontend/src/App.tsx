@@ -15,6 +15,7 @@ import { ToastContainer } from "./components/ui/Toast";
 import ConsentBanner from "./components/ConsentBanner";
 import { CLASSROOM_URL, IS_CLASSROOM_APP } from "./appMode";
 import { useLangStore } from "./i18n";
+import { useSessionSync } from "./auth/sessionSync";
 
 const UploadPage = lazy(() => import("./pages/UploadPage"));
 const ResultPage = lazy(() => import("./pages/ResultPage"));
@@ -113,6 +114,7 @@ function AppRoutes() {
 
 export default function App() {
   const lang = useLangStore((s) => s.lang);
+  useSessionSync();
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

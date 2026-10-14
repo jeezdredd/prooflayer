@@ -16,6 +16,8 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from analyzers.ensemble import ensemble_info
+from analyzers.auto_retrain import LIVE
+from analyzers.implementations.custom_detector import training_meta
 from analyzers.models import RetrainRun, TrainingSample
 from analyzers.roster import describe_drift, roster_drift
 from api.models import Feedback
@@ -319,6 +321,7 @@ def _training_queue(media_type: str = "image") -> dict:
         "new_samples": TrainingSample.objects.filter(media_type=media_type, created_at__gte=since).count(),
         "needed": getattr(settings, "RETRAIN_MIN_NEW_SAMPLES", 50),
         "last_success": _run_dict(last_success),
+        "live_model_trained_at": training_meta(str(LIVE)).get("trained_at"),
         "last_attempt": _run_dict(runs.order_by("-started_at").first()),
         "next_run": _next_weekly_run(now).isoformat(),
     }

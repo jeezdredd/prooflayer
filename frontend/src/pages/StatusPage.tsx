@@ -44,6 +44,7 @@ interface TrainingQueue {
   new_samples: number;
   needed: number;
   last_success: RunInfo | null;
+  live_model_trained_at?: string | null;
   last_attempt: RunInfo | null;
   next_run: string;
 }
@@ -173,7 +174,7 @@ function TrainingBlock({ training }: { training: TrainingQueue }) {
       <dl className="grid sm:grid-cols-3 gap-4 mt-5 text-xs">
         <div>
           <dt className="text-ink-500">{t("Model in use since")}</dt>
-          <dd className="text-ink-100 mt-1">{formatDate(training.last_success?.finished_at)}</dd>
+          <dd className="text-ink-100 mt-1">{formatDate(training.live_model_trained_at ?? training.last_success?.finished_at)}</dd>
         </div>
         <div>
           <dt className="text-ink-500">{t("Last attempt")}</dt>
