@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import {
   Upload, LayoutDashboard, ScrollText, Users, GitCompareArrows,
-  Code2, Activity, Shield, LogOut, Menu, X, Layers, Globe, CreditCard, KeyRound, GraduationCap, Settings,
+  Code2, Activity, Shield, LogOut, Menu, X, Layers, Globe, CreditCard, KeyRound, GraduationCap, Settings, Sparkles,
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
@@ -52,6 +52,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: msg("Service"),
     items: [
       { to: "/pricing", label: msg("Pricing"), Icon: CreditCard },
+      { to: "/changelog", label: msg("What's new"), Icon: Sparkles },
       { to: "/status", label: msg("Status"), Icon: Activity },
       { to: "/stack", label: msg("Stack"), Icon: Layers },
     ],

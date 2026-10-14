@@ -27,6 +27,7 @@ const ComparePage = lazy(() => import("./pages/ComparePage"));
 const EmbedPage = lazy(() => import("./pages/EmbedPage"));
 const ReviewQueuePage = lazy(() => import("./pages/ReviewQueuePage"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
+const ChangelogPage = lazy(() => import("./pages/ChangelogPage"));
 const CreditsPage = lazy(() => import("./pages/CreditsPage"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
@@ -98,6 +99,7 @@ function AppRoutes() {
             <Route path="/embed" element={<EmbedPage />} />
             <Route path="/results/:id" element={<ResultPage />} />
             <Route path="/status" element={<StatusPage />} />
+            <Route path="/changelog" element={<ChangelogPage />} />
             <Route path="/stack" element={<CreditsPage />} />
             <Route path="/credits" element={<CreditsPage />} />
             <Route path="/account" element={<AccountPage />} />

@@ -146,7 +146,16 @@ plain-text part, sent through Resend. Users get email in the language they use o
 
 Product updates are on by default and can be turned off on the account page; each one carries an
 unsubscribe link and `List-Unsubscribe` one-click headers. `manage.py preview_emails --out dir`
-renders every email to HTML for a visual check.
+renders every email to HTML for a visual check. Staff can send themselves any of these emails from the Email row on
+the status page and see the latest delivery results there.
+
+## What's new
+
+`/changelog` lists every user-facing change in Russian and English. Entries live in
+`backend/api/changelog.json`, one per feature, and are loaded on every boot (`manage.py
+sync_changelog`). Every Monday a Celery beat task drafts a product update email from the entries
+added since the last digest; staff review it in the admin, send a test and send it. The same draft
+can be made at any time with "Draft digest from changelog".
 
 ## Architecture
 

@@ -4,6 +4,10 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
 
 from unfold.admin import ModelAdmin
+from unfold.decorators import action
+
+from api.changelog import draft_digest, pending_entries
+from common.admin_tools import SuperuserActionsAdmin
 
 from .models import ApiKey, EmailLog, ProductUpdate, User
 from .tasks import send_product_update, send_product_update_to, update_audience
@@ -92,11 +96,21 @@ class ApiKeyAdmin(ModelAdmin):
 
 
 @admin.register(ProductUpdate)
-class ProductUpdateAdmin(ModelAdmin):
+class ProductUpdateAdmin(SuperuserActionsAdmin):
     list_display = ("title_en", "status", "created_at", "sent_at", "recipients")
     list_filter = ("status",)
     readonly_fields = ("status", "created_at", "sent_at", "recipients")
     actions = ("send_test_to_me", "send_to_subscribers")
+    actions_list = ["draft_from_changelog"]
+
+    @action(description="Draft digest from changelog", icon="auto_awesome", permissions=["superuser"], url_path="draft-digest")
+    def draft_from_changelog(self, request):
+        if pending_entries().count() == 0:
+            self.message_user(request, "No new changelog entries since the last digest.", messages.WARNING)
+            return self.back_to_changelist()
+        update = draft_digest()
+        self.message_user(request, f"Drafted “{update}” from {update.changelog_entries.count()} changelog entries. Review it, send a test, then send.", messages.SUCCESS)
+        return self.back_to_changelist()
     fieldsets = (
         ("English", {"fields": ("title_en", "summary_en", "body_en", "cta_label_en")}),
         ("Русский", {"fields": ("title_ru", "summary_ru", "body_ru", "cta_label_ru")}),

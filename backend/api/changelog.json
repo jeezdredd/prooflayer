@@ -1,0 +1,122 @@
+[
+  {
+    "slug": "emails-in-your-language",
+    "date": "2026-10-14",
+    "kind": "feature",
+    "title": {"en": "Emails in your language, and password reset", "ru": "Письма на вашем языке и сброс пароля"},
+    "body": {
+      "en": "Every email from ProofLayer now matches the site's look and comes in Russian or English, whichever you use on the site. Forgot your password? Reset it from the sign-in page; the link works for an hour and signs you out everywhere else.",
+      "ru": "Все письма ProofLayer теперь в стиле сайта и приходят на русском или английском, в зависимости от языка, который вы выбрали. Забыли пароль? Сбросьте его со страницы входа: ссылка действует час и завершает остальные сеансы."
+    }
+  },
+  {
+    "slug": "whats-new-page",
+    "date": "2026-10-14",
+    "kind": "feature",
+    "title": {"en": "This page: what is new in ProofLayer", "ru": "Эта страница: что нового в ProofLayer"},
+    "body": {
+      "en": "Every change worth knowing about lands here the day it ships. Product update emails collect them into a short digest; you can turn those emails off on your account page.",
+      "ru": "Каждое заметное изменение появляется здесь в день выхода. Письма с новостями собирают их в короткий дайджест; выключить такие письма можно на странице аккаунта."
+    }
+  },
+  {
+    "slug": "maintenance-page",
+    "date": "2026-10-14",
+    "kind": "improvement",
+    "title": {"en": "A clear notice during maintenance", "ru": "Понятное сообщение во время работ"},
+    "body": {
+      "en": "If ProofLayer is briefly down for an update, you now see a short notice that reloads itself when we are back, instead of a network error page.",
+      "ru": "Если ProofLayer ненадолго недоступен из-за обновления, вы увидите короткое сообщение, которое само обновится, когда мы вернёмся, а не страницу сетевой ошибки."
+    }
+  },
+  {
+    "slug": "stronger-defaults",
+    "date": "2026-10-14",
+    "kind": "improvement",
+    "title": {"en": "Stronger checks by default", "ru": "Более точные проверки по умолчанию"},
+    "body": {
+      "en": "New schools start with web search on, so the originality check finds far more copied passages. New accounts help improve detection with reviewed uploads. Both can be switched off at any time.",
+      "ru": "Новые школы начинают с включённым поиском в интернете, поэтому проверка оригинальности находит намного больше списанных фрагментов. Новые аккаунты помогают улучшать распознавание проверенными загрузками. И то и другое можно выключить в любой момент."
+    }
+  },
+  {
+    "slug": "rounder-interface",
+    "date": "2026-10-14",
+    "kind": "improvement",
+    "title": {"en": "A calmer, rounder interface", "ru": "Более спокойный и мягкий интерфейс"},
+    "body": {
+      "en": "Buttons, cards and fields are rounded, headers let the background through, and tinted borders and badges show up the way they were designed.",
+      "ru": "Кнопки, карточки и поля стали скруглёнными, шапка стала полупрозрачной, а цветные рамки и бейджи отображаются так, как задумано."
+    }
+  },
+  {
+    "slug": "gated-weekly-retrain",
+    "date": "2026-10-14",
+    "kind": "feature",
+    "title": {"en": "The image detector retrains itself every week", "ru": "Детектор изображений дообучается каждую неделю"},
+    "body": {
+      "en": "Each week it learns from fresh images by current generators and from reviewed uploads. A new version goes live only if it beats the current one on images it has never seen and calls no real photo AI; otherwise it is discarded.",
+      "ru": "Каждую неделю он учится на свежих картинках современных генераторов и на проверенных загрузках. Новая версия выходит в работу, только если обходит текущую на картинках, которых не видела, и не называет ИИ ни одно настоящее фото; иначе её отбрасывают."
+    }
+  },
+  {
+    "slug": "status-page-v2",
+    "date": "2026-10-14",
+    "kind": "feature",
+    "title": {"en": "Status page with live numbers", "ru": "Страница статуса с живыми цифрами"},
+    "body": {
+      "en": "See every service at a glance, how long verdicts take, and how the self-learning detector is doing, including the latest candidate against the live model.",
+      "ru": "Все сервисы с первого взгляда, сколько занимает вердикт и как идёт самообучение детектора, включая сравнение последнего кандидата с рабочей моделью."
+    }
+  },
+  {
+    "slug": "one-account-both-apps",
+    "date": "2026-10-14",
+    "kind": "improvement",
+    "title": {"en": "One account across ProofLayer and Classroom", "ru": "Один аккаунт в ProofLayer и Classroom"},
+    "body": {
+      "en": "Sign in once and both prooflayer.cloud and classroom.prooflayer.cloud show the same account.",
+      "ru": "Войдите один раз, и prooflayer.cloud и classroom.prooflayer.cloud покажут один и тот же аккаунт."
+    }
+  },
+  {
+    "slug": "real-photos-fix",
+    "date": "2026-10-13",
+    "kind": "fix",
+    "title": {"en": "Real photos are no longer flagged for odd metadata", "ru": "Настоящие фото больше не помечаются из-за странных метаданных"},
+    "body": {
+      "en": "Camera photos with mismatched dates or stripped details were sometimes called suspicious. The Tribunal now needs an actual detector to vote AI before metadata can tip the verdict.",
+      "ru": "Фото с камеры с несовпадающими датами или вычищенными данными иногда помечались как подозрительные. Теперь, чтобы метаданные повлияли на вердикт, хотя бы один детектор должен проголосовать за ИИ."
+    }
+  },
+  {
+    "slug": "russian-interface",
+    "date": "2026-10-13",
+    "kind": "feature",
+    "title": {"en": "ProofLayer in Russian", "ru": "ProofLayer на русском"},
+    "body": {
+      "en": "The whole site, Classroom and the legal pages are available in Russian. Switch languages with the RU / EN toggle.",
+      "ru": "Весь сайт, Classroom и юридические страницы доступны на русском. Язык переключается кнопкой RU / EN."
+    }
+  },
+  {
+    "slug": "pricing-by-audience",
+    "date": "2026-10-13",
+    "kind": "improvement",
+    "title": {"en": "Pricing split by who you are", "ru": "Тарифы разделены по аудитории"},
+    "body": {
+      "en": "Schools and universities see their plans separately from individuals and teams, with clearer cards and a full comparison.",
+      "ru": "Школы и вузы видят свои тарифы отдельно от частных пользователей и команд, с понятными карточками и полным сравнением."
+    }
+  },
+  {
+    "slug": "stack-page",
+    "date": "2026-10-13",
+    "kind": "feature",
+    "title": {"en": "What ProofLayer runs on", "ru": "На чём работает ProofLayer"},
+    "body": {
+      "en": "A page listing the models, data and services behind every check. All detection models run on our own servers.",
+      "ru": "Страница со всеми моделями, данными и сервисами, на которых держится каждая проверка. Все модели распознавания работают на наших собственных серверах."
+    }
+  }
+]

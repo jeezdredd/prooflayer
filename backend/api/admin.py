@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from .models import Feedback, RoadmapItem
+from .models import ChangelogEntry, Feedback, RoadmapItem
 
 
 @admin.register(Feedback)
@@ -25,3 +25,13 @@ class RoadmapItemAdmin(ModelAdmin):
     list_filter = ("status", "is_published")
     search_fields = ("title", "body")
     ordering = ("position", "created_at")
+
+
+@admin.register(ChangelogEntry)
+class ChangelogEntryAdmin(ModelAdmin):
+    list_display = ("date", "kind", "title_en", "is_published", "digest")
+    list_editable = ("is_published",)
+    list_filter = ("kind", "is_published")
+    search_fields = ("title_en", "title_ru", "slug")
+    readonly_fields = ("slug", "created_at", "digest")
+    ordering = ("-date", "-created_at")

@@ -53,3 +53,33 @@ class RoadmapItem(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ChangelogEntry(models.Model):
+    class Kind(models.TextChoices):
+        FEATURE = "feature", "New"
+        IMPROVEMENT = "improvement", "Improved"
+        FIX = "fix", "Fixed"
+
+    slug = models.SlugField(max_length=80, unique=True)
+    date = models.DateField(db_index=True)
+    kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.FEATURE)
+    title_en = models.CharField(max_length=160)
+    title_ru = models.CharField(max_length=160)
+    body_en = models.TextField(blank=True)
+    body_ru = models.TextField(blank=True)
+    is_published = models.BooleanField(default=True)
+    digest = models.ForeignKey(
+        "users.ProductUpdate",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="changelog_entries",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.date} {self.title_en}"

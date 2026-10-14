@@ -5,6 +5,7 @@ from .views import (
     AcceptTermsView,
     CookieTokenObtainPairView,
     CookieTokenRefreshView,
+    EmailTestView,
     LogoutView,
     MeView,
     PasswordResetConfirmView,
@@ -29,6 +30,7 @@ urlpatterns = [
     path("password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
     path("password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
     path("unsubscribe/", UnsubscribeView.as_view(), name="unsubscribe"),
+    path("email-test/", EmailTestView.as_view(), name="email-test"),
     path("api-keys/", ApiKeyListCreateView.as_view(), name="api-key-list"),
     path("api-keys/<int:id>/", ApiKeyDetailView.as_view(), name="api-key-detail"),
 ]

@@ -45,6 +45,7 @@ services:
         python manage.py migrate --noinput && \
         python manage.py collectstatic --noinput && \
         python manage.py seed_analyzers && \
+        python manage.py sync_changelog && \
         exec daphne -b 0.0.0.0 -p 8000 config.asgi:application
     volumes:
       - media_data:/app/media

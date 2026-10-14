@@ -59,6 +59,11 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=4, minute=0),
         "options": {"queue": "default"},
     },
+    "weekly-changelog-digest": {
+        "task": "api.tasks.draft_changelog_digest",
+        "schedule": crontab(hour=6, minute=0, day_of_week=1),
+        "options": {"queue": "default"},
+    },
     "rescue-stuck-submissions": {
         "task": "analyzers.tasks.rescue_stuck_submissions",
         "schedule": 300,

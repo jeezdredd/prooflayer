@@ -12,6 +12,8 @@ from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 
+from .changelog import draft_digest
+
 logger = logging.getLogger(__name__)
 
 GEO_URL = "http://ip-api.com/json/{ip}?fields=status,country,countryCode,regionName,city,isp,org,query,proxy,hosting"
@@ -160,3 +162,12 @@ def backup_postgres() -> str:
 
     logger.info("postgres backup uploaded: %s (%d bytes)", key, len(proc.stdout))
     return key
+
+
+@shared_task(queue="default")
+def draft_changelog_digest() -> str:
+    update = draft_digest()
+    if update is None:
+        return "nothing new"
+    logger.info("drafted product update %s from changelog", update.pk)
+    return f"drafted {update.pk}"

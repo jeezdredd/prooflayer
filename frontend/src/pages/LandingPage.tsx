@@ -674,6 +674,7 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             <a href="/pricing" className="hover:text-signal-amber transition-colors">{t("Pricing")}</a>
+            <a href="/changelog" className="hover:text-signal-amber transition-colors">{t("What's new")}</a>
             <a href="https://api.prooflayer.cloud/api/docs/" className="hover:text-signal-amber transition-colors">{t("API Docs")}</a>
             <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors" title={t("Public for transparency; all rights reserved")}>{t("Source (view only)")}</a>
             <a href="/terms" className="hover:text-ink-300 transition-colors">{t("Terms")}</a>

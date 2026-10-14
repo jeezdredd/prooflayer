@@ -52,4 +52,4 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic -
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_analyzers && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 300 --access-logfile - --error-logfile - --log-level info"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_analyzers && python manage.py sync_changelog && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 300 --access-logfile - --error-logfile - --log-level info"]

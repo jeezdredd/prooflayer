@@ -1,8 +1,11 @@
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Activity, Brain, Cpu, Database, HardDrive, Layers, Mail, Zap } from "lucide-react";
+import { Activity, Brain, ChevronDown, Cpu, Database, HardDrive, Layers, Mail, Zap } from "lucide-react";
+import { useState } from "react";
 import client from "../api/client";
+import EmailTestPanel from "../components/EmailTestPanel";
+import { useAuthStore } from "../stores/authStore";
 import { locale, msg, t } from "../i18n";
 
 interface ServiceProbe {
@@ -205,6 +208,8 @@ export default function StatusPage() {
   const overall = data?.overall;
   const working = SERVICES.filter((s) => services[s.key]?.status === "ok").length;
   const roster = services.analyzers;
+  const isStaff = useAuthStore((s) => !!s.user?.is_staff);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   return (
     <div className="max-w-5xl">
@@ -223,7 +228,7 @@ export default function StatusPage() {
           )}
         </h1>
         <p className="text-ink-300 mt-3">
-          {t("Real-time component health. Probed every 5s.")}
+          {t("Real-time component health. Probed every 15s.")}
           {dataUpdatedAt ? ` ${t("Last check {time}.", { time: new Date(dataUpdatedAt).toLocaleTimeString(locale()) })}` : ""}
         </p>
       </motion.div>
@@ -241,8 +246,13 @@ export default function StatusPage() {
           const probe = services[item.key];
           const state = STATE[probe?.status ?? "skip"];
           const Icon = item.Icon;
+          const testable = isStaff && item.key === "email";
           return (
-            <div key={item.key} className="flex items-center gap-4 px-5 py-3.5">
+            <div key={item.key}>
+            <div
+              className={clsx("flex items-center gap-4 px-5 py-3.5", testable && "cursor-pointer hover:bg-white/[0.02] transition-colors")}
+              onClick={testable ? () => setEmailOpen((v) => !v) : undefined}
+            >
               <Icon size={16} strokeWidth={1.5} className="text-ink-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-3 flex-wrap">
@@ -256,6 +266,9 @@ export default function StatusPage() {
                 <span className={clsx("w-1.5 h-1.5 rounded-full", state.dot)} />
                 {probe ? t(state.word) : t("checking…")}
               </span>
+              {testable && <ChevronDown size={14} className={clsx("text-ink-500 transition-transform", emailOpen && "rotate-180")} />}
+            </div>
+            {testable && emailOpen && <EmailTestPanel />}
             </div>
           );
         })}

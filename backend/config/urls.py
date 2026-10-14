@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from rest_framework.routers import SimpleRouter
 
+from api.changelog_views import ChangelogView
 from api.roadmap_views import RoadmapItemViewSet
 from api.system_views import RecordVisitView, SystemStatusView, FeedbackView
 
@@ -31,6 +32,7 @@ urlpatterns = [
     path("api/v1/system/status/", SystemStatusView.as_view(), name="system-status"),
     path("api/v1/system/visit/", RecordVisitView.as_view(), name="system-visit"),
     path("api/v1/system/feedback/", FeedbackView.as_view(), name="system-feedback"),
+    path("api/v1/system/changelog/", ChangelogView.as_view(), name="system-changelog"),
     *roadmap_router.urls,
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

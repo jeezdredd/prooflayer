@@ -23,9 +23,11 @@ from classroom.models import Classroom, Organization
 from content.models import Submission
 from content.sensitivity import unpublish_all
 
-from .models import EmailLog, EmailVerificationToken
+from .models import EmailLog, EmailVerificationToken, ProductUpdate
 from .serializers import AcceptTermsSerializer, RegisterSerializer, UserSerializer, age_fields
+from . import mail
 from .mail import user_from_unsubscribe_token
+from .mail_samples import KINDS, sample_context
 from .tasks import send_password_reset_email, send_verification_email
 
 User = get_user_model()
@@ -315,3 +317,32 @@ class UnsubscribeView(APIView):
             user.email_updates = False
             user.save(update_fields=["email_updates"])
         return Response({"detail": "unsubscribed", "email": user.email})
+
+
+class EmailTestView(APIView):
+    permission_classes = (permissions.IsAdminUser,)
+
+    def get(self, request):
+        logs = EmailLog.objects.order_by("-created_at")[:8]
+        return Response({
+            "configured": bool(getattr(settings, "EMAIL_CONFIGURED", False)),
+            "kinds": list(KINDS),
+            "to": request.user.email,
+            "language": mail.lang_of(request.user),
+            "recent": [
+                {"at": log.created_at, "kind": log.kind, "to": log.to_email, "status": log.status, "error": log.error[:200]}
+                for log in logs
+            ],
+        })
+
+    def post(self, request):
+        kind = request.data.get("kind", "")
+        if kind not in KINDS:
+            return Response({"kind": [f"Choose one of: {', '.join(KINDS)}."]}, status=status.HTTP_400_BAD_REQUEST)
+        context = sample_context(kind, request.user, ProductUpdate.objects.order_by("-created_at").first())
+        context["subject"] = f"[Test] {context['subject']}"
+        try:
+            result = mail.send(kind="test", to=[request.user.email], context=context, user=request.user)
+        except Exception as exc:
+            return Response({"status": "failed", "error": str(exc)[:300]}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response({"status": result, "to": request.user.email, "kind": kind})
