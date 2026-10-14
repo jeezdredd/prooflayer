@@ -6,28 +6,57 @@ Backend: Django + Celery. Frontend: React + Vite. Infra: Postgres, Redis, MinIO,
 
 ## Features
 
-- **10 analyzers** seeded as DB configs, fanned out via Celery chord (weight/queue/timeout admin-editable):
-  - `metadata` - EXIF/XMP signatures, edit-software flags
-  - `ela` - Error Level Analysis for splice/clone detection
-  - `siglip_detector` - `prithivMLmods/Deep-Fake-Detector-v2-Model` ViT classifier
-  - `community_forensics` - `buildborderless/CommunityForensics-DeepfakeDet-ViT` (NeurIPS 2024), main authority (weight 3.0)
-  - `npr_detector` - `Wvolf/ViT_Deepfake_Detection`, corroborator (weight 0.5)
-  - `custom_detector` - retrained ViT from the review queue (weight 3.5), dir `prooflayer-retrained`, falls back to `Nahrawy/AIorNot`
-  - `llm_vision` - Ollama vision model (`qwen2.5vl:3b` in prod) for scene reasoning
-  - `llm_text` - Ollama text model for AI-authorship classification
-  - `audio_spectrogram` - librosa spectral features for synthetic-voice detection
-  - `video_frame` - uniform-sampled frames through the image ensemble
-- Torch detectors run on GPU when available (AMD ROCm worker, see `wiki/services/gpu-rocm.md`); CPU otherwise.
-- **Fact-check pipeline** (async Celery): spaCy NER claim extraction -> DuckDuckGo web context + Wikipedia lookup -> Ollama LLM assessment (with confidence) -> Google Fact Check API cross-reference. Input modes: text, URL (SSRF-guarded fetch), PDF/DOCX upload. PDF export of results.
-- **Provenance**: pHash/dHash/aHash against known-fake database, optional TinEye/Google Vision hooks
-- **Browser extension** (MV3): Chrome + Firefox, one-click verify from any page
-- Crowdsource voting (real / fake / uncertain) per submission
-- Moderation review queue with verdict overrides
-- SHA-256 result caching - same file returns instant cached verdict
-- WeasyPrint PDF reports
-- Embeddable JS widget for third-party sites
-- Role-based access: Free / Pro / Education / Enterprise tiers via Stripe/Paddle
-- JWT auth with httpOnly cookie refresh rotation
+### Tribunal: the detector ensemble
+
+Analyzers are seeded as DB configs (`analyzers/management/commands/seed_analyzers.py`), fanned out
+via a Celery chord and combined by `analyzers/aggregator.py` into one verdict. Every verdict is
+stamped with the Tribunal version and a fingerprint of the roster (`analyzers/ensemble.py`); the
+changelog with measured numbers lives in `wiki/concepts/tribunal.md`.
+
+**Images and video**
+- `community_forensics` (3.5) - Community Forensics ViT-S/16 (NeurIPS 2024), calibrated score
+- `custom_detector` (3.5) - ViT retrained on the review queue and current generators, own calibration
+- `clip_probe` (2.5) - linear probe on CLIP embeddings, an independent backbone
+- `ai_detector` (1.0) - two image classifiers behind a photographic-content gate
+- `metadata` (1.5) - EXIF/XMP, PNG generation parameters, C2PA Content Credentials
+- `ela` (0.75) - Error Level Analysis, manipulation channel only, never votes on AI
+- `llm_vision` (1.5) - Ollama vision model that must name a concrete defect
+- `video_frame` (2.0) - frames across the whole clip through the image bench, median verdict
+
+**Audio**
+- `audio_spectrogram` (2.0) - spectral features for synthetic-voice artifacts
+
+**Text (en / ru / fr; PDF and DOCX supported)**
+- `text_classifier` (2.5) - multilingual-e5-small fine-tuned on human essays, pre-2022 Wikipedia,
+  fresh generations from current open models and humanizer-style rewrites; per-language calibration,
+  logit-margin score, per-passage scores. Alone it can only flag, never convict.
+- `text_evasion` (2.0) - homoglyphs, invisible characters, odd spaces, hidden/white/tiny DOCX text
+- Context members (never vote; a flag sends the work to human review):
+  - `text_grade_fit` - vocabulary and readability against the class year
+  - `text_style` - drift from the same student's earlier class work
+  - `text_citations` - invented DOIs, arXiv ids, ISBNs, links, references and quotes, checked
+    against doi.org, arXiv, Open Library, Google Books, OpenAlex and Crossref; reference-list format
+    for APA, MLA, Chicago, Harvard, IEEE, Vancouver, GOST and ISO 690
+  - `text_genre` - argument essay, narrative, retelling, analysis, description, report, letter, poem
+  - `text_shadow` - closeness to AI answers the teacher generated for the assignment
+
+### Education (Classroom)
+- Schools and classes with join codes, class year, teacher and admin roles; class uploads bill the school
+- Originality check on every text upload: winnowed fingerprints, e5 sentence vectors for rewording and
+  translation (ru/en/fr), web search through self-hosted SearXNG
+- Class radar: works by different students built on one skeleton, and sudden jumps in a student's level
+- Assignment shadow: the server answers the assignment with AI as students of several ages would
+- Teacher report per work with every signal and its evidence; verdict objections with deadlines
+
+### Platform
+- Fact-check pipeline (async Celery): spaCy claim extraction, web and Wikipedia context, Ollama
+  assessment, Google Fact Check cross-reference; text, URL (SSRF-guarded) or PDF/DOCX input
+- Provenance: perceptual hashes against known fakes and earlier copies
+- Compare two files judge by judge; human review queue whose corrections retrain `custom_detector`
+- API keys with signed completion webhooks, batch upload (files or ZIP) with CSV export
+- PDF reports, embeddable widget, MV3 browser extension (Chrome + Firefox)
+- Free / Pro / Education / Enterprise tiers, JWT auth with httpOnly refresh rotation
+- Torch detectors run on GPU when available (AMD ROCm worker, see `wiki/services/gpu-rocm.md`)
 
 ## Stack
 
@@ -111,7 +140,7 @@ docker-compose exec backend python manage.py createsuperuser
 | `REDIS_URL`               | redis://redis:6379/0       | Broker + Django cache          |
 | `CELERY_BROKER_URL`       | redis://redis:6379/0       | Celery broker                  |
 | `OLLAMA_URL`              | http://ollama:11434        | Ollama endpoint                |
-| `OLLAMA_MODEL`            | qwen2.5:3b                 | Text LLM                       |
+| `OLLAMA_MODEL`            | qwen2.5:3b                 | Fact-check and assignment shadow |
 | `OLLAMA_VISION_MODEL`     | qwen2.5vl:3b               | Vision LLM                     |
 | `AWS_ACCESS_KEY_ID`       | (none)                     | MinIO/S3 key                   |
 | `AWS_SECRET_ACCESS_KEY`   | (none)                     | MinIO/S3 secret                |
@@ -132,27 +161,30 @@ VITE_API_URL=http://localhost:8000/api/v1
 
 ```
 backend/
-  analyzers/     # 7 analyzers, registry, Celery tasks, aggregator
-  content/       # Submission model, upload pipeline, PDF reports, widget
-  crowdsource/   # Voting model and endpoints
+  analyzers/     # Tribunal members, text package (classifier, citations, genre, style...), aggregator
+  classroom/     # Schools, classes, roster, class radar, assignment shadow
+  plagiarism/    # Originality: fingerprints, sentence vectors, web search
+  content/       # Submission model, upload pipeline, batches, PDF reports, widget
+  billing/       # Plans, quotas, tier gates
+  api/           # API keys, webhooks, system status, roadmap
+  crowdsource/   # Voting
   reports/       # Moderation reports
-  provenance/    # Perceptual hash matching, reverse search
-  factcheck/     # Async fact-check: NER, web search, LLM, Google FC API
+  provenance/    # Perceptual hash matching
+  factcheck/     # Async fact-check
   users/         # Custom User, JWT auth, email verification
+  common/        # URL safety, document extraction, throttling
   config/        # Settings, Celery app, URLs
 frontend/
   src/
-    pages/       # Landing, Login, Upload, Dashboard, Result, FactCheck, Pricing, ...
-    components/  # Layout, AnalyzerTimeline, VotingPanel, SubscriptionGate, ...
-    hooks/       # TanStack Query hooks
+    pages/       # Landing, Upload, Result, Classroom, Developers, FactCheck, Pricing, ...
+    components/  # AnalyzerTimeline, TextReport, OriginalityPanel, landing/*, ...
     api/         # Axios client and endpoints
-    stores/      # Zustand (auth, upload)
+    stores/      # Zustand
     types/       # Shared TS interfaces
-  public/
-    widget.js    # Embeddable badge script
+scripts/         # Dataset builders (MLX generation, Wikipedia fetch)
 extension/       # MV3 browser extension (Chrome + Firefox)
 wiki/            # Internal knowledge base (Obsidian-compatible)
-deploy/          # Production deployment scripts and Caddy config
+deploy/          # Production compose, deploy scripts, Caddy config
 ```
 
 ## Production
