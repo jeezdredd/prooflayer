@@ -68,6 +68,34 @@ need a new signal (another backbone or frequency-domain features), not more Open
 
 ## Changelog
 
+### 1.6 - 2026-10-14
+
+Text only; image roster unchanged.
+
+- `text_classifier` v4: trained with humanizer-style attack rewrites (paraphrase, bypass, student,
+  translate), chat wrappers stripped from AI rows, and symmetric typo / lowercase / no-punctuation
+  noise on 30% of crops. Same frozen test split, flagged at t1:
+
+  | | v3 | v4 |
+  |---|---|---|
+  | AUC en / ru / fr | 0.977 / 0.9995 / 0.995 | 0.988 / 0.998 / 0.995 |
+  | human essays flagged en / ru / fr | 0% / 0.7% / 2.3% | 0% / 1.3% / 2.3% |
+  | en AI, lowercase / no punctuation | 63% / 31% | 97% / 95% |
+  | ru AI, lowercase / no punctuation | 73% / 65% | 98% / 99% |
+  | fr humanized AI, no punctuation | 6% | 94% |
+  | en textsight-2026 frontier AI | 36% | 50% |
+  | en human Wikipedia prose | 1.3% / 9.7% | 3.3% / 13.5% |
+
+  Knots still cap at 0.89, so the classifier alone never convicts.
+- New context members (never vote, a flag means human review): `text_citations` (invented sources,
+  reference format), `text_genre` (text type), `text_shadow` (closeness to AI answers to the
+  assignment).
+- Personal comparisons (`text_grade_fit`, `text_style`) need three earlier works of the student and
+  compare with the student's own level, so strong students are not flagged.
+- Known gap: no Russian school essays in training or calibration. Hand-written test texts in a
+  student voice by an AI were flagged (correctly), but the false-positive rate on real Russian
+  children's essays is not measured yet.
+
 ### 1.5 - 2026-10-14
 
 Text: `llm_text` (prompted qwen2.5:3b) leaves the roster, `text_classifier` (weight 2.5) joins.

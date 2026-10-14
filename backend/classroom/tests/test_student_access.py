@@ -84,7 +84,7 @@ class TestStudentRestrictions:
         client = _client(student)
         assert client.post(reverse("factcheck"), {"text": "The Earth is flat."}, format="json").status_code == 403
         assert client.get(reverse("public-feed")).status_code == 403
-        assert client.post(reverse("batch-list"), {}, format="multipart").status_code == 403
+        assert client.post(reverse("batch-list"), {"files": [_jpeg()]}, format="multipart").status_code == 403
         assert client.post(reverse("vote-create"), {}, format="json").status_code == 403
         assert client.post(reverse("analyze-url"), {"url": "https://example.org/a.jpg"}, format="json").status_code == 403
 

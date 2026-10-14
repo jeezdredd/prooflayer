@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-14] tribunal-1.6 | Attack-robust text classifier v4, classroom signals, student accounts
+
+- Source: train_text_classifier v4, noise eval v3 vs v4, classroom radar/shadow, student access rules
+- Pages updated: [[concepts/tribunal]], [[concepts/text-signals]], [[services/classroom]]
+
 ## [2026-10-14] text-sources | Ghost citations, citation format, text type
 
 - Source: analyzers/text/citations.py, citation_style.py, genre.py, live API checks

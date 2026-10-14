@@ -6,7 +6,7 @@ from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from classroom.access import NotStudentAccount, classroom_for_upload, quota_owner
+from classroom.access import classroom_for_upload, deny_student_only, quota_owner
 from users.models import ApiKey
 from users.permissions import IsVerifiedUser
 
@@ -76,7 +76,7 @@ class BatchListSerializer(serializers.ModelSerializer):
 
 class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     lookup_field = "id"
-    permission_classes = [IsVerifiedUser, NotStudentAccount]
+    permission_classes = [IsVerifiedUser]
 
     def get_queryset(self):
         return Batch.objects.filter(user=self.request.user)
@@ -100,6 +100,8 @@ class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.Retrie
                 status=status.HTTP_400_BAD_REQUEST,
             )
         classroom = classroom_for_upload(request.user, request.data.get("classroom"))
+        if classroom is None:
+            deny_student_only(request.user)
         try:
             check_quota(quota_owner(request.user, classroom), requested=len(intake.accepted))
         except QuotaExceeded as exc:
