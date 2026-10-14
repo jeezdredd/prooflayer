@@ -17,6 +17,7 @@ from .aggregator import aggregate
 from .ensemble import ensemble_info
 from .models import AnalysisResult, AnalyzerConfig, TrainingSample
 from .registry import load_analyzer_class
+from analyzers import auto_retrain
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +272,27 @@ def run_weekly_retrain(
     if epochs_override is not None:
         run.epochs = max(1, int(epochs_override))
         run.save(update_fields=["epochs"])
+
+    if media_type == "image":
+        try:
+            outcome = auto_retrain.run(samples, epochs_override or getattr(settings, "AUTO_RETRAIN_EPOCHS", 1))
+            run.status = outcome.status
+            run.error = outcome.reason
+            run.samples_used = outcome.new_samples
+            run.hf_revision = outcome.revision
+            run.metrics = outcome.metrics or {}
+        except SoftTimeLimitExceeded:
+            run.status = RetrainRun.Status.FAILED
+            run.error = "soft time limit exceeded"
+        except Exception as exc:
+            run.status = RetrainRun.Status.FAILED
+            run.error = str(exc)[:2000]
+            logger.exception("auto retrain failed")
+        run.finished_at = timezone.now()
+        run.save(update_fields=["status", "error", "samples_used", "hf_revision", "metrics", "finished_at"])
+        _notify_retrain(run)
+        _email_retrain(run)
+        return str(run.id)
 
     if samples < min_samples:
         run.status = RetrainRun.Status.SKIPPED

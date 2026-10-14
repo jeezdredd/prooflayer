@@ -61,6 +61,7 @@ class RetrainRun(models.Model):
         STARTED = "started"
         SUCCESS = "success"
         SKIPPED = "skipped"
+        REJECTED = "rejected"
         FAILED = "failed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -70,6 +71,7 @@ class RetrainRun(models.Model):
     hf_revision = models.CharField(max_length=120, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.STARTED)
     error = models.TextField(blank=True)
+    metrics = models.JSONField(default=dict, blank=True)
     started_at = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     triggered_by = models.ForeignKey(

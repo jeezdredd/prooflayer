@@ -18,7 +18,7 @@ RETRAIN_MODEL_DIR = os.environ.get(
 )
 FALLBACK_MODEL = "Nahrawy/AIorNot"
 
-_state = {"model": None, "processor": None, "loaded_path": None, "calibration": None}
+_state = {"model": None, "processor": None, "loaded_path": None, "calibration": None, "stamp": None}
 CALIBRATION_FILENAME = "calibration.json"
 
 
@@ -81,9 +81,17 @@ AI_LABEL_KEYS = ("ai", "fake", "artificial", "synthetic", "generated", "deepfake
 REAL_LABEL_KEYS = ("real", "human", "authentic", "natural", "genuine", "realism")
 
 
-def _load():
-    path = _model_path()
-    if _state["model"] is None or _state["loaded_path"] != path:
+def _stamp(path: str) -> tuple:
+    return tuple(
+        os.path.getmtime(os.path.join(path, name)) if os.path.exists(os.path.join(path, name)) else 0.0
+        for name in ("config.json", CALIBRATION_FILENAME)
+    )
+
+
+def _load(path: str | None = None):
+    path = path or _model_path()
+    stamp = _stamp(path) if os.path.isdir(path) else None
+    if _state["model"] is None or _state["loaded_path"] != path or _state["stamp"] != stamp:
         logger.info("custom_detector loading from %s", path)
         try:
             model = AutoModelForImageClassification.from_pretrained(path, use_safetensors=True).eval()
@@ -93,6 +101,7 @@ def _load():
         _state["processor"] = AutoImageProcessor.from_pretrained(path)
         _state["loaded_path"] = path
         _state["calibration"] = load_calibration(path) if os.path.isdir(path) else None
+        _state["stamp"] = stamp
         logger.info("custom_detector loaded %s on %s", path, get_device())
     return _state["model"], _state["processor"]
 
@@ -118,6 +127,9 @@ class CustomDetector(BaseAnalyzer):
     name = "custom_detector"
     version = "1.3.0"
 
+    def __init__(self, model_dir: str | None = None):
+        self.model_dir = model_dir
+
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
 
@@ -128,7 +140,7 @@ class CustomDetector(BaseAnalyzer):
             return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": f"cannot open image: {exc}"})
 
         try:
-            model, processor = _load()
+            model, processor = _load(self.model_dir)
             inputs = inputs_to_device(processor(images=image, return_tensors="pt"))
             with torch.no_grad():
                 logits = model(**inputs).logits.squeeze().cpu()

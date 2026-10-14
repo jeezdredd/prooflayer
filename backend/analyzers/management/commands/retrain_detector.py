@@ -97,6 +97,7 @@ class Command(BaseCommand):
             help="labelled tree with real/ and ai_generated/ (or fake/) subdirs; repeatable",
         )
         parser.add_argument("--base-model", default="", help="HF id or local path to fine-tune from")
+        parser.add_argument("--output-dir", default="", help="where to save the model; defaults to the live model dir")
         parser.add_argument("--no-class-weights", action="store_true", help="disable inverse-frequency loss weights")
         parser.add_argument("--batch-size", type=int, default=16)
         parser.add_argument("--learning-rate", type=float, default=2e-5)
@@ -123,7 +124,7 @@ class Command(BaseCommand):
             )
             return
 
-        persistent_model_dir = os.path.join(RETRAIN_MODEL_DIR, media_type)
+        persistent_model_dir = options["output_dir"] or os.path.join(RETRAIN_MODEL_DIR, media_type)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dataset_dir = os.path.join(tmpdir, "dataset")
@@ -178,7 +179,7 @@ class Command(BaseCommand):
             if os.path.exists(persistent_model_dir):
                 shutil.rmtree(persistent_model_dir)
             os.makedirs(os.path.dirname(persistent_model_dir), exist_ok=True)
-            shutil.copytree(tmp_model_dir, persistent_model_dir)
+            shutil.copytree(tmp_model_dir, persistent_model_dir, ignore=shutil.ignore_patterns("checkpoint-*", "training_args.bin"))
             self.stdout.write(self.style.SUCCESS(f"Model saved to {persistent_model_dir}"))
 
     def _extract_frames(self, video_path, dst_dir, submission_id, label):
