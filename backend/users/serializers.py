@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from analyzers.training import forget
+from classroom.access import is_student_only
 from content.sensitivity import unpublish_all
 
 User = get_user_model()
@@ -56,12 +57,13 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     needs_terms = serializers.SerializerMethodField()
+    student_only = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             "id", "email", "username", "avatar", "bio", "is_verified", "is_staff", "date_joined",
-            "allow_training", "training_consent_at", "is_adult", "terms_version", "needs_terms",
+            "allow_training", "training_consent_at", "is_adult", "terms_version", "needs_terms", "student_only",
         )
         read_only_fields = (
             "id", "email", "is_verified", "is_staff", "date_joined", "training_consent_at", "terms_version",
@@ -69,6 +71,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_needs_terms(self, obj) -> bool:
         return obj.terms_version != settings.TERMS_VERSION
+
+    def get_student_only(self, obj) -> bool:
+        return is_student_only(obj)
 
     def update(self, instance, validated_data):
         if "is_adult" in validated_data:

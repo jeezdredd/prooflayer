@@ -9,6 +9,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from classroom.access import NotStudentAccount
 from common.documents import extract_docx, extract_pdf
 from common.url_safety import UnsafeUrlError, safe_get
 from users.permissions import IsVerifiedUser
@@ -23,7 +24,7 @@ URL_FETCH_MAX_BYTES = 1024 * 1024
 
 
 class FactCheckView(APIView):
-    permission_classes = [IsVerifiedUser]
+    permission_classes = [IsVerifiedUser, NotStudentAccount]
 
     def post(self, request):
         text = request.data.get("text", "").strip()
@@ -36,7 +37,7 @@ class FactCheckView(APIView):
 
 
 class FactCheckStatusView(APIView):
-    permission_classes = [IsVerifiedUser]
+    permission_classes = [IsVerifiedUser, NotStudentAccount]
 
     def get(self, request, task_id):
         payload = cache.get(f"fc:{task_id}")
@@ -46,7 +47,7 @@ class FactCheckStatusView(APIView):
 
 
 class FactCheckExportView(APIView):
-    permission_classes = [IsVerifiedUser]
+    permission_classes = [IsVerifiedUser, NotStudentAccount]
 
     def post(self, request):
         result = request.data.get("result")
@@ -66,7 +67,7 @@ class FactCheckExportView(APIView):
 
 
 class FactCheckFetchUrlView(APIView):
-    permission_classes = [IsVerifiedUser]
+    permission_classes = [IsVerifiedUser, NotStudentAccount]
 
     def post(self, request):
         url = (request.data.get("url") or "").strip()
@@ -119,7 +120,7 @@ class FactCheckFetchUrlView(APIView):
 
 
 class FactCheckExtractDocView(APIView):
-    permission_classes = [IsVerifiedUser]
+    permission_classes = [IsVerifiedUser, NotStudentAccount]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):

@@ -143,6 +143,7 @@ export default function ResultPage() {
   const { connected, runningAnalyzers } = useSubmissionWS(id);
   const location = useLocation();
   const supervising = !!(location.state as { supervising?: boolean } | null)?.supervising;
+  const student = !!useAuthStore((s) => s.user?.student_only);
 
   if (isLoading) {
     return (
@@ -226,10 +227,10 @@ export default function ResultPage() {
         )}
         {submission.status === "completed" && (
           <div className="flex items-center gap-2">
-            {submission.ensemble && !submission.ensemble.is_current && (
+            {!student && submission.ensemble && !submission.ensemble.is_current && (
               <ReanalyzeButton submissionId={submission.id} />
             )}
-            {!supervising && <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />}
+            {!supervising && !student && <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />}
             <DownloadReportButton submissionId={submission.id} />
             <ReportButton submissionId={submission.id} />
           </div>
@@ -240,7 +241,7 @@ export default function ResultPage() {
       {submission.status === "completed" && (
         <ProvenancePanel submissionId={submission.id} />
       )}
-      {submission.status === "completed" && (
+      {submission.status === "completed" && !student && (
         <VotingPanel submissionId={submission.id} fileUrl={submission.file_url} />
       )}
     </div>

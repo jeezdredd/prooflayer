@@ -1,10 +1,38 @@
 from django.db.models import Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.permissions import BasePermission
 
+from billing.models import Subscription
 from billing.permissions import tier_allows
 from content.models import Submission
 
 from .models import Classroom, Membership, OrgMember
+
+STUDENT_ONLY_DETAIL = "Student accounts hand in work through their class. ProofLayer tools are for teachers."
+STUDENT_ONLY_CODE = "student_account"
+
+
+def is_student_only(user) -> bool:
+    if not getattr(user, "is_authenticated", False) or user.is_staff:
+        return False
+    if not Membership.objects.filter(user=user).exists():
+        return False
+    if Classroom.objects.filter(owner=user).exists() or OrgMember.objects.filter(user=user).exists():
+        return False
+    tier = Subscription.objects.filter(user=user).values_list("tier", flat=True).first()
+    return tier in (None, Subscription.Tier.FREE)
+
+
+def deny_student_only(user):
+    if is_student_only(user):
+        raise PermissionDenied({"detail": STUDENT_ONLY_DETAIL, "code": STUDENT_ONLY_CODE})
+
+
+class NotStudentAccount(BasePermission):
+    message = {"detail": STUDENT_ONLY_DETAIL, "code": STUDENT_ONLY_CODE}
+
+    def has_permission(self, request, view):
+        return not is_student_only(request.user)
 
 
 def supervised_q(user, prefix: str = "") -> Q:

@@ -12,6 +12,7 @@ export interface User {
   is_adult?: boolean;
   terms_version?: string;
   needs_terms?: boolean;
+  student_only?: boolean;
 }
 
 export interface Tokens {

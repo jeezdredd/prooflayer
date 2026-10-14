@@ -124,3 +124,22 @@ how many of those keep the answer's order. Share >= 0.5 and order >= 0.7 gives `
 only sends the work to review; evidence carries the three closest sentence pairs. Thresholds are
 conservative and not yet calibrated on real class data. On CPU Ollama (no ROCm yet) a set of 8 takes
 several minutes.
+
+## Student accounts (2026-10-14)
+
+`classroom.access.is_student_only(user)`: a member of at least one class who owns no class, is not in
+any school's staff (`OrgMember`), is not Django staff and has no paid plan. `/auth/me/` returns
+`student_only`. Such an account may only hand work in to a class, read its own results and file an
+objection. Refused with 403 `code: student_account`: uploads without a class, analyze-url, batches,
+fact-check, the public feed, crowd votes, toggle-public and re-analyze. The main app sends a student to
+the Classroom app (keeping `/results/<id>`), and the result page hides publish, re-run and voting.
+
+## Demo data (2026-10-14)
+
+`manage.py seed_demo [--reset] [--no-wait]` reads `classroom/demo/demo_data.json`: Лицей №12 (8А,
+history, ru: a strong student who is never flagged, an AI essay after three honest works, a humanizer
+with homoglyphs and zero-width spaces, two students who rewrote the same AI answer, plus a shadow set)
+and Northbridge University (PSY 201, en: invented references, a real APA list with format slips, an AI
+essay). Works are backdated and analysed one by one through the real pipeline so personal baselines
+see earlier work. Only `@demo.prooflayer.cloud` emails are accepted; passwords are printed once.
+Run it in the `celery_worker` container (it needs the e5 model for the shadow answers).

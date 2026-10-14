@@ -3,9 +3,8 @@ import io
 from urllib.parse import urlparse
 
 import requests as http_requests
-
-from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.db.models import Avg, Count, Q
 from django.http import HttpResponse
@@ -14,14 +13,38 @@ from rest_framework import generics, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
-
-from users.models import ApiKey
-from users.permissions import IsVerifiedUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Submission, VerdictOverride, AnonymousQuota
+from analyzers.models import AnalysisResult
+from analyzers.tasks import AGGREGATION_LOCK_KEY, dispatch_analysis
+from analyzers.training import snapshot
+from billing.models import get_or_create_subscription, uploads_this_month
+from billing.permissions import CanCompare
+from classroom.access import (
+    NotStudentAccount,
+    classroom_for_upload,
+    deny_student_only,
+    quota_owner,
+    supervised_q,
+    visible_submissions_q,
+)
+from common.age import can_view_sensitive
+from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
+from content.tasks import process_submission
+from users.models import ApiKey
+from users.permissions import IsVerifiedUser
+
+from .intake import QuotaExceeded, check_quota, create_submission
+from .models import AnonymousQuota, Submission, VerdictOverride
 from .pdf import generate_report_pdf
+from .sensitivity import (
+    ADULT_REQUIRED_CODE,
+    ADULT_REQUIRED_DETAIL,
+    OptionalViewerAuthentication,
+    for_viewer,
+    parse_flag,
+)
 from .serializers import (
     PublicSubmissionSerializer,
     ReviewQueueSerializer,
@@ -30,26 +53,8 @@ from .serializers import (
     SubmissionListSerializer,
     VerdictOverrideSerializer,
 )
-from classroom.access import classroom_for_upload, quota_owner, supervised_q, visible_submissions_q
-from common.age import can_view_sensitive
-
-from .intake import QuotaExceeded, check_quota, create_submission
-from .sensitivity import (
-    ADULT_REQUIRED_CODE,
-    ADULT_REQUIRED_DETAIL,
-    OptionalViewerAuthentication,
-    for_viewer,
-    parse_flag,
-)
 from .throttles import UploadRateThrottle, WidgetRateThrottle
 from .validators import validate_file_size, validate_mime_type
-from analyzers.models import AnalysisResult
-from analyzers.tasks import AGGREGATION_LOCK_KEY, dispatch_analysis
-from analyzers.training import snapshot
-from billing.models import get_or_create_subscription, uploads_this_month
-from billing.permissions import CanCompare
-from django.core.cache import cache
-from content.tasks import process_submission
 
 User = get_user_model()
 
@@ -122,6 +127,8 @@ class SubmissionViewSet(
         if not file:
             return Response({"file": ["No file provided."]}, status=status.HTTP_400_BAD_REQUEST)
         classroom = classroom_for_upload(request.user, request.data.get("classroom"))
+        if classroom is None:
+            deny_student_only(request.user)
         try:
             check_quota(quota_owner(request.user, classroom))
         except QuotaExceeded as exc:
@@ -139,6 +146,7 @@ class SubmissionViewSet(
 
     @action(detail=True, methods=["post"], url_path="toggle-public")
     def toggle_public(self, request, id=None):
+        deny_student_only(request.user)
         submission = self.get_object()
         if submission.user_id != request.user.id:
             return Response({"detail": "Only the author can change visibility."}, status=status.HTTP_403_FORBIDDEN)
@@ -165,6 +173,7 @@ class SubmissionViewSet(
 
     @action(detail=False, methods=["get"], url_path="compare", permission_classes=[CanCompare])
     def compare(self, request):
+        deny_student_only(request.user)
         ids = (request.query_params.get("ids") or "").split(",")
         ids = [i.strip() for i in ids if i.strip()][:2]
         if len(ids) != 2:
@@ -192,6 +201,7 @@ class SubmissionViewSet(
 
     @action(detail=True, methods=["post"], url_path="reanalyze")
     def reanalyze(self, request, id=None):
+        deny_student_only(request.user)
         submission = self.get_object()
         if submission.status not in (Submission.Status.COMPLETED, Submission.Status.FAILED):
             return Response({"detail": "Submission is still being analyzed."}, status=status.HTTP_409_CONFLICT)
@@ -321,7 +331,7 @@ class VerdictOverrideView(APIView):
 
 
 class PublicFeedView(generics.ListAPIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, NotStudentAccount]
     authentication_classes = [OptionalViewerAuthentication]
 
     def get_serializer_class(self):
@@ -337,7 +347,7 @@ class PublicFeedView(generics.ListAPIView):
 
 
 class PublicSubmissionDetailView(generics.RetrieveAPIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, NotStudentAccount]
     authentication_classes = [OptionalViewerAuthentication]
     lookup_field = "id"
 
@@ -390,7 +400,7 @@ class WidgetEmbedView(APIView):
 
 
 class AnalyzeUrlView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, NotStudentAccount]
     MAX_SIZE = 20 * 1024 * 1024
 
     def post(self, request):

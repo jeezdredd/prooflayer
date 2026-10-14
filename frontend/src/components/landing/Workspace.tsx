@@ -342,7 +342,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: "classroom", group: "teach", Icon: GraduationCap, title: "Classroom", to: "/pricing",
-    line: "Your school's own space where students hand in work and teachers see class submissions only.",
+    line: "Your school's own space: students only hand in work and see their results, the tools stay with teachers.",
     facts: ["Class level from grade 1 to university year 6", "Vocabulary checked against the grade and against the student's own level, so strong students are not flagged", "Personal comparisons wait for three earlier works: no verdict from one or two", "Class radar: essays built on one skeleton and sudden jumps in a student's level"],
     preview: CLASSROOM,
   },
