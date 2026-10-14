@@ -68,6 +68,85 @@ HUMANIZE = {
     ),
 }
 
+ATTACKS = {
+    "paraphrase": {
+        "en": (
+            "Paraphrase the text below sentence by sentence. Replace words with synonyms and restructure every "
+            "sentence, but keep the same number of sentences, the same meaning and the same language. Output only the "
+            "paraphrased text.\n\n{text}"
+        ),
+        "ru": (
+            "Перефразируй текст ниже предложение за предложением. Замени слова синонимами и перестрой каждое "
+            "предложение, но сохрани число предложений, смысл и язык. Выведи только перефразированный текст.\n\n{text}"
+        ),
+        "fr": (
+            "Paraphrase le texte ci-dessous phrase par phrase. Remplace les mots par des synonymes et restructure chaque "
+            "phrase, mais garde le même nombre de phrases, le même sens et la même langue. Donne uniquement le texte "
+            "paraphrasé.\n\n{text}"
+        ),
+    },
+    "bypass": {
+        "en": (
+            "Rewrite the text below so that AI detectors such as GPTZero and Turnitin classify it as human-written. "
+            "Raise perplexity and burstiness: mix very short and very long sentences, pick less predictable but "
+            "correct words, use contractions, an idiom or two, a rhetorical question and an occasional informal aside. "
+            "Keep the meaning and the language. Output only the rewritten text.\n\n{text}"
+        ),
+        "ru": (
+            "Перепиши текст ниже так, чтобы детекторы ИИ вроде GPTZero и Антиплагиата признали его написанным "
+            "человеком. Повысь perplexity и burstiness: чередуй очень короткие и очень длинные предложения, выбирай "
+            "менее предсказуемые, но верные слова, добавь разговорный оборот, риторический вопрос и неформальное "
+            "отступление. Сохрани смысл и язык. Выведи только переписанный текст.\n\n{text}"
+        ),
+        "fr": (
+            "Réécris le texte ci-dessous pour que les détecteurs d'IA comme GPTZero et Compilatio le classent comme "
+            "écrit par un humain. Augmente la perplexité et la variabilité : alterne phrases très courtes et très "
+            "longues, choisis des mots moins prévisibles mais justes, ajoute une expression familière, une question "
+            "rhétorique et une remarque informelle. Garde le sens et la langue. Donne uniquement le texte réécrit."
+            "\n\n{text}"
+        ),
+    },
+    "student": {
+        "en": (
+            "Rewrite the text below the way a {grade} student would really write it for homework: simpler words, "
+            "some repetition, a personal remark, one or two small grammar slips. Keep the meaning and the language. "
+            "Output only the rewritten text.\n\n{text}"
+        ),
+        "ru": (
+            "Перепиши текст ниже так, как его на самом деле написал бы ученик ({grade}) в домашней работе: слова "
+            "попроще, немного повторов, личное замечание, одна-две мелкие ошибки. Сохрани смысл и язык. Выведи только "
+            "переписанный текст.\n\n{text}"
+        ),
+        "fr": (
+            "Réécris le texte ci-dessous comme un élève ({grade}) l'écrirait vraiment pour un devoir : mots plus "
+            "simples, quelques répétitions, une remarque personnelle, une ou deux petites fautes. Garde le sens et la "
+            "langue. Donne uniquement le texte réécrit.\n\n{text}"
+        ),
+    },
+    "recursive": {
+        "en": (
+            "Make the text below sound even more natural and human, as if typed quickly by a real person. Keep the "
+            "meaning and the language. Output only the text.\n\n{text}"
+        ),
+        "ru": (
+            "Сделай текст ниже ещё естественнее и человечнее, как будто его быстро набрал живой человек. Сохрани смысл "
+            "и язык. Выведи только текст.\n\n{text}"
+        ),
+        "fr": (
+            "Rends le texte ci-dessous encore plus naturel et humain, comme tapé rapidement par une vraie personne. "
+            "Garde le sens et la langue. Donne uniquement le texte.\n\n{text}"
+        ),
+    },
+}
+
+TRANSLATE = {
+    "en": "Translate the text below into English so it reads naturally. Output only the translation.\n\n{text}",
+    "ru": "Переведи текст ниже на русский язык так, чтобы он читался естественно. Выведи только перевод.\n\n{text}",
+    "fr": "Traduis le texte ci-dessous en français pour qu'il se lise naturellement. Donne uniquement la traduction.\n\n{text}",
+}
+
+TRANSLATE_TO = {"en": ("ru", "fr"), "ru": ("en",), "fr": ("en",)}
+
 TOKENS_PER_WORD = {"en": 1.6, "ru": 2.6, "fr": 2.0}
 PREAMBLE = re.compile(r"^(here is|here's|voici|вот )", re.IGNORECASE)
 
@@ -99,15 +178,48 @@ def jobs_for(args, rng: random.Random) -> list[dict]:
                 continue
             if args.share < 1 and rng.random() >= args.share:
                 continue
+            grade = rng.choice(GRADES)
             rid = f'{seed["id"]}-{args.model}'
             if rid in done:
                 continue
             genre = seed.get("genre", "")
             templates = GENERATE_WIKI if genre == "wiki" else GENERATE
-            prompt = templates[seed["lang"]].format(words=seed["words"], hint=seed["hint"], grade=rng.choice(GRADES))
+            prompt = templates[seed["lang"]].format(words=seed["words"], hint=seed["hint"], grade=grade)
             budget = int(seed["words"] * TOKENS_PER_WORD[seed["lang"]] * 1.3) + 64
             jobs.append(
                 {"id": rid, "seed_id": seed["id"], "lang": seed["lang"], "split": seed["split"], "prompt": prompt, "budget": budget, "genre": genre}
+            )
+    elif args.mode == "attack":
+        for row in read_jsonl(Path(args.source)):
+            recursive = args.attacks == ["recursive"]
+            base_ok = row.get("mode") in ("humanize", "attack:bypass", "attack:student") if recursive else row.get("mode") == "generate"
+            if not base_ok or row["generator"] == args.model:
+                continue
+            if args.splits and row["split"] not in args.splits:
+                continue
+            if args.share < 1 and rng.random() >= args.share:
+                continue
+            attack = rng.choice(args.attacks)
+            lang = rng.choice(TRANSLATE_TO[row["lang"]]) if attack == "translate" else row["lang"]
+            grade = rng.choice(GRADES)
+            rid = f'{row["id"]}-{attack}-{args.model}'
+            if rid in done:
+                continue
+            template = TRANSLATE[lang] if attack == "translate" else ATTACKS[attack][lang]
+            words = len(row["text"].split())
+            budget = int(words * max(TOKENS_PER_WORD[lang], TOKENS_PER_WORD[row["lang"]]) * 1.4) + 64
+            jobs.append(
+                {
+                    "id": rid,
+                    "seed_id": row["seed_id"],
+                    "lang": lang,
+                    "split": row["split"],
+                    "prompt": template.format(text=row["text"], grade=grade),
+                    "budget": budget,
+                    "base_generator": row.get("base_generator") or row["generator"],
+                    "genre": row.get("genre", ""),
+                    "mode": f"attack:{attack}",
+                }
             )
     else:
         for row in read_jsonl(Path(args.source)):
@@ -139,7 +251,8 @@ def jobs_for(args, rng: random.Random) -> list[dict]:
 def main():
     parser = argparse.ArgumentParser(description="Generate or humanize AI texts from topic seeds with a local MLX model")
     parser.add_argument("--model", required=True, choices=sorted(MODELS))
-    parser.add_argument("--mode", choices=("generate", "humanize"), default="generate")
+    parser.add_argument("--mode", choices=("generate", "humanize", "attack"), default="generate")
+    parser.add_argument("--attacks", nargs="*", default=["paraphrase", "bypass", "student", "translate"], choices=[*ATTACKS, "translate"])
     parser.add_argument("--seeds", default="dataset/text_gen/seeds.jsonl")
     parser.add_argument("--source", default="dataset/text_gen/ai.jsonl", help="generated texts to humanize")
     parser.add_argument("--out", default="dataset/text_gen/ai.jsonl")
@@ -184,7 +297,7 @@ def main():
                     "lang": job["lang"],
                     "split": job["split"],
                     "generator": args.model,
-                    "mode": args.mode,
+                    "mode": job.get("mode", args.mode),
                     "temperature": temp,
                     "text": body,
                 }

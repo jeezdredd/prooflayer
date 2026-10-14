@@ -14,12 +14,14 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, get_
 
 from analyzers.management.commands.eval_text_detectors import quantile
 from analyzers.text.classifier import TextClassifier
+from analyzers.text.noise import add_noise
 from analyzers.text.normalize import normalize_for_model
 
 LANGS = ("en", "ru", "fr")
 MIN_CROP = 64
 OUT_OF_DOMAIN_HUMAN = ("wiki-pre2022",)
 STRICT_STEP = 0.05
+NOISE_SHARE = 0.3
 
 
 def read_rows(path: Path) -> list[dict]:
@@ -87,7 +89,13 @@ class Command(BaseCommand):
         tokenizer = AutoTokenizer.from_pretrained(opts["base"])
         model = AutoModelForSequenceClassification.from_pretrained(opts["base"], num_labels=2).to(opts["device"])
         body = opts["max_len"] - 2
-        encoded = [tokenizer(normalize_for_model(r["text"]), add_special_tokens=False)["input_ids"] for r in rows]
+
+        def encode(text):
+            return tokenizer(normalize_for_model(text), add_special_tokens=False)["input_ids"]
+
+        noise_rng = random.Random(opts["seed"])
+        encoded = [encode(r["text"]) for r in rows]
+        noisy = [encode(add_noise(r["text"], noise_rng)) for r in rows]
         groups = Counter((r["lang"], r["label"]) for r in rows)
         weights = [1.0 / groups[(r["lang"], r["label"])] for r in rows]
         self.stdout.write(f"train rows {len(rows)} groups {dict(groups)}")
@@ -95,7 +103,7 @@ class Command(BaseCommand):
         def collate(indices):
             seqs = []
             for i in indices:
-                ids = encoded[i]
+                ids = noisy[i] if random.random() < NOISE_SHARE else encoded[i]
                 length = random.randint(min(len(ids), MIN_CROP), min(len(ids), body))
                 start = random.randint(0, len(ids) - length)
                 seqs.append(tokenizer.build_inputs_with_special_tokens(ids[start : start + length]))
@@ -208,7 +216,7 @@ class Command(BaseCommand):
             if s["source"].startswith("textsight"):
                 key = "textsight-2026"
             elif s["mode"]:
-                key = f'{s["mode"]}:{key}' if s["mode"] in ("generate", "humanize") else s["mode"]
+                key = f'{s["mode"]}:{key}' if s["mode"] in ("generate", "humanize") or s["mode"].startswith("attack:") else s["mode"]
                 if s["source"] == "fresh-wiki":
                     key = f"wiki-{key}"
             else:

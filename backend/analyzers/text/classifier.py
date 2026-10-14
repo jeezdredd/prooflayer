@@ -1,15 +1,22 @@
 import math
+import re
 import threading
 from dataclasses import dataclass
 
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from analyzers.text.language import sentences
 from analyzers.text.normalize import normalize_for_model
 
 MAX_TOKENS = 512
 MAX_WINDOWS = 4
 MIN_WINDOW_TOKENS = 32
+SEGMENT_MIN_WORDS = 40
+SEGMENT_SENTENCES = 3
+MAX_SEGMENTS = 12
+SEGMENT_BATCH = 8
+PARAGRAPH = re.compile(r"\n\s*\n")
 
 
 @dataclass
@@ -21,6 +28,23 @@ class ClassifierScore:
     @property
     def probability(self) -> float:
         return 1 / (1 + math.exp(-self.score))
+
+
+def split_segments(text: str) -> list[str]:
+    parts = [p.strip() for p in PARAGRAPH.split(text) if p.strip()]
+    if len(parts) < 2:
+        sents = sentences(text)
+        parts = [" ".join(sents[i : i + SEGMENT_SENTENCES]) for i in range(0, len(sents), SEGMENT_SENTENCES)]
+    merged: list[str] = []
+    for part in parts:
+        if merged and len(merged[-1].split()) < SEGMENT_MIN_WORDS:
+            merged[-1] = f"{merged[-1]} {part}"
+        else:
+            merged.append(part)
+    if len(merged) > 1 and len(merged[-1].split()) < SEGMENT_MIN_WORDS:
+        tail = merged.pop()
+        merged[-1] = f"{merged[-1]} {tail}"
+    return merged[:MAX_SEGMENTS]
 
 
 def pick_windows(chunks: list, limit: int = MAX_WINDOWS) -> list:
@@ -52,6 +76,14 @@ class TextClassifier:
         batch = self.tokenizer.pad({"input_ids": encoded}, return_tensors="pt").to(self.device)
         logits = self.model(**batch).logits.float()
         return (logits[:, 1] - logits[:, 0]).tolist()
+
+    def segment_margins(self, segments: list[str]) -> list[float]:
+        body = self.max_tokens - 2
+        chunks = [ids[:body] for ids in (self.token_ids(s) for s in segments)]
+        out: list[float] = []
+        for i in range(0, len(chunks), SEGMENT_BATCH):
+            out.extend(self.margins(chunks[i : i + SEGMENT_BATCH]))
+        return out
 
     def score(self, text: str) -> ClassifierScore:
         ids = self.token_ids(text)

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 TEXT_LIMIT = 200_000
 MIN_TOKENS = 120
+SEGMENT_EXCERPT = 240
 
 _state = {"calibration": None, "dir": None}
 
@@ -76,7 +77,8 @@ class TextClassifierAnalyzer(BaseAnalyzer):
         if entry is None:
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "language not calibrated"})
         try:
-            result = classifier.get_classifier(directory).score(text)
+            model = classifier.get_classifier(directory)
+            result = model.score(text)
         except ValueError:
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "text is empty", "language": lang.code})
         except OSError as exc:
@@ -96,6 +98,12 @@ class TextClassifierAnalyzer(BaseAnalyzer):
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
         ai_probability = round(probability(result.score, entry["knots"]), 4)
         evidence["ai_probability"] = ai_probability
+        segments = classifier.split_segments(text)
+        if len(segments) >= 2:
+            margins = model.segment_margins(segments)
+            probs = [round(probability(m, entry["knots"]), 3) for m in margins]
+            evidence["segments"] = [{"excerpt": s[:SEGMENT_EXCERPT], "ai_probability": p} for s, p in zip(segments, probs)]
+            evidence["segment_spread"] = round(max(probs) - min(probs), 3)
         confidence = round(abs(ai_probability - 0.5) * 2, 4)
         if strict is not None and result.score >= strict:
             evidence["finding"] = "writing pattern scores above every human text in calibration"

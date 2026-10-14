@@ -120,3 +120,19 @@ Two more **context members** (`aggregator.CONTEXT_ANALYZERS`, never in the vote)
   essay, narrative, retelling, literary analysis, description, report, letter or poem (else general
   text), with the cues shown to the teacher. A report with no sources gets a note; an essay or a
   retelling without sources is normal.
+
+## Per-passage scores and attack-robust training (2026-10-14)
+
+- `text_classifier` evidence now carries `segments` (paragraphs, or groups of three sentences, merged
+  to at least 40 words, up to 12) with their own `ai_probability` through the same knots, and
+  `segment_spread`. The report draws a bar per passage and says when some passages read far more
+  machine-like than others (spread >= 0.5). Display only: passage-level calibration is not done, so
+  it never changes the verdict.
+- Training data: `generate_text_ai.py --mode attack` writes humanizer-style rewrites
+  (`attack:paraphrase` QuillBot-like, `attack:bypass` StealthGPT/Undetectable-like perplexity and
+  burstiness prompt, `attack:student`, `attack:translate` en<->ru/fr, `attack:recursive` test only).
+  `build_text_train` strips chat wrappers ("Okay, here's an essay...:", "Would you like me to...")
+  that leaked into ~270 gemma generations and made AI rows trivially separable.
+- `train_text_classifier` applies symmetric noise (typos, lowercase, stripped punctuation) to 30% of
+  crops of both classes. v3 measured: lowercase dropped en AI recall 96% -> 71%, stripped punctuation
+  96% -> 46% (ru 98% -> 69%); human flags did not rise.

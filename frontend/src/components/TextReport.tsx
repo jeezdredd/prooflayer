@@ -44,6 +44,8 @@ interface CitationFormat {
   issue_count: number;
 }
 
+const SEGMENT_SPREAD_ALERT = 0.5;
+
 const KIND_LABEL: Record<string, string> = {
   doi: "DOI",
   arxiv: "arXiv",
@@ -74,7 +76,11 @@ export default function TextReport({ submission }: { submission: Submission }) {
   const citations = byName(submission, "text_citations");
   const genre = byName(submission, "text_genre");
   const shadow = byName(submission, "text_shadow");
-  if (!evasion && !grade && !style && !citations && !genre && !shadow) return null;
+  const classifierResult = byName(submission, "text_classifier");
+  if (!evasion && !grade && !style && !citations && !genre && !shadow && !classifierResult) return null;
+  const cl = (classifierResult?.evidence ?? {}) as Evidence;
+  const segments = (cl.segments as { excerpt: string; ai_probability: number }[] | undefined) ?? [];
+  const spread = typeof cl.segment_spread === "number" ? cl.segment_spread : 0;
   const sh = (shadow?.evidence ?? {}) as Evidence;
   const shadowPairs = (sh.pairs as { student: string; ai: string; similarity: number }[] | undefined) ?? [];
   const ge = (genre?.evidence ?? {}) as Evidence;
@@ -189,6 +195,21 @@ export default function TextReport({ submission }: { submission: Submission }) {
           ) : (
             <Row tone="ok" title={`Does not follow the ${String(sh.answers_compared ?? "")} AI answers to this class's assignments`} />
           )
+        )}
+        {segments.length >= 2 && (
+          <Row tone={spread >= SEGMENT_SPREAD_ALERT ? "alert" : "muted"} title={spread >= SEGMENT_SPREAD_ALERT ? "Some passages read far more machine-like than the rest" : "Passages read alike"}>
+            <div className="mt-1 space-y-1.5">
+              {segments.map((s, i) => (
+                <div key={i} className="grid grid-cols-[3rem_1fr] gap-2 items-start">
+                  <div className="mt-1.5 h-1 bg-[var(--line-strong)] relative">
+                    <span className={`absolute inset-y-0 left-0 ${s.ai_probability >= 0.75 ? "bg-signal-blood" : s.ai_probability >= 0.45 ? "bg-signal-amber" : "bg-signal-sage"}`} style={{ width: `${Math.round(s.ai_probability * 100)}%` }} />
+                  </div>
+                  <div className={s.ai_probability >= 0.75 ? "text-ink-100" : "text-ink-500"}>{s.excerpt}{s.excerpt.length >= 240 ? "..." : ""}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-1.5 text-ink-600">Per-passage scores are indicative and do not change the verdict.</div>
+          </Row>
         )}
         {phrases.length >= 3 && (
           <Row tone="muted" title="Stock phrases common in chatbot writing">

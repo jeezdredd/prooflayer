@@ -22,6 +22,13 @@ SPLITS = ("train", "calib", "test")
 FAMILY_SHARE = {("en", 0, "daigt"): 0.6}
 COLING_EN_HUMAN_SHARE = 0.15
 PRIORITY_SOURCES = {"wiki-pre2022"}
+TEST_ONLY_MODES = {"attack:recursive"}
+CHAT_TAIL = re.compile(
+    r"^(would you like|do you want|let me know|i hope|hope this|notes?:|word count|\(word count|feel free|is there anything|"
+    r"хотите|надеюсь|примечание|souhaitez|n.h[ée]site|j.esp[èe]re|remarque)",
+    re.IGNORECASE,
+)
+PARAGRAPH = re.compile(r"\n\s*\n")
 
 
 def row(rid, lang, split, label, source, text, generator="", mode=""):
@@ -31,6 +38,19 @@ def row(rid, lang, split, label, source, text, generator="", mode=""):
 def latin_share(text: str) -> float:
     letters = [c for c in text if c.isalpha()]
     return sum(c.isascii() for c in letters) / len(letters) if letters else 0.0
+
+
+def is_fresh(mode: str) -> bool:
+    return mode in ("generate", "humanize") or mode.startswith("attack:")
+
+
+def strip_chat_wrapper(text: str) -> str:
+    parts = [p.strip() for p in PARAGRAPH.split(text.strip()) if p.strip()]
+    if len(parts) > 1 and parts[0].endswith(":") and len(parts[0].split()) < 40:
+        parts = parts[1:]
+    while len(parts) > 1 and CHAT_TAIL.match(parts[-1]):
+        parts = parts[:-1]
+    return "\n\n".join(parts)
 
 
 def side_split(key: str) -> str:
@@ -71,7 +91,7 @@ class Command(BaseCommand):
         for split in SPLITS:
             rows = pool[split]
             rng.shuffle(rows)
-            rows.sort(key=lambda r: r["mode"] not in ("generate", "humanize") and r["source"] not in PRIORITY_SOURCES)
+            rows.sort(key=lambda r: not is_fresh(r["mode"]) and r["source"] not in PRIORITY_SOURCES)
             cap = {"train": opts["train_cap"], "calib": opts["calib_cap"]}.get(split)
             taken = Counter()
             for r in rows:
@@ -97,7 +117,7 @@ class Command(BaseCommand):
                 for r in rows:
                     fh.write(json.dumps(r, ensure_ascii=False) + "\n")
             summary[split] = {f"{lang}/{'ai' if label else 'human'}": n for (lang, label), n in sorted(Counter((r["lang"], r["label"]) for r in rows).items())}
-            summary[f"{split}:fresh"] = dict(Counter(r["generator"] for r in rows if r["mode"] in ("generate", "humanize")))
+            summary[f"{split}:fresh"] = dict(Counter(r["mode"] for r in rows if is_fresh(r["mode"])))
         self.stdout.write(json.dumps(summary, indent=1))
 
     def _legacy(self, raw: Path, pool: dict):
@@ -148,9 +168,9 @@ class Command(BaseCommand):
             return
         for r in map(json.loads, open(gen / "ai.jsonl")):
             heldout = r["generator"] in HELDOUT_GENERATORS or r.get("base_generator") in HELDOUT_GENERATORS
-            if heldout and r["split"] != "test":
+            if (heldout or r["mode"] in TEST_ONLY_MODES) and r["split"] != "test":
                 continue
-            text = strip_hint(r["text"], hints.get(r["seed_id"], ""))
+            text = strip_hint(strip_chat_wrapper(r["text"]), hints.get(r["seed_id"], ""))
             if len(text.split()) < 60 or (r["lang"] == "ru" and latin_share(text) > 0.3):
                 continue
             source = "fresh-wiki" if r.get("genre") == "wiki" else "fresh"

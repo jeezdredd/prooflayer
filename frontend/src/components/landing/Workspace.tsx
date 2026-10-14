@@ -349,7 +349,7 @@ const FEATURES: Feature[] = [
   {
     id: "writing", group: "teach", Icon: PenLine, title: "AI writing check", to: "/pricing",
     line: "A classifier trained on human and machine writing in ru, en and fr, humanized rewrites included.",
-    facts: ["Flags 91-100% of AI text on held-out sets, including a model it never saw", "2-4% of human essays get a flag, none get convicted by it alone", "Per-part scores in the evidence show which section reads as machine text"],
+    facts: ["Flags 91-100% of AI text on held-out sets, including a model it never saw", "2-4% of human essays get a flag, none get convicted by it alone", "Every passage gets its own score, so a pasted section stands out"],
     preview: WRITING,
   },
   {

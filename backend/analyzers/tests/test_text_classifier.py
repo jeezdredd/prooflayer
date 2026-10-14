@@ -1,15 +1,17 @@
 import json
 import math
+import random
 from unittest import mock
 
 import pytest
 
 from analyzers.implementations import text_classifier
 from analyzers.implementations.text_classifier import TextClassifierAnalyzer, load_calibration, probability
-from analyzers.management.commands.build_text_train import latin_share, strip_hint
+from analyzers.management.commands.build_text_train import is_fresh, latin_share, strip_chat_wrapper, strip_hint
 from analyzers.management.commands.train_text_classifier import auc_high, knots
 from analyzers.text import classifier
-from analyzers.text.classifier import ClassifierScore, TextClassifier, pick_windows
+from analyzers.text.classifier import ClassifierScore, TextClassifier, pick_windows, split_segments
+from analyzers.text.noise import NOISES, add_noise, lowercase, strip_punct, typos
 from analyzers.text.normalize import normalize_for_model
 
 ESSAY_EN = (
@@ -105,6 +107,44 @@ class TestTrainingHelpers:
         assert latin_share("123 !!") == 0.0
 
 
+class TestChatWrapper:
+    def test_drops_assistant_preamble_and_offer(self):
+        text = (
+            "Okay, here's an essay responding to the prompt, written in the style of an 11th-grade student:\n\n"
+            "Phones distract drivers.\n\nWe should ban them.\n\n"
+            "Would you like me to revise this in a different style?"
+        )
+        assert strip_chat_wrapper(text) == "Phones distract drivers.\n\nWe should ban them."
+
+    def test_keeps_text_without_wrapper(self):
+        text = "The plan had three parts:\n\nFirst we cleaned the yard."
+        assert strip_chat_wrapper("One paragraph only:") == "One paragraph only:"
+        assert strip_chat_wrapper(text) == "First we cleaned the yard."
+        assert strip_chat_wrapper("Hope this helps.") == "Hope this helps."
+
+    def test_attack_rows_count_as_fresh(self):
+        assert is_fresh("attack:bypass") and is_fresh("humanize") and is_fresh("generate")
+        assert not is_fresh("") and not is_fresh("char:typos")
+
+
+class TestNoise:
+    def test_typos_change_some_long_words_only(self):
+        noisy = typos(ESSAY_EN, random.Random(1), rate=1.0)
+        assert noisy != ESSAY_EN
+        assert len(noisy.split(" ")) == len(ESSAY_EN.split(" "))
+        assert all(a == b for a, b in zip(ESSAY_EN.split(" "), noisy.split(" ")) if len(a) < 4)
+
+    def test_lowercase_and_punctuation(self):
+        assert lowercase("Hello World", random.Random(0)) == "hello world"
+        stripped = strip_punct("One, two; three: four. Five. Six.", random.Random(0))
+        assert "," not in stripped and ";" not in stripped and ":" not in stripped
+        assert stripped.endswith("Six.")
+
+    def test_add_noise_is_reproducible(self):
+        assert add_noise(ESSAY_RU, random.Random(5)) == add_noise(ESSAY_RU, random.Random(5))
+        assert set(NOISES) == {"typos", "lowercase", "strip_punct"}
+
+
 class TestCalibration:
     def test_probability_interpolates_and_clamps(self):
         points = [(0.1, 0.05), (0.9, 0.75)]
@@ -134,11 +174,28 @@ def _essay(tmp_path, text=ESSAY_EN):
     return str(path)
 
 
-def _run(tmp_path, score, tokens=300, text=ESSAY_EN):
+def _run(tmp_path, score, tokens=300, text=ESSAY_EN, segment_scores=None):
     model = mock.Mock()
     model.score.return_value = ClassifierScore(score=score, windows=[score], tokens=tokens)
+    model.segment_margins.side_effect = lambda segs: (segment_scores or [score] * len(segs))[: len(segs)]
     with mock.patch.object(classifier, "get_classifier", return_value=model):
         return TextClassifierAnalyzer().analyze(_essay(tmp_path, text), {"mime_type": "text/plain"})
+
+
+class TestSegments:
+    def test_paragraphs_become_segments_and_short_ones_merge(self):
+        long_a = " ".join(["Alpha words here."] * 15)
+        long_b = " ".join(["Beta words here."] * 15)
+        assert split_segments(f"{long_a}\n\nShort.\n\n{long_b}") == [long_a, f"Short. {long_b}"]
+        assert split_segments(f"{long_a}\n\nShort tail.") == [f"{long_a} Short tail."]
+
+    def test_single_paragraph_splits_by_sentences(self):
+        text = " ".join(f"Sentence number {i} has a few more words in it to count." for i in range(12))
+        segments = split_segments(text)
+        assert len(segments) >= 2 and all(len(s.split()) >= 40 for s in segments)
+
+    def test_short_text_is_one_segment(self):
+        assert len(split_segments("One short sentence. Another one.")) == 1
 
 
 @pytest.mark.usefixtures("model_dir")
@@ -152,6 +209,13 @@ class TestAnalyzer:
         out = _run(tmp_path, 2.5)
         assert out.verdict == "suspicious"
         assert out.evidence["ai_probability"] < 0.9
+
+    def test_mixed_text_reports_segments_without_changing_the_verdict(self, tmp_path):
+        text = " ".join(f"Sentence number {i} has a few more words in it to count." for i in range(12))
+        out = _run(tmp_path, -5.0, text=text, segment_scores=[-5.0, 4.0, -5.0, -5.0])
+        assert out.verdict == "authentic"
+        probs = [s["ai_probability"] for s in out.evidence["segments"]]
+        assert max(probs) > 0.9 and out.evidence["segment_spread"] > 0.8
 
     def test_human_range_is_authentic(self, tmp_path):
         out = _run(tmp_path, -5.0)
