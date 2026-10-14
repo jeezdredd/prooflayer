@@ -204,7 +204,7 @@ export default function Layout() {
       <ShaderBackground variant="noir" />
 
       {/* MOBILE HAMBURGER BAR */}
-      <div className="lg:hidden sticky top-0 z-40 backdrop-blur-xl bg-ink-950/85 border-b border-white/5 h-14 flex items-center justify-between px-4 relative">
+      <div className="lg:hidden sticky top-0 z-40 backdrop-blur-xl bg-ink-950/50 border-b border-white/5 h-14 flex items-center justify-between px-4 relative">
         <Link to="/" className="font-display text-2xl text-ink-50 leading-none">
           Proof<span className="italic text-iris">Layer</span>
         </Link>
@@ -219,7 +219,7 @@ export default function Layout() {
       </div>
 
       {/* SIDEBAR (desktop) */}
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-[240px] z-40 backdrop-blur-xl bg-ink-950/85 border-r border-white/5 flex-col">
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-[240px] z-40 backdrop-blur-xl bg-ink-950/50 border-r border-white/5 flex-col">
         <NavRail />
         <AgentFooter onLogout={handleLogout} />
       </aside>

@@ -38,3 +38,10 @@ class ApiKeyRateThrottle(SimpleRateThrottle):
         if not isinstance(key, ApiKey):
             return None
         return self.cache_format % {"scope": self.scope, "ident": f"key:{key.pk}"}
+
+
+class PublicReadThrottle(SimpleRateThrottle):
+    scope = "public"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}

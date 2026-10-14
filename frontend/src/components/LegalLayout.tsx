@@ -12,7 +12,7 @@ interface Props {
 export default function LegalLayout({ title, updated, children }: Props) {
   return (
     <div className="min-h-screen bg-ink-950">
-      <header className="border-b border-white/5 bg-ink-950/90 backdrop-blur-xl sticky top-0 z-30">
+      <header className="border-b border-white/5 bg-ink-950/50 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-3xl mx-auto px-6 h-12 flex items-center justify-between">
           <Link to="/" className="font-display text-lg text-ink-50 leading-none">
             Proof<span className="italic text-iris">Layer</span>

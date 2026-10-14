@@ -197,7 +197,7 @@ export default function StatusPage() {
   const { data, dataUpdatedAt } = useQuery<SystemStatus>({
     queryKey: ["system-status"],
     queryFn: () => client.get("/system/status/").then((r) => r.data),
-    refetchInterval: 5000,
+    refetchInterval: 15000,
     staleTime: 0,
   });
 

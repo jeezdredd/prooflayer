@@ -21,6 +21,7 @@ from analyzers.implementations.custom_detector import training_meta
 from analyzers.models import RetrainRun, TrainingSample
 from analyzers.roster import describe_drift, roster_drift
 from api.models import Feedback
+from common.throttling import PublicReadThrottle
 from content.models import Submission
 from users.models import EmailLog
 
@@ -328,6 +329,8 @@ def _training_queue(media_type: str = "image") -> dict:
 
 
 TIMING_CACHE_KEY = "status:verdict_timing"
+STATUS_CACHE_KEY = "status:payload"
+STATUS_CACHE_SECONDS = 10
 TIMING_MIN_SAMPLES = 20
 
 
@@ -355,8 +358,12 @@ def _verdict_timing() -> dict[str, Any]:
 
 class SystemStatusView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [PublicReadThrottle]
 
     def get(self, request):
+        cached = cache.get(STATUS_CACHE_KEY)
+        if cached is not None:
+            return Response(cached)
         services = {
             "api": {"status": "ok"},
             "database": _probe_db(),
@@ -368,11 +375,13 @@ class SystemStatusView(APIView):
             "analyzers": _probe_analyzers(),
         }
         all_ok = all(s.get("status") in ("ok", "skip") for s in services.values())
-        return Response({
+        payload = {
             "overall": "operational" if all_ok else "degraded",
             "checked_at": time.time(),
             "services": services,
             "last_retrain": _last_retrain(),
             "training": _training_queue("image"),
             "verdict_timing": _verdict_timing(),
-        })
+        }
+        cache.set(STATUS_CACHE_KEY, payload, STATUS_CACHE_SECONDS)
+        return Response(payload)

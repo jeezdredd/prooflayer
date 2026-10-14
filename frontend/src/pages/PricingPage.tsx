@@ -132,7 +132,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-ink-950">
       {!isAuthenticated ? (
-        <header className="sticky top-0 z-30 backdrop-blur-xl bg-ink-950/90 border-b border-white/5">
+        <header className="sticky top-0 z-30 backdrop-blur-xl bg-ink-950/30 border-b border-white/5">
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
             <Link to="/" className="font-display text-xl text-ink-50 leading-none">
               Proof<span className="italic text-iris">Layer</span>

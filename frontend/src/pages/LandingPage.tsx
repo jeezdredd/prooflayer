@@ -159,12 +159,12 @@ export default function LandingPage() {
 
       {/* HEADER */}
       <motion.header
-        className="sticky top-0 z-30 backdrop-blur-xl bg-ink-950/80 border-b border-[var(--line)]"
+        className="sticky top-0 z-30 backdrop-blur-xl bg-ink-950/30 border-b border-white/5"
         initial={{ y: -48, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-10 h-16 flex items-center justify-between">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-10 h-20 flex items-center justify-between gap-6">
           <Link to="/" className="flex items-end gap-2">
             <span className="font-display text-[1.75rem] leading-none text-ink-50 tracking-tight">
               Proof<span className="italic text-iris">Layer</span>
@@ -173,7 +173,7 @@ export default function LandingPage() {
               / {t("Forensic Lab")}
             </span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-5">
             <LangSwitch />
             {user ? (
               <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400 hidden md:inline">
@@ -244,7 +244,7 @@ export default function LandingPage() {
               <motion.div
                 variants={fadeUp}
                 transition={{ duration: 0.6 }}
-                className="mt-10 flex flex-wrap items-center gap-3"
+                className="mt-12 flex flex-wrap items-center gap-4"
               >
                 <MagneticBtn to={authedCta} className="btn-forensic group text-sm">
                   <span>{t("Submit Evidence")}</span>
@@ -258,7 +258,7 @@ export default function LandingPage() {
                 <a href="https://api.prooflayer.cloud/api/docs/" className="btn-ghost">
                   {t("API Reference")}
                 </a>
-                <div className="flex items-center gap-2 ml-2 text-[11px] font-mono text-ink-500">
+                <div className="flex items-center gap-2 ml-3 text-[11px] font-mono text-ink-500">
                   <span className="w-1.5 h-1.5 bg-signal-sage rounded-full pulse-dot" />
                   {t("Free plan, no card")}
                 </div>
@@ -273,7 +273,7 @@ export default function LandingPage() {
               transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
             >
               <TiltCard>
-                <div className="case-card crop-marks p-7 relative">
+                <div className="case-card crop-marks p-8 relative">
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
                       <span className="relative inline-flex">

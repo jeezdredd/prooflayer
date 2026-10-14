@@ -37,6 +37,7 @@ export default {
         },
         paper: "var(--paper)",
       },
+      borderRadius: { sm: "8px", DEFAULT: "10px", md: "12px", lg: "14px", xl: "18px", "2xl": "22px" },
       borderColor: { iris: tint("signal-violet") },
       backgroundColor: { iris: tint("signal-violet") },
       ringColor: { iris: tint("signal-violet") },

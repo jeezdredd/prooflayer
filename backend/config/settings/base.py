@@ -122,12 +122,14 @@ REST_FRAMEWORK = {
         "common.throttling.ApiKeyRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "20/hour",
+        "anon": "200/hour",
+        "public": "1200/hour",
         "user": "500/hour",
         "upload": "30/hour",
         "register": "5/hour",
         "login": "20/hour",
         "resend_verification": "5/hour",
+        "password_reset": "5/hour",
         "widget": "120/hour",
         "api": "120/min",
         "batch": "10/hour",
@@ -223,6 +225,7 @@ else:
     EMAIL_MODE = "console"
 EMAIL_CONFIGURED = EMAIL_MODE != "console"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+PUBLIC_API_URL = (os.environ.get("PUBLIC_API_URL") or os.environ.get("VITE_API_URL") or "http://localhost:8000/api/v1").rstrip("/")
 
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")
 PADDLE_WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "")

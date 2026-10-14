@@ -107,13 +107,13 @@
   .surface {
     background: #ffffff;
     border: 1px solid var(--line);
-    border-radius: 4px;
+    border-radius: 16px;
   }
 
   .surface-soft {
     background: var(--ink-900);
     border: 1px solid var(--line);
-    border-radius: 4px;
+    border-radius: 16px;
   }
 
   .glass {
@@ -139,7 +139,7 @@
     backdrop-filter: blur(28px) saturate(160%);
     -webkit-backdrop-filter: blur(28px) saturate(160%);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    border-radius: 16px;
     transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   }
 
@@ -165,6 +165,7 @@
   }
   .crop-marks::before,
   .crop-marks::after {
+    display: none;
     content: "";
     position: absolute;
     width: 12px;
@@ -287,7 +288,7 @@
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-weight: 500;
-    padding: 0.7rem 1.1rem;
+    padding: 0.8rem 1.4rem;
     border: 1px solid var(--signal-amber);
     background: transparent;
     color: var(--signal-amber);
@@ -298,7 +299,7 @@
     gap: 0.5rem;
     overflow: hidden;
     isolation: isolate;
-    border-radius: 2px;
+    border-radius: 999px;
   }
   .btn-forensic::before {
     content: "";
@@ -344,14 +345,14 @@
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    padding: 0.6rem 0.95rem;
+    padding: 0.75rem 1.3rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(8px);
     color: var(--ink-200);
     transition: all 0.2s ease;
     cursor: pointer;
-    border-radius: 2px;
+    border-radius: 999px;
   }
   .btn-ghost:hover {
     border-color: rgba(255, 255, 255, 0.25);
@@ -372,7 +373,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    background: rgba(255, 255, 255, 0.6);
+    background: color-mix(in srgb, currentColor 10%, transparent);
   }
 
   /* ========== GRADIENT TEXT ========== */
@@ -409,7 +410,7 @@
     font-size: 0.875rem;
     color: var(--ink-100);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    border-radius: 2px;
+    border-radius: 10px;
   }
   .input-forensic:focus {
     outline: none;
@@ -431,7 +432,7 @@
     background: rgba(5, 6, 8, 0.6);
     color: var(--ink-100);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 2px;
+    border-radius: 10px;
   }
   select:not([class*="bg-"]) option {
     background: var(--ink-900);
@@ -511,4 +512,14 @@
 @keyframes loader-color3 {
   0%, 50%, 100% { fill: #FF715E; }
   25%, 75%      { fill: #103573; }
+}
+
+:where(button, a, label, span, div, section, article, aside, li, pre, form, details, input, select, textarea, img, video)[class~="border"]:where(:not([class*="rounded"])) {
+  border-radius: 12px;
+}
+:where(button)[class*="bg-"]:where(:not([class*="rounded"])) {
+  border-radius: 10px;
+}
+:where(input, select, textarea):where(:not([class*="rounded"])) {
+  border-radius: 10px;
 }

@@ -11,6 +11,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.throttling import PublicReadThrottle
+
 from .models import Subscription, get_or_create_subscription, uploads_this_month
 from .plans import INTERVALS, PLANS, catalog, price_id, tier_for_price
 from .serializers import SubscriptionSerializer
@@ -42,6 +44,7 @@ class SubscriptionView(APIView):
 class PlanCatalogView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [PublicReadThrottle]
 
     def get(self, request):
         return Response({"plans": catalog(), "intervals": list(INTERVALS)})
