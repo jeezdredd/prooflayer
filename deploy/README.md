@@ -71,6 +71,22 @@ ssh ubuntu-dev "/srv/_platform/deploy.sh prooflayer"
 make deploy-server
 ```
 
+## Maintenance page (Cloudflare Worker)
+
+`cloudflare/maintenance/` is a Worker in front of `prooflayer.cloud`, `classroom.prooflayer.cloud` and
+`api.prooflayer.cloud`. It passes every request through untouched. When the origin is unreachable
+(tunnel down 1033/530, 502, 504, 52x) it answers 503 with a branded "we are updating the system" page
+in Russian or English (by `Accept-Language`) that reloads itself every 60 seconds. API hosts get JSON
+`{"code": "maintenance", "detail": "...", "retry_after": 60}` instead of HTML.
+
+```bash
+make maintenance-worker   # first deploy; asks for a Cloudflare login once
+make maintenance-on       # force the page for planned work
+make maintenance-off      # back to automatic mode
+```
+
+Workers free plan: 100k requests a day.
+
 ## Files in this directory
 
 | File | Purpose |

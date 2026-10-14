@@ -1,0 +1,14 @@
+name = "prooflayer-maintenance"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+
+routes = [
+  { pattern = "prooflayer.cloud/*", zone_name = "prooflayer.cloud" },
+  { pattern = "www.prooflayer.cloud/*", zone_name = "prooflayer.cloud" },
+  { pattern = "classroom.prooflayer.cloud/*", zone_name = "prooflayer.cloud" },
+  { pattern = "api.prooflayer.cloud/*", zone_name = "prooflayer.cloud" },
+]
+
+[vars]
+MAINTENANCE = "0"

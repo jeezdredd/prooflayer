@@ -14,7 +14,7 @@ endif
 .PHONY: help dev down logs ps build seed sh fe-sh \
         deploy-server deploy-bootstrap deploy-cf deploy-redeploy \
         seed-server seed-analyzers seed-analyzers-host seed-analyzers-server \
-        roster-check ship-retrained ship-text wiki
+        roster-check ship-retrained ship-text wiki maintenance-worker maintenance-on maintenance-off
 
 help:
 	@echo "ProofLayer Makefile"
@@ -41,6 +41,9 @@ help:
 	@echo "  make deploy-cf         ship + run cf-tunnel-setup.sh (interactive)"
 	@echo "  make deploy-server     deploy ProofLayer from this checkout"
 	@echo "  make deploy-redeploy   force redeploy without code change"
+	@echo "  make maintenance-worker  deploy the Cloudflare Worker that shows a maintenance page when the server is down"
+	@echo "  make maintenance-on    show the maintenance page now, even if the server is up"
+	@echo "  make maintenance-off   back to normal: maintenance page only when the server is down"
 	@echo ""
 	@echo "Misc:"
 	@echo "  make wiki              open Obsidian wiki vault in Finder"
@@ -102,6 +105,15 @@ deploy-server:
 	scp deploy/deploy.sh $(SERVER):~
 	$(SSH) "sudo install -o seb0107 -m 0755 ~/deploy.sh /srv/_platform/deploy.sh"
 	$(SSH) "/srv/_platform/deploy.sh prooflayer"
+
+maintenance-worker:
+	cd deploy/cloudflare/maintenance && npx --yes wrangler@4 deploy
+
+maintenance-on:
+	cd deploy/cloudflare/maintenance && npx --yes wrangler@4 deploy --var MAINTENANCE:1
+
+maintenance-off:
+	cd deploy/cloudflare/maintenance && npx --yes wrangler@4 deploy --var MAINTENANCE:0
 
 deploy-redeploy:
 	$(SSH) "/srv/_platform/deploy.sh prooflayer"
