@@ -90,6 +90,7 @@ function AppRoutes() {
             <Route path="/embed" element={<EmbedPage />} />
             <Route path="/results/:id" element={<ResultPage />} />
             <Route path="/status" element={<StatusPage />} />
+            <Route path="/stack" element={<CreditsPage />} />
             <Route path="/credits" element={<CreditsPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/feed" element={<FeedPage />} />

@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/developers", label: msg("API"), code: "09", Icon: KeyRound },
   { to: "/pricing", label: msg("Pricing"), code: "10", Icon: CreditCard },
   { to: "/status", label: msg("Status"), code: "11", Icon: Activity },
-  { to: "/credits", label: msg("Credits"), code: "12", Icon: Layers },
+  { to: "/stack", label: msg("Stack"), code: "12", Icon: Layers },
 ];
 
 function Time() {

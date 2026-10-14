@@ -18,7 +18,7 @@ import { msg, t } from "../i18n";
 
 const TribunalBrain = lazy(() => import("../components/landing/TribunalBrain"));
 
-const TRIBUNAL_FALLBACK = "Tribunal 1.6";
+const TRIBUNAL_FALLBACK = "Tribunal 1.6.1";
 
 const ANALYZERS: (BrainMember & { desc: string; Icon: typeof Brain })[] = [
   { code: "01", short: msg("Metadata"), kind: "provenance", name: msg("Metadata & Provenance"), tag: msg("EXIF · PNG params · C2PA"), desc: msg("EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have."), Icon: Fingerprint },

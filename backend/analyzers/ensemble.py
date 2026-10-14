@@ -4,7 +4,7 @@ from analyzers.management.commands.seed_analyzers import ANALYZERS
 
 ENSEMBLE_NAME = "Tribunal"
 ENSEMBLE_SLUG = "tribunal"
-ENSEMBLE_VERSION = "1.6"
+ENSEMBLE_VERSION = "1.6.1"
 
 
 def ensemble_label() -> str:

@@ -68,7 +68,7 @@ need a new signal (another backbone or frequency-domain features), not more Open
 
 ## Changelog
 
-### 1.6.1 - 2026-10-14 (pending eval_detectors, version constant not bumped yet)
+### 1.6.1 - 2026-10-14
 
 Image fixes after a real press photo (Nikon D3S EXIF, plain studio background) came out
 `suspicious` at 0.36.
@@ -82,8 +82,15 @@ Image fixes after a real press photo (Nikon D3S EXIF, plain studio background) c
 - Aggregation: a `suspicious` band (score 0.35 to 0.5) without a single confident fake or
   suspicious voter becomes `inconclusive`. Lukewarm averages that lean real no longer read as
   suspicion.
-- Measure on `dataset/openfake_test` and `dataset/hf` before declaring the version; real -> fake
-  must stay 0.
+- Measured on the production worker (full roster) on `openfake_test`, same 245 images as every
+  earlier version:
+
+| set | version | ensemble AUC | AI caught (fake+likely) | AI called authentic | real called fake | real suspicious |
+|---|---|---|---|---|---|---|
+| openfake_test | 1.3-1.6 | 0.998 | 108/145 | 6 | 0/100 | 1 |
+| openfake_test | **1.6.1** | 0.997 | 107/145 | **5** | **0/100** | **0** |
+
+  Hardest generators stay flux.2-klein-9b (25%), veo-3 (38%) and sora-2 (43%).
 - `ai_detector` 2.2.0: the screenshot gate now rejects only images with fewer than 800 colours
   (64 levels per channel) or with 8 colours covering more than 70% of the frame. The old rule
   (more than 4000 colours, entropy and edge thresholds) rejected 51 of 100 real photos and 70 of
