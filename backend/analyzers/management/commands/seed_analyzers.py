@@ -115,6 +115,13 @@ ANALYZERS = [
         "timeout": 30,
     },
     {
+        "name": "text_shadow",
+        "analyzer_class": "analyzers.implementations.text_signals.TextShadowAnalyzer",
+        "weight": 1.0,
+        "queue": "ml",
+        "timeout": 120,
+    },
+    {
         "name": "audio_spectrogram",
         "analyzer_class": "analyzers.implementations.audio_analyzer.AudioSpectrogramAnalyzer",
         "weight": 2.0,

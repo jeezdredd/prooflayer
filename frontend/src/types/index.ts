@@ -385,6 +385,21 @@ export interface RadarRef {
   student: string;
 }
 
+export interface ShadowSet {
+  id: string;
+  prompt: string;
+  language: string;
+  target: number;
+  status: "pending" | "running" | "done" | "failed";
+  error: string;
+  answers: number;
+  created_at: string;
+}
+
+export interface ShadowSetDetail extends ShadowSet {
+  texts: { variant: string; text: string }[];
+}
+
 export interface ClassRadar {
   days: number;
   submissions: number;

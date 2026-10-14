@@ -21,6 +21,7 @@ const ANALYZER_LABELS: Record<string, string> = {
   text_style: "Style Consistency",
   text_citations: "Ghost Citations",
   text_genre: "Text Type",
+  text_shadow: "Assignment Shadow",
 };
 
 const ANALYZER_CODE: Record<string, string> = {
@@ -42,6 +43,7 @@ const ANALYZER_CODE: Record<string, string> = {
   text_style: "STY",
   text_citations: "CIT",
   text_genre: "GEN",
+  text_shadow: "SHD",
 };
 
 const ANALYZER_WEIGHTS: Record<string, number> = {
@@ -63,6 +65,7 @@ const ANALYZER_WEIGHTS: Record<string, number> = {
   text_style: 2,
   text_citations: 3,
   text_genre: 1,
+  text_shadow: 2,
 };
 
 const ANALYZER_ETA_SECS: Record<string, number> = {
@@ -84,6 +87,7 @@ const ANALYZER_ETA_SECS: Record<string, number> = {
   text_style: 3,
   text_citations: 20,
   text_genre: 1,
+  text_shadow: 4,
 };
 
 const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }> = {

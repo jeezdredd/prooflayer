@@ -147,3 +147,37 @@ class OrgMember(models.Model):
         db_table = "classroom_org_members"
         unique_together = [("organization", "user")]
         ordering = ["joined_at"]
+
+
+class ShadowSet(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        RUNNING = "running", "Running"
+        DONE = "done", "Done"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name="shadow_sets")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    prompt = models.TextField(max_length=2000)
+    language = models.CharField(max_length=8)
+    target = models.PositiveSmallIntegerField(default=8)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "classroom_shadow_sets"
+        ordering = ["-created_at"]
+
+
+class ShadowAnswer(models.Model):
+    shadow_set = models.ForeignKey(ShadowSet, on_delete=models.CASCADE, related_name="answers")
+    text = models.TextField()
+    variant = models.CharField(max_length=120)
+    vectors = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "classroom_shadow_answers"
+        ordering = ["created_at"]

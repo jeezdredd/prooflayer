@@ -8,6 +8,7 @@ from analyzers.text.evasion import scan_docx, scan_text
 from analyzers.text.genre import detect_genre
 from analyzers.text.grade import assess, level_label
 from analyzers.text.language import detect_language
+from classroom.shadow import active_answers, best_match
 from analyzers.text.style import drift, features, phrasebook
 from common.documents import DOCUMENT_MIMES, read_text
 from content.models import Submission
@@ -186,3 +187,33 @@ class TextGenreAnalyzer(BaseAnalyzer):
         genre = detect_genre(text, lang)
         evidence = {**genre.as_evidence(), "language": lang.code, "context_signal": True, "finding": f"reads as a {genre.label}"}
         return AnalysisOutput(confidence=genre.confidence, verdict="inconclusive", evidence=evidence)
+
+
+class TextShadowAnalyzer(BaseAnalyzer):
+    name = "text_shadow"
+    version = "1.0.0"
+
+    def supported_mime_types(self) -> list[str]:
+        return ["text/plain", *DOCUMENT_MIMES]
+
+    def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
+        submission = _submission(metadata)
+        classroom = getattr(submission, "classroom", None)
+        if classroom is None:
+            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "not a class submission"})
+        answers = active_answers(classroom)
+        if not answers:
+            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "no AI answers generated for this class yet"})
+        try:
+            text = _read(file_path, metadata)
+            match = best_match(text, answers)
+        except Exception as exc:
+            return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": f"shadow comparison failed: {exc}"})
+        if match is None:
+            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "text too short to compare"})
+        evidence = {**match, "context_signal": True}
+        if match["flagged"]:
+            evidence["finding"] = "follows the structure of an AI answer to this assignment"
+            return AnalysisOutput(confidence=round(min(0.95, 0.5 + match["share"] / 2), 3), verdict="suspicious", evidence=evidence)
+        evidence["finding"] = "does not follow any AI answer to this class's assignments"
+        return AnalysisOutput(confidence=round(1 - match["share"], 3), verdict="inconclusive", evidence=evidence)

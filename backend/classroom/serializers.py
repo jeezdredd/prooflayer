@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from .access import can_supervise
-from .models import Classroom, Membership
+from .models import Classroom, Membership, ShadowSet
+from .shadow import MAX_TARGET
 
 
 class ClassroomSerializer(serializers.ModelSerializer):
@@ -72,3 +73,14 @@ class ClassSubmissionSerializer(serializers.Serializer):
 
     def get_words(self, obj):
         return ((obj.metadata or {}).get("document") or {}).get("words")
+
+
+class ShadowSetSerializer(serializers.ModelSerializer):
+    answers = serializers.IntegerField(source="answer_count", read_only=True, default=0)
+    target = serializers.IntegerField(min_value=1, max_value=MAX_TARGET, default=8)
+    prompt = serializers.CharField(min_length=15, max_length=2000)
+
+    class Meta:
+        model = ShadowSet
+        fields = ("id", "prompt", "language", "target", "status", "error", "answers", "created_at")
+        read_only_fields = ("id", "language", "status", "error", "answers", "created_at")

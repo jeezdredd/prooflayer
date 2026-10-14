@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  FileSearch, Fingerprint, SearchCheck, Columns2, GraduationCap, Copy, ShieldAlert, Terminal, FolderUp, PenLine, BookCheck,
+  FileSearch, Fingerprint, SearchCheck, Columns2, GraduationCap, Copy, ShieldAlert, Terminal, FolderUp, PenLine, BookCheck, Ghost,
 } from "lucide-react";
 
 type GroupId = "investigate" | "teach" | "build";
@@ -223,6 +223,27 @@ const SOURCES = (
   </div>
 );
 
+const SHADOW = (
+  <div className={MONO}>
+    <PreviewHead left="Assignment shadow · 9B" right="8 AI answers" />
+    <div className="text-ink-500 mb-2">Нужно ли читать книги в эпоху интернета?</div>
+    {[
+      ["Books build imagination in a way screens rarely do.", "Книги развивают воображение так, как экраны не умеют."],
+      ["Reading every day grows the vocabulary for exams.", "Ежедневное чтение расширяет словарный запас."],
+    ].map(([ai, student]) => (
+      <div key={ai} className="py-1.5 border-b border-[var(--line)] last:border-0">
+        <div className="text-ink-200 font-sans text-[12px]">{student}</div>
+        <div className="text-ink-600">AI: {ai}</div>
+      </div>
+    ))}
+    <div className="mt-3 flex items-center gap-2 text-ink-400">
+      <span>62% of sentences, same order</span>
+      <span className="text-ink-700">→</span>
+      <Pill tone="amber">review</Pill>
+    </div>
+  </div>
+);
+
 const ORIGINALITY = (
   <div className={MONO}>
     <PreviewHead left="Originality · essay.docx" right="66% original" />
@@ -330,6 +351,12 @@ const FEATURES: Feature[] = [
     line: "A classifier trained on human and machine writing in ru, en and fr, humanized rewrites included.",
     facts: ["Flags 91-100% of AI text on held-out sets, including a model it never saw", "2-4% of human essays get a flag, none get convicted by it alone", "Per-part scores in the evidence show which section reads as machine text"],
     preview: WRITING,
+  },
+  {
+    id: "shadow", group: "teach", Icon: Ghost, title: "Assignment shadow", to: "/pricing",
+    line: "Paste your assignment and we answer it with AI the way students of different ages would.",
+    facts: ["Every work in the class is compared with those answers sentence by sentence", "Rewording does not hide an argument that follows the AI answer in the same order", "The matching sentences are shown side by side"],
+    preview: SHADOW,
   },
   {
     id: "originality", group: "teach", Icon: Copy, title: "Originality check", to: "/pricing",

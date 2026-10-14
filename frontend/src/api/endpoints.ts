@@ -10,6 +10,8 @@ import type {
   ClassMember,
   ClassStats,
   ClassRadar,
+  ShadowSet,
+  ShadowSetDetail,
   ClassSubmission,
   Classroom,
   BatchDetail,
@@ -240,6 +242,10 @@ export const classrooms = {
   submissions: (id: string, params?: { student?: number; verdict?: string }) =>
     client.get<ClassSubmission[]>(`/classroom/classrooms/${id}/submissions/`, { params }),
   stats: (id: string) => client.get<ClassStats>(`/classroom/classrooms/${id}/stats/`),
+  shadows: (id: string) => client.get<ShadowSet[]>(`/classroom/classrooms/${id}/shadows/`),
+  createShadow: (id: string, prompt: string, target: number) => client.post<ShadowSet>(`/classroom/classrooms/${id}/shadows/`, { prompt, target }),
+  shadowDetail: (id: string, shadowId: string) => client.get<ShadowSetDetail>(`/classroom/classrooms/${id}/shadows/${shadowId}/`),
+  deleteShadow: (id: string, shadowId: string) => client.delete(`/classroom/classrooms/${id}/shadows/${shadowId}/`),
   radar: (id: string, days?: number) => client.get<ClassRadar>(`/classroom/classrooms/${id}/radar/`, { params: days ? { days } : undefined }),
   exportCsv: (id: string) => client.get<Blob>(`/classroom/classrooms/${id}/export.csv/`, { responseType: "blob" }),
 };

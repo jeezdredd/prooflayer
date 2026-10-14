@@ -109,3 +109,18 @@ work, Leave). Verify page shows a "Submit to" picker when the user belongs to an
   >= 0.75 when the earlier median was <= 0.3, or a `text_style` flag.
 
 Read-only, computed on request, never changes a verdict.
+
+## Assignment shadow (2026-10-14)
+
+The teacher pastes an assignment (`POST /classroom/classrooms/<id>/shadows/`, up to 3 sets per class
+per day, 1-12 answers, default 8). `classroom.tasks.build_shadow_set` (queue `ml`) asks the prod
+Ollama model (`SHADOW_MODEL` or `OLLAMA_MODEL`) to answer it as students of four ages in four styles,
+splits each answer into sentences and stores e5 vectors in `ShadowAnswer.vectors`. The language of
+the prompt picks the template (detector, then Cyrillic vs Latin, French hints).
+
+`text_shadow` (context member, queue `ml`) compares a class submission with every answer of the
+class's sets from the last 120 days: share of the work's sentences with a match at cosine >= 0.9 and
+how many of those keep the answer's order. Share >= 0.5 and order >= 0.7 gives `suspicious`, which
+only sends the work to review; evidence carries the three closest sentence pairs. Thresholds are
+conservative and not yet calibrated on real class data. On CPU Ollama (no ROCm yet) a set of 8 takes
+several minutes.

@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Count, Max, Q
 from django.db.models.functions import TruncDate
 from django.http import HttpResponse
@@ -19,9 +20,11 @@ from content.models import Submission
 from users.permissions import IsVerifiedUser
 
 from .access import can_supervise, supervised_q
-from .models import Classroom, Membership
+from .models import Classroom, Membership, ShadowSet
 from .radar import class_radar
-from .serializers import ClassroomSerializer, ClassSubmissionSerializer, MemberSerializer
+from .shadow import DAILY_SETS, prompt_language, sets_today
+from .tasks import build_shadow_set
+from .serializers import ClassroomSerializer, ClassSubmissionSerializer, MemberSerializer, ShadowSetSerializer
 
 FLAGGED_VERDICTS = ("fake", "likely_fake", "suspicious", "needs_review")
 TIMELINE_DAYS = 30
@@ -171,6 +174,39 @@ class ClassroomViewSet(
         except ValueError:
             days = RADAR_DAYS
         return Response({"days": days, **class_radar(classroom, timezone.now() - timedelta(days=days))})
+
+    @action(detail=True, methods=["get", "post"])
+    def shadows(self, request, id=None):
+        classroom = self._owned()
+        if request.method == "GET":
+            sets = ShadowSet.objects.filter(classroom=classroom).annotate(answer_count=Count("answers"))[:50]
+            return Response(ShadowSetSerializer(sets, many=True).data)
+        if sets_today(classroom) >= DAILY_SETS:
+            return Response({"detail": f"Up to {DAILY_SETS} shadow sets per class per day."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        serializer = ShadowSetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        prompt = serializer.validated_data["prompt"]
+        shadow = ShadowSet.objects.create(
+            classroom=classroom,
+            created_by=request.user,
+            prompt=prompt,
+            language=prompt_language(prompt),
+            target=serializer.validated_data["target"],
+        )
+        transaction.on_commit(lambda: build_shadow_set.delay(str(shadow.id)))
+        return Response(ShadowSetSerializer(shadow).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get", "delete"], url_path=r"shadows/(?P<shadow_id>[0-9a-f-]+)")
+    def shadow_detail(self, request, id=None, shadow_id=None):
+        classroom = self._owned()
+        shadow = ShadowSet.objects.filter(classroom=classroom, id=shadow_id).first()
+        if shadow is None:
+            raise NotFound("No such shadow set.")
+        if request.method == "DELETE":
+            shadow.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        answers = [{"variant": a.variant, "text": a.text} for a in shadow.answers.all()]
+        return Response({**ShadowSetSerializer(shadow).data, "answers": len(answers), "texts": answers})
 
     @action(detail=True, methods=["get"], url_path="export.csv")
     def export_csv(self, request, id=None):

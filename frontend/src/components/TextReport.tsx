@@ -73,7 +73,10 @@ export default function TextReport({ submission }: { submission: Submission }) {
   const style = byName(submission, "text_style");
   const citations = byName(submission, "text_citations");
   const genre = byName(submission, "text_genre");
-  if (!evasion && !grade && !style && !citations && !genre) return null;
+  const shadow = byName(submission, "text_shadow");
+  if (!evasion && !grade && !style && !citations && !genre && !shadow) return null;
+  const sh = (shadow?.evidence ?? {}) as Evidence;
+  const shadowPairs = (sh.pairs as { student: string; ai: string; similarity: number }[] | undefined) ?? [];
   const ge = (genre?.evidence ?? {}) as Evidence;
 
   const ev = (evasion?.evidence ?? {}) as Evidence;
@@ -171,6 +174,20 @@ export default function TextReport({ submission }: { submission: Submission }) {
             </Row>
           ) : (
             <Row tone="ok" title={`Reference list follows ${format.label}`} />
+          )
+        )}
+        {shadow && typeof sh.share === "number" && (
+          shadow.verdict === "suspicious" ? (
+            <Row tone="alert" title={`Follows an AI answer to the assignment: ${Math.round(sh.share * 100)}% of sentences, same order`}>
+              {shadowPairs.map((p) => (
+                <div key={p.student} className="mt-2">
+                  <div className="text-ink-200">{p.student}</div>
+                  <div className="text-ink-500">AI: {p.ai}</div>
+                </div>
+              ))}
+            </Row>
+          ) : (
+            <Row tone="ok" title={`Does not follow the ${String(sh.answers_compared ?? "")} AI answers to this class's assignments`} />
           )
         )}
         {phrases.length >= 3 && (

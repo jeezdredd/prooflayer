@@ -46,6 +46,77 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
   );
 }
 
+const SHADOW_STATUS: Record<string, string> = {
+  pending: "queued",
+  running: "writing answers",
+  done: "ready",
+  failed: "failed",
+};
+
+function ShadowPanel({ classId }: { classId: string }) {
+  const queryClient = useQueryClient();
+  const [prompt, setPrompt] = useState("");
+  const [open, setOpen] = useState<string | null>(null);
+  const { data: sets = [] } = useQuery({
+    queryKey: ["classroom-shadows", classId],
+    queryFn: () => classrooms.shadows(classId).then((r) => r.data),
+    refetchInterval: (query) => (query.state.data ?? []).some((s) => s.status === "pending" || s.status === "running") ? 10000 : false,
+  });
+  const { data: detail } = useQuery({
+    queryKey: ["classroom-shadow", classId, open],
+    queryFn: () => classrooms.shadowDetail(classId, open!).then((r) => r.data),
+    enabled: !!open,
+  });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["classroom-shadows", classId] });
+  const create = useMutation({
+    mutationFn: () => classrooms.createShadow(classId, prompt.trim(), 8),
+    onSuccess: () => { setPrompt(""); refresh(); toast.success("Writing AI answers to the assignment"); },
+    onError: (e: { response?: { data?: { detail?: string; prompt?: string[] } } }) =>
+      toast.error(e.response?.data?.detail ?? e.response?.data?.prompt?.[0] ?? "Could not start"),
+  });
+  const remove = useMutation({ mutationFn: (sid: string) => classrooms.deleteShadow(classId, sid), onSuccess: refresh });
+  return (
+    <section className="mb-8 border border-[var(--line-strong)] p-4">
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">Assignment shadow</div>
+      <p className="text-xs text-ink-500 mb-3 max-w-2xl">
+        Paste the assignment. We ask an AI model to answer it as students of different ages would, then compare every work in this class with those answers sentence by sentence. A close match in the same order sends the work to review.
+      </p>
+      <div className="flex flex-col md:flex-row gap-2">
+        <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} maxLength={2000}
+          placeholder="Напишите сочинение-рассуждение: нужно ли читать книги в эпоху интернета?"
+          className="flex-1 bg-transparent border border-[var(--line-strong)] px-2.5 py-1.5 text-sm text-ink-50 outline-none focus:border-signal-amber" />
+        <button type="button" disabled={prompt.trim().length < 15 || create.isPending} onClick={() => create.mutate()} className={`${BTN} disabled:opacity-40 self-start`}>
+          Generate answers
+        </button>
+      </div>
+      {sets.length > 0 && (
+        <div className="mt-3 divide-y divide-[var(--line)]">
+          {sets.map((s) => (
+            <div key={s.id} className="py-2">
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} className="flex-1 text-left text-sm text-ink-100 truncate hover:text-ink-50">{s.prompt}</button>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500">{SHADOW_STATUS[s.status]} · {s.answers}/{s.target}</span>
+                <button type="button" onClick={() => remove.mutate(s.id)} className="font-mono text-[10px] uppercase text-ink-600 hover:text-signal-blood">Remove</button>
+              </div>
+              {s.error && <div className="text-xs text-signal-blood mt-1">{s.error}</div>}
+              {open === s.id && detail && (
+                <div className="mt-2 space-y-2">
+                  {detail.texts.slice(0, 3).map((a) => (
+                    <div key={a.variant + a.text.slice(0, 20)} className="text-xs text-ink-400 border-l border-[var(--line-strong)] pl-3">
+                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-600 mb-1">{a.variant}</div>
+                      {a.text.slice(0, 600)}{a.text.length > 600 ? "..." : ""}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function RadarPanel({ classId }: { classId: string }) {
   const { data: radar } = useQuery({ queryKey: ["classroom-radar", classId], queryFn: () => classrooms.radar(classId).then((r) => r.data) });
   if (!radar) return null;
@@ -251,6 +322,7 @@ function TeacherView({ id }: { id: string }) {
       </p>
 
       <RadarPanel classId={id} />
+      <ShadowPanel classId={id} />
 
       <ObjectionRows classId={id} />
 
