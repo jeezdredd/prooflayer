@@ -133,12 +133,36 @@ class TestTextAnalyzers:
         classroom = Classroom.create_for(teacher, "History 8A", level=level)
         return SubmissionFactory(user=user or UserFactory(), classroom=classroom, mime_type="text/plain")
 
-    def test_grade_fit_flags_academic_essay_in_eighth_grade(self, tmp_path):
-        sub = self._class_submission(level=8)
+    def _grade_history(self, student, mismatches):
+        config = AnalyzerConfigFactory(name="text_grade_fit")
+        for m in mismatches:
+            AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence={"language": "ru", "mismatch": m})
+
+    def test_grade_fit_waits_for_enough_earlier_work(self, tmp_path):
+        student = UserFactory()
+        self._grade_history(student, [0.1, 0.1])
+        sub = self._class_submission(level=8, user=student)
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert out.verdict == "inconclusive"
+        assert out.evidence["baseline"] == {"have": 2, "need": 3}
+        assert "not enough earlier work" in out.evidence["finding"]
+
+    def test_grade_fit_flags_a_jump_above_the_students_own_level(self, tmp_path):
+        student = UserFactory()
+        self._grade_history(student, [0.0, 0.1, 0.05])
+        sub = self._class_submission(level=8, user=student)
         out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
         assert out.verdict == "suspicious"
         assert out.evidence["level_label"] == "school year 8"
         assert "ai_probability" not in out.evidence
+
+    def test_grade_fit_spares_a_student_who_always_writes_above_level(self, tmp_path):
+        student = UserFactory()
+        self._grade_history(student, [0.8, 0.9, 0.85])
+        sub = self._class_submission(level=8, user=student)
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert out.verdict == "inconclusive"
+        assert "as this student's earlier work also is" in out.evidence["finding"]
 
     def test_grade_fit_abstains_without_level(self, tmp_path):
         sub = self._class_submission(level=None)
@@ -171,6 +195,7 @@ class TestTextAnalyzers:
         out = TextStyleAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(self._class_submission().id), "mime_type": "text/plain"})
         assert out.verdict == "inconclusive"
         assert "drift" not in out.evidence
+        assert out.evidence["baseline"] == {"have": 0, "need": 3}
 
 
 @pytest.mark.django_db

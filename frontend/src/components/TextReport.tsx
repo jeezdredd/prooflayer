@@ -94,6 +94,8 @@ export default function TextReport({ submission }: { submission: Submission }) {
   const beyond = (gr.beyond_level_words as string[] | undefined) ?? [];
   const phrases = Object.keys(((st.phrasebook as Evidence | undefined)?.hits as Record<string, number> | undefined) ?? {});
   const drift = st.drift as { score: number; history_size: number } | undefined;
+  const gradeBaseline = gr.baseline as { have: number; need: number } | undefined;
+  const styleBaseline = st.baseline as { have: number; need: number } | undefined;
   const ci = (citations?.evidence ?? {}) as Evidence;
   const refs = (ci.references as Reference[] | undefined) ?? [];
   const missing = refs.filter((r) => r.status === "missing");
@@ -128,6 +130,12 @@ export default function TextReport({ submission }: { submission: Submission }) {
               {beyond.length > 0 && <>Words unusual at this age: <Chips items={beyond.slice(0, 14)} /></>}
               {gr.readability_grade != null && <div className="mt-1">Readability is about grade {String(gr.readability_grade)}.</div>}
             </Row>
+          ) : gradeBaseline ? (
+            <Row tone="muted" title={gradeBaseline.have < gradeBaseline.need ? `Above ${String(gr.level_label ?? "the class level")}, not enough data to judge yet` : `Above ${String(gr.level_label ?? "the class level")}, as usual for this student`}>
+              {gradeBaseline.have < gradeBaseline.need
+                ? `${gradeBaseline.have} of ${gradeBaseline.need} earlier works. A strong student is compared with their own level, so this is not flagged until there is enough of their work.`
+                : "Earlier work from this student is at a similar level, so this is not unusual for them."}
+            </Row>
           ) : gr.reason ? (
             <Row tone="muted" title="Age fit not checked">{gr.reason === "class level not set" ? "Set the class year in class settings to compare vocabulary with the students' age." : String(gr.reason)}</Row>
           ) : (
@@ -142,7 +150,7 @@ export default function TextReport({ submission }: { submission: Submission }) {
           ) : drift ? (
             <Row tone="ok" title="Consistent with this student's earlier work">Compared with {drift.history_size} earlier submissions.</Row>
           ) : (
-            <Row tone="muted" title="Style comparison starts after two earlier works from this student" />
+            <Row tone="muted" title={`Not enough data yet for a style comparison: ${styleBaseline?.have ?? 0} of ${styleBaseline?.need ?? 3} earlier works`} />
           )
         )}
         {citations && refs.length === 0 && ci.genre === "report" && (

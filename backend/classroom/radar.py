@@ -19,7 +19,9 @@ MAX_SUBMISSIONS = 200
 READABILITY_JUMP = 3.0
 AI_JUMP_HIGH = 0.75
 AI_JUMP_BASE = 0.3
-MIN_HISTORY = 2
+MIN_HISTORY = 3
+MIN_CLASS_WORKS = 5
+MIN_CLASS_STUDENTS = 4
 
 
 @dataclass
@@ -163,9 +165,20 @@ def class_radar(classroom, since) -> dict:
         .select_related("user")
         .order_by("-created_at")[:MAX_SUBMISSIONS]
     )
-    pairs = shared_skeletons(_docs(submissions))
+    docs = _docs(submissions)
+    students = len({d.student_id for d in docs})
+    enough = len(docs) >= MIN_CLASS_WORKS and students >= MIN_CLASS_STUDENTS
+    pairs = shared_skeletons(docs) if enough else []
     return {
         "submissions": len(submissions),
+        "skeleton_data": {
+            "enough": enough,
+            "works": len(docs),
+            "need_works": MIN_CLASS_WORKS,
+            "students": students,
+            "need_students": MIN_CLASS_STUDENTS,
+        },
+        "jump_history_needed": MIN_HISTORY,
         "shared_skeletons": pairs,
         "clusters": clusters(pairs),
         "level_jumps": level_jumps(_history(submissions)),

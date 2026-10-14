@@ -87,14 +87,15 @@ class TestLevelJumps:
         rows = [
             self._row(0, readability_grade=5, ai_probability=0.1),
             self._row(1, readability_grade=6, ai_probability=0.2),
-            self._row(2, readability_grade=11, ai_probability=0.9),
+            self._row(2, readability_grade=5, ai_probability=0.15),
+            self._row(3, readability_grade=11, ai_probability=0.9),
         ]
         jumps = level_jumps({1: rows})
-        assert len(jumps) == 1 and jumps[0]["submission_id"] == "w2"
+        assert len(jumps) == 1 and jumps[0]["submission_id"] == "w3"
         assert len(jumps[0]["reasons"]) == 2
 
-    def test_needs_two_earlier_works(self):
-        rows = [self._row(0, readability_grade=5), self._row(1, readability_grade=11)]
+    def test_needs_three_earlier_works(self):
+        rows = [self._row(0, readability_grade=5), self._row(1, readability_grade=5), self._row(2, readability_grade=11)]
         assert level_jumps({1: rows}) == []
 
     def test_steady_student(self):
@@ -104,10 +105,10 @@ class TestLevelJumps:
 
 @pytest.mark.django_db
 class TestRadarEndpoint:
-    def _setup(self):
+    def _setup(self, n_students=2):
         teacher = _teacher()
         classroom = Classroom.create_for(teacher, "History 8A")
-        students = [UserFactory(is_verified=True) for _ in range(2)]
+        students = [UserFactory(is_verified=True) for _ in range(n_students)]
         for s in students:
             Membership.objects.create(classroom=classroom, user=s)
         return teacher, classroom, students
@@ -126,19 +127,29 @@ class TestRadarEndpoint:
             )
         return submission
 
-    def test_teacher_sees_shared_skeleton(self):
+    def test_small_class_reports_not_enough_data(self):
         teacher, classroom, (a, b) = self._setup()
-        first = self._work(classroom, a, [1, 2, 3, 4, 5])
-        second = self._work(classroom, b, [1, 2, 3, 4, 6])
+        self._work(classroom, a, [1, 2, 3, 4, 5])
+        self._work(classroom, b, [1, 2, 3, 4, 6])
         response = _client(teacher).get(reverse("classroom-radar", args=[classroom.id]))
         assert response.status_code == 200
-        assert response.data["submissions"] == 2
+        assert response.data["skeleton_data"]["enough"] is False
+        assert response.data["clusters"] == []
+
+    def test_teacher_sees_shared_skeleton(self):
+        teacher, classroom, students = self._setup(n_students=5)
+        first = self._work(classroom, students[0], [1, 2, 3, 4, 5])
+        second = self._work(classroom, students[1], [1, 2, 3, 4, 6])
+        for k, s in enumerate(students[2:]):
+            self._work(classroom, s, [100 * (k + 1) + j for j in range(5)])
+        response = _client(teacher).get(reverse("classroom-radar", args=[classroom.id]))
+        assert response.data["skeleton_data"]["enough"] is True
         assert response.data["clusters"] == [sorted([str(first.id), str(second.id)])]
 
     def test_jump_from_stored_evidence(self):
         teacher, classroom, (a, _) = self._setup()
         grade = AnalyzerConfigFactory(name="text_grade_fit")
-        for day, level in ((3, 5), (2, 6), (1, 11)):
+        for day, level in ((4, 5), (3, 6), (2, 5), (1, 11)):
             work = SubmissionFactory(user=a, classroom=classroom, status=Submission.Status.COMPLETED, mime_type="text/plain")
             Submission.objects.filter(pk=work.pk).update(created_at=timezone.now() - timedelta(days=day))
             AnalysisResultFactory(

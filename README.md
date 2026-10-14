@@ -32,8 +32,11 @@ changelog with measured numbers lives in `wiki/concepts/tribunal.md`.
   logit-margin score, per-passage scores. Alone it can only flag, never convict.
 - `text_evasion` (2.0) - homoglyphs, invisible characters, odd spaces, hidden/white/tiny DOCX text
 - Context members (never vote; a flag sends the work to human review):
-  - `text_grade_fit` - vocabulary and readability against the class year
+  - `text_grade_fit` - vocabulary and readability against the class year, then against the student's
+    own usual level: a strong student who always writes above the class is not flagged
   - `text_style` - drift from the same student's earlier class work
+  - Personal comparisons (age fit, style, class radar jumps) say "not enough data" until the student
+    has 3 earlier works; the class radar compares works only from 5 works by 4 students
   - `text_citations` - invented DOIs, arXiv ids, ISBNs, links, references and quotes, checked
     against doi.org, arXiv, Open Library, Google Books, OpenAlex and Crossref; reference-list format
     for APA, MLA, Chicago, Harvard, IEEE, Vancouver, GOST and ISO 690

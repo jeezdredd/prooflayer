@@ -136,3 +136,18 @@ Two more **context members** (`aggregator.CONTEXT_ANALYZERS`, never in the vote)
 - `train_text_classifier` applies symmetric noise (typos, lowercase, stripped punctuation) to 30% of
   crops of both classes. v3 measured: lowercase dropped en AI recall 96% -> 71%, stripped punctuation
   96% -> 46% (ru 98% -> 69%); human flags did not rise.
+
+## Personal baselines before any personal flag (2026-10-14)
+
+Signals that compare a student with themselves or the class never flag on one or two works:
+
+- `text_grade_fit`: a text above the class level is only `suspicious` when the student has at least
+  3 earlier class works in the same language and this one is 0.3+ mismatch above their own median.
+  With fewer works the evidence carries `baseline: {have, need}` and the finding says there is not
+  enough data; a student whose earlier work is also above level is not flagged.
+- `text_style`: needs 3 earlier works (was 2).
+- Class radar: level jumps need 3 earlier works; shared skeletons need 5 works from 4 students in the
+  window, otherwise the panel shows how much data is missing.
+
+Single-work evidence (classifier, bypass tricks, invented sources) is still read on one work, and none
+of it convicts alone.

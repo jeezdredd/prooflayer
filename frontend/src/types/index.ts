@@ -403,6 +403,8 @@ export interface ShadowSetDetail extends ShadowSet {
 export interface ClassRadar {
   days: number;
   submissions: number;
+  skeleton_data: { enough: boolean; works: number; need_works: number; students: number; need_students: number };
+  jump_history_needed: number;
   shared_skeletons: { a: RadarRef; b: RadarRef; aligned_share: number; in_order: number }[];
   clusters: string[][];
   level_jumps: { submission_id: string; student: string; created_at: string; reasons: string[] }[];

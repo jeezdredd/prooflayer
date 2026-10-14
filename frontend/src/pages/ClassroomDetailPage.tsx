@@ -120,7 +120,7 @@ function ShadowPanel({ classId }: { classId: string }) {
 function RadarPanel({ classId }: { classId: string }) {
   const { data: radar } = useQuery({ queryKey: ["classroom-radar", classId], queryFn: () => classrooms.radar(classId).then((r) => r.data) });
   if (!radar) return null;
-  const quiet = radar.shared_skeletons.length === 0 && radar.level_jumps.length === 0;
+  const quiet = radar.skeleton_data.enough && radar.shared_skeletons.length === 0 && radar.level_jumps.length === 0;
   const names = new Map<string, string>();
   radar.shared_skeletons.forEach((p) => {
     names.set(p.a.submission_id, p.a.student);
@@ -139,7 +139,12 @@ function RadarPanel({ classId }: { classId: string }) {
           <div>
             <div className="text-sm text-ink-100 mb-1">Works built on the same skeleton</div>
             <p className="text-xs text-ink-500 mb-2">Most sentences have a close match in the other work, in the same order. Often one shared prompt or source.</p>
-            {radar.clusters.length === 0 && <p className="text-xs text-ink-600">None.</p>}
+            {!radar.skeleton_data.enough && (
+              <p className="text-xs text-ink-400">
+                Not enough data yet: {radar.skeleton_data.works} of {radar.skeleton_data.need_works} works from {radar.skeleton_data.students} of {radar.skeleton_data.need_students} students. A class baseline is needed before any pair can stand out.
+              </p>
+            )}
+            {radar.skeleton_data.enough && radar.clusters.length === 0 && <p className="text-xs text-ink-600">None.</p>}
             {radar.clusters.map((group) => (
               <div key={group.join()} className="py-1.5 border-b border-[var(--line)] last:border-0 flex flex-wrap gap-x-3 gap-y-1">
                 {group.map((sid) => (
@@ -153,7 +158,7 @@ function RadarPanel({ classId }: { classId: string }) {
           </div>
           <div>
             <div className="text-sm text-ink-100 mb-1">Sudden jumps</div>
-            <p className="text-xs text-ink-500 mb-2">A work far from the same student's earlier ones.</p>
+            <p className="text-xs text-ink-500 mb-2">A work far from the same student's earlier ones. Judged only after {radar.jump_history_needed} earlier works, so a strong student is compared with their own level, not the class.</p>
             {radar.level_jumps.length === 0 && <p className="text-xs text-ink-600">None.</p>}
             {radar.level_jumps.slice(0, 8).map((j) => (
               <Link key={j.submission_id} to={`/results/${j.submission_id}`} state={{ supervising: true }} className="block py-1.5 border-b border-[var(--line)] last:border-0 hover:bg-ink-800/40">

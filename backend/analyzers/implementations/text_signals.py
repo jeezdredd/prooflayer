@@ -1,4 +1,5 @@
 import logging
+from statistics import median
 
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 from analyzers.models import AnalysisResult
@@ -19,6 +20,8 @@ TEXT_LIMIT = 200_000
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 STYLE_HISTORY = 8
 CONTEXT_FLAG = 0.6
+BASELINE_WORKS = 3
+PERSONAL_JUMP = 0.3
 
 
 def _read(file_path: str, metadata: dict) -> str:
@@ -30,6 +33,27 @@ def _submission(metadata: dict):
     if not submission_id:
         return None
     return Submission.objects.select_related("classroom").filter(id=submission_id).first()
+
+
+def student_evidence(name: str, submission, limit: int = STYLE_HISTORY * 2) -> list[dict]:
+    if submission is None or submission.classroom_id is None:
+        return []
+    rows = (
+        AnalysisResult.objects.filter(
+            analyzer__name=name,
+            submission__user_id=submission.user_id,
+            submission__classroom__isnull=False,
+            submission__created_at__lt=submission.created_at,
+        )
+        .exclude(submission_id=submission.id)
+        .order_by("-submission__created_at")
+        .values_list("evidence", flat=True)[:limit]
+    )
+    return [e for e in rows if isinstance(e, dict)]
+
+
+def baseline_note(have: int) -> dict:
+    return {"have": have, "need": BASELINE_WORKS}
 
 
 class TextEvasionAnalyzer(BaseAnalyzer):
@@ -80,7 +104,23 @@ class TextGradeFitAnalyzer(BaseAnalyzer):
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "text too short", "level_label": level_label(level)})
         evidence = {**fit.as_evidence(), "context_signal": True}
         if fit.mismatch >= CONTEXT_FLAG:
-            evidence["finding"] = f"vocabulary and sentence complexity well above {level_label(level)}"
+            history = [
+                e["mismatch"] for e in student_evidence(self.name, submission)
+                if e.get("language") == lang.code and isinstance(e.get("mismatch"), (int, float))
+            ]
+            evidence["baseline"] = baseline_note(len(history))
+            if len(history) < BASELINE_WORKS:
+                evidence["finding"] = (
+                    f"above {level_label(level)}, but there is not enough earlier work from this student "
+                    f"to tell whether that is unusual for them ({len(history)} of {BASELINE_WORKS})"
+                )
+                return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
+            usual = median(history)
+            evidence["baseline"]["usual_mismatch"] = round(usual, 3)
+            if fit.mismatch - usual < PERSONAL_JUMP:
+                evidence["finding"] = f"above {level_label(level)}, as this student's earlier work also is"
+                return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
+            evidence["finding"] = f"vocabulary and sentence complexity well above {level_label(level)} and above this student's usual level"
             return AnalysisOutput(confidence=fit.mismatch, verdict="suspicious", evidence=evidence)
         evidence["finding"] = f"fits {level_label(level)}"
         return AnalysisOutput(confidence=1 - fit.mismatch, verdict="inconclusive", evidence=evidence)
@@ -94,20 +134,7 @@ class TextStyleAnalyzer(BaseAnalyzer):
         return ["text/plain", *DOCUMENT_MIMES]
 
     def _history(self, submission, language: str) -> list[dict]:
-        if submission is None or submission.classroom_id is None:
-            return []
-        rows = (
-            AnalysisResult.objects.filter(
-                analyzer__name=self.name,
-                submission__user_id=submission.user_id,
-                submission__classroom__isnull=False,
-                submission__created_at__lt=submission.created_at,
-            )
-            .exclude(submission_id=submission.id)
-            .order_by("-submission__created_at")
-            .values_list("evidence", flat=True)[: STYLE_HISTORY * 2]
-        )
-        profiles = [e.get("profile") for e in rows if isinstance(e, dict) and e.get("profile")]
+        profiles = [e.get("profile") for e in student_evidence(self.name, submission) if e.get("profile")]
         return [p for p in profiles if p.get("language") == language][:STYLE_HISTORY]
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
@@ -128,8 +155,9 @@ class TextStyleAnalyzer(BaseAnalyzer):
         except Exception as exc:
             logger.warning("style history lookup failed: %s", exc)
             history = []
-        if len(history) < 2:
-            evidence["finding"] = "not enough earlier work from this student to compare"
+        evidence["baseline"] = baseline_note(len(history))
+        if len(history) < BASELINE_WORKS:
+            evidence["finding"] = f"not enough earlier work from this student to compare ({len(history)} of {BASELINE_WORKS})"
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
         result = drift(profile, history)
         evidence["drift"] = result
