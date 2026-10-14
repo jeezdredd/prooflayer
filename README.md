@@ -1,222 +1,266 @@
+<div align="center">
+
 # ProofLayer
 
-Multi-modal content verification platform. Detects deepfakes, AI-generated images, manipulated media, tracks provenance, and fact-checks textual claims.
+**Verification lab for synthetic media and AI-written text.**
+An ensemble of independent detectors, the Tribunal, examines every image, video, audio file and
+essay and returns one verdict with the evidence behind it.
 
-Backend: Django + Celery. Frontend: React + Vite. Infra: Postgres, Redis, MinIO, self-hosted Ollama. Production at [prooflayer.cloud](https://prooflayer.cloud).
+[Website](https://prooflayer.cloud) · [Classroom](https://classroom.prooflayer.cloud) · [API reference](https://api.prooflayer.cloud/api/docs/) · [System status](https://prooflayer.cloud/status)
 
-## Features
+![Tribunal](https://img.shields.io/badge/Tribunal-1.6.1-7c6af7)
+![Python](https://img.shields.io/badge/Python-3.12-3776ab)
+![Django](https://img.shields.io/badge/Django-5.1-092e20)
+![React](https://img.shields.io/badge/React-18-61dafb)
+![Languages](https://img.shields.io/badge/UI-RU%20%7C%20EN-555)
+![License](https://img.shields.io/badge/license-proprietary-lightgrey)
 
-### Tribunal: the detector ensemble
+</div>
 
-Analyzers are seeded as DB configs (`analyzers/management/commands/seed_analyzers.py`), fanned out
-via a Celery chord and combined by `analyzers/aggregator.py` into one verdict. Every verdict is
-stamped with the Tribunal version and a fingerprint of the roster (`analyzers/ensemble.py`); the
-changelog with measured numbers lives in `wiki/concepts/tribunal.md`.
+---
 
-**Images and video**
-- `community_forensics` (3.5) - Community Forensics ViT-S/16 (NeurIPS 2024), calibrated score
-- `custom_detector` (3.5) - ViT retrained on the review queue and current generators, own calibration
-- `clip_probe` (2.5) - linear probe on CLIP embeddings, an independent backbone
-- `ai_detector` (1.0) - two image classifiers behind a photographic-content gate
-- `metadata` (1.5) - EXIF/XMP, PNG generation parameters, C2PA Content Credentials
-- `ela` (0.75) - Error Level Analysis, manipulation channel only, never votes on AI
-- `llm_vision` (1.5) - Ollama vision model that must name a concrete defect
-- `video_frame` (2.0) - frames across the whole clip through the image bench, median verdict
+## Contents
 
-**Audio**
-- `audio_spectrogram` (2.0) - spectral features for synthetic-voice artifacts
+- [What it does](#what-it-does)
+- [The Tribunal](#the-tribunal)
+- [ProofLayer Classroom](#prooflayer-classroom)
+- [Self-improving detector](#self-improving-detector)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Configuration](#configuration)
+- [Deployment](#deployment)
+- [Testing](#testing)
+- [Repository layout](#repository-layout)
+- [Privacy and security](#privacy-and-security)
+- [License](#license)
 
-**Text (en / ru / fr; PDF and DOCX supported)**
-- `text_classifier` (2.5) - multilingual-e5-small fine-tuned on human essays, pre-2022 Wikipedia,
-  fresh generations from current open models and humanizer-style rewrites; per-language calibration,
-  logit-margin score, per-passage scores. Alone it can only flag, never convict.
-- `text_evasion` (2.0) - homoglyphs, invisible characters, odd spaces, hidden/white/tiny DOCX text
-- Context members (never vote; a flag sends the work to human review):
-  - `text_grade_fit` - vocabulary and readability against the class year, then against the student's
-    own usual level: a strong student who always writes above the class is not flagged
-  - `text_style` - drift from the same student's earlier class work
-  - Personal comparisons (age fit, style, class radar jumps) say "not enough data" until the student
-    has 3 earlier works; the class radar compares works only from 5 works by 4 students
-  - `text_citations` - invented DOIs, arXiv ids, ISBNs, links, references and quotes, checked
-    against doi.org, arXiv, Open Library, Google Books, OpenAlex and Crossref; reference-list format
-    for APA, MLA, Chicago, Harvard, IEEE, Vancouver, GOST and ISO 690
-  - `text_genre` - argument essay, narrative, retelling, analysis, description, report, letter, poem
-  - `text_shadow` - closeness to AI answers the teacher generated for the assignment
+## What it does
 
-### Education (Classroom)
-- Schools and classes with join codes, class year, teacher and admin roles; class uploads bill the school
-- Originality check on every text upload: winnowed fingerprints, e5 sentence vectors for rewording and
-  translation (ru/en/fr), web search through self-hosted SearXNG
-- Class radar: works by different students built on one skeleton, and sudden jumps in a student's level
-- Assignment shadow: the server answers the assignment with AI as students of several ages would
-- Teacher report per work: a plain-language answer, one coloured tile per check (clear, look closer, flag,
-  needs more work, not checked) and a next step, with every signal's evidence below; verdict objections with deadlines
-- Student accounts (class members without a paid plan) only hand work in to their class, see their own
-  results and object to a verdict; the ProofLayer tools (personal uploads, fact-check, compare, batch,
-  feed, voting) are for teachers and are refused by the API (`classroom.access.NotStudentAccount`)
-- `manage.py seed_demo` creates a demo school and university with teachers, students and analysed work
-  (`backend/classroom/demo/demo_data.json`, accounts on `@demo.prooflayer.cloud`, passwords printed once)
+| Area | Capabilities |
+|---|---|
+| **Images and video** | AI generation and manipulation detection, Error Level Analysis, EXIF / PNG parameters / C2PA, provenance by perceptual hash, frame sampling across whole clips |
+| **Audio** | Synthetic voice and vocoder artifact detection |
+| **Text** | AI-writing classifier for ru / en / fr, bypass detection (homoglyphs, invisible and hidden text), invented sources and reference formatting, originality and plagiarism with paraphrase and translation matching |
+| **Education** | Schools, classes and student accounts, a plain-language teacher report, class radar, assignment shadow, verdict objections |
+| **Platform** | Fact-check, compare, human review queue, batch upload, PDF reports, embeddable badge, REST API with signed webhooks, browser extension, Russian and English interface |
 
-### Platform
-- Fact-check pipeline (async Celery): spaCy claim extraction, web and Wikipedia context, Ollama
-  assessment, Google Fact Check cross-reference; text, URL (SSRF-guarded) or PDF/DOCX input
-- Provenance: perceptual hashes against known fakes and earlier copies
-- Compare two files judge by judge; human review queue whose corrections retrain `custom_detector`
-- API keys with signed completion webhooks, batch upload (files or ZIP) with CSV export
-- PDF reports, embeddable widget, MV3 browser extension (Chrome + Firefox)
-- Free / Pro / Education / Enterprise tiers, JWT auth with httpOnly refresh rotation
-- Torch detectors run on GPU when available (AMD ROCm worker, see `wiki/services/gpu-rocm.md`)
-- Interface in Russian and English: RU/EN switch, browser language on first visit, Russian legal pages
-  (`frontend/src/i18n`, `npm run i18n:check` lists any text without a Russian translation)
+Every result is probabilistic and says so. A flag is a reason to look closer and to talk to the
+person, never proof on its own.
 
-## Stack
+## The Tribunal
 
-**Backend:** Django 5.1, DRF 3.15, Celery 5.4, PostgreSQL 16 (pgvector), Redis 7, MinIO, Ollama, transformers + torch (CPU, or ROCm on the GPU worker), spaCy, librosa, OpenCV, Pillow, imagehash, WeasyPrint, trafilatura + pypdf + python-docx (factcheck doc/URL ingest), django-anymail[resend]
+Analyzers are configured in the database (`analyzers/management/commands/seed_analyzers.py`), run in
+parallel as a Celery chord and combined by `analyzers/aggregator.py`. Each verdict is stamped with
+the Tribunal version and a fingerprint of the exact roster and weights (`analyzers/ensemble.py`).
+Measured changes are recorded in [`wiki/concepts/tribunal.md`](wiki/concepts/tribunal.md).
 
-**Frontend:** React 18, Vite 6, TypeScript 5.6, Tailwind 3, Zustand 5, TanStack Query 5, React Router 7, Framer Motion, Axios
+### Members
 
-**Infra:** Docker Compose, self-hosted Ubuntu homelab, Caddy + Cloudflare Tunnel, Sentry, Flower
+| Member | Weight | Signal |
+|---|---|---|
+| `community_forensics` | 3.5 | Community Forensics ViT-S/16 (NeurIPS 2024), calibrated |
+| `custom_detector` | 3.5 | ViT fine-tuned on reviewed uploads and current generators, own calibration, retrained automatically |
+| `clip_probe` | 2.5 | Linear probe on CLIP embeddings, an independent backbone |
+| `ai_detector` | 1.0 | Two image classifiers behind a screenshot / diagram gate |
+| `metadata` | 1.5 | EXIF / XMP, generation parameters, C2PA Content Credentials |
+| `ela` | 0.75 | Error Level Analysis, manipulation channel only |
+| `llm_vision` | 1.5 | Vision model that must name a concrete defect, otherwise abstains |
+| `video_frame` | 2.0 | Frames across the whole clip, median verdict |
+| `audio_spectrogram` | 2.0 | Spectral features of synthetic voices |
+| `text_classifier` | 2.5 | multilingual-e5-small fine-tuned on human essays, pre-2022 Wikipedia, current model output and humanizer rewrites; per-language calibration, per-passage scores; can flag, never convict alone |
+| `text_evasion` | 2.0 | Homoglyphs, invisible characters, hidden / white / 1 pt DOCX text |
+
+Context members never vote; a flag sends the work to human review:
+`text_grade_fit` (vocabulary against the class year and the student's own level),
+`text_style` (drift from the student's earlier work), `text_citations` (invented DOIs, ISBNs,
+arXiv ids, links and references; APA, MLA, Chicago, Harvard, IEEE, Vancouver, GOST, ISO 690),
+`text_genre` (essay, narrative, retelling, analysis, report, letter, poem) and `text_shadow`
+(closeness to AI answers to the assignment). Personal comparisons wait for three earlier works so a
+strong student is never flagged early.
+
+### Measured on the held-out set
+
+Same 245 images (100 real, 145 from 20 current generators) for every version, full production roster:
+
+| Version | Ensemble AUC | AI caught | AI called authentic | Real called AI | Real called suspicious |
+|---|---|---|---|---|---|
+| 1.3 to 1.6 | 0.998 | 108 / 145 | 6 | **0 / 100** | 1 |
+| **1.6.1** | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
+
+The hard constraint for every release: no real photo may be called AI.
+
+## ProofLayer Classroom
+
+A separate app at `classroom.prooflayer.cloud` for schools and universities.
+
+- Organizations, classes with join codes and class year (grade 1 to university year 6), teacher and admin roles
+- Students only hand work in and see their own results; the ProofLayer tools stay with teachers
+- Each work opens with a plain answer ("Looks like the student's own work", "Worth a closer look") and one coloured tile per check, then the evidence
+- Originality on every upload: winnowed fingerprints, e5 sentence vectors for rewording and translation, optional web search through self-hosted SearXNG
+- Class radar: works built on one skeleton and sudden jumps in a student's level
+- Assignment shadow: the server answers the assignment with AI the way students of different ages would and compares every work with it
+- Verdict objections with deadlines, CSV export
+- `manage.py seed_demo` creates demo schools with teachers, students and analysed work
+
+## Self-improving detector
+
+The image detector retrains itself every week (`analyzers/auto_retrain.py`, Celery beat):
+
+```mermaid
+flowchart LR
+    A[OpenFake slice<br/>+ reviewed uploads] --> B[Dedupe against<br/>held-out set]
+    B --> C[80% training pool<br/>20% calibration pool]
+    C --> D[Fine-tune candidate<br/>from the live model]
+    D --> E[Fit calibration]
+    E --> F{Held-out gate}
+    F -- no real photo called AI,<br/>no regression, better --> G[Promote<br/>keep previous]
+    F -- otherwise --> H[Reject<br/>keep live model]
+```
+
+Running workers pick up a promoted model without a restart, `manage.py rollback_detector` restores
+the previous one, and the status page shows progress, the last decision and the live-vs-candidate
+numbers.
 
 ## Architecture
 
-```
-[ React SPA ]  <-->  [ Browser Extension (MV3) ]
-(Vite + Nginx)
-      |
-      | HTTPS / JWT
-      v
-[ Django API ]  <------->  [ PostgreSQL ]
-(gunicorn)                 [ MinIO (S3) ]
-      |
-      | Celery broker
-      v
-[ Redis ]  <-- Django cache (factcheck stage keys)
-      |
-      v
-[ Celery Worker ]  (queues: default, ml, reports)
-      |
-      v
-[ Ollama ]
-  qwen2.5:3b + qwen2.5vl:3b
+```mermaid
+flowchart TB
+    SPA[React SPA<br/>prooflayer.cloud] --> API
+    CLS[Classroom app<br/>classroom.prooflayer.cloud] --> API
+    EXT[Browser extension] --> API
+    API[Django + DRF<br/>gunicorn / Daphne] --> PG[(PostgreSQL 16<br/>pgvector)]
+    API --> S3[(MinIO / S3)]
+    API --> R[(Redis)]
+    R --> W[Celery workers<br/>default · ml · reports]
+    W --> PG
+    W --> S3
+    W --> OL[Ollama<br/>Qwen2.5-VL 7B · Qwen2.5 3B]
+    W --> SX[SearXNG]
+    API -. WebSocket .-> SPA
 ```
 
-**Upload pipeline:**
+**Upload pipeline**
 
-1. Client uploads file. Django writes to MinIO, creates `Submission` row.
-2. `process_submission` task queued. SHA-256 + perceptual hashes computed.
-3. Cache hit: same SHA -> clone prior verdict and return instantly.
-4. Otherwise: chord of analyzer tasks fans out on `ml` queue.
-5. `aggregate_verdicts` chord callback computes weighted final score.
-6. Provenance and factcheck tasks run on `default` queue.
-7. Frontend WebSocket + polling renders live progress and final result.
+1. The client uploads a file; Django stores it in MinIO and creates a `Submission`.
+2. `process_submission` computes SHA-256 and perceptual hashes; a known file reuses its verdict.
+3. Analyzers fan out as a chord on the `ml` queue; documents are converted to text first.
+4. `aggregate_verdicts` combines the votes, stamps the Tribunal version and fires webhooks.
+5. Originality, provenance and class signals run alongside; the client follows progress live.
 
-**Factcheck pipeline (async):**
+## Tech stack
 
-1. `POST /api/v1/factcheck/check/` -> dispatches `run_factcheck` Celery task, returns `{task_id}`.
-2. Frontend polls `GET /api/v1/factcheck/status/{task_id}/` every 1.5s.
-3. Task stages written to Redis cache (`fc:{task_id}`, TTL 600s): `extracting` -> `searching` -> `assessing` -> `cross_referencing` -> `done`.
+| Layer | Technologies |
+|---|---|
+| Frontend | React 18, TypeScript 5, Vite 6, React Router 7, Tailwind CSS 3, TanStack Query 5, Zustand 5, Motion, Three.js |
+| Backend | Python 3.12, Django 5.1, Django REST Framework, SimpleJWT, Celery 5.4, Django Channels + Daphne, WeasyPrint, Unfold admin |
+| Data | PostgreSQL 16 + pgvector, Redis 7.4, MinIO |
+| ML | PyTorch, Transformers, Community Forensics ViT, CLIP ViT-B/32, multilingual-e5-small, Ollama (Qwen2.5-VL 7B, Qwen2.5 3B), spaCy, librosa, OpenCV |
+| Search and text | SearXNG, Trafilatura, pypdf, python-docx, wordfreq |
+| Infrastructure | Docker Compose, Caddy, Cloudflare, Tailscale, AMD ROCm, Paddle, Resend, Sentry |
 
-## Local development
+The full list with links is on the [Stack page](https://prooflayer.cloud/stack).
 
-Requires Docker and Docker Compose.
+## Getting started
+
+Requirements: Docker and Docker Compose, about 10 GB of disk for models.
 
 ```bash
-git clone <repo>
+git clone https://github.com/jeezdredd/prooflayer.git
 cd prooflayer
-docker-compose up --build
+make dev
+docker compose exec backend python manage.py createsuperuser
 ```
 
-First boot pulls Ollama models (~5 GB). Wait for `ollama_init` to exit before submitting LLM-dependent uploads.
+The first start pulls the Ollama models; wait for `ollama_init` to finish before checking images.
 
-| Service     | URL                              | Notes                           |
-|-------------|----------------------------------|---------------------------------|
-| Frontend    | http://localhost:5173            | Vite dev server                 |
-| Backend API | http://localhost:8000/api/v1     | Django + DRF                    |
-| Swagger     | http://localhost:8000/api/docs/  | OpenAPI explorer                |
-| Admin       | http://localhost:8000/admin/     | Requires superuser              |
-| Flower      | http://localhost:5555            | Celery monitor                  |
-| MinIO       | http://localhost:9001            | Console (minioadmin/minioadmin) |
-| Ollama      | http://localhost:11434           | LLM API                         |
+| Service | URL |
+|---|---|
+| Web app | http://localhost:5173 |
+| API | http://localhost:8000/api/v1 |
+| OpenAPI | http://localhost:8000/api/docs/ |
+| Admin | http://localhost:8000/admin/ |
+| Celery (Flower) | http://localhost:5555 |
+| MinIO console | http://localhost:9001 |
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SECRET_KEY` | dev key | Django secret |
+| `DATABASE_URL` | | PostgreSQL DSN |
+| `REDIS_URL` | `redis://redis:6379/0` | Broker and cache |
+| `AWS_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | | MinIO / S3 storage |
+| `OLLAMA_URL` | `http://ollama:11434` | Language model server |
+| `OLLAMA_MODEL` | `qwen2.5:3b` | Fact-check and assignment shadow |
+| `OLLAMA_VISION_MODEL` | `qwen2.5vl:7b` (compose) | Vision member |
+| `SEARXNG_URL`, `PLAGIARISM_SEARCH_PROVIDERS` | `searxng,brave,ddg` | Web search for originality |
+| `RETRAIN_MIN_NEW_SAMPLES` | `50` | New examples needed before a weekly retrain |
+| `RESEND_API_KEY` | | Transactional email |
+| `PADDLE_*` | | Billing |
+| `SENTRY_DSN` | | Error tracking (optional) |
+
+Frontend: `VITE_API_URL`, `VITE_CLASSROOM_URL`, `VITE_MAIN_URL` in `frontend/.env.local`.
+
+## Deployment
+
+Production runs on a self-hosted Linux server behind Cloudflare, with Caddy in front of the compose
+stack (`deploy/compose.prod.yml`).
 
 ```bash
-docker-compose exec backend python manage.py createsuperuser
+make deploy-server
 ```
 
-## Environment variables
+The deploy clones the latest commit (shallow, with stall detection and retries), builds the images,
+rolls the containers and checks `/api/v1/auth/health/`. Retrained models are shipped with
+`make ship-retrained` and `make ship-text`. See [`deploy/README.md`](deploy/README.md).
 
-| Variable                  | Default                    | Purpose                        |
-|---------------------------|----------------------------|--------------------------------|
-| `SECRET_KEY`              | insecure-dev-key           | Django secret                  |
-| `DATABASE_URL`            | (none)                     | Postgres DSN                   |
-| `REDIS_URL`               | redis://redis:6379/0       | Broker + Django cache          |
-| `CELERY_BROKER_URL`       | redis://redis:6379/0       | Celery broker                  |
-| `OLLAMA_URL`              | http://ollama:11434        | Ollama endpoint                |
-| `OLLAMA_MODEL`            | qwen2.5:3b                 | Fact-check and assignment shadow |
-| `OLLAMA_VISION_MODEL`     | qwen2.5vl:3b               | Vision LLM                     |
-| `AWS_ACCESS_KEY_ID`       | (none)                     | MinIO/S3 key                   |
-| `AWS_SECRET_ACCESS_KEY`   | (none)                     | MinIO/S3 secret                |
-| `AWS_STORAGE_BUCKET_NAME` | prooflayer-media           | Bucket name                    |
-| `AWS_S3_ENDPOINT_URL`     | http://minio:9000          | MinIO endpoint                 |
-| `RESEND_API_KEY`          | (none)                     | Transactional email (Resend)   |
-| `SENTRY_DSN`              | (none)                     | Optional error tracking        |
-| `GOOGLE_FACT_CHECK_KEY`   | (none)                     | Optional fact-check API        |
-| `TINEYE_API_KEY`          | (none)                     | Optional reverse image search  |
+## Testing
 
-Frontend (`frontend/.env.local`):
-
-```
-VITE_API_URL=http://localhost:8000/api/v1
+```bash
+DJANGO_SETTINGS_MODULE=config.settings.test uv run pytest backend          # backend suite
+uv run python backend/manage.py eval_detectors --dataset dataset/openfake_test  # image held-out check
+cd frontend && pnpm exec tsc --noEmit && npm run i18n:check                 # types and translations
 ```
 
-## Project layout
+`i18n:check` fails when any interface text has no Russian translation.
+
+## Repository layout
 
 ```
 backend/
-  analyzers/     # Tribunal members, text package (classifier, citations, genre, style...), aggregator
-  classroom/     # Schools, classes, roster, class radar, assignment shadow
-  plagiarism/    # Originality: fingerprints, sentence vectors, web search
-  content/       # Submission model, upload pipeline, batches, PDF reports, widget
-  billing/       # Plans, quotas, tier gates
-  api/           # API keys, webhooks, system status, roadmap
-  crowdsource/   # Voting
-  reports/       # Moderation reports
-  provenance/    # Perceptual hash matching
-  factcheck/     # Async fact-check
-  users/         # Custom User, JWT auth, email verification
-  common/        # URL safety, document extraction, throttling
-  config/        # Settings, Celery app, URLs
+  analyzers/    Tribunal members, text checks, aggregator, auto retrain
+  classroom/    Organizations, classes, roster, radar, assignment shadow, demo data
+  plagiarism/   Fingerprints, sentence vectors, web search
+  content/      Submissions, upload pipeline, batches, PDF reports, widget
+  factcheck/    Claim extraction and checking
+  provenance/   Perceptual hash matching
+  billing/      Plans, quotas, Paddle
+  users/        Accounts, JWT, API keys, email
+  api/          System status, roadmap, feedback
+  config/       Settings, Celery, URLs
 frontend/
-  src/
-    pages/       # Landing, Upload, Result, Classroom, Developers, FactCheck, Pricing, ...
-    components/  # AnalyzerTimeline, TextReport, OriginalityPanel, landing/*, ...
-    api/         # Axios client and endpoints
-    stores/      # Zustand
-    types/       # Shared TS interfaces
-scripts/         # Dataset builders (MLX generation, Wikipedia fetch)
-extension/       # MV3 browser extension (Chrome + Firefox)
-wiki/            # Internal knowledge base (Obsidian-compatible)
-deploy/          # Production compose, deploy scripts, Caddy config
+  src/pages/        Landing, upload, results, classroom, pricing, status, legal
+  src/components/   Teacher summary, text report, Tribunal brain, workspace
+  src/i18n/         Translation layer and Russian dictionary
+extension/      MV3 browser extension
+deploy/         Production compose, deploy script, Caddy
+wiki/           Engineering notes and the Tribunal changelog
 ```
 
-## Production
+## Privacy and security
 
-See `deploy/README.md`. Self-hosted Ubuntu homelab behind Cloudflare Tunnel. Deploy:
+- All detection models run on our own servers; uploads are not sent to external AI providers.
+- Personal uploads are deleted after 90 days; class work is never used for training.
+- Passwords are hashed with PBKDF2, API keys stored as SHA-256 hashes, webhooks signed with HMAC-SHA256.
+- Files are served only through short-lived signed links.
 
-```bash
-~/deploy.sh prooflayer
-```
-
-## Tests
-
-```bash
-pytest backend/
-pytest backend/factcheck/     # one app
-pytest -k test_caching        # filter by keyword
-cd frontend && npm run i18n:check   # every t() text has a Russian translation
-```
+Details: [Privacy Policy](https://prooflayer.cloud/privacy) · [Data Processing terms](https://prooflayer.cloud/data-processing).
 
 ## License
 
-Copyright (c) 2026 Sole Proprietor ProofLayer. All rights reserved.
+Copyright (c) 2026 ProofLayer. All rights reserved.
 
-This software and its source code are proprietary. No part of this repository may be copied, modified, distributed, or used without explicit written permission from the owner.
+The source code is public for transparency so anyone can see how verdicts are made. It is not open
+source: no part of this repository may be copied, modified, distributed or used without written
+permission from the owner.
