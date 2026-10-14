@@ -78,7 +78,17 @@ LABELS = {
 }
 EXPECTS_SOURCES = {"report"}
 MIN_SCORE = 1.5
-CUE_GROUPS = ("thesis", "connector", "conclusion", "sequence", "work", "analysis", "spatial", "section")
+GENRE_CUES = {
+    "argument": ("thesis", "connector", "conclusion"),
+    "narrative": ("sequence",),
+    "retelling": ("work", "sequence"),
+    "analysis": ("analysis", "work"),
+    "description": ("spatial",),
+    "report": ("section",),
+}
+FIRST_PERSON_CUE = {"ru": "рассказ от первого лица", "en": "first-person account", "fr": "récit à la première personne"}
+DIALOGUE_CUE = {"ru": "диалог", "en": "dialogue", "fr": "dialogue"}
+FIRST_PERSON_RATE = 1.0
 
 
 @dataclass
@@ -168,5 +178,10 @@ def detect_genre(text: str, lang: Language) -> Genre:
         best, second, confidence = "other", best if top > 0 else None, 0.0
     else:
         confidence = round(min(0.95, 0.5 + (top - runner) / (2 * top)), 3)
-    cues = [c for group in CUE_GROUPS for c in found[group]]
+    cues = [c for group in GENRE_CUES.get(best, ()) for c in found[group]]
+    if best == "narrative":
+        if dialogue:
+            cues.append(DIALOGUE_CUE[code])
+        if first_person >= FIRST_PERSON_RATE:
+            cues.append(FIRST_PERSON_CUE[code])
     return Genre(best, code, confidence, second, cues[:12], {k: round(v, 2) for k, v in scores.items()})

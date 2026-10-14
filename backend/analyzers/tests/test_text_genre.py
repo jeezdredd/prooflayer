@@ -64,6 +64,23 @@ class TestDetectGenre:
         text = SAMPLES["analysis"]
         assert "потом" not in detect_genre(text, detect_language(text)).cues
 
+    def test_cues_belong_to_the_recognised_genre(self):
+        text = (
+            "This week's lab on the Stroop task was more fun than I expected. I honestly thought I would be fast at naming "
+            "ink colours, but my times were awful. My partner was even slower. What surprised me is how hard it is to ignore "
+            "reading. I have been reading for fifteen years, so my brain does it whether I want it to or not. I think that is "
+            "the whole point of the effect."
+        )
+        genre = detect_genre(text, detect_language(text))
+        assert genre.key == "narrative"
+        assert "i think" not in genre.cues
+        assert genre.cues == ["first-person account"]
+
+    def test_argument_cues_stay_with_argument(self):
+        text = SAMPLES["argument"]
+        cues = detect_genre(text, detect_language(text)).cues
+        assert "я считаю" in cues and "во-первых" in cues
+
     def test_plain_text_without_cues_is_general(self):
         text = "The weather was warm. The shop sold bread, milk and apples. The street was long and quiet."
         genre = detect_genre(text, detect_language(text))
