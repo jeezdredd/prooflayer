@@ -2,7 +2,10 @@ import logging
 
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 from analyzers.models import AnalysisResult
+from analyzers.text.citation_style import check_format
+from analyzers.text.citations import check_citations
 from analyzers.text.evasion import scan_docx, scan_text
+from analyzers.text.genre import detect_genre
 from analyzers.text.grade import assess, level_label
 from analyzers.text.language import detect_language
 from analyzers.text.style import drift, features, phrasebook
@@ -134,3 +137,52 @@ class TextStyleAnalyzer(BaseAnalyzer):
             return AnalysisOutput(confidence=result["score"], verdict="suspicious", evidence=evidence)
         evidence["finding"] = "consistent with this student's earlier work"
         return AnalysisOutput(confidence=1 - result["score"], verdict="inconclusive", evidence=evidence)
+
+
+class TextCitationsAnalyzer(BaseAnalyzer):
+    name = "text_citations"
+    version = "1.0.0"
+
+    def supported_mime_types(self) -> list[str]:
+        return ["text/plain", *DOCUMENT_MIMES]
+
+    def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
+        try:
+            text = _read(file_path, metadata)
+        except Exception as exc:
+            return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": f"cannot read text: {exc}"})
+        report = check_citations(text)
+        evidence = {**report.as_evidence(), "format": check_format(text), "context_signal": True}
+        lang = detect_language(text)
+        genre = detect_genre(text, lang) if lang else None
+        if genre:
+            evidence["genre"] = genre.key
+        if not report.references:
+            expected = genre is not None and genre.expects_sources
+            evidence["finding"] = f"a {genre.label} with no sources at all" if expected else "no references, links or quotes to check"
+            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
+        if report.flagged:
+            evidence["finding"] = "cited sources that do not exist"
+            return AnalysisOutput(confidence=report.confidence(), verdict="suspicious", evidence=evidence)
+        evidence["finding"] = "cited sources check out" if report.checked_weight else "sources could not be checked"
+        return AnalysisOutput(confidence=report.confidence() if report.checked_weight else 0.0, verdict="inconclusive", evidence=evidence)
+
+
+class TextGenreAnalyzer(BaseAnalyzer):
+    name = "text_genre"
+    version = "1.0.0"
+
+    def supported_mime_types(self) -> list[str]:
+        return ["text/plain", *DOCUMENT_MIMES]
+
+    def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
+        try:
+            text = _read(file_path, metadata)
+        except Exception as exc:
+            return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": f"cannot read text: {exc}"})
+        lang = detect_language(text)
+        if lang is None:
+            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "language not supported"})
+        genre = detect_genre(text, lang)
+        evidence = {**genre.as_evidence(), "language": lang.code, "context_signal": True, "finding": f"reads as a {genre.label}"}
+        return AnalysisOutput(confidence=genre.confidence, verdict="inconclusive", evidence=evidence)

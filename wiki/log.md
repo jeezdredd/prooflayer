@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-14] text-sources | Ghost citations, citation format, text type
+
+- Source: analyzers/text/citations.py, citation_style.py, genre.py, live API checks
+- Pages updated: [[concepts/text-signals]]
+
 ## [2026-10-14] text-t4 | Supervised text classifier replaces llm_text (Tribunal 1.5)
 
 - Source: train_text_classifier v3 on dataset/text_t4 with pre-2022 Wikipedia contrast pairs, offline llm_text replica, aggregate() simulation

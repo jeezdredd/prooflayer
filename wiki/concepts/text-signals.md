@@ -97,3 +97,26 @@ Earlier attempts: an allow-alone-fake "strict" threshold at the max calib human 
 because margins pile up near the ceiling (t1 5.65, strict 5.76) and 4/155 textsight wiki humans
 landed above it. Open: textsight-2026 en (frontier models) is caught only 36-39%; encyclopedic
 human prose still gets `suspicious` up to 16%.
+
+## Sources, citation format and text type (2026-10-14)
+
+Two more **context members** (`aggregator.CONTEXT_ANALYZERS`, never in the vote):
+
+- `text_citations` (`analyzers/text/citations.py`): extracts DOIs, arXiv ids, ISBNs (bad check digit
+  is reported as invented without a lookup), links, reference-list entries and long quotes, then
+  checks them in parallel: doi.org handle API, arXiv API, Open Library then Google Books, OpenAlex
+  by guessed title then Crossref by full entry, links through `safe_get` (SSRF-safe; a domain that
+  does not resolve counts as missing, a private address is never fetched or blamed), quotes through
+  the plagiarism search chain. Weighted missing share (DOI/arXiv/ISBN 1.0, reference 0.6, link 0.4,
+  quote 0.25); `suspicious` when missing weight >= 1.0 and share >= 34%, which turns an authentic or
+  inconclusive verdict into `needs_review`. Live check: real ru books (Выготский, Лотман,
+  Ключевский), Bourdieu, Goodfellow, Kahneman found; invented DOI and invented books missing.
+- Citation format (`analyzers/text/citation_style.py`, inside `text_citations` evidence `format`):
+  per entry style detection and concrete fixes for APA 7, MLA 9, Chicago, Harvard, IEEE, Vancouver,
+  ГОСТ Р 7.0.100-2018 (Cyrillic entries) and ISO 690; list level: mixed styles, alphabetical or
+  numeric order, in-text citation form vs style, author-year citations missing from the list,
+  numbered citations beyond the list. Formatting never affects the verdict.
+- `text_genre` (`analyzers/text/genre.py`): cue phrases and structure per language pick argument
+  essay, narrative, retelling, literary analysis, description, report, letter or poem (else general
+  text), with the cues shown to the teacher. A report with no sources gets a note; an essay or a
+  retelling without sources is normal.

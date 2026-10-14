@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  FileSearch, Fingerprint, SearchCheck, Columns2, GraduationCap, Copy, ShieldAlert, Terminal, FolderUp, PenLine,
+  FileSearch, Fingerprint, SearchCheck, Columns2, GraduationCap, Copy, ShieldAlert, Terminal, FolderUp, PenLine, BookCheck,
 } from "lucide-react";
 
 type GroupId = "investigate" | "teach" | "build";
@@ -202,6 +202,26 @@ const WRITING = (
   </div>
 );
 
+const SOURCES = (
+  <div className={MONO}>
+    <PreviewHead left="Sources · referat.docx" right="реферат / доклад" />
+    {[
+      ["DOI 10.1038/nature14539", "exists", "sage"],
+      ["DOI 10.1038/nature99999123", "not registered", "blood"],
+      ["Petrov, A. (2021). Neural gardening...", "no such work", "blood"],
+      ["Выготский, Л. С. Мышление и речь", "exists", "sage"],
+    ].map(([ref, status, tone]) => (
+      <div key={ref} className={ROW}>
+        <span className="text-ink-300 truncate">{ref}</span>
+        <Pill tone={tone as "sage"}>{status}</Pill>
+      </div>
+    ))}
+    <div className="mt-3 text-ink-400">
+      Reference list: <span className="text-ink-200">APA 7</span>, 2 issues: <span className="text-signal-amber">use &amp; before the last author</span>, <span className="text-signal-amber">not in alphabetical order</span>
+    </div>
+  </div>
+);
+
 const ORIGINALITY = (
   <div className={MONO}>
     <PreviewHead left="Originality · essay.docx" right="66% original" />
@@ -315,6 +335,12 @@ const FEATURES: Feature[] = [
     line: "Plagiarism checked on every upload, across the class, the school and the open web.",
     facts: ["Fingerprints of five-word sequences catch copied passages", "Meaning matches catch paraphrase and translation in ru, en, fr", "Sources listed with the matching spans highlighted"],
     preview: ORIGINALITY,
+  },
+  {
+    id: "sources", group: "teach", Icon: BookCheck, title: "Sources and format", to: "/pricing",
+    line: "Every DOI, ISBN, arXiv id, link and reference checked against real catalogues, and the list checked against its style.",
+    facts: ["Invented sources, a common chatbot trace, are listed one by one", "APA, MLA, Chicago, Harvard, IEEE, Vancouver, ГОСТ and ISO 690 formatting", "Knows an essay from a retelling or a report, so a story without sources is not a problem"],
+    preview: SOURCES,
   },
   {
     id: "bypass", group: "teach", Icon: ShieldAlert, title: "Anti-bypass", to: "/pricing",

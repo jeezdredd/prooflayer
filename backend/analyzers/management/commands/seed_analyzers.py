@@ -101,6 +101,20 @@ ANALYZERS = [
         "timeout": 60,
     },
     {
+        "name": "text_citations",
+        "analyzer_class": "analyzers.implementations.text_signals.TextCitationsAnalyzer",
+        "weight": 1.0,
+        "queue": "default",
+        "timeout": 90,
+    },
+    {
+        "name": "text_genre",
+        "analyzer_class": "analyzers.implementations.text_signals.TextGenreAnalyzer",
+        "weight": 1.0,
+        "queue": "default",
+        "timeout": 30,
+    },
+    {
         "name": "audio_spectrogram",
         "analyzer_class": "analyzers.implementations.audio_analyzer.AudioSpectrogramAnalyzer",
         "weight": 2.0,

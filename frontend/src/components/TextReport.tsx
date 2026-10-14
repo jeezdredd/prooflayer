@@ -29,11 +29,52 @@ function Chips({ items }: { items: string[] }) {
   );
 }
 
+interface Reference {
+  kind: string;
+  value: string;
+  status: "found" | "missing" | "unchecked";
+  detail: string;
+}
+
+interface CitationFormat {
+  style: string | null;
+  label: string;
+  entries: { entry: string; style: string | null; issues: string[] }[];
+  issues: string[];
+  issue_count: number;
+}
+
+const KIND_LABEL: Record<string, string> = {
+  doi: "DOI",
+  arxiv: "arXiv",
+  isbn: "ISBN",
+  url: "Link",
+  bibliography: "Reference",
+  quote: "Quote",
+};
+
+function MissingList({ items }: { items: Reference[] }) {
+  return (
+    <ul className="mt-1 space-y-1">
+      {items.slice(0, 6).map((r) => (
+        <li key={`${r.kind}:${r.value}`} className="break-words">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mr-2">{KIND_LABEL[r.kind] ?? r.kind}</span>
+          <span className="text-ink-200">{r.value}</span>
+          {r.detail && <span className="text-ink-500"> ({r.detail})</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function TextReport({ submission }: { submission: Submission }) {
   const evasion = byName(submission, "text_evasion");
   const grade = byName(submission, "text_grade_fit");
   const style = byName(submission, "text_style");
-  if (!evasion && !grade && !style) return null;
+  const citations = byName(submission, "text_citations");
+  const genre = byName(submission, "text_genre");
+  if (!evasion && !grade && !style && !citations && !genre) return null;
+  const ge = (genre?.evidence ?? {}) as Evidence;
 
   const ev = (evasion?.evidence ?? {}) as Evidence;
   const gr = (grade?.evidence ?? {}) as Evidence;
@@ -44,12 +85,23 @@ export default function TextReport({ submission }: { submission: Submission }) {
   const beyond = (gr.beyond_level_words as string[] | undefined) ?? [];
   const phrases = Object.keys(((st.phrasebook as Evidence | undefined)?.hits as Record<string, number> | undefined) ?? {});
   const drift = st.drift as { score: number; history_size: number } | undefined;
+  const ci = (citations?.evidence ?? {}) as Evidence;
+  const refs = (ci.references as Reference[] | undefined) ?? [];
+  const missing = refs.filter((r) => r.status === "missing");
+  const found = refs.filter((r) => r.status === "found");
+  const format = ci.format as CitationFormat | null | undefined;
+  const entryIssues = (format?.entries ?? []).filter((e) => e.issues.length > 0);
 
   return (
     <div className="px-6 py-5 border-b border-ink-700">
       <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">Text report</div>
       <p className="text-xs text-ink-500 mb-2">Signals for a conversation with the student, not proof on their own.</p>
       <div className="divide-y divide-[var(--line-strong)]">
+        {genre && typeof ge.genre === "string" && (
+          <Row tone="muted" title={`Text type: ${String(ge.label)}${ge.local_label && ge.local_label !== ge.label ? ` (${String(ge.local_label)})` : ""}`}>
+            {((ge.cues as string[] | undefined) ?? []).length > 0 && <>Recognised by: <Chips items={(ge.cues as string[]).slice(0, 8)} /></>}
+          </Row>
+        )}
         {evasion && (
           evasion.verdict === "fake" || evasion.verdict === "suspicious" ? (
             <Row tone="alert" title="The text was altered to slip past checkers">
@@ -82,6 +134,43 @@ export default function TextReport({ submission }: { submission: Submission }) {
             <Row tone="ok" title="Consistent with this student's earlier work">Compared with {drift.history_size} earlier submissions.</Row>
           ) : (
             <Row tone="muted" title="Style comparison starts after two earlier works from this student" />
+          )
+        )}
+        {citations && refs.length === 0 && ci.genre === "report" && (
+          <Row tone="muted" title="A research-style text with no sources at all" />
+        )}
+        {citations && refs.length > 0 && (
+          citations.verdict === "suspicious" ? (
+            <Row tone="alert" title={`${missing.length} of ${refs.length} cited sources could not be found`}>
+              <MissingList items={missing} />
+            </Row>
+          ) : missing.length > 0 ? (
+            <Row tone="muted" title={`${found.length} sources found, ${missing.length} not found`}>
+              <MissingList items={missing} />
+            </Row>
+          ) : found.length > 0 ? (
+            <Row tone="ok" title={`All ${found.length} checked sources exist`} />
+          ) : (
+            <Row tone="muted" title="Cited sources could not be checked right now" />
+          )
+        )}
+        {format && (
+          format.issue_count > 0 ? (
+            <Row tone="muted" title={`Reference list: ${format.style ? format.label : "style not recognised"}, ${format.issue_count} formatting ${format.issue_count === 1 ? "issue" : "issues"}`}>
+              {format.issues.length > 0 && (
+                <ul className="mt-1 space-y-1">
+                  {format.issues.map((i) => <li key={i}>{i}</li>)}
+                </ul>
+              )}
+              {entryIssues.slice(0, 5).map((e) => (
+                <div key={e.entry} className="mt-2">
+                  <div className="text-ink-200 break-words">{e.entry}</div>
+                  <div className="text-ink-500">{e.issues.join("; ")}</div>
+                </div>
+              ))}
+            </Row>
+          ) : (
+            <Row tone="ok" title={`Reference list follows ${format.label}`} />
           )
         )}
         {phrases.length >= 3 && (

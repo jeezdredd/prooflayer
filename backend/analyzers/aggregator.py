@@ -25,7 +25,7 @@ DISAGREEMENT_MIN_MINORITY_SHARE = 0.3
 SINGLE_VOTER_MIN_SHARE = 0.5
 SINGLE_VOTER_MIN_PROB = 0.9
 AUTHENTIC_EDITED_AI_CEIL = 0.30
-CONTEXT_ANALYZERS = {"text_grade_fit", "text_style"}
+CONTEXT_ANALYZERS = {"text_grade_fit", "text_style", "text_citations", "text_genre"}
 CONTEXT_FLAG_FLOOR = 0.6
 CONTEXT_ESCALATES = {"authentic", "authentic_edited", "inconclusive"}
 

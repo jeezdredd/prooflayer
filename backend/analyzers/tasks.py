@@ -60,6 +60,8 @@ ANALYZER_STATUS_MESSAGES = {
     "audio_spectrogram": "Analyzing audio spectrogram...",
     "llm_text": "Analyzing text with AI...",
     "text_classifier": "Comparing writing patterns with human and AI texts...",
+    "text_citations": "Checking cited sources, links and quotes...",
+    "text_genre": "Recognising the type of text...",
     "community_forensics": "Running Community Forensics ViT...",
     "npr_detector": "Running NPR ViT detector...",
     "siglip_detector": "Running SigLIP detector...",
