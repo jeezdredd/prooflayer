@@ -68,6 +68,23 @@ need a new signal (another backbone or frequency-domain features), not more Open
 
 ## Changelog
 
+### 1.6.1 - 2026-10-14 (pending eval_detectors, version constant not bumped yet)
+
+Image fixes after a real press photo (Nikon D3S EXIF, plain studio background) came out
+`suspicious` at 0.36.
+
+- `metadata` 1.6.0: a camera signature plus a date mismatch alone (photo exported or edited days
+  after capture) is `inconclusive`, not `suspicious`. The date note stays in the evidence. AI tool,
+  generation parameters, C2PA AI and two strong flags behave as before.
+- `ai_detector` 2.1.0: images with a camera signature skip the screenshot pre-filter, so studio
+  portraits with a flat background are scored instead of abstaining. `content_check.camera_exif`
+  records it.
+- Aggregation: a `suspicious` band (score 0.35 to 0.5) without a single confident fake or
+  suspicious voter becomes `inconclusive`. Lukewarm averages that lean real no longer read as
+  suspicion.
+- Measure on `dataset/openfake_test` and `dataset/hf` before declaring the version; real -> fake
+  must stay 0.
+
 ### 1.6 - 2026-10-14
 
 Text only; image roster unchanged.

@@ -77,11 +77,31 @@ EXIF_SOFTWARE_FIELDS = ["Software", "ProcessingSoftware", "Creator", "CreatorToo
 
 CAMERA_SIGNATURE_FIELDS = ["Make", "Model"]
 CAMERA_CAPTURE_FIELDS = ["ExposureTime", "FNumber", "ISOSpeedRatings", "FocalLength", "LensModel", "LensMake"]
+DATE_ONLY_FLAGS = {"date_inconsistency"}
+
+
+def camera_signature(metadata: dict) -> dict:
+    exif = metadata.get("exif", {})
+    result = {"has_camera_signature": False, "make": None, "model": None, "capture_fields_present": 0, "details": None}
+    if not isinstance(exif, dict) or not exif:
+        return result
+    make = exif.get("Make")
+    model = exif.get("Model")
+    if isinstance(make, str):
+        result["make"] = make.strip()
+    if isinstance(model, str):
+        result["model"] = model.strip()
+    capture_count = sum(1 for f in CAMERA_CAPTURE_FIELDS if exif.get(f))
+    result["capture_fields_present"] = capture_count
+    if (result["make"] and result["model"]) and capture_count >= 2:
+        result["has_camera_signature"] = True
+        result["details"] = f"Camera EXIF present: {result['make']} {result['model']} (+{capture_count} capture fields)"
+    return result
 
 
 class MetadataAnalyzer(BaseAnalyzer):
     name = "metadata"
-    version = "1.5.0"
+    version = "1.6.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -132,6 +152,9 @@ class MetadataAnalyzer(BaseAnalyzer):
         elif "camera_signature" in flags and len(strong_flags) == 0:
             confidence = 0.55
             verdict = "authentic"
+        elif "camera_signature" in flags and set(strong_flags) <= DATE_ONLY_FLAGS:
+            confidence = 0.5
+            verdict = "inconclusive"
         elif len(strong_flags) == 1 and "metadata_stripped" in flags:
             confidence = 0.55
             verdict = "suspicious"
@@ -301,22 +324,7 @@ class MetadataAnalyzer(BaseAnalyzer):
         return None
 
     def _check_camera_signature(self, metadata: dict) -> dict:
-        exif = metadata.get("exif", {})
-        result = {"has_camera_signature": False, "make": None, "model": None, "capture_fields_present": 0, "details": None}
-        if not isinstance(exif, dict) or not exif:
-            return result
-        make = exif.get("Make")
-        model = exif.get("Model")
-        if isinstance(make, str):
-            result["make"] = make.strip()
-        if isinstance(model, str):
-            result["model"] = model.strip()
-        capture_count = sum(1 for f in CAMERA_CAPTURE_FIELDS if exif.get(f))
-        result["capture_fields_present"] = capture_count
-        if (result["make"] and result["model"]) and capture_count >= 2:
-            result["has_camera_signature"] = True
-            result["details"] = f"Camera EXIF present: {result['make']} {result['model']} (+{capture_count} capture fields)"
-        return result
+        return camera_signature(metadata)
 
     def _check_metadata_presence(self, metadata: dict) -> dict:
         exif = metadata.get("exif", {})

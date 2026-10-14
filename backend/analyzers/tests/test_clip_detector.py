@@ -119,3 +119,21 @@ class TestAIImageDetector:
         out = AIImageDetector().analyze(photographic_image_path, {})
         assert "classifiers" in out.evidence
         assert len(out.evidence["classifiers"]) == 2
+
+
+@patch("analyzers.implementations.clip_detector.AutoModelForImageClassification")
+@patch("analyzers.implementations.clip_detector.AutoFeatureExtractor")
+class TestCameraPhotoPrefilter:
+    def test_camera_exif_runs_classifiers_on_plain_background(self, mock_ext, mock_mod, flat_image_path):
+        m, e = _mk_mock_for_label(ai_prob=0.05)
+        mock_mod.from_pretrained.return_value = m
+        mock_ext.from_pretrained.return_value = e
+        exif = {"Make": "NIKON CORPORATION", "Model": "NIKON D3S", "ExposureTime": "1/200", "FNumber": 5.6}
+        out = AIImageDetector().analyze(flat_image_path, {"exif": exif})
+        assert out.verdict == "authentic"
+        assert out.evidence["content_check"]["camera_exif"] is True
+
+    def test_screenshot_without_camera_exif_still_skipped(self, mock_ext, mock_mod, flat_image_path):
+        out = AIImageDetector().analyze(flat_image_path, {"exif": {"Software": "Screenshot"}})
+        assert out.verdict == "inconclusive"
+        mock_mod.from_pretrained.assert_not_called()

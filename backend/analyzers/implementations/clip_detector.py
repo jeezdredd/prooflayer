@@ -8,6 +8,7 @@ from transformers import AutoFeatureExtractor, AutoModelForImageClassification
 
 from analyzers._device import get_device, inputs_to_device, to_device
 from analyzers.base import AnalysisOutput, BaseAnalyzer
+from analyzers.implementations.metadata_analyzer import camera_signature
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ def _run_one(name: str, idx: int, image: Image.Image) -> dict:
 
 class AIImageDetector(BaseAnalyzer):
     name = "ai_detector"
-    version = "2.0.0"
+    version = "2.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -105,7 +106,8 @@ class AIImageDetector(BaseAnalyzer):
         skip_photo_check = bool(metadata.get("skip_photo_check"))
 
         photo_check = _photographic_score(image)
-        if not skip_photo_check and not photo_check["is_photographic"]:
+        photo_check["camera_exif"] = camera_signature(metadata)["has_camera_signature"]
+        if not skip_photo_check and not photo_check["is_photographic"] and not photo_check["camera_exif"]:
             return AnalysisOutput(
                 confidence=0.5,
                 verdict="inconclusive",

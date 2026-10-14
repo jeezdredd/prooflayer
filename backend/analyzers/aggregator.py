@@ -191,6 +191,9 @@ def _aggregate_core(results: list[AnalysisResult]) -> tuple[float, str]:
     ):
         raw_verdict = "suspicious" if raw_verdict == "fake" else "inconclusive"
 
+    if raw_verdict == "suspicious" and not fake_voters:
+        raw_verdict = "inconclusive"
+
     if raw_verdict == "authentic" and len(authentic_voters) < 1 and total_weight > 0:
         raw_verdict = "inconclusive"
 

@@ -2,6 +2,8 @@ import pytest
 
 from analyzers.aggregator import aggregate
 from analyzers.models import AnalysisResult
+from content.tests.factories import SubmissionFactory
+
 from .factories import AnalysisResultFactory, AnalyzerConfigFactory
 
 
@@ -218,3 +220,73 @@ class TestAggregate:
         )
         score, verdict = aggregate([r_cf, r_meta])
         assert verdict != "fake"
+
+
+def _member(sub, name, weight, verdict, confidence, evidence=None):
+    return AnalysisResultFactory(
+        submission=sub,
+        analyzer=AnalyzerConfigFactory(name=name, weight=weight),
+        verdict=verdict,
+        confidence=confidence,
+        evidence=evidence or {},
+    )
+
+
+@pytest.mark.django_db
+class TestRealPhotoRegression:
+    def _press_photo(self, metadata_verdict, metadata_confidence):
+        sub = SubmissionFactory()
+        v = AnalysisResult.Verdict
+        return [
+            _member(sub, "community_forensics", 3.5, v.AUTHENTIC, 0.65, {"ai_probability": 0.2}),
+            _member(sub, "clip_probe", 2.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.3823}),
+            _member(sub, "custom_detector", 3.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.4664}),
+            _member(sub, "ai_detector", 1.0, v.INCONCLUSIVE, 0.5),
+            _member(sub, "ela", 0.75, v.INCONCLUSIVE, 0.5),
+            _member(sub, "llm_vision", 1.5, v.INCONCLUSIVE, 0.5),
+            _member(sub, "metadata", 1.5, metadata_verdict, metadata_confidence),
+        ]
+
+    def test_reported_case_scored_suspicious_before(self):
+        _, verdict = aggregate(self._press_photo(AnalysisResult.Verdict.SUSPICIOUS, 0.6))
+        assert verdict == "suspicious"
+
+    def test_camera_photo_with_fixed_metadata_is_not_suspicious(self):
+        score, verdict = aggregate(self._press_photo(AnalysisResult.Verdict.INCONCLUSIVE, 0.5))
+        assert verdict in ("authentic", "inconclusive")
+        assert score < 0.4
+
+    def test_lukewarm_scores_without_a_confident_fake_voter_are_not_suspicious(self):
+        sub = SubmissionFactory()
+        v = AnalysisResult.Verdict
+        results = [
+            _member(sub, "custom_detector", 3.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.45}),
+            _member(sub, "clip_probe", 2.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.42}),
+            _member(sub, "community_forensics", 3.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.4}),
+        ]
+        score, verdict = aggregate(results)
+        assert 0.35 <= score < 0.5
+        assert verdict == "inconclusive"
+
+    def test_ai_image_still_flagged(self):
+        sub = SubmissionFactory()
+        v = AnalysisResult.Verdict
+        results = [
+            _member(sub, "community_forensics", 3.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.55}),
+            _member(sub, "custom_detector", 3.5, v.FAKE, 0.8, {"ai_probability": 0.93}),
+            _member(sub, "clip_probe", 2.5, v.FAKE, 0.7, {"ai_probability": 0.88}),
+            _member(sub, "metadata", 1.5, v.INCONCLUSIVE, 0.4),
+        ]
+        _, verdict = aggregate(results)
+        assert verdict in ("fake", "likely_fake")
+
+    def test_one_confident_fake_voter_keeps_suspicion(self):
+        sub = SubmissionFactory()
+        v = AnalysisResult.Verdict
+        results = [
+            _member(sub, "custom_detector", 3.5, v.FAKE, 0.8, {"ai_probability": 0.8}),
+            _member(sub, "clip_probe", 2.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.3}),
+            _member(sub, "community_forensics", 3.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.3}),
+        ]
+        _, verdict = aggregate(results)
+        assert verdict == "suspicious"
