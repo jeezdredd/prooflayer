@@ -27,6 +27,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     password_confirm = serializers.CharField(write_only=True)
     accept_terms = serializers.BooleanField(write_only=True, error_messages={"required": ACCEPT_TERMS_MESSAGE})
     is_adult = serializers.BooleanField(required=False, default=False)
+    allow_training = serializers.BooleanField(required=False, default=True)
 
     class Meta:
         model = User

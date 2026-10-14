@@ -794,7 +794,6 @@
     "Open: {name}": "Открыть: {name}",
     "OpenAPI reference at api.prooflayer.cloud/api/docs": "Справочник OpenAPI: api.prooflayer.cloud/api/docs",
     "operational": "работают",
-    "Optional: let ProofLayer use reviewed copies of my personal uploads to train its detectors. Never class work; withdraw any time.": "Необязательно: разрешить ProofLayer использовать проверенные копии моих личных загрузок для обучения детекторов. Работы из классов никогда не используются; согласие можно отозвать в любой момент.",
     "Order": "Порядок",
     "Original": "Оригинальность",
     "Originality": "Оригинальность",
@@ -1044,7 +1043,6 @@
     "Send Feedback": "Отправить отзыв",
     "Send objection": "Отправить возражение",
     "Sending…": "Отправляем…",
-    "Sends up to 8 short sentences from each work to search engines outside Kazakhstan (Google, Bing, Yandex, DuckDuckGo, Brave). Off by default.": "Отправляет до 8 коротких предложений из каждой работы в поисковые системы за пределами Казахстана (Google, Bing, Яндекс, DuckDuckGo, Brave). По умолчанию выключено.",
     "Sensitive": "Деликатное",
     "Sensitive content, click to show": "Деликатное содержимое, нажмите, чтобы показать",
     "sent": "отправлено",
@@ -1264,7 +1262,7 @@
     "Unknown": "Неизвестно",
     "Unknown plan.": "Неизвестный тариф.",
     "unreachable": "недоступно",
-    "Unrestricted access for operators: no quotas, review queue, verdict overrides, admin panel.": "Неограниченный доступ для операторов: без лимитов, очередь проверки, ручная смена вердиктов, админ-панель.",
+    "Unrestricted access for staff: no quotas, review queue, verdict overrides, admin panel.": "Неограниченный доступ для сотрудников: без лимитов, очередь проверки, ручная смена вердиктов, админ-панель.",
     "Unsupported file type.": "Неподдерживаемый тип файла.",
     "Unsupported file type: {type}": "Неподдерживаемый тип файла: {type}",
     "Untitled batch": "Пакет без названия",
@@ -1447,7 +1445,9 @@
     "после адреса нужна (дата обращения: ДД.ММ.ГГГГ)": "после адреса нужна (дата обращения: ДД.ММ.ГГГГ)",
     "страницы обозначаются «С. 45–67» или «256 с.», не «стр.»": "страницы обозначаются «С. 45–67» или «256 с.», не «стр.»",
     "фамилия и инициалы через запятую и с пробелами: Иванов, И. И.": "фамилия и инициалы через запятую и с пробелами: Иванов, И. И.",
-    "≈ ${n} a month": "≈ ${n} в месяц"
+    "≈ ${n} a month": "≈ ${n} в месяц",
+    "Help improve detection: let ProofLayer use reviewed copies of my personal uploads to train its detectors. On by default; untick to opt out, or turn it off any time in your account. Never class work.": "Помочь улучшить распознавание: разрешить ProofLayer использовать проверенные копии моих личных загрузок для обучения детекторов. Включено по умолчанию; снимите отметку, чтобы отказаться, или выключите в любой момент в аккаунте. Работы из классов никогда не используются.",
+    "Sends up to 8 short sentences from each work to search engines outside Kazakhstan (Google, Bing, Yandex, DuckDuckGo, Brave) and finds far more copied passages. On by default; turn it off to keep the check inside ProofLayer.": "Отправляет до 8 коротких предложений из каждой работы в поисковые системы за пределами Казахстана (Google, Bing, Яндекс, DuckDuckGo, Brave) и находит намного больше списанных фрагментов. Включено по умолчанию; выключите, чтобы проверка шла только внутри ProofLayer."
   },
   "plural": {
     "All {n} sources exist": [

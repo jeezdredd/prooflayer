@@ -15,7 +15,7 @@ const SOURCE_COLORS: Record<string, string> = {
   clip_neighbour: "bg-signal-violet/10 text-signal-violet border-signal-violet/40",
   tineye: "bg-signal-violet/10 text-signal-violet border-signal-violet/40",
   google_vision: "bg-iris/10 text-iris-light border-iris/40",
-  c2pa: "bg-sage-500/10 text-sage-300 border-sage-500/40",
+  c2pa: "bg-signal-sage/10 text-sage-300 border-signal-sage/40",
 };
 
 interface ProvenancePanelProps {

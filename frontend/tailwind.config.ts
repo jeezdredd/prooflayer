@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 
+const tint = (name: string) => `color-mix(in srgb, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
@@ -11,30 +13,33 @@ export default {
       },
       colors: {
         ink: {
-          50: "var(--ink-50)",
-          100: "var(--ink-100)",
-          200: "var(--ink-200)",
-          300: "var(--ink-300)",
-          400: "var(--ink-400)",
-          500: "var(--ink-500)",
-          600: "var(--ink-600)",
-          700: "var(--ink-700)",
-          800: "var(--ink-800)",
-          850: "var(--ink-850)",
-          900: "var(--ink-900)",
-          950: "var(--ink-950)",
+          50: tint("ink-50"),
+          100: tint("ink-100"),
+          200: tint("ink-200"),
+          300: tint("ink-300"),
+          400: tint("ink-400"),
+          500: tint("ink-500"),
+          600: tint("ink-600"),
+          700: tint("ink-700"),
+          800: tint("ink-800"),
+          850: tint("ink-850"),
+          900: tint("ink-900"),
+          950: tint("ink-950"),
         },
         signal: {
-          amber: "var(--signal-amber)",
-          cyan: "var(--signal-cyan)",
-          blood: "var(--signal-blood)",
-          sage: "var(--signal-sage)",
-          violet: "var(--signal-violet)",
-          lime: "var(--signal-lime)",
-          fuchsia: "var(--signal-fuchsia)",
+          amber: tint("signal-amber"),
+          cyan: tint("signal-cyan"),
+          blood: tint("signal-blood"),
+          sage: tint("signal-sage"),
+          violet: tint("signal-violet"),
+          lime: tint("signal-lime"),
+          fuchsia: tint("signal-fuchsia"),
         },
         paper: "var(--paper)",
       },
+      borderColor: { iris: tint("signal-violet") },
+      backgroundColor: { iris: tint("signal-violet") },
+      ringColor: { iris: tint("signal-violet") },
       keyframes: {
         "pulse-soft": {
           "0%, 100%": { opacity: "1" },

@@ -115,7 +115,7 @@ export default function TermsPage() {
           <li>You give us a non-exclusive, royalty-free licence to store, copy and process your content only to provide the Service, including analysis, reports, the originality checks and, for class work, the originality repository described in section 6, and, only if you opt in, model training as described below.</li>
           <li>The Service is not a file storage service. The file of a personal upload (one not handed in to a class) is deleted 90 days after upload, together with the stored text used for its originality report. Its verdict, scores and result history stay until you delete them or your account. Keep your own copies of anything you need.</li>
           <li>You confirm that you have the rights and, where personal data is involved, the lawful basis needed to upload the content.</li>
-          <li>We use your uploads to train our detectors only if you opt in by ticking "Help improve detection" at registration or on your <Link to="/account" className="text-iris hover:underline">account page</Link>. It is off by default. Only personal uploads that our reviewers have labelled as real or AI are copied into a separate training set, without your account details.</li>
+          <li>We use your uploads to train our detectors while "Help improve detection" is on. It is on by default; you can untick it at registration or turn it off at any time on your <Link to="/account" className="text-iris hover:underline">account page</Link>. Only personal uploads that our reviewers have labelled as real or AI are copied into a separate training set, without your account details.</li>
           <li>You can withdraw that consent at any time on your account page, and the training copies are then deleted. Detectors already trained on them are not retrained. Deleting a single upload does not delete a training copy already made from it. If you delete your account instead, the training copies are kept unless you also tick "also delete the anonymous training copies".</li>
           <li>Work handed in to a class is never used for training.</li>
           <li>The Service, our software, models and reports remain ours. You may use the results and reports you receive for your own purposes, subject to these Terms.</li>
@@ -186,7 +186,7 @@ export default function TermsPage() {
       <section>
         <h2 className="text-ink-100 text-base mb-3">16. Governing law and disputes</h2>
         <p>
-          These Terms are governed by the law of the {LEGAL.country}. Disputes will be heard by the courts at the operator's location. If you are a consumer, this does not take away the mandatory consumer protection rights you have under the law of your country of residence. Please contact us first, so we can try to resolve the issue without going to court.
+          These Terms are governed by the law of the {LEGAL.country}. Disputes will be heard by the courts at our location. If you are a consumer, this does not take away the mandatory consumer protection rights you have under the law of your country of residence. Please contact us first, so we can try to resolve the issue without going to court.
         </p>
       </section>
 
@@ -199,7 +199,7 @@ export default function TermsPage() {
 
       <section>
         <h2 className="text-ink-100 text-base mb-3">18. Contact</h2>
-        <p>The Service is operated by {operatorLine()}.</p>
+        <p>The Service is provided by {operatorLine()}.</p>
         <ul className="list-disc list-inside space-y-1 mt-3 text-ink-400">
           <li>Legal questions and these Terms: <a href={`mailto:${LEGAL.emails.legal}`} className="text-iris hover:underline">{LEGAL.emails.legal}</a></li>
           <li>Help with your account: <a href={`mailto:${LEGAL.emails.support}`} className="text-iris hover:underline">{LEGAL.emails.support}</a></li>

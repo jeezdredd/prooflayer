@@ -159,7 +159,7 @@ export default function UploadForm({ onFileSelect, onBatchSelect, disabled }: Up
               >
                 <span
                   className={clsx(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] ring-1 ring-white/8 hover:ring-white/20 transition-colors font-mono text-[10px] uppercase tracking-[0.14em]",
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] ring-1 ring-white/10 hover:ring-white/20 transition-colors font-mono text-[10px] uppercase tracking-[0.14em]",
                     color,
                   )}
                 >

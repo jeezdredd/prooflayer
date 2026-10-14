@@ -221,7 +221,7 @@ export default function ReviewQueuePage() {
         })}
         {data && data.length === 0 && !isLoading && (
           <div className="text-center py-20 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-16 h-16 border border-sage-500/40 bg-sage-500/10 mb-3 text-3xl text-sage-300">
+            <div className="inline-flex items-center justify-center w-16 h-16 border border-signal-sage/40 bg-signal-sage/10 mb-3 text-3xl text-sage-300">
               ✓
             </div>
             <p className="font-mono text-sm text-ink-100">{t("Queue empty")}</p>

@@ -113,7 +113,7 @@ export default function DataProcessingPage() {
           Inside the service, teachers see only work handed in to their own classes, never students' personal uploads; school admins see all classes of their school; teachers of the same school do not see each other's classes. Work handed in to a class cannot be made public.
         </p>
         <p className="mt-3">
-          Access to production systems is limited to the operator. Our staff reviewers can open submissions with split or escalated results, including class work, may correct the verdict, and can see the sources of originality matches. Most results are produced automatically and are not reviewed by a person. Anyone we allow to access class data must keep it confidential.
+          Access to production systems is limited to the person who supervises the service. Our staff reviewers can open submissions with split or escalated results, including class work, may correct the verdict, and can see the sources of originality matches. Most results are produced automatically and are not reviewed by a person. Anyone we allow to access class data must keep it confidential.
         </p>
         <p className="mt-3">Security measures in place:</p>
         <ul className="list-disc list-inside space-y-1 text-ink-400 mt-2">
@@ -147,7 +147,7 @@ export default function DataProcessingPage() {
         <ul className="list-disc list-inside space-y-1 text-ink-400 mt-2">
           <li><strong className="text-ink-300">Cloudflare:</strong> all traffic, including uploaded work, passes through Cloudflare's network in transit.</li>
           <li><strong className="text-ink-300">Email:</strong> transactional emails, including recipients' email addresses, are sent through Resend on Amazon SES in Ireland. Emails sent to our support and legal addresses are held in Apple iCloud Mail.</li>
-          <li><strong className="text-ink-300">Search queries:</strong> for the originality check, up to 8 distinctive sentences of at most 14 words each from a submitted text are sent as search queries to the search engines listed in section 6. Pages found are downloaded from the open web for comparison.</li>
+          <li><strong className="text-ink-300">Search queries:</strong> for the originality check, up to 8 distinctive sentences of at most 14 words each from a submitted text are sent as search queries to the search engines listed in section 6. Pages found are downloaded from the open web for comparison. For class work this web search is on by default; a school admin can turn it off in the school settings.</li>
           <li><strong className="text-ink-300">Technical data:</strong> visitors' IP addresses are sent to ip-api.com; if error monitoring is enabled, technical error reports are sent to Sentry; and if operations notices are enabled, visit notices and feedback messages are posted to our private Discord channel.</li>
           <li><strong className="text-ink-300">Payments:</strong> if the institution buys a paid plan, Paddle in the United Kingdom handles the payment, taxes and invoices.</li>
         </ul>

@@ -384,6 +384,15 @@
     color: transparent;
     animation: gradient-pan 8s ease infinite;
   }
+  svg.text-iris {
+    color: var(--signal-violet);
+    background: none;
+    animation: none;
+  }
+  .nav-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  }
   @keyframes gradient-pan {
     0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }

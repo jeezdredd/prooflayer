@@ -14,7 +14,7 @@ export default function RegisterPage() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isAdult, setIsAdult] = useState(false);
-  const [allowTraining, setAllowTraining] = useState(false);
+  const [allowTraining, setAllowTraining] = useState(true);
   const register = useRegister();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -112,7 +112,7 @@ export default function RegisterPage() {
               </label>
               <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-500 leading-relaxed cursor-pointer">
                 <input type="checkbox" checked={allowTraining} onChange={(e) => setAllowTraining(e.target.checked)} className="mt-0.5" />
-                <span>{t("Optional: let ProofLayer use reviewed copies of my personal uploads to train its detectors. Never class work; withdraw any time.")}</span>
+                <span>{t("Help improve detection: let ProofLayer use reviewed copies of my personal uploads to train its detectors. On by default; untick to opt out, or turn it off any time in your account. Never class work.")}</span>
               </label>
             </motion.div>
 

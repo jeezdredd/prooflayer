@@ -102,10 +102,10 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
         </span>
       </Link>
 
-      <nav className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-4">
+      <nav className="nav-scroll flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.title}>
-            <div className="px-3 mb-1 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-600">{t(group.title)}</div>
+            <div className="px-3 mb-1 font-mono text-[9px] uppercase tracking-[0.2em] text-ink-400">{t(group.title)}</div>
             <div className="space-y-px">
               {group.items.map((item) => <NavItemLink key={item.to} item={item} onNavigate={onNavigate} />)}
             </div>
@@ -170,7 +170,7 @@ function AgentFooter({ onLogout }: { onLogout: () => void }) {
       </div>
       <motion.button
         onClick={onLogout}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] border border-white/8 hover:border-signal-blood/40 hover:text-signal-blood text-ink-300 transition-colors rounded-sm"
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] border border-white/10 hover:border-signal-blood/40 hover:text-signal-blood text-ink-300 transition-colors rounded-sm"
         whileTap={{ scale: 0.98 }}
       >
         <LogOut size={13} strokeWidth={1.5} />
@@ -236,7 +236,7 @@ export default function Layout() {
               onClick={() => setMobileOpen(false)}
             />
             <motion.aside
-              className="fixed inset-y-0 left-0 z-50 w-[260px] bg-ink-950 border-r border-white/8 flex flex-col lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-[260px] bg-ink-950 border-r border-white/10 flex flex-col lg:hidden"
               initial={{ x: -260 }}
               animate={{ x: 0 }}
               exit={{ x: -260 }}

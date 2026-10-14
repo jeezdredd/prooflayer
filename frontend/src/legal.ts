@@ -31,7 +31,7 @@ export function operatorLine(): string {
   const country = ru ? LEGAL.countryRu : LEGAL.country;
   const parts = [LEGAL.operatorName, LEGAL.operatorRegistration, LEGAL.operatorAddress].filter(Boolean);
   if (parts.length) return `${parts.join(", ")}, ${country}`;
-  return ru ? `оператор ProofLayer, ${country}` : `the operator of ProofLayer, ${country}`;
+  return ru ? `ProofLayer (автоматические ИИ-системы под надзором человека, ${country})` : `ProofLayer (automated AI systems under human supervision, ${country})`;
 }
 
 export function legalUpdated(): string {

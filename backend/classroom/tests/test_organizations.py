@@ -195,57 +195,57 @@ class TestOrgWebSearchSetting:
     def _url(self, org):
         return reverse("org-settings", kwargs={"slug": org.slug})
 
-    def test_off_by_default_and_shown_to_admin_only(self):
+    def test_on_by_default_and_shown_to_admin_only(self):
         owner, org = _school()
         teacher = UserFactory(is_verified=True)
         OrgMember.objects.create(organization=org, user=teacher, role=OrgMember.Role.TEACHER)
-        assert org.web_search_enabled is False
+        assert org.web_search_enabled is True
         detail = reverse("org-detail", kwargs={"slug": org.slug})
-        assert _client(owner).get(detail).data["web_search_enabled"] is False
+        assert _client(owner).get(detail).data["web_search_enabled"] is True
         assert "web_search_enabled" not in _client(teacher).get(detail).data
         assert "web_search_enabled" not in _client().get(detail).data
 
     def test_admin_can_toggle(self):
         owner, org = _school()
         client = _client(owner)
-        response = client.patch(self._url(org), {"web_search_enabled": True}, format="json")
-        assert response.status_code == 200
-        assert response.data["web_search_enabled"] is True
-        org.refresh_from_db()
-        assert org.web_search_enabled is True
         response = client.patch(self._url(org), {"web_search_enabled": False}, format="json")
+        assert response.status_code == 200
         assert response.data["web_search_enabled"] is False
         org.refresh_from_db()
         assert org.web_search_enabled is False
+        response = client.patch(self._url(org), {"web_search_enabled": True}, format="json")
+        assert response.data["web_search_enabled"] is True
+        org.refresh_from_db()
+        assert org.web_search_enabled is True
 
     def test_teacher_cannot_toggle(self):
         _, org = _school()
         teacher = UserFactory(is_verified=True)
         OrgMember.objects.create(organization=org, user=teacher, role=OrgMember.Role.TEACHER)
-        response = _client(teacher).patch(self._url(org), {"web_search_enabled": True}, format="json")
+        response = _client(teacher).patch(self._url(org), {"web_search_enabled": False}, format="json")
         assert response.status_code == 403
         org.refresh_from_db()
-        assert org.web_search_enabled is False
+        assert org.web_search_enabled is True
 
     def test_admin_of_another_school_cannot_toggle(self):
         _, org = _school()
         other_owner = _edu_user()
         Organization.create_for(other_owner, "Other", "other-school")
-        response = _client(other_owner).patch(self._url(org), {"web_search_enabled": True}, format="json")
+        response = _client(other_owner).patch(self._url(org), {"web_search_enabled": False}, format="json")
         assert response.status_code == 403
         org.refresh_from_db()
-        assert org.web_search_enabled is False
+        assert org.web_search_enabled is True
 
     def test_anonymous_cannot_toggle(self):
         _, org = _school()
-        assert _client().patch(self._url(org), {"web_search_enabled": True}, format="json").status_code in (401, 403)
+        assert _client().patch(self._url(org), {"web_search_enabled": False}, format="json").status_code in (401, 403)
 
     def test_non_boolean_rejected(self):
         owner, org = _school()
         response = _client(owner).patch(self._url(org), {"web_search_enabled": "yes"}, format="json")
         assert response.status_code == 400
         org.refresh_from_db()
-        assert org.web_search_enabled is False
+        assert org.web_search_enabled is True
 
 
 @pytest.mark.django_db

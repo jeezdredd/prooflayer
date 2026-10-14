@@ -95,7 +95,7 @@ class Organization(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="owned_organizations")
     teacher_code = models.CharField(max_length=JOIN_CODE_LENGTH, unique=True)
     web_search_enabled = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Send up to 8 sentences of a class work to external search engines for the originality check",
     )
     created_at = models.DateTimeField(auto_now_add=True)

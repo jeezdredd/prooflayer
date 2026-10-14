@@ -22,7 +22,7 @@ const AUDIENCE_PLANS: Record<Audience, PlanKey[]> = {
 
 const LOOK: Record<PlanKey, { Icon: typeof Zap; accent: string; ring: string }> = {
   free: { Icon: Zap, accent: "text-ink-300", ring: "border-[var(--line-strong)]" },
-  pro: { Icon: Gem, accent: "text-iris", ring: "border-iris/50" },
+  pro: { Icon: Gem, accent: "text-signal-violet", ring: "border-iris/50" },
   education: { Icon: School, accent: "text-signal-sage", ring: "border-signal-sage/40" },
   university: { Icon: GraduationCap, accent: "text-signal-cyan", ring: "border-signal-cyan/40" },
   enterprise: { Icon: Building2, accent: "text-signal-amber", ring: "border-[var(--line-strong)]" },
@@ -209,7 +209,7 @@ export default function PricingPage() {
         {user?.is_staff && (
           <div className="mt-10 rounded-lg border border-red-400/20 bg-red-400/[0.04] px-4 py-3 flex items-center gap-3 text-sm">
             <ShieldCheck size={16} strokeWidth={1.5} className="text-red-400 shrink-0" />
-            <span className="text-ink-300">{t("Unrestricted access for operators: no quotas, review queue, verdict overrides, admin panel.")}</span>
+            <span className="text-ink-300">{t("Unrestricted access for staff: no quotas, review queue, verdict overrides, admin panel.")}</span>
           </div>
         )}
 
@@ -238,7 +238,7 @@ export default function PricingPage() {
                 className={clsx("relative flex flex-col rounded-xl border bg-white/[0.02] p-7", featured ? look.ring : "border-white/10", featured && "shadow-[0_0_60px_-30px_rgba(124,106,247,0.6)]")}
               >
                 {(current || featured) && (
-                  <span className={clsx("absolute -top-3 left-7 text-[11px] rounded-full px-2.5 py-0.5 border bg-ink-950", current ? "text-signal-sage border-signal-sage/40" : "text-iris border-iris/40")}>
+                  <span className={clsx("absolute -top-3 left-7 text-[11px] rounded-full px-2.5 py-0.5 border bg-ink-950", current ? "text-signal-sage border-signal-sage/40" : "text-signal-violet border-iris/40")}>
                     {current ? t("Current plan") : t("Popular")}
                   </span>
                 )}

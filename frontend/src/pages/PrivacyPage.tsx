@@ -19,7 +19,7 @@ export default function PrivacyPage() {
     <LegalLayout title="Privacy Policy" updated={LEGAL.updated}>
       <section>
         <h2 className={h2}>1. Who we are</h2>
-        <p>{LEGAL.brand} is operated by {operatorLine()} ("we", "us"). This policy explains what personal data we process when you use {LEGAL.brand}, including the classroom service at classroom.prooflayer.cloud, why we process it, who receives it and what rights you have.</p>
+        <p>This policy is issued by {operatorLine()} ("we", "us"). It explains what personal data we process when you use {LEGAL.brand}, including the classroom service at classroom.prooflayer.cloud, why we process it, who receives it and what rights you have.</p>
         <p className="mt-2">For privacy questions and requests, write to <Mail to={LEGAL.emails.legal} />. For general help, write to <Mail to={LEGAL.emails.support} />. We answer requests within 30 days.</p>
       </section>
 
@@ -46,7 +46,7 @@ export default function PrivacyPage() {
           <li><strong className={label}>To handle payments</strong> (contract and legal obligations): through Paddle, our merchant of record.</li>
           <li><strong className={label}>To keep the service safe and working</strong> (our legitimate interest): preventing abuse and fraud, enforcing usage limits, monitoring operations and fixing errors.</li>
           <li><strong className={label}>To show a result publicly</strong> (your choice): only if you make that result public, as described in section 5.</li>
-          <li><strong className={label}>To improve our detectors</strong> (your consent): only if you opt in, as described in section 7.</li>
+          <li><strong className={label}>To improve our detectors</strong> (your consent): on by default, and you can turn it off at any time, as described in section 7.</li>
           <li><strong className={label}>Class work</strong> is processed on behalf of the school or university, as described in section 8.</li>
         </ul>
         <p className="mt-2">We do not sell personal data and we do not use it for advertising.</p>
@@ -88,10 +88,10 @@ export default function PrivacyPage() {
       </section>
 
       <section>
-        <h2 className={h2}>7. Model training (opt-in)</h2>
+        <h2 className={h2}>7. Model training (on by default, you can turn it off)</h2>
         <ul className={list}>
-          <li>Helping improve detection is optional and off by default. You can turn it on at registration or on your <Link to="/account" className={link}>account page</Link> ("Help improve detection").</li>
-          <li>If you opt in, only personal uploads that our reviewers have labelled as real or AI are copied into a separate training set. The copy holds no account details, only a keyed pseudonym that lets us honour a withdrawal.</li>
+          <li>Helping improve detection is on by default. You can untick it at registration or turn it off at any time on your <Link to="/account" className={link}>account page</Link> ("Help improve detection").</li>
+          <li>While it is on, only personal uploads that our reviewers have labelled as real or AI are copied into a separate training set. The copy holds no account details, only a keyed pseudonym that lets us honour a withdrawal.</li>
           <li>You can withdraw at any time on your account page. Withdrawing deletes those copies. Detectors already trained with them are not retrained.</li>
           <li>Deleting a single upload does not delete its training copy. Withdrawing consent does.</li>
           <li>If you delete your account, the training copies are kept unless you tick "also delete the anonymous training copies".</li>
@@ -156,7 +156,7 @@ export default function PrivacyPage() {
           <li>Passwords hashed with PBKDF2; API keys stored only as SHA-256 hashes.</li>
           <li>Webhooks signed with HMAC-SHA256.</li>
           <li>Uploaded files kept in private storage and served only through short-lived signed links.</li>
-          <li>Access to production systems limited to the operator.</li>
+          <li>Access to production systems limited to the person who supervises the service.</li>
           <li>If a security incident affects personal data, we notify affected institutions without undue delay, and within 72 hours of becoming aware for customers under our Data Processing terms.</li>
         </ul>
       </section>
@@ -168,7 +168,7 @@ export default function PrivacyPage() {
 
       <section>
         <h2 className={h2}>15. Contact</h2>
-        <p>Operator: {operatorLine()}. Privacy and data requests: <Mail to={LEGAL.emails.legal} />. Support: <Mail to={LEGAL.emails.support} />.</p>
+        <p>Provider: {operatorLine()}. Privacy and data requests: <Mail to={LEGAL.emails.legal} />. Support: <Mail to={LEGAL.emails.support} />.</p>
       </section>
     </LegalLayout>
   );

@@ -178,7 +178,7 @@ function AdminPanel({ org }: { org: Organization }) {
         <span>
           <span className="block text-sm text-ink-100">{t("Search the web for copied passages")}</span>
           <span className="block text-xs text-ink-500 mt-1 leading-relaxed">
-            {t("Sends up to 8 short sentences from each work to search engines outside Kazakhstan (Google, Bing, Yandex, DuckDuckGo, Brave). Off by default.")}
+            {t("Sends up to 8 short sentences from each work to search engines outside Kazakhstan (Google, Bing, Yandex, DuckDuckGo, Brave) and finds far more copied passages. On by default; turn it off to keep the check inside ProofLayer.")}
           </span>
         </span>
       </label>

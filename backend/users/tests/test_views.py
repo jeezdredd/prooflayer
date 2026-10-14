@@ -2,6 +2,8 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from users.models import User
+
 from .factories import UserFactory
 
 
@@ -24,6 +26,35 @@ class TestRegisterView:
         assert "access" in response.data
         assert "user" in response.data
         assert response.data["user"]["email"] == "new@example.com"
+
+    def test_register_training_consent_on_by_default(self):
+        data = {
+            "email": "consent@example.com",
+            "username": "consentuser",
+            "password": "StrongPass123!",
+            "password_confirm": "StrongPass123!",
+            "accept_terms": True,
+        }
+        response = self.client.post(self.url, data)
+        assert response.status_code == 201
+        user = User.objects.get(email="consent@example.com")
+        assert user.allow_training is True
+        assert user.training_consent_at is not None
+
+    def test_register_can_decline_training(self):
+        data = {
+            "email": "noconsent@example.com",
+            "username": "noconsentuser",
+            "password": "StrongPass123!",
+            "password_confirm": "StrongPass123!",
+            "accept_terms": True,
+            "allow_training": False,
+        }
+        response = self.client.post(self.url, data)
+        assert response.status_code == 201
+        user = User.objects.get(email="noconsent@example.com")
+        assert user.allow_training is False
+        assert user.training_consent_at is None
 
     def test_register_password_mismatch(self):
         data = {

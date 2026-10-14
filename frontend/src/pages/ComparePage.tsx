@@ -10,7 +10,7 @@ import SubscriptionGate from "../components/SubscriptionGate";
 import { t, verdictText } from "../i18n";
 
 const VERDICT_COLOR: Record<string, string> = {
-  authentic: "text-sage-300 border-sage-500/40 bg-sage-500/10",
+  authentic: "text-sage-300 border-signal-sage/40 bg-signal-sage/10",
   suspicious: "text-signal-amber border-signal-amber/40 bg-signal-amber/10",
   fake: "text-signal-blood border-signal-blood/40 bg-signal-blood/10",
   likely_fake: "text-signal-blood border-signal-blood/40 bg-signal-blood/10",
