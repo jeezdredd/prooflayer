@@ -114,6 +114,7 @@ class CookieTokenRefreshView(TokenRefreshView):
 class SessionView(APIView):
     permission_classes = (permissions.AllowAny,)
     authentication_classes = ()
+    throttle_classes = ()
 
     def get(self, request):
         raw = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
