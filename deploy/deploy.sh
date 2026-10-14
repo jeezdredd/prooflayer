@@ -35,7 +35,18 @@ mkdir -p "$RELEASES"
 
 # ===== Clone or fetch =====
 log "fetch source -> $RELEASE"
-git clone --depth 50 --branch "$BRANCH" "$REPO" "$RELEASE"
+for attempt in 1 2 3; do
+    rm -rf "$RELEASE"
+    if timeout 180 git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 clone --depth 1 --branch "$BRANCH" "$REPO" "$RELEASE"; then
+        break
+    fi
+    log "clone attempt $attempt failed or stalled"
+    if [ "$attempt" = 3 ]; then
+        log "giving up after 3 attempts"
+        exit 1
+    fi
+    sleep 5
+done
 COMMIT=$(git -C "$RELEASE" rev-parse --short HEAD)
 log "deploying commit $COMMIT"
 
