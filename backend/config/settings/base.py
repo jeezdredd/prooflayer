@@ -2,6 +2,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.urls import reverse_lazy
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-dev-key-change-in-production")
@@ -326,29 +328,88 @@ UNFOLD = {
             "950": "26 16 80",
         },
     },
+    "DASHBOARD_CALLBACK": "common.dashboard.dashboard_callback",
     "SIDEBAR": {
         "show_search": True,
         "show_all_applications": False,
         "navigation": [
             {
+                "items": [
+                    {"title": "Dashboard", "icon": "dashboard", "link": reverse_lazy("admin:index")},
+                ],
+            },
+            {
+                "title": "Detection",
+                "collapsible": True,
+                "items": [
+                    {"title": "Analyzers", "icon": "tune", "link": reverse_lazy("admin:analyzers_analyzerconfig_changelist")},
+                    {"title": "Analysis results", "icon": "analytics", "link": reverse_lazy("admin:analyzers_analysisresult_changelist")},
+                    {
+                        "title": "Retrain runs",
+                        "icon": "model_training",
+                        "link": reverse_lazy("admin:analyzers_retrainrun_changelist"),
+                        "permission": "common.dashboard.is_superuser",
+                    },
+                    {"title": "Training samples", "icon": "dataset", "link": reverse_lazy("admin:analyzers_trainingsample_changelist")},
+                    {"title": "Known fakes", "icon": "block", "link": reverse_lazy("admin:content_knownfakehash_changelist")},
+                ],
+            },
+            {
                 "title": "Content",
+                "collapsible": True,
                 "items": [
-                    {"title": "Submissions", "icon": "folder_open", "link": "/admin/content/submission/"},
-                    {"title": "Known Fakes", "icon": "block", "link": "/admin/content/knownfakehash/"},
+                    {
+                        "title": "Submissions",
+                        "icon": "folder_open",
+                        "link": reverse_lazy("admin:content_submission_changelist"),
+                        "badge": "common.dashboard.review_queue_badge",
+                    },
+                    {
+                        "title": "Objections",
+                        "icon": "gavel",
+                        "link": reverse_lazy("admin:content_verdictobjection_changelist"),
+                        "badge": "common.dashboard.open_objections_badge",
+                    },
+                    {"title": "Verdict overrides", "icon": "rule", "link": reverse_lazy("admin:content_verdictoverride_changelist")},
+                    {"title": "Abuse reports", "icon": "flag", "link": reverse_lazy("admin:reports_report_changelist")},
+                    {"title": "Plagiarism reports", "icon": "content_copy", "link": reverse_lazy("admin:plagiarism_plagiarismreport_changelist")},
+                    {"title": "Provenance", "icon": "travel_explore", "link": reverse_lazy("admin:provenance_provenanceresult_changelist")},
+                    {"title": "Votes", "icon": "how_to_vote", "link": reverse_lazy("admin:crowdsource_vote_changelist")},
                 ],
             },
             {
-                "title": "Analysis",
+                "title": "Classroom",
+                "collapsible": True,
                 "items": [
-                    {"title": "Analysis Results", "icon": "analytics", "link": "/admin/analyzers/analysisresult/"},
-                    {"title": "Analyzer Config", "icon": "settings", "link": "/admin/analyzers/analyzerconfig/"},
-                    {"title": "Retrain Runs", "icon": "model_training", "link": "/admin/analyzers/retrainrun/"},
+                    {"title": "Organizations", "icon": "corporate_fare", "link": reverse_lazy("admin:classroom_organization_changelist")},
+                    {"title": "Organization members", "icon": "badge", "link": reverse_lazy("admin:classroom_orgmember_changelist")},
+                    {"title": "Classes", "icon": "school", "link": reverse_lazy("admin:classroom_classroom_changelist")},
+                    {"title": "Students", "icon": "groups", "link": reverse_lazy("admin:classroom_membership_changelist")},
+                    {"title": "Shadow sets", "icon": "blur_on", "link": reverse_lazy("admin:classroom_shadowset_changelist")},
                 ],
             },
             {
-                "title": "Users",
+                "title": "Users & billing",
+                "collapsible": True,
                 "items": [
-                    {"title": "Users", "icon": "person", "link": "/admin/users/user/"},
+                    {"title": "Users", "icon": "person", "link": reverse_lazy("admin:users_user_changelist")},
+                    {"title": "Subscriptions", "icon": "credit_card", "link": reverse_lazy("admin:billing_subscription_changelist")},
+                    {"title": "API keys", "icon": "key", "link": reverse_lazy("admin:users_apikey_changelist")},
+                    {"title": "Email log", "icon": "mail", "link": reverse_lazy("admin:users_emaillog_changelist")},
+                ],
+            },
+            {
+                "title": "System",
+                "collapsible": True,
+                "items": [
+                    {"title": "Feedback", "icon": "feedback", "link": reverse_lazy("admin:api_feedback_changelist")},
+                    {"title": "Roadmap", "icon": "map", "link": reverse_lazy("admin:api_roadmapitem_changelist")},
+                    {
+                        "title": "Groups",
+                        "icon": "admin_panel_settings",
+                        "link": reverse_lazy("admin:auth_group_changelist"),
+                        "permission": "common.dashboard.is_superuser",
+                    },
                 ],
             },
         ],

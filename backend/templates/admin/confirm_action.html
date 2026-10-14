@@ -1,0 +1,25 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n unfold %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl">
+        {% component "unfold/components/card.html" with title=title %}
+            <p class="text-sm mb-3">{{ message }}</p>
+            {% if details %}
+                <div class="mb-3">
+                    {% for row in details %}
+                        {% include "admin/dashboard/stat.html" with label=row.label value=row.value variant=row.variant %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <form method="post" class="flex items-center gap-3 mt-4">
+                {% csrf_token %}
+                {% component "unfold/components/button.html" with submit=1 variant=button_variant %}{{ button }}{% endcomponent %}
+                {% component "unfold/components/button.html" with href=cancel_url variant="default" %}{% trans "Cancel" %}{% endcomponent %}
+            </form>
+        {% endcomponent %}
+    </div>
+{% endblock %}

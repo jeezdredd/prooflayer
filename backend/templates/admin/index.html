@@ -1,0 +1,172 @@
+{% extends 'admin/base.html' %}
+
+{% load i18n unfold %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+    {% if dashboard %}
+        {% with d=dashboard links=dashboard.links %}
+            <div class="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2 lg:grid-cols-4">
+                {% component "unfold/components/card.html" with title="Submissions" icon="folder_open" %}
+                    {% component "unfold/components/title.html" %}{{ d.submissions.today }}{% endcomponent %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">today</p>
+                    <div class="mt-2">
+                        {% include "admin/dashboard/stat.html" with label="Last 7 days" value=d.submissions.week href=links.submissions %}
+                        {% include "admin/dashboard/stat.html" with label="All time" value=d.submissions.total %}
+                    </div>
+                {% endcomponent %}
+
+                {% component "unfold/components/card.html" with title="Pipeline" icon="sync" %}
+                    {% component "unfold/components/title.html" %}{{ d.queue.processing }}{% endcomponent %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">processing now</p>
+                    <div class="mt-2">
+                        {% include "admin/dashboard/stat.html" with label="Pending" value=d.queue.pending %}
+                        {% if d.queue.stuck %}
+                            {% include "admin/dashboard/stat.html" with label="Stuck over 10 min" value=d.queue.stuck href=links.processing variant="danger" %}
+                        {% else %}
+                            {% include "admin/dashboard/stat.html" with label="Stuck over 10 min" value=0 href=links.processing %}
+                        {% endif %}
+                        {% include "admin/dashboard/stat.html" with label="Failed, 7 days" value=d.queue.failed_week href=links.failed %}
+                    </div>
+                {% endcomponent %}
+
+                {% component "unfold/components/card.html" with title="Review" icon="gavel" %}
+                    {% component "unfold/components/title.html" %}{{ d.queue.review }}{% endcomponent %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">needs review or inconclusive</p>
+                    <div class="mt-2">
+                        {% include "admin/dashboard/stat.html" with label="Review queue" value=d.queue.review href=links.review %}
+                        {% include "admin/dashboard/stat.html" with label="Open objections" value=d.queue.objections_open href=links.objections %}
+                        {% if d.queue.objections_overdue %}
+                            {% include "admin/dashboard/stat.html" with label="Overdue objections" value=d.queue.objections_overdue href=links.objections variant="danger" %}
+                        {% endif %}
+                    </div>
+                {% endcomponent %}
+
+                {% component "unfold/components/card.html" with title="Tribunal" icon="balance" %}
+                    {% component "unfold/components/title.html" %}{{ d.tribunal.label }}{% endcomponent %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">fingerprint {{ d.tribunal.fingerprint }}</p>
+                    <div class="mt-2">
+                        {% include "admin/dashboard/stat.html" with label="Active analyzers" value=d.tribunal.active href=links.analyzers %}
+                        {% include "admin/dashboard/stat.html" with label="Configured / expected" value=d.tribunal.configured %}
+                        {% if d.tribunal.in_sync %}
+                            {% include "admin/dashboard/stat.html" with label="Roster" value="in sync" variant="success" href=links.analyzers %}
+                        {% else %}
+                            {% include "admin/dashboard/stat.html" with label="Roster" value="drift" variant="danger" href=links.analyzers %}
+                        {% endif %}
+                    </div>
+                {% endcomponent %}
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
+                {% component "unfold/components/card.html" with title="Verdicts, last 7 days" %}
+                    {% if d.verdicts.total %}
+                        <div class="flex flex-col gap-3">
+                            {% for row in d.verdicts.rows %}
+                                {% if row.count %}
+                                    {% component "unfold/components/progress.html" with title=row.label description=row.summary value=row.percent %}{% endcomponent %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <p class="text-sm mt-4 text-font-subtle-light dark:text-font-subtle-dark">{{ d.verdicts.total }} completed checks</p>
+                    {% else %}
+                        <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No completed checks in the last 7 days.</p>
+                    {% endif %}
+                {% endcomponent %}
+
+                {% component "unfold/components/card.html" with title="Latest retrain" %}
+                    {% if d.retrain %}
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            {% include "unfold/helpers/label.html" with text=d.retrain.status variant=d.retrain.variant %}
+                            <a href="{{ d.retrain.url }}" class="text-sm hover:text-primary-600">{{ d.retrain.started_at|date:"Y-m-d H:i" }} by {{ d.retrain.triggered_by }}</a>
+                        </div>
+                        {% if d.retrain.reason %}
+                            <p class="text-sm mb-3">{{ d.retrain.reason }}</p>
+                        {% endif %}
+                        {% include "admin/dashboard/stat.html" with label="New samples used" value=d.retrain.samples_used %}
+                        <div class="mt-4">
+                            {% include "admin/dashboard/holdout_table.html" with rows=d.retrain.holdout %}
+                        </div>
+                    {% else %}
+                        <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No retrain has run yet.</p>
+                    {% endif %}
+                    <p class="text-sm mt-4"><a href="{{ links.retrain }}" class="text-primary-600">All retrain runs and actions</a></p>
+                {% endcomponent %}
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-3">
+                {% component "unfold/components/card.html" with title="Training data" icon="dataset" %}
+                    {% component "unfold/components/title.html" %}{{ d.training.new_samples }} / {{ d.training.needed }}{% endcomponent %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">new labelled samples since last promotion</p>
+                    <div class="mt-2">
+                        {% include "admin/dashboard/stat.html" with label="Training pool images" value=d.training.pool %}
+                        {% include "admin/dashboard/stat.html" with label="Calibration images" value=d.training.calibration %}
+                        {% include "admin/dashboard/stat.html" with label="Held-out images" value=d.training.holdout %}
+                        {% include "admin/dashboard/stat.html" with label="Training samples in DB" value=d.training.total_samples href=links.training_samples %}
+                        {% if d.training.rollback_available %}
+                            {% include "admin/dashboard/stat.html" with label="Previous model" value="kept" variant="success" %}
+                        {% else %}
+                            {% include "admin/dashboard/stat.html" with label="Previous model" value="none" variant="warning" %}
+                        {% endif %}
+                    </div>
+                {% endcomponent %}
+
+                {% component "unfold/components/card.html" with title="Schools and users" icon="school" %}
+                    {% component "unfold/components/title.html" %}{{ d.users.total }}{% endcomponent %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">users, {{ d.users.week }} joined this week</p>
+                    <div class="mt-2">
+                        {% include "admin/dashboard/stat.html" with label="Organizations" value=d.classroom.organizations href=links.organizations %}
+                        {% include "admin/dashboard/stat.html" with label="Active classes" value=d.classroom.classrooms href=links.classrooms %}
+                        {% include "admin/dashboard/stat.html" with label="Students" value=d.classroom.students %}
+                        {% include "admin/dashboard/stat.html" with label="All users" value=d.users.total href=links.users %}
+                    </div>
+                {% endcomponent %}
+
+                {% component "unfold/components/card.html" with title="Paid subscriptions" icon="credit_card" %}
+                    {% component "unfold/components/title.html" %}{{ d.billing.paid }}{% endcomponent %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">active, trialing or past due</p>
+                    <div class="mt-2">
+                        {% for tier in d.billing.tiers %}
+                            {% include "admin/dashboard/stat.html" with label=tier.label value=tier.count href=links.subscriptions %}
+                        {% endfor %}
+                        {% if d.billing.past_due %}
+                            {% include "admin/dashboard/stat.html" with label="Past due" value=d.billing.past_due variant="danger" href=links.subscriptions %}
+                        {% endif %}
+                    </div>
+                {% endcomponent %}
+            </div>
+
+            {% component "unfold/components/card.html" with title="Recent feedback" %}
+                {% if d.feedback %}
+                    {% for item in d.feedback %}
+                        <div class="flex flex-col gap-2 py-2 border-b border-base-200 last:border-b-0 dark:border-base-800">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="flex items-center gap-2">
+                                    {% include "unfold/helpers/label.html" with text=item.category %}
+                                    <a href="{{ item.url }}" class="text-sm hover:text-primary-600">{{ item.who }}</a>
+                                </span>
+                                <span class="text-sm text-font-subtle-light dark:text-font-subtle-dark whitespace-nowrap">{{ item.created_at|timesince }} ago</span>
+                            </div>
+                            <p class="text-sm">{{ item.message }}</p>
+                        </div>
+                    {% endfor %}
+                    <p class="text-sm mt-4"><a href="{{ links.feedback }}" class="text-primary-600">All feedback</a></p>
+                {% else %}
+                    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No feedback yet.</p>
+                {% endif %}
+            {% endcomponent %}
+        {% endwith %}
+    {% else %}
+        <div class="flex flex-col lg:flex-row lg:gap-8">
+            <div class="grow">
+                {% include "unfold/helpers/app_list_default.html" %}
+            </div>
+
+            {% include "unfold/helpers/history.html" %}
+        </div>
+    {% endif %}
+{% endblock %}

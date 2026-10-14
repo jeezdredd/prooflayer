@@ -1,11 +1,15 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.db.models import QuerySet
+from django.http import HttpRequest
+from django.utils import timezone
 from django.utils.html import format_html
-
 from unfold.admin import ModelAdmin
+from unfold.decorators import display
 
 from analyzers.training import snapshot
 
-from .models import KnownFakeHash, Submission
+from .models import KnownFakeHash, Submission, VerdictObjection, VerdictOverride
+from .reanalysis import can_reanalyze, restart_analysis
 
 
 def _approve(queryset, label):
@@ -18,13 +22,13 @@ def _approve(queryset, label):
 def approve_as_real(modeladmin, request, queryset):
     _approve(queryset, "real")
 
-approve_as_real.short_description = "Approve selected as REAL (for training)"
+approve_as_real.short_description = "Mark verified REAL (approve for training)"
 
 
 def approve_as_fake(modeladmin, request, queryset):
     _approve(queryset, "fake")
 
-approve_as_fake.short_description = "Approve selected as FAKE (for training)"
+approve_as_fake.short_description = "Mark verified AI (approve for training)"
 
 
 def revoke_training_approval(modeladmin, request, queryset):
@@ -45,18 +49,44 @@ def unmark_sensitive(modeladmin, request, queryset):
 unmark_sensitive.short_description = "Unmark sensitive"
 
 
+@admin.action(description="Re-analyze with current Tribunal", permissions=["change"])
+def reanalyze(modeladmin: ModelAdmin, request: HttpRequest, queryset: QuerySet[Submission]) -> None:
+    started = 0
+    for submission in queryset:
+        if can_reanalyze(submission):
+            restart_analysis(submission)
+            started += 1
+    skipped = queryset.count() - started
+    if started:
+        modeladmin.message_user(request, f"Re-analysis started for {started} submission(s).", messages.SUCCESS)
+    if skipped:
+        modeladmin.message_user(
+            request,
+            f"Skipped {skipped}: still being analyzed or the file was deleted under the retention policy.",
+            messages.WARNING,
+        )
+
+
 @admin.register(Submission)
 class SubmissionAdmin(ModelAdmin):
     list_display = (
-        "id", "user", "original_filename", "mime_type", "status_badge",
-        "verdict_badge", "training_badge", "created_at",
+        "original_filename", "user", "classroom", "verdict_badge", "score",
+        "status_badge", "training_badge", "created_at",
     )
     list_filter = (
-        "status", "mime_type", "is_known_fake", "is_public", "is_sensitive", "approved_for_training", "verified_label",
+        "status", "final_verdict", "mime_type", "tribunal_version", "is_known_fake", "is_public", "is_sensitive",
+        "approved_for_training", "verified_label", "created_at",
     )
-    search_fields = ("original_filename", "sha256_hash")
-    readonly_fields = ("id", "sha256_hash", "metadata")
-    actions = [approve_as_real, approve_as_fake, revoke_training_approval, mark_sensitive, unmark_sensitive]
+    search_fields = ("id", "original_filename", "sha256_hash", "user__email", "classroom__name")
+    readonly_fields = (
+        "id", "sha256_hash", "metadata", "tribunal_version", "tribunal_fingerprint", "created_at", "updated_at",
+    )
+    raw_id_fields = ("user", "classroom", "batch", "api_key")
+    list_select_related = ("user", "classroom")
+    date_hierarchy = "created_at"
+    actions = [
+        reanalyze, approve_as_real, approve_as_fake, revoke_training_approval, mark_sensitive, unmark_sensitive,
+    ]
     list_per_page = 50
 
     _BADGE_STYLE = (
@@ -89,6 +119,7 @@ class SubmissionAdmin(ModelAdmin):
             "likely_fake": "#7c2d12;color:#fdba74",
             "fake": "#7f1d1d;color:#fca5a5",
             "inconclusive": "#1f2937;color:#9ca3af",
+            "needs_review": "#1e3a8a;color:#93c5fd",
         }
         style = colors.get(obj.final_verdict, "#1f2937;color:#9ca3af")
         labels = {
@@ -98,13 +129,17 @@ class SubmissionAdmin(ModelAdmin):
             "likely_fake": "LIKELY FAKE",
             "fake": "FAKE",
             "inconclusive": "INCONCLUSIVE",
+            "needs_review": "NEEDS REVIEW",
         }
         label = labels.get(obj.final_verdict, obj.final_verdict.upper())
-        score = f" {obj.final_score:.0%}" if obj.final_score is not None else ""
         return format_html(
-            '<span style="{}background:{}">{}{}</span>',
-            self._BADGE_STYLE, style, label, score,
+            '<span style="{}background:{}">{}</span>',
+            self._BADGE_STYLE, style, label,
         )
+
+    @admin.display(description="Score", ordering="final_score")
+    def score(self, obj):
+        return "-" if obj.final_score is None else f"{obj.final_score:.0%}"
 
     @admin.display(description="Training label", ordering="verified_label")
     def training_badge(self, obj):
@@ -122,3 +157,40 @@ class SubmissionAdmin(ModelAdmin):
 class KnownFakeHashAdmin(ModelAdmin):
     list_display = ("sha256_hash", "source", "added_at")
     search_fields = ("sha256_hash", "source")
+
+
+@admin.register(VerdictObjection)
+class VerdictObjectionAdmin(ModelAdmin):
+    list_display = ("submission", "author", "status_badge", "decision", "due_state", "created_at", "responded_at")
+    list_filter = ("status", "decision", "created_at")
+    search_fields = ("reason", "response", "author__email", "submission__original_filename")
+    list_select_related = ("submission", "author")
+    raw_id_fields = ("submission", "author", "responded_by")
+    readonly_fields = ("created_at",)
+    ordering = ("status", "due_at")
+
+    @display(description="Status", ordering="status", label={"open": "warning", "answered": "success"})
+    def status_badge(self, obj: VerdictObjection) -> str:
+        return obj.status
+
+    @display(
+        description="Due",
+        ordering="due_at",
+        label={"overdue": "danger", "on time": "info", "answered": "success"},
+    )
+    def due_state(self, obj: VerdictObjection) -> str:
+        if obj.status != VerdictObjection.Status.OPEN:
+            return "answered"
+        return "overdue" if obj.due_at < timezone.now() else "on time"
+
+
+@admin.register(VerdictOverride)
+class VerdictOverrideAdmin(ModelAdmin):
+    list_display = ("submission", "reviewer", "previous_verdict", "new_verdict", "created_at")
+    list_filter = ("new_verdict", "created_at")
+    search_fields = ("reason", "reviewer__email", "submission__original_filename")
+    list_select_related = ("submission", "reviewer")
+    readonly_fields = ("submission", "reviewer", "previous_verdict", "new_verdict", "reason", "created_at")
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False

@@ -116,7 +116,7 @@ class TestReanalyze:
         AnalysisResultFactory(submission=sub, analyzer=AnalyzerConfigFactory(name="old_member"))
         return sub
 
-    @patch("content.views.dispatch_analysis.delay")
+    @patch("content.reanalysis.dispatch_analysis.delay")
     def test_resets_results_and_redispatches(self, mock_delay):
         user = UserFactory(is_verified=True)
         sub = self._completed(user)
@@ -131,7 +131,7 @@ class TestReanalyze:
         assert cache.get(AGGREGATION_LOCK_KEY.format(submission_id=sub.id)) is None
         mock_delay.assert_called_once_with(str(sub.id))
 
-    @patch("content.views.dispatch_analysis.delay")
+    @patch("content.reanalysis.dispatch_analysis.delay")
     def test_refuses_while_processing(self, mock_delay):
         user = UserFactory(is_verified=True)
         sub = SubmissionFactory(user=user, status=Submission.Status.PROCESSING)
@@ -139,7 +139,7 @@ class TestReanalyze:
         assert response.status_code == 409
         mock_delay.assert_not_called()
 
-    @patch("content.views.dispatch_analysis.delay")
+    @patch("content.reanalysis.dispatch_analysis.delay")
     def test_other_user_cannot_reanalyze(self, mock_delay):
         owner = UserFactory(is_verified=True)
         sub = self._completed(owner)
@@ -148,7 +148,7 @@ class TestReanalyze:
         mock_delay.assert_not_called()
 
     @patch("content.intake.uploads_this_month", return_value=10_000)
-    @patch("content.views.dispatch_analysis.delay")
+    @patch("content.reanalysis.dispatch_analysis.delay")
     def test_quota_exhausted_blocks(self, mock_delay, mock_uploads):
         user = UserFactory(is_verified=True)
         sub = self._completed(user)

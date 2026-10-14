@@ -4,7 +4,6 @@ from urllib.parse import urlparse
 
 import requests as http_requests
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.db.models import Avg, Count, Q
 from django.http import HttpResponse
@@ -16,8 +15,6 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from analyzers.models import AnalysisResult
-from analyzers.tasks import AGGREGATION_LOCK_KEY, dispatch_analysis
 from analyzers.training import snapshot
 from billing.models import get_or_create_subscription, uploads_this_month
 from billing.permissions import CanCompare
@@ -38,6 +35,7 @@ from users.permissions import IsVerifiedUser
 from .intake import QuotaExceeded, check_quota, create_submission
 from .models import AnonymousQuota, Submission, VerdictOverride
 from .pdf import generate_report_pdf
+from .reanalysis import restart_analysis
 from .sensitivity import (
     ADULT_REQUIRED_CODE,
     ADULT_REQUIRED_DETAIL,
@@ -214,14 +212,7 @@ class SubmissionViewSet(
             check_quota(quota_owner(request.user, submission.classroom))
         except QuotaExceeded as exc:
             return Response(exc.as_response_data(), status=status.HTTP_402_PAYMENT_REQUIRED)
-        AnalysisResult.objects.filter(submission=submission).delete()
-        cache.delete(AGGREGATION_LOCK_KEY.format(submission_id=submission.id))
-        submission.status = Submission.Status.PROCESSING
-        submission.final_score = None
-        submission.final_verdict = ""
-        submission.status_message = "Re-analyzing with current Tribunal..."
-        submission.save(update_fields=["status", "final_score", "final_verdict", "status_message"])
-        dispatch_analysis.delay(str(submission.id))
+        restart_analysis(submission)
         return Response({"id": str(submission.id), "status": submission.status}, status=status.HTTP_202_ACCEPTED)
 
     def perform_destroy(self, instance):

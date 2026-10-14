@@ -1,0 +1,26 @@
+{% if rows %}
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-base-200 dark:border-base-800">
+                <th class="py-1.5 text-left font-semibold">Held-out</th>
+                <th class="py-1.5 text-right font-semibold">Live</th>
+                <th class="py-1.5 text-right font-semibold">Candidate</th>
+                <th class="py-1.5 text-right font-semibold">Change</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr class="border-b border-base-200 last:border-b-0 dark:border-base-800">
+                    <td class="py-1.5 text-left">{{ row.label }}</td>
+                    <td class="py-1.5 text-right">{{ row.live|default_if_none:"-" }}</td>
+                    <td class="py-1.5 text-right">{{ row.candidate|default_if_none:"-" }}</td>
+                    <td class="py-1.5 text-right{% if row.variant == "success" %} text-green-700 dark:text-green-400{% elif row.variant == "danger" %} text-red-700 dark:text-red-400{% endif %}">
+                        {% if row.delta is None %}-{% elif row.delta > 0 %}+{{ row.delta }}{% else %}{{ row.delta }}{% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">No held-out numbers: the run stopped before evaluation.</p>
+{% endif %}

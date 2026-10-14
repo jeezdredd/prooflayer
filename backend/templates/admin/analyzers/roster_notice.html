@@ -1,0 +1,11 @@
+{% if roster_report %}
+    <div class="mb-6">
+        {% if roster_report.in_sync %}
+            {% include "unfold/helpers/label.html" with text="roster in sync with code" variant="success" %}
+            <span class="text-sm ml-2">{{ roster_report.active }} active of {{ roster_report.expected }} expected. Weight edits here change verdicts at once but are reset to code on the next backend boot.</span>
+        {% else %}
+            {% include "unfold/helpers/label.html" with text="roster drift" variant="danger" %}
+            <span class="text-sm ml-2">{{ roster_drift_text }}</span>
+        {% endif %}
+    </div>
+{% endif %}

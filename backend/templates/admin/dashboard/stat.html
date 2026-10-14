@@ -1,0 +1,12 @@
+<div class="flex items-center justify-between gap-3 py-1.5 border-b border-base-200 last:border-b-0 dark:border-base-800">
+    {% if href %}
+        <a href="{{ href }}" class="text-sm hover:text-primary-600">{{ label }}</a>
+    {% else %}
+        <span class="text-sm">{{ label }}</span>
+    {% endif %}
+    {% if variant %}
+        {% include "unfold/helpers/label.html" with text=value variant=variant %}
+    {% else %}
+        <span class="font-semibold text-important">{{ value }}</span>
+    {% endif %}
+</div>

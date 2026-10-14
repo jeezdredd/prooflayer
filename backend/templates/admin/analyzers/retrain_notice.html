@@ -1,0 +1,15 @@
+{% if retrain_state %}
+    <div class="flex flex-wrap items-center gap-3 mb-6 text-sm">
+        {% if retrain_state.running %}
+            {% include "unfold/helpers/label.html" with text="retrain running" variant="info" %}
+        {% endif %}
+        <span>Pool <strong>{{ retrain_state.pool }}</strong></span>
+        <span>Calibration <strong>{{ retrain_state.calibration }}</strong></span>
+        <span>Held-out <strong>{{ retrain_state.holdout }}</strong></span>
+        {% if retrain_state.rollback_available %}
+            {% include "unfold/helpers/label.html" with text="previous model kept" variant="success" %}
+        {% else %}
+            {% include "unfold/helpers/label.html" with text="no previous model" variant="warning" %}
+        {% endif %}
+    </div>
+{% endif %}

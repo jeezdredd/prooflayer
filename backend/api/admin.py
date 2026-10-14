@@ -1,13 +1,15 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 
 from .models import Feedback, RoadmapItem
 
 
 @admin.register(Feedback)
-class FeedbackAdmin(admin.ModelAdmin):
-    list_display = ("id", "category", "user", "contact_email", "created_at", "message_preview")
+class FeedbackAdmin(ModelAdmin):
+    list_display = ("created_at", "category", "message_preview", "user", "contact_email")
     list_filter = ("category", "created_at")
     search_fields = ("message", "contact_email", "user__email")
+    list_select_related = ("user",)
     readonly_fields = ("id", "category", "message", "contact_email", "user", "created_at")
     ordering = ("-created_at",)
 
@@ -17,7 +19,7 @@ class FeedbackAdmin(admin.ModelAdmin):
 
 
 @admin.register(RoadmapItem)
-class RoadmapItemAdmin(admin.ModelAdmin):
+class RoadmapItemAdmin(ModelAdmin):
     list_display = ("title", "status", "eta", "position", "is_published", "updated_at")
     list_editable = ("status", "eta", "position", "is_published")
     list_filter = ("status", "is_published")
