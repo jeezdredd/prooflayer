@@ -99,11 +99,13 @@ class TestCheckout:
 
     @patch("billing.views.requests.post")
     def test_checkout_uses_the_plan_and_interval_price(self, post):
-        post.return_value = MagicMock(ok=True, json=lambda: {"data": {"checkout": {"url": "https://pay.example/x"}, "customer_id": "ctm_1"}})
+        post.return_value = MagicMock(ok=True, json=lambda: {"data": {"id": "txn_1", "checkout": {"url": "https://pay.example/x"}, "customer_id": "ctm_1"}})
         user = UserFactory(is_verified=True)
         response = _client(user).post(reverse("create-checkout"), {"plan": "education", "interval": "year"}, format="json")
         assert response.status_code == 200
         assert response.data["url"] == "https://pay.example/x"
+        assert response.data["transaction_id"] == "txn_1"
+        assert post.call_args.args[0] == "https://api.paddle.com/transactions"
         sent = post.call_args.kwargs["json"]
         assert sent["items"] == [{"price_id": "pri_school_y", "quantity": 1}]
         assert sent["custom_data"]["plan"] == "education"
@@ -202,3 +204,23 @@ class TestApiRateByPlan:
         request = SimpleNamespace(auth=key, user=key.user, META={})
         assert throttle.allow_request(request, None)
         assert (throttle.num_requests, throttle.duration) == (600, 60)
+
+
+@pytest.mark.django_db
+def test_sandbox_checkout_goes_to_sandbox_api(settings):
+    settings.PADDLE_PRICE_IDS = PRICES
+    settings.PADDLE_API_KEY = "pdl_sdbx"
+    settings.PADDLE_API_BASE = "https://sandbox-api.paddle.com"
+    with patch("billing.views.requests.post") as post:
+        post.return_value = MagicMock(ok=True, json=lambda: {"data": {"id": "txn_2", "checkout": {"url": ""}, "customer_id": ""}})
+        _client(UserFactory()).post(reverse("create-checkout"), {"plan": "education", "interval": "year"}, format="json")
+    assert post.call_args.args[0] == "https://sandbox-api.paddle.com/transactions"
+
+
+@pytest.mark.django_db
+def test_catalog_exposes_client_token_only_when_set(settings):
+    settings.PADDLE_CLIENT_TOKEN = ""
+    assert APIClient().get(reverse("plan-catalog")).data["paddle"] is None
+    settings.PADDLE_CLIENT_TOKEN = "test_abc"
+    settings.PADDLE_ENV = "sandbox"
+    assert APIClient().get(reverse("plan-catalog")).data["paddle"] == {"environment": "sandbox", "client_token": "test_abc"}

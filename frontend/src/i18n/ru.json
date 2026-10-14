@@ -848,6 +848,7 @@
     "Paste the assignment. We ask an AI model to answer it as students of different ages would, then compare every work in this class with those answers sentence by sentence. A close match in the same order sends the work to review.": "Вставьте задание. ИИ ответит на него так, как ответили бы ученики разного возраста, а затем каждая работа класса сравнивается с этими ответами по предложениям. Близкое совпадение в том же порядке отправляет работу на проверку.",
     "Paste your assignment and we answer it with AI the way students of different ages would.": "Вставьте задание, и ИИ ответит на него так, как ответили бы ученики разного возраста.",
     "Pay less.": "Платите меньше.",
+    "Payment received. Your plan updates in a moment.": "Оплата получена. Тариф обновится через несколько секунд.",
     "Payments and invoices": "Оплата и счета",
     "PDF and DOCX essays": "Сочинения в PDF и DOCX",
     "PDF or DOCX, max 10 MB. Extracted text is sent to the pipeline.": "PDF или DOCX, до 10 МБ. Извлечённый текст уходит на проверку.",

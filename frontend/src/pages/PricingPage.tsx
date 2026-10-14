@@ -1,6 +1,7 @@
 import clsx from "clsx";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { initPaddle, openCheckout } from "../billing/paddle";
 import { motion } from "motion/react";
 import { ArrowLeft, Building2, Check, Gem, GraduationCap, Mail, School, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -9,7 +10,7 @@ import { toast } from "../components/ui/Toast";
 import { useAuthStore } from "../stores/authStore";
 import type { BillingInterval, PlanInfo, PlanKey } from "../types";
 import LangSwitch from "../components/LangSwitch";
-import { msg, t } from "../i18n";
+import { currentLang, msg, t } from "../i18n";
 
 const SALES_EMAIL = "sales@prooflayer.cloud";
 
@@ -84,11 +85,18 @@ export default function PricingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const { isAuthenticated, user } = useAuthStore();
 
-  const { data: catalog, isError } = useQuery({
+  const { data: catalogData, isError } = useQuery({
     queryKey: ["plans"],
-    queryFn: () => billing.plans().then((r) => r.data.plans),
+    queryFn: () => billing.plans().then((r) => r.data),
     staleTime: 5 * 60_000,
   });
+  const catalog = catalogData?.plans;
+  const paddleConfig = catalogData?.paddle ?? null;
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (paddleConfig && new URLSearchParams(window.location.search).has("_ptxn")) initPaddle(paddleConfig).catch(() => undefined);
+  }, [paddleConfig]);
   const { data: sub } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => billing.subscription().then((r) => r.data),
@@ -114,7 +122,15 @@ export default function PricingPage() {
     setCheckoutPlan(plan.key);
     try {
       const res = await billing.checkout(plan.key, billingInterval);
-      window.location.href = res.data.url;
+      if (paddleConfig && res.data.transaction_id) {
+        await openCheckout(paddleConfig, res.data.transaction_id, currentLang(), () => {
+          toast.success(t("Payment received. Your plan updates in a moment."));
+          setTimeout(() => queryClient.invalidateQueries({ queryKey: ["subscription"] }), 4000);
+        });
+        setCheckoutPlan(null);
+      } else {
+        window.location.href = res.data.url;
+      }
     } catch (err) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
       setCheckoutPlan(null);

@@ -19,9 +19,6 @@ from .serializers import SubscriptionSerializer
 
 logger = logging.getLogger(__name__)
 
-PADDLE_API_BASE = "https://api.paddle.com"
-
-
 def _paddle_headers() -> dict:
     return {
         "Authorization": f"Bearer {settings.PADDLE_API_KEY}",
@@ -47,7 +44,10 @@ class PlanCatalogView(APIView):
     throttle_classes = [PublicReadThrottle]
 
     def get(self, request):
-        return Response({"plans": catalog(), "intervals": list(INTERVALS)})
+        paddle = None
+        if settings.PADDLE_CLIENT_TOKEN:
+            paddle = {"environment": settings.PADDLE_ENV, "client_token": settings.PADDLE_CLIENT_TOKEN}
+        return Response({"plans": catalog(), "intervals": list(INTERVALS), "paddle": paddle})
 
 
 class CreateCheckoutView(APIView):
@@ -87,7 +87,7 @@ class CreateCheckoutView(APIView):
             payload["customer"] = {"id": sub.paddle_customer_id}
 
         resp = requests.post(
-            f"{PADDLE_API_BASE}/transactions",
+            f"{settings.PADDLE_API_BASE}/transactions",
             headers=_paddle_headers(),
             json=payload,
             timeout=15,
@@ -97,14 +97,14 @@ class CreateCheckoutView(APIView):
             return Response({"detail": "Checkout failed"}, status=502)
 
         data = resp.json().get("data", {})
-        checkout_url = data.get("checkout", {}).get("url", "")
+        checkout_url = (data.get("checkout") or {}).get("url", "")
         customer_id = data.get("customer_id", "")
 
         if customer_id and not sub.paddle_customer_id:
             sub.paddle_customer_id = customer_id
             sub.save(update_fields=["paddle_customer_id"])
 
-        return Response({"url": checkout_url})
+        return Response({"url": checkout_url, "transaction_id": data.get("id", "")})
 
 
 class CustomerPortalView(APIView):
@@ -116,7 +116,7 @@ class CustomerPortalView(APIView):
             return Response({"detail": "No billing account"}, status=400)
 
         resp = requests.post(
-            f"{PADDLE_API_BASE}/customers/{sub.paddle_customer_id}/portal-sessions",
+            f"{settings.PADDLE_API_BASE}/customers/{sub.paddle_customer_id}/portal-sessions",
             headers=_paddle_headers(),
             json={},
             timeout=15,

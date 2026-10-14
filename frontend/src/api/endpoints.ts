@@ -32,6 +32,7 @@ import type {
   VoteStats,
 } from "../types";
 import { TERMS_VERSION } from "../legal";
+import type { PaddleConfig } from "../billing/paddle";
 
 export interface RegisterPayload {
   email: string;
@@ -198,8 +199,8 @@ export const feed = {
 
 export const billing = {
   subscription: () => client.get<SubscriptionInfo>("/billing/subscription/"),
-  plans: () => client.get<{ plans: PlanInfo[]; intervals: BillingInterval[] }>("/billing/plans/"),
-  checkout: (plan: PlanKey, interval: BillingInterval) => client.post<{ url: string }>("/billing/checkout/", { plan, interval }),
+  plans: () => client.get<{ plans: PlanInfo[]; intervals: BillingInterval[]; paddle: PaddleConfig | null }>("/billing/plans/"),
+  checkout: (plan: PlanKey, interval: BillingInterval) => client.post<{ url: string; transaction_id: string }>("/billing/checkout/", { plan, interval }),
   portal: () => client.post<{ url: string }>("/billing/portal/", {}),
 };
 

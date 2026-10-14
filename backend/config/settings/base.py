@@ -230,6 +230,9 @@ PUBLIC_API_URL = (os.environ.get("PUBLIC_API_URL") or os.environ.get("VITE_API_U
 
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")
 PADDLE_WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "")
+PADDLE_ENV = "sandbox" if os.environ.get("PADDLE_ENV", "live").strip().lower() == "sandbox" else "live"
+PADDLE_API_BASE = "https://sandbox-api.paddle.com" if PADDLE_ENV == "sandbox" else "https://api.paddle.com"
+PADDLE_CLIENT_TOKEN = os.environ.get("PADDLE_CLIENT_TOKEN", "")
 PERSONAL_FILE_RETENTION_DAYS = int(os.environ.get("PERSONAL_FILE_RETENTION_DAYS", "90"))
 TERMS_VERSION = "2026-10-13"
 
