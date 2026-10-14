@@ -81,24 +81,28 @@ class TextClassifierAnalyzer(BaseAnalyzer):
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "text is empty", "language": lang.code})
         except OSError as exc:
             return AnalysisOutput(confidence=0.0, verdict="error", evidence={"error": f"text classifier unavailable: {exc}"})
+        threshold, strict = entry.get("threshold_fpr1"), entry.get("threshold_strict")
         evidence = {
             "language": lang.code,
-            "classifier_score": round(result.probability, 4),
+            "classifier_score": round(result.score, 3),
             "tokens": result.tokens,
             "windows": result.windows,
-            "threshold": entry.get("threshold_fpr1"),
+            "threshold": threshold,
+            "threshold_strict": strict,
             "model": calibration["base"],
         }
         if result.tokens < MIN_TOKENS:
             evidence["reason"] = "text too short for a verdict"
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
-        ai_probability = round(probability(result.probability, entry["knots"]), 4)
+        ai_probability = round(probability(result.score, entry["knots"]), 4)
         evidence["ai_probability"] = ai_probability
         confidence = round(abs(ai_probability - 0.5) * 2, 4)
-        threshold = entry.get("threshold_fpr1")
-        if threshold is not None and result.probability >= threshold:
-            evidence["finding"] = "writing pattern matches machine text more closely than 99% of human texts in calibration"
+        if strict is not None and result.score >= strict:
+            evidence["finding"] = "writing pattern scores above every human text in calibration"
             return AnalysisOutput(confidence=confidence, verdict="fake", evidence=evidence)
+        if threshold is not None and result.score >= threshold:
+            evidence["finding"] = "writing pattern matches machine text more closely than 99% of human texts in calibration"
+            return AnalysisOutput(confidence=confidence, verdict="suspicious", evidence=evidence)
         if ai_probability >= 0.5:
             evidence["finding"] = "writing pattern leans towards machine text"
             return AnalysisOutput(confidence=confidence, verdict="suspicious", evidence=evidence)

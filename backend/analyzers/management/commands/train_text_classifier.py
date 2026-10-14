@@ -18,6 +18,8 @@ from analyzers.text.normalize import normalize_for_model
 
 LANGS = ("en", "ru", "fr")
 MIN_CROP = 64
+OUT_OF_DOMAIN_HUMAN = ("wiki-pre2022",)
+STRICT_STEP = 0.05
 
 
 def read_rows(path: Path) -> list[dict]:
@@ -43,8 +45,11 @@ def rate_at_least(values: list[float], threshold: float) -> float:
     return sum(v >= threshold for v in values) / len(values) if values else float("nan")
 
 
-def knots(t1: float, t5: float, human: list[float], ai: list[float]) -> list[list[float]]:
-    candidates = [(median(human), 0.05), (t5, 0.45), (t1, 0.75), (max(median(ai), t1), 0.95)]
+def knots(t1: float, t5: float, human: list[float], ai: list[float], strict: float | None = None) -> list[list[float]]:
+    if strict is None:
+        candidates = [(median(human), 0.05), (t5, 0.45), (t1, 0.75), (max(median(ai), t1 + STRICT_STEP), 0.89)]
+    else:
+        candidates = [(median(human), 0.05), (t5, 0.45), (t1, 0.75), (strict, 0.89), (strict + STRICT_STEP, 0.97)]
     out = []
     for score, prob in candidates:
         if not out or score > out[-1][0]:
@@ -68,6 +73,7 @@ class Command(BaseCommand):
         parser.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
         parser.add_argument("--seed", type=int, default=3)
         parser.add_argument("--eval-only", action="store_true")
+        parser.add_argument("--no-strict", action="store_true", help="never let the classifier alone reach p >= 0.9")
 
     def handle(self, *args, **opts):
         data, out = Path(opts["data"]), Path(opts["out"])
@@ -93,7 +99,7 @@ class Command(BaseCommand):
                 length = random.randint(min(len(ids), MIN_CROP), min(len(ids), body))
                 start = random.randint(0, len(ids) - length)
                 seqs.append(tokenizer.build_inputs_with_special_tokens(ids[start : start + length]))
-            batch = tokenizer.pad({"input_ids": seqs}, return_tensors="pt")
+            batch = tokenizer.pad({"input_ids": seqs}, pad_to_multiple_of=64, return_tensors="pt")
             batch["labels"] = torch.tensor([rows[i]["label"] for i in indices])
             return batch
 
@@ -117,7 +123,11 @@ class Command(BaseCommand):
                 running += loss.item()
                 step += 1
                 if step % 50 == 0:
-                    self.stdout.write(f"epoch {epoch + 1} step {step}/{total} loss {running / 50:.4f} {step / (time.time() - started):.2f} it/s")
+                    memory = ""
+                    if opts["device"] == "mps":
+                        torch.mps.empty_cache()
+                        memory = f" mps {torch.mps.driver_allocated_memory() / 2**30:.1f}G"
+                    self.stdout.write(f"epoch {epoch + 1} step {step}/{total} loss {running / 50:.4f} {step / (time.time() - started):.2f} it/s{memory}")
                     running = 0.0
         out.mkdir(parents=True, exist_ok=True)
         model.save_pretrained(out)
@@ -143,7 +153,7 @@ class Command(BaseCommand):
         for split, rows in (("calib", calib), ("test", test)):
             for i, r in enumerate(rows):
                 result = classifier.score(r["text"])
-                scored.append({k: r.get(k, "") for k in ("id", "lang", "label", "generator", "mode", "source")} | {"split": split, "probability": round(result.probability, 5)})
+                scored.append({k: r.get(k, "") for k in ("id", "lang", "label", "generator", "mode", "source")} | {"split": split, "score": round(result.score, 4)})
                 if (i + 1) % 500 == 0:
                     self.stdout.write(f"scored {split} {i + 1}/{len(rows)}")
         with open(out / "scores.jsonl", "w") as fh:
@@ -157,34 +167,38 @@ class Command(BaseCommand):
             by[(s["split"], s["lang"])].append(s)
         for lang in LANGS:
             cal = by[("calib", lang)]
-            human = [s["probability"] for s in cal if not s["label"]]
-            ai = [s["probability"] for s in cal if s["label"]]
+            human = [s["score"] for s in cal if not s["label"]]
+            ai = [s["score"] for s in cal if s["label"]]
             if len(human) < 20 or len(ai) < 20:
                 continue
             t1, t5 = quantile(human, 0.99), quantile(human, 0.95)
+            strict = None if opts["no_strict"] else max(max(human), t1 + 0.01)
             calibration["languages"][lang] = {
-                "threshold_fpr1": round(t1, 5),
-                "threshold_fpr5": round(t5, 5),
-                "knots": knots(t1, t5, human, ai),
+                "threshold_fpr1": round(t1, 4),
+                "threshold_fpr5": round(t5, 4),
+                "threshold_strict": None if strict is None else round(strict, 4),
+                "knots": knots(t1, t5, human, ai, strict),
                 "calib_human": len(human),
                 "calib_ai": len(ai),
             }
-            report[lang] = self._lang_report(by[("test", lang)], t1, t5)
+            report[lang] = self._lang_report(by[("test", lang)], t1, t5, strict)
         (out / "calibration.json").write_text(json.dumps(calibration, indent=1))
         (out / "report.json").write_text(json.dumps(report, indent=1))
         self._print(report)
 
-    def _lang_report(self, rows: list[dict], t1: float, t5: float) -> dict:
+    def _lang_report(self, rows: list[dict], t1: float, t5: float, strict: float | None) -> dict:
         human = [s for s in rows if not s["label"]]
         ai = [s for s in rows if s["label"]]
-        in_domain_human = [s["probability"] for s in human if not s["source"].startswith("textsight")]
-        plain_ai = [s["probability"] for s in ai if not s["mode"] and not s["source"].startswith("textsight")]
+        in_domain_human = [s["score"] for s in human if s["source"] not in OUT_OF_DOMAIN_HUMAN and not s["source"].startswith("textsight")]
+        plain_ai = [s["score"] for s in ai if not s["mode"] and not s["source"].startswith("textsight")]
         report = {
             "auc_legacy": round(auc_high(plain_ai, in_domain_human), 4),
-            "auc_all": round(auc_high([s["probability"] for s in ai], in_domain_human), 4),
+            "auc_all": round(auc_high([s["score"] for s in ai], in_domain_human), 4),
             "threshold_fpr1": round(t1, 4),
             "human_fpr_at_t1": round(rate_at_least(in_domain_human, t1), 4),
             "human_fpr_at_t5": round(rate_at_least(in_domain_human, t5), 4),
+            "threshold_strict": None if strict is None else round(strict, 4),
+            "human_fpr_at_strict": None if strict is None else round(rate_at_least(in_domain_human, strict), 4),
             "human_n": len(in_domain_human),
             "groups": {},
         }
@@ -195,24 +209,35 @@ class Command(BaseCommand):
                 key = "textsight-2026"
             elif s["mode"]:
                 key = f'{s["mode"]}:{key}' if s["mode"] in ("generate", "humanize") else s["mode"]
+                if s["source"] == "fresh-wiki":
+                    key = f"wiki-{key}"
             else:
                 key = f"legacy:{key}"
-            groups[key].append(s["probability"])
-        textsight_human = [s["probability"] for s in human if s["source"].startswith("textsight")]
+            groups[key].append(s["score"])
+        textsight_human = [s["score"] for s in human if s["source"].startswith("textsight")]
         if textsight_human:
             groups["HUMAN textsight-wiki (FPR)"] = textsight_human
+        for source in OUT_OF_DOMAIN_HUMAN:
+            values = [s["score"] for s in human if s["source"] == source]
+            if values:
+                groups[f"HUMAN {source} (FPR)"] = values
         for key, values in sorted(groups.items()):
-            report["groups"][key] = {"n": len(values), "at_t1": round(rate_at_least(values, t1), 3), "at_t5": round(rate_at_least(values, t5), 3)}
+            report["groups"][key] = {
+                "n": len(values),
+                "at_t1": round(rate_at_least(values, t1), 3),
+                "at_t5": round(rate_at_least(values, t5), 3),
+                "at_strict": None if strict is None else round(rate_at_least(values, strict), 3),
+            }
         return report
 
     def _print(self, report: dict):
         for lang, r in report.items():
             self.stdout.write(
                 f"\n[{lang}] AUC legacy {r['auc_legacy']} all {r['auc_all']} | t1 {r['threshold_fpr1']} | "
-                f"human FPR test @t1 {r['human_fpr_at_t1']} @t5 {r['human_fpr_at_t5']} (n={r['human_n']})"
+                f"human FPR test @t1 {r['human_fpr_at_t1']} @t5 {r['human_fpr_at_t5']} @strict {r['human_fpr_at_strict']} (n={r['human_n']})"
             )
             for key, g in r["groups"].items():
-                self.stdout.write(f"  {key:<48} n={g['n']:<4} @t1 {g['at_t1']:<6} @t5 {g['at_t5']}")
+                self.stdout.write(f"  {key:<48} n={g['n']:<4} @t1 {g['at_t1']:<6} @t5 {g['at_t5']:<6} @strict {g['at_strict']}")
         if not report:
             self.stdout.write("no language had enough calib rows")
         if any(math.isnan(r["auc_all"]) for r in report.values()):

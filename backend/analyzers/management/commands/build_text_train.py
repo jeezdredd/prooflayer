@@ -19,10 +19,18 @@ ANONYMIZED = re.compile(r"Generic_\w+|\b[A-Z]{3,}_NAME\b|PROPER_NAME")
 HELDOUT_GENERATORS = {"gemma3-12b"}
 COLING_EN_AI = {"gpt4o", "gpt4", "llama3-70b", "llama3-8b", "gemma2-9b-it", "gemma-7b-it", "mixtral-8x7b", "cohere", "gpt-3.5-turbo"}
 SPLITS = ("train", "calib", "test")
+FAMILY_SHARE = {("en", 0, "daigt"): 0.6}
+COLING_EN_HUMAN_SHARE = 0.15
+PRIORITY_SOURCES = {"wiki-pre2022"}
 
 
 def row(rid, lang, split, label, source, text, generator="", mode=""):
     return {"id": rid, "lang": lang, "split": split, "label": label, "source": source, "generator": generator, "mode": mode, "text": text.strip()}
+
+
+def latin_share(text: str) -> float:
+    letters = [c for c in text if c.isalpha()]
+    return sum(c.isascii() for c in letters) / len(letters) if letters else 0.0
 
 
 def side_split(key: str) -> str:
@@ -63,17 +71,22 @@ class Command(BaseCommand):
         for split in SPLITS:
             rows = pool[split]
             rng.shuffle(rows)
-            rows.sort(key=lambda r: (r["mode"] not in ("generate", "humanize")))
+            rows.sort(key=lambda r: r["mode"] not in ("generate", "humanize") and r["source"] not in PRIORITY_SOURCES)
             cap = {"train": opts["train_cap"], "calib": opts["calib_cap"]}.get(split)
             taken = Counter()
             for r in rows:
                 key = hashlib.sha1(normalize_for_model(r["text"]).encode()).hexdigest()
                 if key in seen or ANONYMIZED.search(r["text"]):
                     continue
-                if cap and taken[(r["lang"], r["label"])] >= cap:
+                group = (r["lang"], r["label"])
+                family = (*group, r["source"].split(":")[0])
+                if cap and taken[group] >= cap:
+                    continue
+                if cap and family in FAMILY_SHARE and taken[family] >= cap * FAMILY_SHARE[family]:
                     continue
                 seen.add(key)
-                taken[(r["lang"], r["label"])] += 1
+                taken[group] += 1
+                taken[family] += 1
                 picked[split].append(r)
 
         out.mkdir(parents=True, exist_ok=True)
@@ -103,7 +116,7 @@ class Command(BaseCommand):
                 continue
             if r["lang"] == "en" and r["label"] == 1 and r["model"] not in COLING_EN_AI:
                 continue
-            if r["lang"] == "en" and r["label"] == 0 and bucket(r["id"]) > 0.05:
+            if r["lang"] == "en" and r["label"] == 0 and bucket(r["id"]) > COLING_EN_HUMAN_SHARE:
                 continue
             split = side_split(r["id"])
             pool[split].append(row(f'coling-{r["id"]}', r["lang"], split, int(r["label"]), f'coling:{r["source"]}', r["text"], r["model"] if r["label"] else ""))
@@ -116,6 +129,9 @@ class Command(BaseCommand):
                 split = side_split(key)
                 label = int(r["label"] != "Human")
                 pool[split].append(row(key, "ru", split, label, "coat-train", r["text"], r["label"] if label else ""))
+        for path in sorted(raw.glob("wiki_*.jsonl")):
+            for r in map(json.loads, open(path)):
+                pool[r["split"]].append(row(r["id"], r["lang"], r["split"], 0, "wiki-pre2022", r["text"]))
         with open(raw / "mmgt_fra.csv", newline="") as fh:
             for i, r in enumerate(csv.DictReader(fh)):
                 if r["Type"] != "undecided" or bucket(f"mmgt-u-{i}") > 0.03 or not usable(r["Original text"]):
@@ -125,8 +141,9 @@ class Command(BaseCommand):
 
     def _fresh(self, gen: Path, pool: dict):
         hints = {}
-        if (gen / "seeds.jsonl").exists():
-            hints = {s["id"]: s["hint"] for s in map(json.loads, open(gen / "seeds.jsonl"))}
+        for name in ("seeds.jsonl", "wiki_seeds.jsonl"):
+            if (gen / name).exists():
+                hints |= {s["id"]: s["hint"] for s in map(json.loads, open(gen / name))}
         if not (gen / "ai.jsonl").exists():
             return
         for r in map(json.loads, open(gen / "ai.jsonl")):
@@ -134,9 +151,10 @@ class Command(BaseCommand):
             if heldout and r["split"] != "test":
                 continue
             text = strip_hint(r["text"], hints.get(r["seed_id"], ""))
-            if len(text.split()) < 60:
+            if len(text.split()) < 60 or (r["lang"] == "ru" and latin_share(text) > 0.3):
                 continue
-            pool[r["split"]].append(row(r["id"], r["lang"], r["split"], 1, "fresh", text, r["generator"], r["mode"]))
+            source = "fresh-wiki" if r.get("genre") == "wiki" else "fresh"
+            pool[r["split"]].append(row(r["id"], r["lang"], r["split"], 1, source, text, r["generator"], r["mode"]))
 
     def _frozen_test(self, eval_dir: Path) -> list:
         rows = []

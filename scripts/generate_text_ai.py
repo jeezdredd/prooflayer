@@ -35,6 +35,21 @@ GENERATE = {
     ),
 }
 
+GENERATE_WIKI = {
+    "en": (
+        "Write a passage of about {words} words for the Wikipedia article \"{hint}\", in the neutral encyclopedic "
+        "style of Wikipedia. No title, no headings, no lists, no notes, only the prose."
+    ),
+    "ru": (
+        "Напиши фрагмент статьи Википедии «{hint}» объёмом примерно {words} слов в нейтральном энциклопедическом "
+        "стиле. Без заголовков, без списков, без пояснений, только сам текст."
+    ),
+    "fr": (
+        "Rédige un passage d'environ {words} mots de l'article Wikipédia « {hint} », dans le style encyclopédique "
+        "neutre de Wikipédia. Sans titre, sans intertitres, sans listes, sans commentaire, uniquement le texte."
+    ),
+}
+
 HUMANIZE = {
     "en": (
         "Rewrite the text below so it reads like a real person wrote it, not an AI: vary sentence length, use plain "
@@ -87,9 +102,13 @@ def jobs_for(args, rng: random.Random) -> list[dict]:
             rid = f'{seed["id"]}-{args.model}'
             if rid in done:
                 continue
-            prompt = GENERATE[seed["lang"]].format(words=seed["words"], hint=seed["hint"], grade=rng.choice(GRADES))
+            genre = seed.get("genre", "")
+            templates = GENERATE_WIKI if genre == "wiki" else GENERATE
+            prompt = templates[seed["lang"]].format(words=seed["words"], hint=seed["hint"], grade=rng.choice(GRADES))
             budget = int(seed["words"] * TOKENS_PER_WORD[seed["lang"]] * 1.3) + 64
-            jobs.append({"id": rid, "seed_id": seed["id"], "lang": seed["lang"], "split": seed["split"], "prompt": prompt, "budget": budget})
+            jobs.append(
+                {"id": rid, "seed_id": seed["id"], "lang": seed["lang"], "split": seed["split"], "prompt": prompt, "budget": budget, "genre": genre}
+            )
     else:
         for row in read_jsonl(Path(args.source)):
             if row.get("mode") != "generate" or row["generator"] == args.model:
@@ -111,6 +130,7 @@ def jobs_for(args, rng: random.Random) -> list[dict]:
                     "prompt": HUMANIZE[row["lang"]].format(text=row["text"]),
                     "budget": budget,
                     "base_generator": row["generator"],
+                    "genre": row.get("genre", ""),
                 }
             )
     return jobs[: args.limit] if args.limit else jobs
@@ -170,6 +190,8 @@ def main():
                 }
                 if "base_generator" in job:
                     row["base_generator"] = job["base_generator"]
+                if job.get("genre"):
+                    row["genre"] = job["genre"]
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 written += 1
             fh.flush()

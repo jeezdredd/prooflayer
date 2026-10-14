@@ -1,3 +1,4 @@
+import math
 import threading
 from dataclasses import dataclass
 
@@ -13,9 +14,13 @@ MIN_WINDOW_TOKENS = 32
 
 @dataclass
 class ClassifierScore:
-    probability: float
+    score: float
     windows: list[float]
     tokens: int
+
+    @property
+    def probability(self) -> float:
+        return 1 / (1 + math.exp(-self.score))
 
 
 def pick_windows(chunks: list, limit: int = MAX_WINDOWS) -> list:
@@ -42,18 +47,18 @@ class TextClassifier:
         return kept or parts[:1]
 
     @torch.inference_mode()
-    def probabilities(self, chunks: list[list[int]]) -> list[float]:
+    def margins(self, chunks: list[list[int]]) -> list[float]:
         encoded = [self.tokenizer.build_inputs_with_special_tokens(c) for c in chunks]
         batch = self.tokenizer.pad({"input_ids": encoded}, return_tensors="pt").to(self.device)
         logits = self.model(**batch).logits.float()
-        return torch.softmax(logits, dim=-1)[:, 1].tolist()
+        return (logits[:, 1] - logits[:, 0]).tolist()
 
     def score(self, text: str) -> ClassifierScore:
         ids = self.token_ids(text)
         if not ids:
             raise ValueError("text is empty after normalization")
-        probs = self.probabilities(pick_windows(self.chunks(ids)))
-        return ClassifierScore(probability=sum(probs) / len(probs), windows=[round(p, 4) for p in probs], tokens=len(ids))
+        margins = self.margins(pick_windows(self.chunks(ids)))
+        return ClassifierScore(score=sum(margins) / len(margins), windows=[round(m, 3) for m in margins], tokens=len(ids))
 
 
 _cache: dict[tuple[str, str], TextClassifier] = {}
