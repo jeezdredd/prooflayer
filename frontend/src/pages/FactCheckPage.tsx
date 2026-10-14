@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import type { FactCheckMode, FactCheckStage } from "../types";
 import SubscriptionGate from "../components/SubscriptionGate";
 import { factcheck } from "../api/endpoints";
+import { msg, t, tn } from "../i18n";
 
 const VERDICT_TONE: Record<string, { color: string; label: string }> = {
-  mostly_accurate: { color: "text-signal-sage", label: "Mostly Accurate" },
-  mixed: { color: "text-signal-amber", label: "Mixed Findings" },
-  misleading: { color: "text-signal-blood", label: "Misleading" },
-  no_claims: { color: "text-ink-300", label: "No Claims Found" },
+  mostly_accurate: { color: "text-signal-sage", label: msg("Mostly Accurate") },
+  mixed: { color: "text-signal-amber", label: msg("Mixed Findings") },
+  misleading: { color: "text-signal-blood", label: msg("Misleading") },
+  no_claims: { color: "text-ink-300", label: msg("No Claims Found") },
 };
 
 const ASSESSMENT_TONE: Record<string, string> = {
@@ -19,9 +20,9 @@ const ASSESSMENT_TONE: Record<string, string> = {
 };
 
 const ASSESSMENT_LABELS: Record<string, string> = {
-  likely_true: "Likely True",
-  likely_false: "Likely False",
-  uncertain: "Uncertain",
+  likely_true: msg("Likely True"),
+  likely_false: msg("Likely False"),
+  uncertain: msg("Uncertain"),
 };
 
 const ASSESSMENT_BG: Record<string, string> = {
@@ -37,11 +38,11 @@ const SAMPLE_PROMPTS = [
 ];
 
 const STAGES: Array<{ key: FactCheckStage; label: string }> = [
-  { key: "extracting", label: "Extracting named entities via spaCy NER" },
-  { key: "searching", label: "Fetching DuckDuckGo + Wikipedia context" },
-  { key: "assessing", label: "Assessing claims with qwen2.5" },
-  { key: "cross_referencing", label: "Cross-referencing Google Fact Check" },
-  { key: "done", label: "Complete" },
+  { key: "extracting", label: msg("Extracting named entities via spaCy NER") },
+  { key: "searching", label: msg("Fetching DuckDuckGo + Wikipedia context") },
+  { key: "assessing", label: msg("Assessing claims with qwen2.5") },
+  { key: "cross_referencing", label: msg("Cross-referencing Google Fact Check") },
+  { key: "done", label: msg("Complete") },
 ];
 
 const STAGE_ORDER: FactCheckStage[] = ["pending", "extracting", "searching", "assessing", "cross_referencing", "done"];
@@ -167,7 +168,7 @@ function FactCheckPageInner() {
       runSubmit(t);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      setIoError(e?.response?.data?.error || "Document extract failed");
+      setIoError(e?.response?.data?.error ? t(e.response.data.error) : t("Document extract failed"));
     } finally {
       setFetching(false);
     }
@@ -196,12 +197,12 @@ function FactCheckPageInner() {
   return (
     <div className="max-w-5xl animate-rise">
       <div className="mb-8">
-        <span className="label-mono">Service / 03</span>
+        <span className="label-mono">{t("Service / 03")}</span>
         <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none mt-3">
-          Fact <span className="italic text-signal-amber">Check</span>
+          {t("Fact")} <span className="italic text-signal-amber">{t("Check")}</span>
         </h1>
         <p className="text-ink-400 mt-3 leading-relaxed max-w-xl">
-          Paste text, URL, or upload PDF/DOCX. NER + LLM extract claims, cross-referenced against Wikipedia + Google Fact Check.
+          {t("Paste text, URL, or upload PDF/DOCX. NER + LLM extract claims, cross-referenced against Wikipedia + Google Fact Check.")}
         </p>
       </div>
 
@@ -218,7 +219,7 @@ function FactCheckPageInner() {
                 : "border-white/10 text-ink-400 hover:border-signal-amber/60 hover:text-signal-amber",
             )}
           >
-            {m}
+            {t(m === "url" ? "link" : m)}
           </button>
         ))}
       </div>
@@ -227,11 +228,11 @@ function FactCheckPageInner() {
         <div className="flex items-center justify-between px-6 py-3 border-b border-ink-700">
           <div className="flex items-center gap-3">
             <span className={clsx("w-1.5 h-1.5 rounded-full", isPending ? "bg-signal-amber pulse-dot" : "bg-signal-cyan")} />
-            <span className="label-mono">Claim Extractor / {mode}</span>
+            <span className="label-mono">{t("Claim Extractor")} / {t(mode === "url" ? "link" : mode)}</span>
           </div>
           {mode === "text" && (
             <span className="font-mono text-[10px] text-ink-500 ticker">
-              {text.length} / 10000 CHARS
+              {t("{n} / 10000 CHARS", { n: text.length })}
             </span>
           )}
         </div>
@@ -240,7 +241,7 @@ function FactCheckPageInner() {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Paste article text, news excerpt, or any text with factual claims..."
+            placeholder={t("Paste article text, news excerpt, or any text with factual claims...")}
             rows={8}
             maxLength={10000}
             className="w-full px-5 py-4 font-mono text-sm text-ink-100 resize-y focus:outline-none border-0 placeholder:text-ink-500 appearance-none"
@@ -258,7 +259,7 @@ function FactCheckPageInner() {
               className="w-full px-3 py-2 font-mono text-sm text-ink-100 bg-white/[0.02] border border-white/10 rounded-sm focus:outline-none focus:border-signal-amber"
             />
             <p className="font-mono text-[10px] text-ink-500 mt-2">
-              Fetches article text via Trafilatura. SSRF-guarded (no private IPs).
+              {t("Fetches article text via Trafilatura. SSRF-guarded (no private IPs).")}
             </p>
           </div>
         )}
@@ -276,7 +277,7 @@ function FactCheckPageInner() {
               className="w-full font-mono text-xs text-ink-300 file:mr-3 file:px-3 file:py-1.5 file:bg-white/[0.04] file:border file:border-white/10 file:rounded-sm file:font-mono file:text-[10px] file:uppercase file:tracking-[0.14em] file:text-signal-amber hover:file:border-signal-amber/60"
             />
             <p className="font-mono text-[10px] text-ink-500 mt-2">
-              PDF or DOCX, max 10 MB. Extracted text is sent to the pipeline.
+              {t("PDF or DOCX, max 10 MB. Extracted text is sent to the pipeline.")}
             </p>
           </div>
         )}
@@ -285,7 +286,7 @@ function FactCheckPageInner() {
           <div className="flex items-center gap-2 flex-wrap">
             {mode === "text" && (
               <>
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">Try:</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">{t("Try:")}</span>
                 {SAMPLE_PROMPTS.map((s, i) => (
                   <button
                     key={i}
@@ -293,7 +294,7 @@ function FactCheckPageInner() {
                     onClick={() => setText(s)}
                     className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-300 hover:text-signal-amber border border-white/10 hover:border-signal-amber/60 px-2.5 py-1 rounded-sm transition-colors bg-white/[0.02]"
                   >
-                    Sample {String(i + 1).padStart(2, "0")}
+                    {t("Sample")} {String(i + 1).padStart(2, "0")}
                   </button>
                 ))}
               </>
@@ -301,7 +302,7 @@ function FactCheckPageInner() {
           </div>
           {mode === "text" && (
             <button type="submit" disabled={isPending || !text.trim()} className="btn-forensic">
-              {isPending ? "Analyzing..." : "Run Pipeline ->"}
+              {isPending ? t("Analyzing...") : `${t("Run Pipeline")} ->`}
             </button>
           )}
           {mode === "url" && (
@@ -311,7 +312,7 @@ function FactCheckPageInner() {
               disabled={fetching || isPending || !url.trim()}
               className="btn-forensic"
             >
-              {fetching ? "Fetching..." : "Fetch + Analyze ->"}
+              {fetching ? t("Fetching...") : `${t("Fetch + Analyze")} ->`}
             </button>
           )}
         </div>
@@ -329,7 +330,7 @@ function FactCheckPageInner() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
-              <span className="label-mono text-signal-amber">Pipeline Running</span>
+              <span className="label-mono text-signal-amber">{t("Pipeline Running")}</span>
             </div>
             <span className="font-mono text-[11px] text-ink-500">{progress}%</span>
           </div>
@@ -351,7 +352,7 @@ function FactCheckPageInner() {
                     {done && <div className="absolute inset-y-0 left-0 right-0 bg-signal-sage/40" />}
                   </div>
                   <span className={clsx("font-mono text-[10px] text-right", active ? "text-signal-amber" : done ? "text-signal-sage" : "text-ink-600")}>
-                    {s.label}
+                    {t(s.label)}
                   </span>
                 </div>
               );
@@ -363,7 +364,7 @@ function FactCheckPageInner() {
       {isError && (
         <div className="mt-4 p-4 border border-signal-blood bg-signal-blood/5 flex items-center gap-3 animate-fade-in">
           <span className="w-5 h-5 border border-signal-blood text-signal-blood text-[10px] font-bold flex items-center justify-center">!</span>
-          <span className="font-mono text-xs text-signal-blood">Analysis failed. Check that Ollama is running.</span>
+          <span className="font-mono text-xs text-signal-blood">{t("Analysis failed. Check that Ollama is running.")}</span>
         </div>
       )}
 
@@ -372,20 +373,20 @@ function FactCheckPageInner() {
           <div className="lg:col-span-3 space-y-4">
             <div className="case-card crop-marks p-6 flex items-center justify-between gap-4">
               <div>
-                <span className="label-mono">Overall Verdict</span>
-                <div className={clsx("font-display text-4xl mt-2", verdict.color)}>{verdict.label}</div>
+                <span className="label-mono">{t("Overall Verdict")}</span>
+                <div className={clsx("font-display text-4xl mt-2", verdict.color)}>{t(verdict.label)}</div>
                 <div className="font-mono text-[11px] text-ink-400 mt-1 ticker">
-                  {result.claims_count} claim{result.claims_count !== 1 ? "s" : ""} extracted · {result.claims.filter(c => c.assessment === "likely_true").length} verified · {result.claims.filter(c => c.assessment === "likely_false").length} disputed
+                  {tn(result.claims_count, "{n} claim extracted", "{n} claims extracted")} · {t("{n} verified", { n: result.claims.filter(c => c.assessment === "likely_true").length })} · {t("{n} disputed", { n: result.claims.filter(c => c.assessment === "likely_false").length })}
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <span className={clsx("badge border-current", verdict.color)}>{verdict.label}</span>
+                <span className={clsx("badge border-current", verdict.color)}>{t(verdict.label)}</span>
                 <button
                   onClick={handleExport}
                   disabled={exporting}
                   className="font-mono text-[10px] uppercase tracking-[0.14em] text-signal-amber hover:bg-signal-amber/10 border border-signal-amber/60 px-3 py-1.5 rounded-sm transition-colors"
                 >
-                  {exporting ? "..." : "Export PDF"}
+                  {exporting ? "..." : t("Export PDF")}
                 </button>
               </div>
             </div>
@@ -407,14 +408,14 @@ function FactCheckPageInner() {
                     <p className="text-ink-100 leading-relaxed flex-1">{claim.claim}</p>
                   </div>
                   <span className={clsx("badge border-current shrink-0", ASSESSMENT_TONE[claim.assessment] ?? "text-signal-amber")}>
-                    {ASSESSMENT_LABELS[claim.assessment] ?? "Uncertain"}
+                    {t(ASSESSMENT_LABELS[claim.assessment] ?? "Uncertain")}
                   </span>
                 </div>
 
                 {typeof claim.confidence === "number" && (
                   <div className="pl-9 mb-3">
                     <div className="flex items-center justify-between font-mono text-[10px] text-ink-500 mb-1">
-                      <span>CONFIDENCE</span>
+                      <span>{t("CONFIDENCE")}</span>
                       <span>{claim.confidence}%</span>
                     </div>
                     <div className="h-1 bg-ink-800 relative overflow-hidden">
@@ -435,7 +436,7 @@ function FactCheckPageInner() {
 
                 {claim.wikipedia && (
                   <div className="mt-3 pl-9 pt-3 border-t border-dashed border-ink-700">
-                    <div className="label-mono mb-2">Wikipedia</div>
+                    <div className="label-mono mb-2">{t("Wikipedia")}</div>
                     <a
                       href={claim.wikipedia.url}
                       target="_blank"
@@ -450,7 +451,7 @@ function FactCheckPageInner() {
 
                 {claim.sources && claim.sources.length > 0 && (
                   <div className="mt-3 pl-9 pt-3 border-t border-dashed border-ink-700 space-y-1.5">
-                    <div className="label-mono mb-2">Web Sources</div>
+                    <div className="label-mono mb-2">{t("Web Sources")}</div>
                     {claim.sources.map((s, j) => (
                       <a
                         key={j}
@@ -468,7 +469,7 @@ function FactCheckPageInner() {
 
                 {claim.fact_checks.length > 0 && (
                   <div className="mt-3 pl-9 pt-3 border-t border-dashed border-ink-700 space-y-1.5">
-                    <div className="label-mono mb-2">Fact Check Cross-Refs</div>
+                    <div className="label-mono mb-2">{t("Fact Check Cross-Refs")}</div>
                     {claim.fact_checks.map((fc, j) => (
                       <a
                         key={j}
@@ -491,7 +492,7 @@ function FactCheckPageInner() {
           <div className="lg:col-span-2">
             <div className="case-card crop-marks p-5 sticky top-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="label-mono">Source Text</span>
+                <span className="label-mono">{t("Source Text")}</span>
                 <span className="font-mono text-[10px] text-ink-500">{submittedText.length} chars</span>
               </div>
               <div className="max-h-[600px] overflow-y-auto">
@@ -511,5 +512,5 @@ function FactCheckPageInner() {
 }
 
 export default function FactCheckPage() {
-  return <SubscriptionGate feature="Fact Check"><FactCheckPageInner /></SubscriptionGate>;
+  return <SubscriptionGate feature={t("Fact Check")}><FactCheckPageInner /></SubscriptionGate>;
 }

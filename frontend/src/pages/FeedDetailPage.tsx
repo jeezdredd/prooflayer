@@ -4,6 +4,7 @@ import { Globe, User, Calendar, ArrowLeft } from "lucide-react";
 import { feed } from "../api/endpoints";
 import { Skeleton } from "../components/ui/Skeleton";
 import SensitiveCover from "../components/SensitiveCover";
+import { locale, msg, t, verdictText } from "../i18n";
 
 function VerdictBadge({ verdict, score }: { verdict: string; score: number | null }) {
   const isAI = verdict === "ai_generated";
@@ -13,7 +14,7 @@ function VerdictBadge({ verdict, score }: { verdict: string; score: number | nul
     : isReal
     ? "text-signal-sage border-signal-sage/40 bg-signal-sage/5"
     : "text-signal-amber border-signal-amber/40 bg-signal-amber/5";
-  const label = isAI ? "AI Generated" : isReal ? "Authentic" : verdict?.replace("_", " ") || "Unknown";
+  const label = isAI ? t("AI Generated") : isReal ? t("Authentic") : verdict ? verdictText(verdict) : t("Unknown");
 
   return (
     <span className={`font-mono text-[11px] uppercase tracking-[0.14em] border px-3 py-1 rounded-full ${color}`}>
@@ -22,6 +23,15 @@ function VerdictBadge({ verdict, score }: { verdict: string; score: number | nul
     </span>
   );
 }
+
+const ANALYZER_NAME: Record<string, string> = {
+  metadata: msg("Metadata · EXIF"),
+  ela: msg("Error Level Analysis"),
+  ai_detector: msg("AI Image Ensemble"),
+  llm_vision: msg("Vision LLM"),
+  custom_detector: msg("ProofLayer Detector"),
+  text_classifier: msg("Text Classifier"),
+};
 
 export default function FeedDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,9 +56,9 @@ export default function FeedDetailPage() {
   if (isError || !item) {
     return (
       <div className="text-center py-20">
-        <p className="text-ink-400 font-mono text-sm">Submission not found.</p>
+        <p className="text-ink-400 font-mono text-sm">{t("Submission not found.")}</p>
         <Link to="/feed" className="mt-2 inline-block text-iris hover:text-iris-light underline text-sm">
-          Back to feed
+          {t("Back to feed")}
         </Link>
       </div>
     );
@@ -61,7 +71,7 @@ export default function FeedDetailPage() {
       <div className="flex items-center gap-3 mb-6 font-mono text-[11px] uppercase tracking-[0.14em]">
         <Link to="/feed" className="flex items-center gap-1.5 text-ink-400 hover:text-ink-100 transition">
           <ArrowLeft size={13} strokeWidth={1.5} />
-          Public Feed
+          {t("Public Feed")}
         </Link>
         <span className="text-ink-700">/</span>
         <Globe size={12} strokeWidth={1.5} className="text-iris" />
@@ -85,13 +95,13 @@ export default function FeedDetailPage() {
           {item.analysis_results.length > 0 && (
             <div className="case-card p-6">
               <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mb-4">
-                Analysis Results
+                {t("Analysis Results")}
               </div>
               <div className="space-y-3">
                 {item.analysis_results.map((r) => (
                   <div key={r.id} className="flex items-center justify-between py-2 border-b border-ink-900 last:border-0">
                     <span className="font-mono text-[11px] text-ink-300 capitalize">
-                      {r.analyzer_name.replace("_", " ")}
+                      {t(ANALYZER_NAME[r.analyzer_name] ?? r.analyzer_name.replace(/_/g, " "))}
                     </span>
                     <div className="flex items-center gap-3">
                       <div className="w-24 h-1 bg-ink-800 rounded-full overflow-hidden">
@@ -110,7 +120,7 @@ export default function FeedDetailPage() {
                           ? "text-signal-sage"
                           : "text-signal-amber"
                       }`}>
-                        {r.verdict?.replace("_", " ")}
+                        {verdictText(r.verdict)}
                       </span>
                     </div>
                   </div>
@@ -123,24 +133,24 @@ export default function FeedDetailPage() {
         <div className="space-y-4">
           <div className="case-card p-6">
             <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mb-4">
-              Verdict
+              {t("Verdict")}
             </div>
             <VerdictBadge verdict={item.final_verdict} score={item.final_score} />
             {item.is_sensitive && (
               <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-signal-amber mt-3">
-                Marked as sensitive content
+                {t("Marked as sensitive content")}
               </div>
             )}
           </div>
 
           <div className="case-card p-6 space-y-4">
             <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">
-              Submission Info
+              {t("Submission Info")}
             </div>
             <div className="space-y-3">
               <div>
                 <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-600 mb-1">
-                  File
+                  {t("File")}
                 </div>
                 <div className="font-mono text-xs text-ink-300 break-all">
                   {item.original_filename}
@@ -148,13 +158,13 @@ export default function FeedDetailPage() {
               </div>
               <div>
                 <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-600 mb-1">
-                  Type
+                  {t("Type")}
                 </div>
                 <div className="font-mono text-xs text-ink-300">{item.mime_type}</div>
               </div>
               <div>
                 <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-600 mb-1">
-                  Size
+                  {t("Size")}
                 </div>
                 <div className="font-mono text-xs text-ink-300">
                   {(item.file_size / 1024).toFixed(1)} KB
@@ -165,7 +175,7 @@ export default function FeedDetailPage() {
 
           <div className="case-card p-6 space-y-3">
             <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">
-              Submitted by
+              {t("Submitted by")}
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-ink-800 border border-ink-700 flex items-center justify-center">
@@ -175,14 +185,14 @@ export default function FeedDetailPage() {
                 <div className="font-mono text-xs text-ink-200">{item.uploader.username}</div>
                 <div className="font-mono text-[10px] text-ink-600 flex items-center gap-1 mt-0.5">
                   <Calendar size={9} strokeWidth={1.5} />
-                  Joined {new Date(item.uploader.date_joined).getFullYear()}
+                  {t("Joined {year}", { year: new Date(item.uploader.date_joined).getFullYear() })}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-ink-600 mt-2">
               <Calendar size={11} strokeWidth={1.5} />
               <span className="font-mono text-[10px]">
-                {new Date(item.created_at).toLocaleDateString("en-GB", {
+                {new Date(item.created_at).toLocaleDateString(locale(), {
                   day: "numeric",
                   month: "short",
                   year: "numeric",

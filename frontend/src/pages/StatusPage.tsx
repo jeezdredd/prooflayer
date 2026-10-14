@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Activity, Database, Zap, Cpu, Brain, HardDrive, RefreshCw, Mail } from "lucide-react";
 import client from "../api/client";
+import { locale, msg, t } from "../i18n";
 
 interface ServiceProbe {
   status: "ok" | "down" | "skip";
@@ -43,14 +44,14 @@ interface SystemStatus {
 }
 
 const SERVICE_META: Record<string, { label: string; desc: string; Icon: typeof Activity }> = {
-  api: { label: "API", desc: "Django REST gateway.", Icon: Activity },
-  database: { label: "Database", desc: "PostgreSQL.", Icon: Database },
-  redis: { label: "Redis", desc: "Celery broker + cache.", Icon: Zap },
-  celery: { label: "Workers", desc: "Background analyzer pool.", Icon: Cpu },
-  ollama: { label: "Vision LLM", desc: "Local inference - vision + text.", Icon: Brain },
-  storage: { label: "Object Store", desc: "S3 blob store.", Icon: HardDrive },
-  email: { label: "Email", desc: "Transactional mail (Resend).", Icon: Mail },
-  analyzers: { label: "Analyzer Roster", desc: "Seeded detector config vs. code.", Icon: Cpu },
+  api: { label: msg("API"), desc: msg("Django REST gateway."), Icon: Activity },
+  database: { label: msg("Database"), desc: msg("PostgreSQL."), Icon: Database },
+  redis: { label: msg("Redis"), desc: msg("Celery broker + cache."), Icon: Zap },
+  celery: { label: msg("Workers"), desc: msg("Background analyzer pool."), Icon: Cpu },
+  ollama: { label: msg("Vision LLM"), desc: msg("Local inference - vision + text."), Icon: Brain },
+  storage: { label: msg("Object Store"), desc: msg("S3 blob store."), Icon: HardDrive },
+  email: { label: msg("Email"), desc: msg("Transactional mail (Resend)."), Icon: Mail },
+  analyzers: { label: msg("Analyzer Roster"), desc: msg("Seeded detector config vs. code."), Icon: Cpu },
 };
 
 const ORDER = ["api", "database", "redis", "celery", "ollama", "storage", "email", "analyzers"];
@@ -95,33 +96,33 @@ export default function StatusPage() {
       >
         <div className="label-mono flex items-center gap-2 mb-3">
           <span className="w-1.5 h-1.5 bg-signal-cyan rounded-full pulse-dot" />
-          System / Status
+          {t("System / Status")}
         </div>
         <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none">
           {overall === "operational" ? (
             <>
-              All systems <span className="italic text-signal-sage">operational</span>.
+              {t("All systems")} <span className="italic text-signal-sage">{t("operational")}</span>.
             </>
           ) : overall === "degraded" ? (
             <>
-              Service <span className="italic text-signal-amber">degraded</span>.
+              {t("Service")} <span className="italic text-signal-amber">{t("degraded")}</span>.
             </>
           ) : (
             <>
-              Probing<span className="italic text-iris">…</span>
+              {t("Probing")}<span className="italic text-iris">…</span>
             </>
           )}
         </h1>
         <p className="text-ink-300 mt-3 max-w-xl leading-relaxed">
-          Real-time component health. Probed every 5s.
+          {t("Real-time component health. Probed every 5s.")}
         </p>
       </motion.div>
 
       <div className="mt-10 case-card">
         <div className="flex items-center justify-between px-6 py-3 border-b border-white/5">
-          <span className="label-mono">Probes</span>
+          <span className="label-mono">{t("Probes")}</span>
           <span className="font-mono text-[10px] text-ink-500 ticker">
-            {dataUpdatedAt ? `LAST: ${new Date(dataUpdatedAt).toLocaleTimeString()}` : "-"}
+            {dataUpdatedAt ? t("LAST: {time}", { time: new Date(dataUpdatedAt).toLocaleTimeString(locale()) }) : "-"}
           </span>
         </div>
 
@@ -142,32 +143,32 @@ export default function StatusPage() {
                   <Icon size={18} strokeWidth={1.5} />
                 </div>
                 <div className="col-span-4">
-                  <div className="font-display text-xl text-ink-50 leading-tight">{meta.label}</div>
+                  <div className="font-display text-xl text-ink-50 leading-tight">{t(meta.label)}</div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mt-1">
                     {key.toUpperCase()}
                   </div>
                 </div>
                 <div className="col-span-5 text-sm text-ink-300 leading-relaxed">
                   {!probe || isLoading ? (
-                    <span className="font-mono text-ink-500">probing…</span>
+                    <span className="font-mono text-ink-500">{t("probing…")}</span>
                   ) : probe.status === "ok" ? (
                     <span className="font-mono text-[11px] text-ink-300">
                       {probe.latency_ms != null && `${probe.latency_ms} ms`}
-                      {probe.workers != null && ` · ${probe.workers} worker(s) · ${probe.active_tasks} active`}
-                      {probe.loaded_models && probe.loaded_models.length > 0 && ` · loaded: ${probe.loaded_models.join(", ")}`}
-                      {probe.available_models && probe.loaded_models?.length === 0 && ` · idle (${probe.available_models.length} models cached)`}
+                      {probe.workers != null && ` · ${t("workers: {n}", { n: probe.workers })} · ${t("active: {n}", { n: probe.active_tasks ?? 0 })}`}
+                      {probe.loaded_models && probe.loaded_models.length > 0 && ` · ${t("loaded:")} ${probe.loaded_models.join(", ")}`}
+                      {probe.available_models && probe.loaded_models?.length === 0 && ` · ${t("idle ({n} models cached)", { n: probe.available_models.length })}`}
                       {probe.version && ` · v${probe.version}`}
-                      {probe.backend && ` · via ${probe.backend}`}
-                      {probe.recent_failures != null && probe.recent_failures > 0 && ` · ${probe.recent_failures} recent issue(s)`}
-                      {probe.active != null && probe.expected != null && ` · ${probe.active}/${probe.expected} active`}
+                      {probe.backend && ` · ${t("via {name}", { name: probe.backend })}`}
+                      {probe.recent_failures != null && probe.recent_failures > 0 && ` · ${t("recent issues: {n}", { n: probe.recent_failures })}`}
+                      {probe.active != null && probe.expected != null && ` · ${t("{active}/{expected} active", { active: probe.active, expected: probe.expected })}`}
                       {probe.ensemble && ` · ${probe.ensemble}`}
                     </span>
                   ) : probe.status === "skip" ? (
-                    <span className="font-mono text-[11px] text-ink-500">{probe.reason || "skipped"}</span>
+                    <span className="font-mono text-[11px] text-ink-500">{probe.reason ? t(probe.reason) : t("skipped")}</span>
                   ) : (
-                    <span className="font-mono text-[11px] text-signal-blood">{probe.error || "unreachable"}</span>
+                    <span className="font-mono text-[11px] text-signal-blood">{probe.error ? t(probe.error) : t("unreachable")}</span>
                   )}
-                  <div className="text-xs text-ink-500 mt-1">{meta.desc}</div>
+                  <div className="text-xs text-ink-500 mt-1">{t(meta.desc)}</div>
                 </div>
                 <div className="col-span-2 flex items-center justify-end gap-2">
                   <StatusDot status={probe?.status || "skip"} />
@@ -176,7 +177,7 @@ export default function StatusPage() {
                     probe?.status === "down" ? "text-signal-blood" :
                     "text-ink-500"
                   }`}>
-                    {probe?.status || "-"}
+                    {probe?.status ? t(probe.status) : "-"}
                   </span>
                 </div>
               </motion.div>
@@ -193,23 +194,23 @@ export default function StatusPage() {
       >
         <div className="flex items-center gap-3 px-6 py-3 border-b border-white/5">
           <RefreshCw size={14} strokeWidth={1.5} className="text-signal-amber/70" />
-          <span className="label-mono">Model Updates</span>
+          <span className="label-mono">{t("Model Updates")}</span>
         </div>
         <div className="px-6 py-5">
           {lastRetrain ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">Last Retrain</div>
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">{t("Last Retrain")}</div>
                 <div className="font-mono text-xs text-ink-100">
-                  {new Date(lastRetrain.started_at).toLocaleDateString()}
+                  {new Date(lastRetrain.started_at).toLocaleDateString(locale())}
                 </div>
               </div>
               <div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">Samples</div>
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">{t("Samples")}</div>
                 <div className="font-mono text-xs text-ink-100">{lastRetrain.samples_used}</div>
               </div>
               <div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">Type</div>
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">{t("Type")}</div>
                 <div className="font-mono text-xs text-ink-100">{lastRetrain.media_type}</div>
               </div>
               <div>
@@ -220,15 +221,15 @@ export default function StatusPage() {
               </div>
             </div>
           ) : (
-            <span className="font-mono text-[11px] text-ink-500">No successful retrains yet.</span>
+            <span className="font-mono text-[11px] text-ink-500">{t("No successful retrains yet.")}</span>
           )}
         </div>
       </motion.div>
 
       <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 flex items-center gap-3">
-        <span>Auto-refresh · 5s</span>
+        <span>{t("Auto-refresh · 5s")}</span>
         <span className="text-ink-700">·</span>
-        <span>Public endpoint</span>
+        <span>{t("Public endpoint")}</span>
         <span className="text-ink-700">·</span>
         <a href="https://api.prooflayer.cloud/api/v1/system/status/" className="hover:text-signal-amber transition-colors">
           GET /api/v1/system/status/

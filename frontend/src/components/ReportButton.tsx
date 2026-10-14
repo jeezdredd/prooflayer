@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { useCreateReport } from "../hooks/useReports";
+import { msg, t } from "../i18n";
 
 interface ReportButtonProps {
   submissionId: string;
 }
 
 const REASONS = [
-  { value: "fake_content", label: "Fake content" },
-  { value: "misleading", label: "Misleading" },
-  { value: "copyright", label: "Copyright violation" },
-  { value: "adult_content", label: "Adult or sensitive content" },
-  { value: "spam", label: "Spam" },
-  { value: "other", label: "Other" },
+  { value: "fake_content", label: msg("Fake content") },
+  { value: "misleading", label: msg("Misleading") },
+  { value: "copyright", label: msg("Copyright violation") },
+  { value: "adult_content", label: msg("Adult or sensitive content") },
+  { value: "spam", label: msg("Spam") },
+  { value: "other", label: msg("Other") },
 ];
 
 export default function ReportButton({ submissionId }: ReportButtonProps) {
@@ -34,7 +35,7 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
   }
 
   if (submitted) {
-    return <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">Report submitted</span>;
+    return <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">{t("Report submitted")}</span>;
   }
 
   return (
@@ -43,15 +44,15 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
         onClick={() => setOpen(true)}
         className="font-mono text-[10px] uppercase tracking-[0.14em] border border-ink-700 text-ink-400 hover:border-signal-blood hover:text-signal-blood px-3 py-1.5 transition"
       >
-        Report
+        {t("Report")}
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="case-card crop-marks p-6 w-full max-w-sm">
-            <h3 className="font-display text-xl text-white mb-4">Report submission</h3>
+            <h3 className="font-display text-xl text-white mb-4">{t("Report submission")}</h3>
             <div className="mb-3">
-              <label className="label-mono block mb-1">Reason</label>
+              <label className="label-mono block mb-1">{t("Reason")}</label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -59,12 +60,12 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
                 style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
               >
                 {REASONS.map((r) => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
+                  <option key={r.value} value={r.value}>{t(r.label)}</option>
                 ))}
               </select>
             </div>
             <div className="mb-4">
-              <label className="label-mono block mb-1">Details (optional)</label>
+              <label className="label-mono block mb-1">{t("Details (optional)")}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -78,14 +79,14 @@ export default function ReportButton({ submissionId }: ReportButtonProps) {
                 onClick={() => setOpen(false)}
                 className="flex-1 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-300 border border-ink-700 hover:bg-ink-800 transition"
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isPending}
                 className="flex-1 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-signal-blood border border-signal-blood/60 hover:bg-signal-blood/10 disabled:opacity-50 transition"
               >
-                Submit
+                {t("Submit")}
               </button>
             </div>
           </div>

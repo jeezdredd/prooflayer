@@ -3,14 +3,15 @@ import { AnimatePresence, motion } from "motion/react";
 import { X, MessageSquarePlus, Send, CheckCircle } from "lucide-react";
 import clsx from "clsx";
 import { feedback } from "../api/endpoints";
+import { msg, t } from "../i18n";
 
 const CATEGORIES = [
-  { value: "accuracy", label: "Detection Accuracy" },
-  { value: "ux", label: "UX / Design" },
-  { value: "performance", label: "Performance" },
-  { value: "feature_request", label: "Feature Request" },
-  { value: "bug", label: "Bug Report" },
-  { value: "other", label: "Other" },
+  { value: "accuracy", label: msg("Detection Accuracy") },
+  { value: "ux", label: msg("UX / Design") },
+  { value: "performance", label: msg("Performance") },
+  { value: "feature_request", label: msg("Feature Request") },
+  { value: "bug", label: msg("Bug Report") },
+  { value: "other", label: msg("Other") },
 ];
 
 interface FeedbackModalProps {
@@ -43,7 +44,7 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim().length < 10) {
-      setError("Message must be at least 10 characters.");
+      setError(t("Message must be at least 10 characters."));
       return;
     }
     setLoading(true);
@@ -52,7 +53,7 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
       await feedback.submit({ category, message: message.trim(), contact_email: email.trim() });
       setDone(true);
     } catch {
-      setError("Failed to send. Please try again.");
+      setError(t("Failed to send. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -80,7 +81,7 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
               <div className="flex items-center gap-2">
                 <MessageSquarePlus size={14} className="text-iris" strokeWidth={1.5} />
                 <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-200">
-                  Send Feedback
+                  {t("Send Feedback")}
                 </span>
               </div>
               <button
@@ -94,20 +95,20 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
             {done ? (
               <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
                 <CheckCircle size={28} className="text-sage-400" strokeWidth={1.5} />
-                <p className="font-mono text-sm text-ink-100">Thank you for the feedback.</p>
-                <p className="font-mono text-xs text-ink-500">It helps improve ProofLayer.</p>
+                <p className="font-mono text-sm text-ink-100">{t("Thank you for the feedback.")}</p>
+                <p className="font-mono text-xs text-ink-500">{t("It helps improve ProofLayer.")}</p>
                 <button
                   onClick={handleClose}
                   className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-iris hover:text-iris-light transition-colors"
                 >
-                  Close
+                  {t("Close")}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="px-4 py-4 space-y-3">
                 <div>
                   <label className="block font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">
-                    Category
+                    {t("Category")}
                   </label>
                   <select
                     value={category}
@@ -116,20 +117,20 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                   style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
+                      <option key={c.value} value={c.value}>{t(c.label)}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">
-                    Message *
+                    {t("Message")} *
                   </label>
                   <textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={4}
-                    placeholder="Describe the issue or suggestion..."
+                    placeholder={t("Describe the issue or suggestion...")}
                     className="w-full border border-ink-700 px-3 py-2 text-sm font-mono text-ink-100 placeholder:text-ink-600 focus:outline-none focus:border-iris transition resize-none appearance-none"
                     style={{ background: "var(--ink-900, #0d0f14)", colorScheme: "dark" }}
                   />
@@ -147,7 +148,7 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
 
                 <div>
                   <label className="block font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">
-                    Contact email (optional)
+                    {t("Contact email (optional)")}
                   </label>
                   <input
                     type="email"
@@ -173,7 +174,7 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                   ) : (
                     <Send size={12} strokeWidth={1.5} />
                   )}
-                  {loading ? "Sending..." : "Send Feedback"}
+                  {loading ? t("Sending…") : t("Send Feedback")}
                 </button>
               </form>
             )}
@@ -188,11 +189,11 @@ export function FeedbackTrigger({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      title="Send feedback"
+      title={t("Send Feedback")}
       className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-3 py-2 bg-ink-950/90 backdrop-blur-sm border border-ink-700 hover:border-iris/60 text-ink-400 hover:text-iris transition-all font-mono text-[10px] uppercase tracking-[0.12em] shadow-lg"
     >
       <MessageSquarePlus size={13} strokeWidth={1.5} />
-      Feedback
+      {t("Feedback")}
     </button>
   );
 }

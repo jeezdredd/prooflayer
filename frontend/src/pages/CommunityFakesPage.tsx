@@ -1,6 +1,7 @@
 import { useState } from "react";
 import SubmissionTable from "../components/SubmissionTable";
 import { useDashboard } from "../hooks/useDashboard";
+import { t } from "../i18n";
 
 export default function CommunityFakesPage() {
   const [page, setPage] = useState(1);
@@ -16,18 +17,18 @@ export default function CommunityFakesPage() {
     <div className="animate-rise">
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
         <div>
-          <span className="label-mono signal-blood">Service / 04</span>
+          <span className="label-mono signal-blood">{t("Service / 04")}</span>
           <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none mt-3">
-            Known <span className="italic text-signal-blood">Fakes</span>
+            {t("Known")} <span className="italic text-signal-blood">{t("Fakes")}</span>
           </h1>
           <p className="text-ink-400 mt-3 max-w-xl leading-relaxed">
-            Confirmed forgeries from the community registry. Same SHA-256 flagged automatically.
+            {t("Confirmed forgeries from the community registry. Same SHA-256 flagged automatically.")}
           </p>
         </div>
         {data && (
           <div className="text-right">
             <div className="font-display text-5xl text-signal-blood ticker">{data.count}</div>
-            <div className="label-mono mt-1">Confirmed Fakes</div>
+            <div className="label-mono mt-1">{t("Confirmed Fakes")}</div>
           </div>
         )}
       </div>

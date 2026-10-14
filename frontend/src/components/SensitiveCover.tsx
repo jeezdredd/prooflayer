@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { EyeOff } from "lucide-react";
+import { t } from "../i18n";
 
 interface SensitiveCoverProps {
   sensitive?: boolean;
@@ -26,7 +27,7 @@ export default function SensitiveCover({ sensitive, children, className }: Sensi
         className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-ink-950/70 text-ink-100 font-mono text-[10px] uppercase tracking-[0.14em] hover:text-signal-amber transition-colors"
       >
         <EyeOff size={16} strokeWidth={1.5} />
-        Sensitive content, click to show
+        {t("Sensitive content, click to show")}
       </button>
     </div>
   );

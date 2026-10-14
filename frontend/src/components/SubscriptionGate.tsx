@@ -4,6 +4,7 @@ import { Zap, LayoutDashboard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { billing } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
+import { t } from "../i18n";
 
 interface Props {
   children: React.ReactNode;
@@ -39,19 +40,19 @@ export default function SubscriptionGate({ children, feature }: Props) {
           <Zap className="w-7 h-7 text-violet-300" strokeWidth={1.8} />
         </div>
       </div>
-      <span className="label-mono">Pro Feature</span>
+      <span className="label-mono">{t("Pro Feature")}</span>
       <h1 className="font-display text-3xl text-white mt-3">
-        Upgrade to Pro
+        {t("Upgrade to Pro")}
       </h1>
       <p className="text-sm text-ink-400 mt-3 leading-relaxed">
         {feature
-          ? <><span className="font-mono text-ink-200">{feature}</span> requires a Pro subscription.</>
-          : "This feature requires a Pro subscription."}
-        {" "}Upgrade for $12/month to unlock all features.
+          ? <><span className="font-mono text-ink-200">{feature}</span> {t("requires a Pro subscription.")}</>
+          : t("This feature requires a Pro subscription.")}
+        {" "}{t("Upgrade for $12/month to unlock all features.")}
       </p>
       {sub && (
         <p className="text-xs text-ink-600 font-mono mt-2">
-          {sub.uploads_used} / {sub.uploads_limit} uploads used this month
+          {t("{used} / {limit} uploads used this month", { used: sub.uploads_used, limit: sub.uploads_limit })}
         </p>
       )}
       <div className="mt-7 flex items-center justify-center gap-3 flex-wrap">
@@ -60,14 +61,14 @@ export default function SubscriptionGate({ children, feature }: Props) {
           className="inline-flex items-center gap-2 bg-iris hover:bg-iris-light text-white px-5 py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition"
         >
           <Zap className="w-3.5 h-3.5" />
-          View Pricing
+          {t("View Pricing")}
         </Link>
         <Link
           to="/dashboard"
           className="inline-flex items-center gap-2 border border-ink-700 text-ink-300 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.14em] hover:bg-ink-800 hover:text-ink-100 transition"
         >
           <LayoutDashboard className="w-3.5 h-3.5" />
-          Back to Dashboard
+          {t("Back to Dashboard")}
         </Link>
       </div>
     </motion.div>

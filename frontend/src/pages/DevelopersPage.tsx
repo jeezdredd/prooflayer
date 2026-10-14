@@ -5,6 +5,7 @@ import SubscriptionGate from "../components/SubscriptionGate";
 import { apiKeys } from "../api/endpoints";
 import type { ApiKey, ApiKeyCreated } from "../types";
 import { toast } from "../components/ui/Toast";
+import { locale, t } from "../i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.prooflayer.cloud/api/v1";
 
@@ -19,7 +20,7 @@ function CopyButton({ text }: { text: string }) {
         setTimeout(() => setDone(false), 1400);
       }}
       className="text-ink-400 hover:text-signal-amber transition"
-      aria-label="Copy"
+      aria-label={t("Copy")}
     >
       {done ? <Check size={14} /> : <Copy size={14} />}
     </button>
@@ -42,7 +43,7 @@ function NewKeyReveal({ created, onClose }: { created: ApiKeyCreated; onClose: (
   return (
     <div className="case-card p-5 mb-6 border border-signal-amber/40">
       <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-signal-amber mb-2">
-        Copy now - it will not be shown again
+        {t("Copy now, it will not be shown again")}
       </div>
       <div className="flex items-center gap-3 font-mono text-sm text-ink-50 break-all">
         <span>{created.key}</span>
@@ -50,13 +51,13 @@ function NewKeyReveal({ created, onClose }: { created: ApiKeyCreated; onClose: (
       </div>
       {created.webhook_secret && (
         <div className="mt-3 flex items-center gap-3 font-mono text-xs text-ink-300 break-all">
-          <span className="text-ink-500">webhook secret</span>
+          <span className="text-ink-500">{t("webhook secret")}</span>
           <span>{created.webhook_secret}</span>
           <CopyButton text={created.webhook_secret} />
         </div>
       )}
       <button type="button" onClick={onClose} className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 hover:text-ink-100">
-        I saved it
+        {t("I saved it")}
       </button>
     </div>
   );
@@ -69,21 +70,21 @@ function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: number) =
       <div className="md:col-span-3 text-ink-50">{apiKey.name}</div>
       <div className="md:col-span-3 font-mono text-xs text-ink-300">{apiKey.prefix}…</div>
       <div className="md:col-span-3 font-mono text-[11px] text-ink-500">
-        {apiKey.last_used_at ? `used ${new Date(apiKey.last_used_at).toLocaleString()}` : "never used"}
+        {apiKey.last_used_at ? t("used {date}", { date: new Date(apiKey.last_used_at).toLocaleString(locale()) }) : t("never used")}
       </div>
       <div className="md:col-span-2 font-mono text-[11px] text-ink-500 flex items-center gap-1.5">
         {apiKey.webhook_url ? (
           <>
             <Webhook size={12} />
-            {apiKey.last_webhook_status || "no deliveries"}
+            {apiKey.last_webhook_status || t("no deliveries")}
           </>
         ) : null}
       </div>
       <div className="md:col-span-1 text-right">
         {revoked ? (
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">revoked</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">{t("revoked")}</span>
         ) : (
-          <button type="button" onClick={() => onRevoke(apiKey.id)} className="text-ink-500 hover:text-signal-blood" aria-label="Revoke">
+          <button type="button" onClick={() => onRevoke(apiKey.id)} className="text-ink-500 hover:text-signal-blood" aria-label={t("Revoke")}>
             <Trash2 size={14} />
           </button>
         )}
@@ -110,8 +111,8 @@ function DevelopersInner() {
     },
     onError: (err: unknown) => {
       const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
-      const msg = data?.webhook_url ? String(data.webhook_url) : (data?.detail as string) || "Could not create key";
-      toast.error(msg);
+      const reason = data?.webhook_url ? String(data.webhook_url) : (data?.detail as string) || "Could not create key";
+      toast.error(t(reason));
     },
   });
 
@@ -137,11 +138,10 @@ def verify(secret: str, headers: dict, raw_body: bytes) -> bool:
   return (
     <div>
       <div className="mb-6">
-        <span className="label-mono">Service / API</span>
-        <h1 className="font-display text-4xl text-white mt-2">Developers</h1>
+        <span className="label-mono">{t("Service / API")}</span>
+        <h1 className="font-display text-4xl text-white mt-2">{t("Developers")}</h1>
         <p className="text-sm text-ink-400 mt-2 max-w-2xl">
-          Run Tribunal from your own code. Keys act as your account and count against the same monthly quota.
-          Add a webhook URL and we POST the verdict when analysis finishes, so you do not have to poll.
+          {t("Run Tribunal from your own code. Keys act as your account and count against the same monthly quota. Add a webhook URL and we POST the verdict when analysis finishes, so you do not have to poll.")}
         </p>
       </div>
 
@@ -155,38 +155,38 @@ def verify(secret: str, headers: dict, raw_body: bytes) -> bool:
         }}
       >
         <label className="md:col-span-4 block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">Name</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("Name")}</span>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="newsroom-ci" maxLength={80}
             className="mt-1 w-full bg-transparent border border-[var(--line-strong)] px-3 py-2 text-ink-50 focus:border-signal-amber outline-none" />
         </label>
         <label className="md:col-span-6 block">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">Webhook URL (optional, https)</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("Webhook URL (optional, https)")}</span>
           <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://example.com/prooflayer"
             className="mt-1 w-full bg-transparent border border-[var(--line-strong)] px-3 py-2 text-ink-50 focus:border-signal-amber outline-none" />
         </label>
         <button type="submit" disabled={!name.trim() || create.isPending}
           className="md:col-span-2 flex items-center justify-center gap-2 border border-signal-amber/60 text-signal-amber px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] hover:bg-signal-amber/10 disabled:opacity-40">
-          <KeyRound size={14} /> Create key
+          <KeyRound size={14} /> {t("Create key")}
         </button>
       </form>
 
       <div className="divide-y divide-[var(--line-strong)] mb-10">
         {keys.length === 0 ? (
-          <p className="text-sm text-ink-500 py-4">No keys yet.</p>
+          <p className="text-sm text-ink-500 py-4">{t("No keys yet.")}</p>
         ) : (
           keys.map((k) => <KeyRow key={k.id} apiKey={k} onRevoke={(id) => revoke.mutate(id)} />)
         )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <CodeBlock title="1 · Upload" code={upload} />
-        <CodeBlock title="2 · Poll status" code={poll} />
-        <CodeBlock title="3 · Full verdict + evidence" code={details} />
-        <CodeBlock title="Webhook · verify signature (python)" code={verify} />
+        <CodeBlock title={t("1 · Upload")} code={upload} />
+        <CodeBlock title={t("2 · Poll status")} code={poll} />
+        <CodeBlock title={t("3 · Full verdict + evidence")} code={details} />
+        <CodeBlock title={t("Webhook · verify signature (python)")} code={verify} />
       </div>
       <p className="text-xs text-ink-500 mt-4">
-        Rate limit 120 requests/min per key; uploads also follow your plan's hourly upload limit.
-        Full schema at <a className="underline hover:text-ink-200" href={`${API_BASE.replace(/\/api\/v1$/, "")}/api/docs/`}>/api/docs</a>.
+        {t("Rate limit 120 requests/min per key; uploads also follow your plan's hourly upload limit.")}{" "}
+        {t("Full schema at")} <a className="underline hover:text-ink-200" href={`${API_BASE.replace(/\/api\/v1$/, "")}/api/docs/`}>/api/docs</a>.
       </p>
     </div>
   );

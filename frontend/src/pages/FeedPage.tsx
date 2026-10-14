@@ -8,6 +8,7 @@ import type { PublicSubmission } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
 import SensitiveCover from "../components/SensitiveCover";
 import { useAuthStore } from "../stores/authStore";
+import { locale, t, verdictText } from "../i18n";
 
 function VerdictBadge({ verdict, score }: { verdict: string; score: number | null }) {
   const isAI = verdict === "ai_generated";
@@ -17,7 +18,7 @@ function VerdictBadge({ verdict, score }: { verdict: string; score: number | nul
     : isReal
     ? "text-signal-sage border-signal-sage/40 bg-signal-sage/5"
     : "text-signal-amber border-signal-amber/40 bg-signal-amber/5";
-  const label = isAI ? "AI" : isReal ? "Real" : verdict?.replace("_", " ") || "Unknown";
+  const label = isAI ? t("AI") : isReal ? t("Real") : verdict ? verdictText(verdict) : t("Unknown");
 
   return (
     <span className={`font-mono text-[9px] uppercase tracking-[0.14em] border px-2 py-0.5 rounded-full ${color}`}>
@@ -50,7 +51,7 @@ function FeedCard({ item }: { item: PublicSubmission }) {
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-600">
-                {item.mime_type || "Unknown"}
+                {item.mime_type || t("Unknown")}
               </span>
             </div>
           )}
@@ -65,7 +66,7 @@ function FeedCard({ item }: { item: PublicSubmission }) {
             </span>
             {item.is_sensitive && (
               <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-signal-amber border border-signal-amber/40 px-1.5 py-0.5">
-                Sensitive
+                {t("Sensitive")}
               </span>
             )}
           </div>
@@ -77,7 +78,7 @@ function FeedCard({ item }: { item: PublicSubmission }) {
             <div className="flex items-center gap-1.5 text-ink-600">
               <Calendar size={11} strokeWidth={1.5} />
               <span className="font-mono text-[10px]">
-                {new Date(item.created_at).toLocaleDateString()}
+                {new Date(item.created_at).toLocaleDateString(locale())}
               </span>
             </div>
           </div>
@@ -116,25 +117,25 @@ export default function FeedPage() {
     <div>
       <div className="mb-10">
         <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-600 mb-3">
-          Community / Public Feed
+          {t("Community / Public Feed")}
         </div>
         <div className="flex items-center gap-3 mb-2">
           <Globe size={20} strokeWidth={1.5} className="text-iris" />
-          <h1 className="font-display text-3xl text-ink-50">Public Submissions</h1>
+          <h1 className="font-display text-3xl text-ink-50">{t("Public Submissions")}</h1>
         </div>
         <p className="text-ink-400 text-sm max-w-xl">
-          Verified content shared by the ProofLayer community. Toggle &quot;Public&quot; on your results page to appear here.
+          {t("Verified content shared by the ProofLayer community. Toggle \"Public\" on your results page to appear here.")}
         </p>
         {!canSeeSensitive && (
           <p className="text-ink-500 text-xs max-w-xl mt-2">
-            Items marked as sensitive are shown only to accounts that confirmed they are 18 or older.
+            {t("Items marked as sensitive are shown only to accounts that confirmed they are 18 or older.")}
           </p>
         )}
       </div>
 
       {isError && (
         <div className="text-center py-20">
-          <p className="text-ink-400 font-mono text-sm">Failed to load feed.</p>
+          <p className="text-ink-400 font-mono text-sm">{t("Failed to load feed.")}</p>
         </div>
       )}
 
@@ -149,9 +150,9 @@ export default function FeedPage() {
       {data && data.results.length === 0 && (
         <div className="text-center py-20">
           <Globe size={40} strokeWidth={1} className="text-ink-700 mx-auto mb-4" />
-          <p className="text-ink-400 font-mono text-sm mb-2">No public submissions yet.</p>
+          <p className="text-ink-400 font-mono text-sm mb-2">{t("No public submissions yet.")}</p>
           <p className="text-ink-600 font-mono text-[11px]">
-            Be the first - toggle &quot;Public&quot; on any completed result.
+            {t("Be the first: toggle \"Public\" on any completed result.")}
           </p>
         </div>
       )}
@@ -170,7 +171,7 @@ export default function FeedPage() {
               disabled={!data.previous}
               className="px-4 py-2 border border-ink-700 text-ink-400 hover:text-ink-200 hover:border-ink-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              &larr; Prev
+              &larr; {t("Prev")}
             </button>
             <span className="text-ink-600">
               {data.count} submission{data.count !== 1 ? "s" : ""}
@@ -180,7 +181,7 @@ export default function FeedPage() {
               disabled={!data.next}
               className="px-4 py-2 border border-ink-700 text-ink-400 hover:text-ink-200 hover:border-ink-500 transition disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              Next &rarr;
+              {t("Next")} &rarr;
             </button>
           </div>
         </>

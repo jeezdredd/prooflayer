@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Check, X, HelpCircle } from "lucide-react";
 import { useVoteStats, useCastVote } from "../hooks/useCrowdsource";
 import { toast } from "./ui/Toast";
+import { msg, t, tn } from "../i18n";
 
 interface VotingPanelProps {
   submissionId: string;
@@ -10,9 +11,9 @@ interface VotingPanelProps {
 }
 
 const VOTE_OPTIONS = [
-  { value: "real", label: "Real", Icon: Check, accent: "sage" },
-  { value: "fake", label: "Fake", Icon: X, accent: "blood" },
-  { value: "uncertain", label: "Uncertain", Icon: HelpCircle, accent: "amber" },
+  { value: "real", label: msg("Real"), Icon: Check, accent: "sage" },
+  { value: "fake", label: msg("Fake"), Icon: X, accent: "blood" },
+  { value: "uncertain", label: msg("Uncertain"), Icon: HelpCircle, accent: "amber" },
 ] as const;
 
 export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps) {
@@ -31,7 +32,7 @@ export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps)
         <div className="mb-5 flex justify-center">
           <img
             src={fileUrl}
-            alt="Submission"
+            alt={t("Submission")}
             className="max-h-72 max-w-full rounded-sm object-contain border border-white/10 bg-ink-950/40"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -42,11 +43,11 @@ export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps)
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <span className="w-1.5 h-1.5 rounded-full bg-signal-cyan pulse-dot" />
-          <span className="label-mono">Community Verdict</span>
+          <span className="label-mono">{t("Community Verdict")}</span>
         </div>
         {stats && (
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 ticker">
-            {stats.total} vote{stats.total !== 1 ? "s" : ""}
+            {tn(stats.total, "{n} vote", "{n} votes")}
           </span>
         )}
       </div>
@@ -65,8 +66,8 @@ export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps)
                 castVote(
                   { submission: submissionId, value },
                   {
-                    onSuccess: () => toast.success(`Voted "${label}"`),
-                    onError: () => toast.error("Vote failed"),
+                    onSuccess: () => toast.success(t("Voted \"{label}\"", { label: t(label) })),
+                    onError: () => toast.error(t("Vote failed")),
                   },
                 )
               }
@@ -79,7 +80,7 @@ export default function VotingPanel({ submissionId, fileUrl }: VotingPanelProps)
               )}
             >
               <Icon size={16} strokeWidth={1.5} />
-              <span>{label}</span>
+              <span>{t(label)}</span>
               <span className="font-display text-2xl text-current ticker leading-none">{counts[value]}</span>
             </motion.button>
           );

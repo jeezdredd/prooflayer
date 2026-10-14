@@ -7,6 +7,7 @@ import { content } from "../api/endpoints";
 import { useDashboard } from "../hooks/useDashboard";
 import type { AnalysisResult, Submission, SubmissionListItem } from "../types/index";
 import SubscriptionGate from "../components/SubscriptionGate";
+import { t, verdictText } from "../i18n";
 
 const VERDICT_COLOR: Record<string, string> = {
   authentic: "text-sage-300 border-sage-500/40 bg-sage-500/10",
@@ -102,27 +103,27 @@ function ComparisonCard({ submission, isBetter }: { submission: Submission; isBe
           </div>
         </div>
         <span className={clsx("badge border shrink-0", verdictCls)}>
-          {submission.final_verdict || "-"}
+          {verdictText(submission.final_verdict)}
         </span>
       </div>
 
       <div className="space-y-4">
         <MetricRow
-          label="Fake Probability"
+          label={t("Fake Probability")}
           display={`${fakeScore.toFixed(0)}%`}
           barValue={fakeScore}
           barColor={isBetter("score") ? "bg-sage-400" : "bg-signal-blood"}
           highlight={isBetter("score")}
         />
         <MetricRow
-          label="Avg Confidence"
+          label={t("Avg Confidence")}
           display={`${confidence.toFixed(0)}%`}
           barValue={confidence}
           barColor={isBetter("confidence") ? "bg-sage-400" : "bg-iris"}
           highlight={isBetter("confidence")}
         />
         <MetricRow
-          label="Analysis Coverage"
+          label={t("Analysis Coverage")}
           display={`${coverage.toFixed(0)}%`}
           barValue={coverage}
           barColor={isBetter("coverage") ? "bg-sage-400" : "bg-iris"}
@@ -140,7 +141,7 @@ function ComparisonCard({ submission, isBetter }: { submission: Submission; isBe
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-ink-400 font-mono tabular-nums ticker">{(r.confidence * 100).toFixed(0)}%</span>
                   <span className={clsx("px-1.5 py-0.5 font-mono uppercase text-[10px] border", cls)}>
-                    {r.verdict || "-"}
+                    {verdictText(r.verdict)}
                   </span>
                 </div>
               </div>
@@ -241,10 +242,10 @@ function ComparePageInner() {
   return (
     <div className="space-y-6">
       <div>
-        <span className="label-mono">Service / 05</span>
-        <h1 className="font-display text-4xl text-white mt-2">Compare</h1>
+        <span className="label-mono">{t("Service / 05")}</span>
+        <h1 className="font-display text-4xl text-white mt-2">{t("Compare")}</h1>
         <p className="text-sm text-ink-400 mt-2">
-          Select two submissions from the table to compare scores and analyzer breakdowns.
+          {t("Select two submissions from the table to compare scores and analyzer breakdowns.")}
         </p>
       </div>
 
@@ -256,7 +257,7 @@ function ComparePageInner() {
 
       {ready && compareQuery.isError && (
         <div className="text-center py-10 font-mono text-sm text-signal-blood">
-          Failed to load comparison.
+          {t("Failed to load comparison.")}
         </div>
       )}
 
@@ -264,8 +265,8 @@ function ComparePageInner() {
         <div className="space-y-4">
           {diffScore != null && (
             <div className="px-4 py-3 bg-iris/10 border border-iris/40 font-mono text-sm text-iris-light flex items-center justify-between">
-              <span>Score difference</span>
-              <span className="font-bold tabular-nums">{diffScore.toFixed(0)} pts</span>
+              <span>{t("Score difference")}</span>
+              <span className="font-bold tabular-nums">{t("{n} pts", { n: diffScore.toFixed(0) })}</span>
             </div>
           )}
 
@@ -280,10 +281,10 @@ function ComparePageInner() {
           </div>
 
           <div className="case-card crop-marks px-5 py-4">
-            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-4">Quick Summary</div>
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-4">{t("Quick Summary")}</div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">More Authentic</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">{t("More Authentic")}</p>
                 <p className="font-mono text-xs text-ink-100">
                   {pair[0].final_score != null && pair[1].final_score != null
                     ? pair[0].final_score < pair[1].final_score
@@ -293,7 +294,7 @@ function ComparePageInner() {
                 </p>
               </div>
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">Higher Confidence</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">{t("Higher Confidence")}</p>
                 <p className="font-mono text-xs text-ink-100">
                   {avgConfidence(pair[0].analysis_results) >= avgConfidence(pair[1].analysis_results)
                     ? pair[0].original_filename
@@ -301,7 +302,7 @@ function ComparePageInner() {
                 </p>
               </div>
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">More Complete</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500 mb-1">{t("More Complete")}</p>
                 <p className="font-mono text-xs text-ink-100">
                   {analyzersRun(pair[0]) >= analyzersRun(pair[1])
                     ? pair[0].original_filename
@@ -316,8 +317,8 @@ function ComparePageInner() {
       {!ready && (
         <div className="py-12 text-center font-mono text-xs uppercase tracking-[0.14em] text-ink-500 border border-dashed border-ink-700">
           {selected.length === 0
-            ? "Select two submissions below to compare."
-            : `${selected.length} of 2 selected - pick one more.`}
+            ? t("Select two submissions below to compare.")
+            : t("{n} of 2 selected, pick one more.", { n: selected.length })}
         </div>
       )}
 
@@ -327,7 +328,7 @@ function ComparePageInner() {
             <ArrowLeftRight className="w-4 h-4 text-ink-500 shrink-0" />
             <input
               type="text"
-              placeholder="Search submissions..."
+              placeholder={t("Search submissions...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="flex-1 min-w-0 bg-transparent border-0 outline-none font-mono text-sm text-ink-100 placeholder:text-ink-600"
@@ -339,11 +340,11 @@ function ComparePageInner() {
               onChange={(e) => setSortBy(e.target.value)}
               className="bg-ink-900 border border-ink-700 px-2 py-1 text-[11px] font-mono text-ink-300 focus:outline-none focus:border-iris transition"
             >
-              <option value="date">Newest</option>
-              <option value="score">Highest Score</option>
-              <option value="verdict">Verdict</option>
-              <option value="name">Name</option>
-              <option value="size">Size</option>
+              <option value="date">{t("Newest")}</option>
+              <option value="score">{t("Highest Score")}</option>
+              <option value="verdict">{t("Verdict")}</option>
+              <option value="name">{t("Name")}</option>
+              <option value="size">{t("Size")}</option>
             </select>
             {selected.length > 0 && (
               <button
@@ -357,11 +358,11 @@ function ComparePageInner() {
         </div>
 
         <div className="grid grid-cols-[1fr_100px_60px_70px_90px] gap-3 px-4 py-2.5 border-b border-ink-700 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">
-          <span>File</span>
-          <span>Date</span>
-          <span>Size</span>
-          <span className="text-right">Score</span>
-          <span className="text-right">Action</span>
+          <span>{t("File")}</span>
+          <span>{t("Date")}</span>
+          <span>{t("Size")}</span>
+          <span className="text-right">{t("Score")}</span>
+          <span className="text-right">{t("Action")}</span>
         </div>
 
         {sorted.map((sub) => {
@@ -401,7 +402,7 @@ function ComparePageInner() {
                   <div className="font-mono text-xs text-ink-100 truncate">{sub.original_filename}</div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className={clsx("badge border text-[9px] py-0", verdictCls)}>
-                      {sub.final_verdict || sub.status}
+                      {verdictText(sub.final_verdict || sub.status)}
                     </span>
                   </div>
                 </div>
@@ -425,7 +426,7 @@ function ComparePageInner() {
                     isDisabled && "cursor-not-allowed"
                   )}
                 >
-                  {isSelected ? "Remove" : "Compare"}
+                  {isSelected ? t("Remove") : t("Compare")}
                 </button>
               </div>
             </div>
@@ -434,7 +435,7 @@ function ComparePageInner() {
 
         {sorted.length === 0 && (
           <div className="py-12 text-center font-mono text-xs uppercase tracking-[0.14em] text-ink-500">
-            No submissions found.
+            {t("No submissions found.")}
           </div>
         )}
       </div>
@@ -444,5 +445,5 @@ function ComparePageInner() {
 }
 
 export default function ComparePage() {
-  return <SubscriptionGate feature="Compare tool"><ComparePageInner /></SubscriptionGate>;
+  return <SubscriptionGate feature={t("Compare tool")}><ComparePageInner /></SubscriptionGate>;
 }
