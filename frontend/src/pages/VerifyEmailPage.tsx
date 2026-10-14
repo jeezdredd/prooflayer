@@ -6,6 +6,7 @@ import { auth } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 import ShaderBackground from "../components/ui/ShaderBackground";
 import { postAuthPath } from "../appMode";
+import { t } from "../i18n";
 
 type Status = "pending" | "ok" | "fail";
 
@@ -20,14 +21,14 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     if (!token) {
       setStatus("fail");
-      setMessage("Missing verification token.");
+      setMessage(t("Missing verification token."));
       return;
     }
     auth
       .verifyEmail(token)
       .then(async (res) => {
         setStatus("ok");
-        setMessage(res.data.detail);
+        setMessage(t(res.data.detail));
         try {
           const me = await auth.me();
           setUser(me.data);
@@ -37,7 +38,7 @@ export default function VerifyEmailPage() {
       })
       .catch((err) => {
         setStatus("fail");
-        setMessage(err?.response?.data?.detail || "Verification failed.");
+        setMessage(err?.response?.data?.detail ? t(err.response.data.detail) : t("Verification failed."));
       });
   }, [token, setUser, user]);
 
@@ -56,32 +57,32 @@ export default function VerifyEmailPage() {
         {status === "pending" && (
           <div className="flex flex-col items-center gap-3 text-ink-300">
             <Loader2 className="w-10 h-10 animate-spin" />
-            <p>Verifying your email...</p>
+            <p>{t("Verifying your email...")}</p>
           </div>
         )}
         {status === "ok" && (
           <div className="flex flex-col items-center gap-4">
             <CheckCircle2 className="w-12 h-12 text-sage-400" />
-            <h1 className="font-display text-2xl text-white">Email verified</h1>
+            <h1 className="font-display text-2xl text-white">{t("Email verified")}</h1>
             <p className="text-sm text-ink-400">{message}</p>
             <Link
               to={postAuthPath()}
               className="mt-4 inline-block bg-white text-black px-6 py-2.5 text-sm font-medium hover:bg-ink-200 transition"
             >
-              Continue to ProofLayer
+              {t("Continue to ProofLayer")}
             </Link>
           </div>
         )}
         {status === "fail" && (
           <div className="flex flex-col items-center gap-4">
             <XCircle className="w-12 h-12 text-blood-500" />
-            <h1 className="font-display text-2xl text-white">Could not verify</h1>
+            <h1 className="font-display text-2xl text-white">{t("Could not verify")}</h1>
             <p className="text-sm text-ink-400">{message}</p>
             <Link
               to="/login"
               className="mt-4 inline-block border border-ink-700 text-ink-200 px-6 py-2.5 text-sm font-medium hover:bg-ink-800 transition"
             >
-              Back to login
+              {t("Back to login")}
             </Link>
           </div>
         )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Cookie, X } from "lucide-react";
+import { t } from "../i18n";
 
 const KEY = "prooflayer.consent.v1";
 
@@ -28,26 +29,23 @@ export default function ConsentBanner() {
           <div className="flex items-start gap-3">
             <Cookie className="w-5 h-5 text-signal-amber shrink-0 mt-0.5" />
             <div className="flex-1">
-              <div className="label-mono mb-1.5">Cookies</div>
+              <div className="label-mono mb-1.5">{t("Cookies")}</div>
               <p className="text-xs text-ink-300 leading-relaxed">
-                ProofLayer uses a strictly-necessary cookie (<span className="font-mono text-ink-200">prooflayer_refresh</span>)
-                to keep you signed in (httpOnly, Secure, SameSite=Lax). For ops monitoring we log your IP and
-                approximate country/city via <span className="font-mono text-ink-200">ip-api.com</span>. No third-party
-                tracking, no analytics SDKs, no ad cookies.
+                {t("ProofLayer uses a strictly necessary cookie (prooflayer_refresh) to keep you signed in (httpOnly, Secure, SameSite=Lax). For ops monitoring we log your IP and approximate country and city via ip-api.com. No third-party tracking, no analytics SDKs, no ad cookies.")}
               </p>
               <div className="flex gap-2 mt-3">
                 <button
                   onClick={accept}
                   className="font-mono text-[10px] uppercase tracking-[0.14em] border border-iris/60 text-iris hover:bg-iris/10 px-3 py-1.5 transition"
                 >
-                  Got it
+                  {t("Got it")}
                 </button>
               </div>
             </div>
             <button
               onClick={accept}
               className="text-ink-500 hover:text-ink-200 transition"
-              aria-label="dismiss"
+              aria-label={t("dismiss")}
             >
               <X className="w-4 h-4" />
             </button>

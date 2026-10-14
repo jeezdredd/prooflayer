@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import * as THREE from "three";
 import { buildBrain, mulberry32, pointOnFiber, type V3 } from "./brain/model";
+import { msg, t } from "../../i18n";
 
 export type MemberKind = "provenance" | "image" | "video" | "audio" | "text";
 
@@ -35,18 +36,18 @@ const KIND_HEX: Record<MemberKind, string> = {
   text: "#22d3ee",
 };
 const KIND_AREA: Record<MemberKind, string> = {
-  provenance: "prefrontal · memory",
-  image: "visual cortex",
-  video: "motion area",
-  audio: "auditory cortex",
-  text: "language area",
+  provenance: msg("prefrontal · memory"),
+  image: msg("visual cortex"),
+  video: msg("motion area"),
+  audio: msg("auditory cortex"),
+  text: msg("language area"),
 };
 const KIND_LABEL: Record<MemberKind, string> = {
-  provenance: "Provenance",
-  image: "Image",
-  video: "Video",
-  audio: "Audio",
-  text: "Text",
+  provenance: msg("Provenance"),
+  image: msg("Image"),
+  video: msg("Video"),
+  audio: msg("Audio"),
+  text: msg("Text"),
 };
 
 const MEMBER_DIRS: V3[] = [
@@ -64,9 +65,9 @@ const MEMBER_DIRS: V3[] = [
 ];
 
 const CASES = [
-  { id: "0507", file: "img_4232.png", verdict: "Synthetic", score: "0.87", rgb: [1, 0.34, 0.45] as V3, tone: "text-signal-blood" },
-  { id: "0508", file: "DSC_1187.jpg", verdict: "Authentic", score: "0.12", rgb: [0.29, 0.87, 0.5] as V3, tone: "text-signal-sage" },
-  { id: "0509", file: "press_still.webp", verdict: "Needs review", score: "split", rgb: [0.96, 0.69, 0.26] as V3, tone: "text-signal-amber" },
+  { id: "0507", file: "img_4232.png", verdict: msg("Synthetic"), score: "0.87", rgb: [1, 0.34, 0.45] as V3, tone: "text-signal-blood" },
+  { id: "0508", file: "DSC_1187.jpg", verdict: msg("Authentic"), score: "0.12", rgb: [0.29, 0.87, 0.5] as V3, tone: "text-signal-sage" },
+  { id: "0509", file: "press_still.webp", verdict: msg("Needs review"), score: "split", rgb: [0.96, 0.69, 0.26] as V3, tone: "text-signal-amber" },
 ];
 
 const FOV = 32;
@@ -778,7 +779,7 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
             </button>
           ))}
           <div ref={verdictRef} className="pointer-events-none absolute left-0 top-0 text-center whitespace-nowrap">
-            <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-500">Verdict</div>
+            <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-ink-500">{t("Verdict")}</div>
             <AnimatePresence mode="wait">
               <motion.div
                 key={ruled ? current.id : "pending"}
@@ -788,7 +789,7 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
                 transition={{ duration: 0.35 }}
                 className={`font-display text-lg leading-tight mt-0.5 ${ruled ? current.tone : "text-ink-400 italic"}`}
               >
-                {ruled ? current.verdict : "deliberating"}
+                {ruled ? t(current.verdict) : t("deliberating")}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -802,7 +803,7 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
           {kinds.map((k) => (
             <li key={k} className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: KIND_HEX[k] }} />
-              {KIND_LABEL[k]}
+              {t(KIND_LABEL[k])}
             </li>
           ))}
         </ul>
@@ -812,7 +813,7 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
               <motion.div key={`m-${focusMember.code}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
                 <div className="font-display text-lg text-ink-50 leading-tight">{focusMember.name}</div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 mt-0.5">
-                  {focusMember.tag} <span className="text-ink-700 mx-1">/</span> {KIND_AREA[focusMember.kind]}
+                  {focusMember.tag} <span className="text-ink-700 mx-1">/</span> {t(KIND_AREA[focusMember.kind])}
                 </div>
               </motion.div>
             ) : (
@@ -823,12 +824,12 @@ export default function TribunalBrain({ members, activeCode, onSelect, verdictLa
                 <div className="mt-1">
                   {ruled ? (
                     <>
-                      <span className={current.tone}>{current.verdict}</span>
-                      <span className="text-ink-600 ml-2 tabular-nums">{current.score}</span>
-                      {current.score === "split" && <span className="text-ink-500 ml-2">→ sent to a human reviewer</span>}
+                      <span className={current.tone}>{t(current.verdict)}</span>
+                      <span className="text-ink-600 ml-2 tabular-nums">{current.score === "split" ? t("split") : current.score}</span>
+                      {current.score === "split" && <span className="text-ink-500 ml-2">→ {t("sent to a human reviewer")}</span>}
                     </>
                   ) : (
-                    <span className="text-ink-400">{members.length} judges voting</span>
+                    <span className="text-ink-400">{t("{n} judges voting", { n: members.length })}</span>
                   )}
                 </div>
               </motion.div>

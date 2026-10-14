@@ -4,15 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { auth } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 import { AGE_HINT, AGE_LABEL, legalHref } from "../legal";
+import { t } from "../i18n";
 
 const LINK = "text-signal-amber hover:underline";
 
 function errorDetail(err: unknown): string {
   const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
-  if (data && typeof data.detail === "string") return data.detail;
+  if (data && typeof data.detail === "string") return t(data.detail);
   const first = data ? Object.values(data)[0] : null;
-  if (Array.isArray(first) && first.length) return String(first[0]);
-  return "Could not save. Please try again.";
+  if (Array.isArray(first) && first.length) return t(String(first[0]));
+  return t("Could not save. Please try again.");
 }
 
 function TermsPanel({ initialAdult }: { initialAdult: boolean }) {
@@ -51,24 +52,24 @@ function TermsPanel({ initialAdult }: { initialAdult: boolean }) {
         }}
       >
         <h2 id="terms-gate-title" className="font-display text-2xl text-ink-50 leading-tight">
-          We updated our Terms and Privacy Notice
+          {t("We updated our Terms and Privacy Notice")}
         </h2>
         <p className="text-sm text-ink-400 mt-3 leading-relaxed">
-          Please read the{" "}
-          <a href={legalHref("/terms")} target="_blank" rel="noopener noreferrer" className={LINK}>Terms of Service</a>, the{" "}
-          <a href={legalHref("/privacy")} target="_blank" rel="noopener noreferrer" className={LINK}>Privacy Notice</a> and the{" "}
-          <a href={legalHref("/data-processing")} target="_blank" rel="noopener noreferrer" className={LINK}>Data Processing terms</a>.
+          {t("Please read the")}{" "}
+          <a href={legalHref("/terms")} target="_blank" rel="noopener noreferrer" className={LINK}>{t("Terms of Service")}</a>,{" "}
+          <a href={legalHref("/privacy")} target="_blank" rel="noopener noreferrer" className={LINK}>{t("Privacy Notice")}</a> {t("and the")}{" "}
+          <a href={legalHref("/data-processing")} target="_blank" rel="noopener noreferrer" className={LINK}>{t("Data Processing terms")}</a>.
         </p>
         <div className="mt-5 space-y-3">
           <label className="flex items-start gap-2.5 text-sm text-ink-200 cursor-pointer">
             <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required className="mt-1" />
-            <span>I accept the Terms of Service and have read the Privacy Notice.</span>
+            <span>{t("I accept the Terms of Service and have read the Privacy Notice.")}</span>
           </label>
           <label className="flex items-start gap-2.5 text-sm text-ink-200 cursor-pointer">
             <input type="checkbox" checked={isAdult} onChange={(e) => setIsAdult(e.target.checked)} className="mt-1" />
             <span>
-              {AGE_LABEL}
-              <span className="block text-xs text-ink-500 mt-0.5">{AGE_HINT}</span>
+              {t(AGE_LABEL)}
+              <span className="block text-xs text-ink-500 mt-0.5">{t(AGE_HINT)}</span>
             </span>
           </label>
         </div>
@@ -78,14 +79,14 @@ function TermsPanel({ initialAdult }: { initialAdult: boolean }) {
           disabled={!accepted || accept.isPending}
           className="mt-6 w-full border border-signal-amber/60 text-signal-amber px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] hover:bg-signal-amber/10 disabled:opacity-40"
         >
-          {accept.isPending ? "Saving…" : "Continue"}
+          {accept.isPending ? t("Saving…") : t("Continue")}
         </button>
         <button
           type="button"
           onClick={signOut}
           className="mt-3 w-full font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 hover:text-ink-200"
         >
-          Sign out instead
+          {t("Sign out instead")}
         </button>
       </form>
     </div>

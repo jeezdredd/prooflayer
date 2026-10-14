@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { useLogin } from "../hooks/useAuth";
 import ShaderBackground from "../components/ui/ShaderBackground";
+import LangSwitch from "../components/LangSwitch";
+import { t } from "../i18n";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,6 +19,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center text-ink-100 relative overflow-hidden px-6">
       <ShaderBackground variant="noir" />
+      <LangSwitch className="absolute top-4 right-4 z-20 bg-ink-950/60" />
       <div className="absolute inset-0 -z-10 bg-grid-fine bg-grid-fine opacity-[0.4] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,black,transparent)]" />
 
       <motion.div
@@ -46,9 +49,9 @@ export default function LoginPage() {
                   transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
                 />
               </span>
-              <span className="label-mono">Authentication</span>
+              <span className="label-mono">{t("Authentication")}</span>
             </div>
-            <span className="font-mono text-[10px] text-ink-500">SECURE</span>
+            <span className="font-mono text-[10px] text-ink-500">{t("SECURE")}</span>
           </div>
 
           <motion.div
@@ -58,7 +61,7 @@ export default function LoginPage() {
             variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }}
           >
             <motion.div variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}>
-              <label className="label-mono block mb-2">Email Address</label>
+              <label className="label-mono block mb-2">{t("Email Address")}</label>
               <input
                 type="email"
                 value={email}
@@ -70,7 +73,7 @@ export default function LoginPage() {
               />
             </motion.div>
             <motion.div variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}>
-              <label className="label-mono block mb-2">Password</label>
+              <label className="label-mono block mb-2">{t("Password")}</label>
               <input
                 type="password"
                 value={password}
@@ -89,7 +92,7 @@ export default function LoginPage() {
                 className="flex items-center gap-2 p-3 border border-signal-blood bg-signal-blood/5"
               >
                 <span className="w-4 h-4 border border-signal-blood text-signal-blood text-[10px] font-bold flex items-center justify-center">!</span>
-                <span className="font-mono text-[11px] text-signal-blood">Invalid credentials. Access denied.</span>
+                <span className="font-mono text-[11px] text-signal-blood">{t("Invalid credentials. Access denied.")}</span>
               </motion.div>
             )}
 
@@ -100,21 +103,21 @@ export default function LoginPage() {
               className="btn-forensic w-full justify-center"
               whileTap={{ scale: 0.98 }}
             >
-              {login.isPending ? "Authenticating…" : "Authenticate →"}
+              {login.isPending ? t("Authenticating…") : `${t("Sign in")} →`}
             </motion.button>
           </motion.div>
 
           <div className="dot-divider mx-6" />
           <div className="px-6 py-4 text-center font-mono text-[11px] text-ink-500">
-            No clearance?{" "}
+            {t("No account yet?")}{" "}
             <Link to={`/register${window.location.search}`} className="text-signal-amber hover:underline">
-              Request access →
+              {t("Create one")} →
             </Link>
           </div>
         </form>
 
         <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-white/60">
-          ProofLayer Lab · Forensic Verification
+          {t("ProofLayer Lab · Forensic Verification")}
         </div>
       </motion.div>
     </div>

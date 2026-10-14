@@ -4,6 +4,7 @@ import { MailWarning, RefreshCw, LayoutDashboard } from "lucide-react";
 import { motion } from "motion/react";
 import { auth } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
+import { t } from "../i18n";
 
 type State = "idle" | "sending" | "sent" | "error";
 
@@ -35,13 +36,12 @@ export default function VerifyGate() {
           <MailWarning className="w-7 h-7 text-signal-amber" />
         </div>
       </div>
-      <span className="label-mono">Verification Required</span>
+      <span className="label-mono">{t("Verification Required")}</span>
       <h1 className="font-display text-3xl text-white mt-3">
-        Verify your email to continue
+        {t("Verify your email to continue")}
       </h1>
       <p className="text-sm text-ink-400 mt-3">
-        This feature is locked until <span className="font-mono text-ink-200">{user?.email}</span> is verified.
-        Open the link we sent to your inbox, or request a fresh one.
+        {t("This feature is locked until {email} is verified. Open the link we sent to your inbox, or request a fresh one.", { email: user?.email ?? "" })}
       </p>
       <div className="mt-7 flex items-center justify-center gap-3 flex-wrap">
         <button
@@ -50,22 +50,22 @@ export default function VerifyGate() {
           className="inline-flex items-center gap-2 border border-signal-amber/60 text-signal-amber px-5 py-2.5 text-xs font-mono uppercase tracking-[0.14em] hover:bg-signal-amber/10 transition disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${state === "sending" ? "animate-spin" : ""}`} />
-          {state === "sent" ? "email sent" : state === "error" ? "retry" : "resend email"}
+          {state === "sent" ? t("email sent") : state === "error" ? t("retry") : t("resend email")}
         </button>
         <Link
           to="/dashboard"
           className="inline-flex items-center gap-2 border border-ink-700 text-ink-300 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.14em] hover:bg-ink-800 hover:text-ink-100 transition"
         >
           <LayoutDashboard className="w-3.5 h-3.5" />
-          back to dashboard
+          {t("back to dashboard")}
         </Link>
       </div>
       {state === "error" && (
-        <p className="mt-4 text-xs text-signal-blood font-mono">Failed to send. Try again.</p>
+        <p className="mt-4 text-xs text-signal-blood font-mono">{t("Failed to send. Try again.")}</p>
       )}
       {state === "sent" && consoleMode && (
         <p className="mt-4 text-xs text-signal-amber font-mono">
-          Email delivery is not configured on the server. Contact an administrator.
+          {t("Email delivery is not configured on the server. Contact an administrator.")}
         </p>
       )}
     </motion.div>

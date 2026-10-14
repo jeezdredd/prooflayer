@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useInView, animate } from "motion/react";
 import {
@@ -13,44 +13,46 @@ import Roadmap from "../components/landing/Roadmap";
 import Workspace from "../components/landing/Workspace";
 import client from "../api/client";
 import { useAuthStore } from "../stores/authStore";
+import LangSwitch from "../components/LangSwitch";
+import { msg, t } from "../i18n";
 
 const TribunalBrain = lazy(() => import("../components/landing/TribunalBrain"));
 
 const TRIBUNAL_FALLBACK = "Tribunal 1.6";
 
 const ANALYZERS: (BrainMember & { desc: string; Icon: typeof Brain })[] = [
-  { code: "01", short: "Metadata", kind: "provenance", name: "Metadata & Provenance", tag: "EXIF · PNG params · C2PA", desc: "EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have.", Icon: Fingerprint },
-  { code: "02", short: "ELA", kind: "image", name: "Error Level Analysis", tag: "splicing, not synthesis", desc: "Re-saves at fixed JPEG quality and looks for localised recompression outliers. Flags splicing and editing; it never votes on whether an image is AI.", Icon: ScanLine },
-  { code: "03", short: "Forensics ViT", kind: "image", name: "Community Forensics ViT", tag: "2.7M images · 4,803 generators", desc: "ViT-S/16 trained on 2.7M images from 4,803 generators. Runs on a native-resolution crop plus a global view; its score is calibrated against twenty 2026 generators.", Icon: Brain },
-  { code: "04", short: "Retrained", kind: "image", name: "Retrained Detector", tag: "learns from your corrections", desc: "Fine-tuned from the human review queue and our own labelled sets, so verdicts you correct today change the model tomorrow. Sees Flux 2, Sora 2 and GPT Image where the rest of the bench is blind.", Icon: GraduationCap },
-  { code: "05", short: "CLIP Probe", kind: "image", name: "CLIP Probe", tag: "independent backbone", desc: "A linear probe on CLIP embeddings, a different network from the forensics models, so when it agrees with them the agreement means something. Calibrated so real photos stay below the line.", Icon: Network },
-  { code: "06", short: "AI Ensemble", kind: "image", name: "AI Ensemble", tag: "two classifiers, photo gate", desc: "Two independent image classifiers behind a photographic-content gate, so screenshots and diagrams are not judged by models trained on photos.", Icon: Layers },
-  { code: "07", short: "Vision LLM", kind: "image", name: "Vision LLM", tag: "must name the defect", desc: "A cautious forensic prompt. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.", Icon: Eye },
-  { code: "08", short: "Video", kind: "video", name: "Video Frame Sampler", tag: "whole clip, median verdict", desc: "Frames sampled across the whole clip, not the first eight seconds, each scored by the forensics ViT. The clip gets the median.", Icon: Film },
-  { code: "09", short: "Audio", kind: "audio", name: "Audio Spectrogram", tag: "vocoder artifacts", desc: "MFCC variance, spectral flatness, pitch, noise floor. Vocoder artifacts and synthetic-voice patterns raise flags and a probability.", Icon: AudioLines },
-  { code: "10", short: "Text Classifier", kind: "text", name: "Text Classifier", tag: "trained on ru · en · fr", desc: "A multilingual encoder fine-tuned on human essays, pre-2022 Wikipedia and fresh writing from current open models, humanized rewrites included. On held-out text it flags 91-100% of machine writing and 2-4% of human essays. Alone it can only raise a flag, never convict. Reads PDF and DOCX too.", Icon: Type },
-  { code: "11", short: "Anti-bypass", kind: "text", name: "Anti-bypass", tag: "homoglyphs · hidden text", desc: "Latin letters hidden inside Cyrillic words and the reverse, invisible characters, odd spaces, and DOCX text that is hidden, white or 1pt. Silent unless it finds a trick; when it does, it is the second voice a conviction needs.", Icon: ShieldAlert },
+  { code: "01", short: msg("Metadata"), kind: "provenance", name: msg("Metadata & Provenance"), tag: msg("EXIF · PNG params · C2PA"), desc: msg("EXIF down to the capture sub-IFD, PNG generation parameters left by A1111 and ComfyUI, XMP, and C2PA Content Credentials. A declared trainedAlgorithmicMedia is the strongest single signal we have."), Icon: Fingerprint },
+  { code: "02", short: msg("ELA"), kind: "image", name: msg("Error Level Analysis"), tag: msg("splicing, not synthesis"), desc: msg("Re-saves at fixed JPEG quality and looks for localised recompression outliers. Flags splicing and editing; it never votes on whether an image is AI."), Icon: ScanLine },
+  { code: "03", short: msg("Forensics ViT"), kind: "image", name: msg("Community Forensics ViT"), tag: msg("2.7M images · 4,803 generators"), desc: msg("ViT-S/16 trained on 2.7M images from 4,803 generators. Runs on a native-resolution crop plus a global view; its score is calibrated against twenty 2026 generators."), Icon: Brain },
+  { code: "04", short: msg("Retrained"), kind: "image", name: msg("Retrained Detector"), tag: msg("learns from your corrections"), desc: msg("Fine-tuned from the human review queue and our own labelled sets, so verdicts you correct today change the model tomorrow. Sees Flux 2, Sora 2 and GPT Image where the rest of the bench is blind."), Icon: GraduationCap },
+  { code: "05", short: msg("CLIP Probe"), kind: "image", name: msg("CLIP Probe"), tag: msg("independent backbone"), desc: msg("A linear probe on CLIP embeddings, a different network from the forensics models, so when it agrees with them the agreement means something. Calibrated so real photos stay below the line."), Icon: Network },
+  { code: "06", short: msg("AI Ensemble"), kind: "image", name: msg("AI Ensemble"), tag: msg("two classifiers, photo gate"), desc: msg("Two independent image classifiers behind a photographic-content gate, so screenshots and diagrams are not judged by models trained on photos."), Icon: Layers },
+  { code: "07", short: msg("Vision LLM"), kind: "image", name: msg("Vision LLM"), tag: msg("must name the defect"), desc: msg("A cautious forensic prompt. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing."), Icon: Eye },
+  { code: "08", short: msg("Video"), kind: "video", name: msg("Video Frame Sampler"), tag: msg("whole clip, median verdict"), desc: msg("Frames sampled across the whole clip, not the first eight seconds, each scored by the forensics ViT. The clip gets the median."), Icon: Film },
+  { code: "09", short: msg("Audio"), kind: "audio", name: msg("Audio Spectrogram"), tag: msg("vocoder artifacts"), desc: msg("MFCC variance, spectral flatness, pitch, noise floor. Vocoder artifacts and synthetic-voice patterns raise flags and a probability."), Icon: AudioLines },
+  { code: "10", short: msg("Text Classifier"), kind: "text", name: msg("Text Classifier"), tag: msg("trained on ru · en · fr"), desc: msg("A multilingual encoder fine-tuned on human essays, pre-2022 Wikipedia and fresh writing from current open models, humanized rewrites included. On held-out text it flags 91-100% of machine writing and 2-4% of human essays. Alone it can only raise a flag, never convict. Reads PDF and DOCX too."), Icon: Type },
+  { code: "11", short: msg("Anti-bypass"), kind: "text", name: msg("Anti-bypass"), tag: msg("homoglyphs · hidden text"), desc: msg("Latin letters hidden inside Cyrillic words and the reverse, invisible characters, odd spaces, and DOCX text that is hidden, white or 1pt. Silent unless it finds a trick; when it does, it is the second voice a conviction needs."), Icon: ShieldAlert },
 ];
 
 const TRIBUNAL_RULES = [
-  { Icon: Scale, title: "Weighted standing", body: "Every member's vote is weighted by measured reliability, not by guess. Members that failed the measurement were removed." },
-  { Icon: ShieldCheck, title: "Calibrated on real photos", body: "Thresholds are set on the tail of real-photo scores across hundreds of originals, so lifting recall on new generators added zero false accusations." },
-  { Icon: Gavel, title: "Split bench goes to a human", body: "When confident members disagree and the minority carries real weight, the case is escalated for review instead of averaged into a shrug." },
-  { Icon: Fingerprint, title: "Every verdict is traceable", body: "Each result carries the Tribunal version and a fingerprint of the exact roster and weights that produced it." },
+  { Icon: Scale, title: msg("Weighted standing"), body: msg("Every member's vote is weighted by measured reliability, not by guess. Members that failed the measurement were removed.") },
+  { Icon: ShieldCheck, title: msg("Calibrated on real photos"), body: msg("Thresholds are set on the tail of real-photo scores across hundreds of originals, so lifting recall on new generators added zero false accusations.") },
+  { Icon: Gavel, title: msg("Split bench goes to a human"), body: msg("When confident members disagree and the minority carries real weight, the case is escalated for review instead of averaged into a shrug.") },
+  { Icon: Fingerprint, title: msg("Every verdict is traceable"), body: msg("Each result carries the Tribunal version and a fingerprint of the exact roster and weights that produced it.") },
 ];
 
 
 const NUMBERS = [
-  { v: "11", l: "Active analyzers" },
-  { v: "3", l: "Languages for text checks" },
-  { v: "500MB", l: "Max upload" },
-  { v: "REST", l: "Open API" },
+  { v: "11", l: msg("Active analyzers") },
+  { v: "3", l: msg("Languages for text checks") },
+  { v: "500MB", l: msg("Max upload") },
+  { v: "REST", l: msg("Open API") },
 ];
 
 const PRINCIPLES = [
-  { kw: "Forensic", body: "Every submission treated like an evidence file. Crop marks. Case IDs. Provenance trails.", accent: "violet" },
-  { kw: "Transparent", body: "No black-box scores. Each analyzer publishes raw JSON evidence alongside its verdict.", accent: "cyan" },
-  { kw: "Skeptical", body: "If two methods disagree, we surface that. Inconclusive is a valid answer - not a failure.", accent: "amber" },
+  { kw: msg("Forensic"), body: msg("Every submission treated like an evidence file. Crop marks. Case IDs. Provenance trails."), accent: "violet" },
+  { kw: msg("Transparent"), body: msg("No black-box scores. Each analyzer publishes raw JSON evidence alongside its verdict."), accent: "cyan" },
+  { kw: msg("Skeptical"), body: msg("If two methods disagree, we surface that. Inconclusive is a valid answer - not a failure."), accent: "amber" },
 ];
 
 function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
@@ -142,13 +144,14 @@ export default function LandingPage() {
   const tribunalLabel = statusData?.services?.analyzers?.ensemble || TRIBUNAL_FALLBACK;
   const medianVerdict = statusData?.verdict_timing?.image_median_s;
   const numbers = medianVerdict != null
-    ? NUMBERS.map((n) => (n.l === "Languages for text checks" ? { v: `${Math.round(medianVerdict)}s`, l: "Median image verdict, last 14 days" } : n))
+    ? NUMBERS.map((n) => (n.l === "Languages for text checks" ? { v: t("{n}s", { n: Math.round(medianVerdict) }), l: msg("Median image verdict, last 14 days") } : n))
     : NUMBERS;
+  const analyzers = useMemo(() => ANALYZERS.map((a) => ({ ...a, short: t(a.short), name: t(a.name), tag: t(a.tag), desc: t(a.desc) })), []);
   const [openRule, setOpenRule] = useState<number | null>(null);
   const [openCheck, setOpenCheck] = useState<string | null>(null);
   const user = useAuthStore((s) => s.user);
   const authedCta = user ? "/upload" : "/register";
-  const authedLabel = user ? "Open Dashboard →" : "Begin Investigation →";
+  const authedLabel = user ? `${t("Open Dashboard")} →` : `${t("Begin Investigation")} →`;
 
   return (
     <div className="min-h-screen text-ink-100 relative">
@@ -167,22 +170,23 @@ export default function LandingPage() {
               Proof<span className="italic text-iris">Layer</span>
             </span>
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-500 mb-1 hidden md:inline">
-              / Forensic Lab
+              / {t("Forensic Lab")}
             </span>
           </Link>
           <div className="flex items-center gap-3">
+            <LangSwitch />
             {user ? (
               <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400 hidden md:inline">
-                <span className="text-ink-600 mr-1.5">agent:</span>
+                <span className="text-ink-600 mr-1.5">{t("agent:")}</span>
                 <span className="text-ink-200 truncate max-w-[180px] inline-block align-bottom">{user.email}</span>
               </span>
             ) : (
               <Link to="/login" className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500 hover:text-ink-100 transition-colors">
-                Sign in
+                {t("Sign in")}
               </Link>
             )}
             <MagneticBtn to={authedCta} className="btn-forensic">
-              <span className="sm:hidden">{user ? "Dashboard →" : "Start →"}</span>
+              <span className="sm:hidden">{user ? `${t("Dashboard")} →` : `${t("Start")} →`}</span>
               <span className="hidden sm:inline">{authedLabel}</span>
             </MagneticBtn>
           </div>
@@ -206,9 +210,9 @@ export default function LandingPage() {
                 transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
               />
             </span>
-            <span className="label-mono">Issue No. 042 · {new Date().toISOString().slice(0, 10)}</span>
+            <span className="label-mono">{t("Issue No. 042")} · {new Date().toISOString().slice(0, 10)}</span>
             <span className="text-ink-700">·</span>
-            <span className="label-mono signal-sage">LIVE</span>
+            <span className="label-mono signal-sage">{t("LIVE")}</span>
           </motion.div>
 
           <div className="grid lg:grid-cols-12 gap-14 items-start">
@@ -223,9 +227,9 @@ export default function LandingPage() {
                 transition={{ duration: 0.7 }}
                 className="font-display text-[clamp(3rem,8vw,7.5rem)] leading-[0.92] tracking-[-0.025em] text-ink-50"
               >
-                Is this image
+                {t("Is this image")}
                 <br />
-                <span className="italic text-iris">telling the truth</span>
+                <span className="italic text-iris">{t("telling the truth")}</span>
                 <span className="text-ink-50">?</span>
               </motion.h1>
 
@@ -234,8 +238,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.6 }}
                 className="mt-10 text-lg text-ink-200 max-w-xl leading-relaxed"
               >
-                Forensic verification lab for synthetic media.
-                Eleven analyzers cross-examine every file and publish evidence, not just verdicts.
+                {t("Forensic verification lab for synthetic media. Eleven analyzers cross-examine every file and publish evidence, not just verdicts.")}
               </motion.p>
 
               <motion.div
@@ -244,7 +247,7 @@ export default function LandingPage() {
                 className="mt-10 flex flex-wrap items-center gap-3"
               >
                 <MagneticBtn to={authedCta} className="btn-forensic group text-sm">
-                  <span>Submit Evidence</span>
+                  <span>{t("Submit Evidence")}</span>
                   <motion.span
                     animate={{ x: [0, 4, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
@@ -253,11 +256,11 @@ export default function LandingPage() {
                   </motion.span>
                 </MagneticBtn>
                 <a href="https://api.prooflayer.cloud/api/docs/" className="btn-ghost">
-                  API Reference
+                  {t("API Reference")}
                 </a>
                 <div className="flex items-center gap-2 ml-2 text-[11px] font-mono text-ink-500">
                   <span className="w-1.5 h-1.5 bg-signal-sage rounded-full pulse-dot" />
-                  Free plan, no card
+                  {t("Free plan, no card")}
                 </div>
               </motion.div>
             </motion.div>
@@ -281,9 +284,9 @@ export default function LandingPage() {
                           transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
                         />
                       </span>
-                      <span className="label-mono">Sample Verdict</span>
+                      <span className="label-mono">{t("Sample Verdict")}</span>
                     </div>
-                    <span className="badge text-signal-blood">SYNTHETIC</span>
+                    <span className="badge text-signal-blood">{t("SYNTHETIC")}</span>
                   </div>
 
                   <div className="font-mono text-[10px] text-ink-500 mb-3 ticker">
@@ -299,10 +302,10 @@ export default function LandingPage() {
 
                   <div className="space-y-2.5 mb-5">
                     {[
-                      { l: "CF-VIT", v: "fake", c: "text-signal-blood", n: "0.91" },
-                      { l: "CLIP", v: "fake", c: "text-signal-blood", n: "0.87" },
-                      { l: "ELA", v: "suspicious", c: "text-signal-amber", n: "0.62" },
-                      { l: "META", v: "stripped", c: "text-ink-400", n: "-" },
+                      { l: "CF-VIT", v: msg("fake"), c: "text-signal-blood", n: "0.91" },
+                      { l: "CLIP", v: msg("fake"), c: "text-signal-blood", n: "0.87" },
+                      { l: "ELA", v: msg("suspicious"), c: "text-signal-amber", n: "0.62" },
+                      { l: "META", v: msg("stripped"), c: "text-ink-400", n: "-" },
                     ].map((r, i) => (
                       <motion.div
                         key={r.l}
@@ -314,15 +317,15 @@ export default function LandingPage() {
                         <span className="text-ink-500">{r.l}</span>
                         <div className="flex items-center gap-3">
                           <span className="text-ink-600 ticker">{r.n}</span>
-                          <span className={r.c}>{r.v}</span>
+                          <span className={r.c}>{t(r.v)}</span>
                         </div>
                       </motion.div>
                     ))}
                   </div>
                   <div className="dot-divider mb-3" />
                   <div className="flex items-center justify-between font-mono text-[10px] text-ink-500">
-                    <span>Aggregated · weighted ensemble</span>
-                    <span className="signal-amber">Split cases go to a human</span>
+                    <span>{t("Aggregated · weighted ensemble")}</span>
+                    <span className="signal-amber">{t("Split cases go to a human")}</span>
                   </div>
                 </div>
               </TiltCard>
@@ -347,7 +350,7 @@ export default function LandingPage() {
               className="group relative"
             >
               <div className="font-display text-6xl lg:text-7xl text-ink-50 leading-none ticker group-hover:text-iris transition-colors duration-500">{n.v}</div>
-              <div className="label-mono mt-4">{n.l}</div>
+              <div className="label-mono mt-4">{t(n.l)}</div>
             </motion.div>
           ))}
         </motion.div>
@@ -383,9 +386,9 @@ export default function LandingPage() {
                     variants={{ hover: { x: 5 } }}
                     transition={{ type: "spring", stiffness: 300 }}
                   >
-                    {p.kw}.
+                    {t(p.kw)}.
                   </motion.div>
-                  <p className="text-ink-300 leading-relaxed">{p.body}</p>
+                  <p className="text-ink-300 leading-relaxed">{t(p.body)}</p>
                 </motion.div>
               );
             })}
@@ -407,15 +410,14 @@ export default function LandingPage() {
                 {tribunalLabel}
               </div>
               <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
-                Eleven judges<span className="italic text-iris">,</span>
+                {t("Eleven judges")}<span className="italic text-iris">,</span>
                 <br />
-                one verdict.
+                {t("one verdict.")}
               </h2>
             </div>
             <p className="max-w-md text-ink-200 leading-relaxed">
-              Our own detection system. Eleven independent checks fire into one weighted vote, and a
-              human takes over when the bench is split.
-              <span className="block mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">point at or tap a neuron to see what it checks</span>
+              {t("Our own detection system. Eleven independent checks fire into one weighted vote, and a human takes over when the bench is split.")}
+              <span className="block mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">{t("point at or tap a neuron to see what it checks")}</span>
             </p>
           </motion.div>
 
@@ -428,7 +430,7 @@ export default function LandingPage() {
           >
             <Suspense fallback={<div className="aspect-[4/5] md:aspect-[16/9]" />}>
               <TribunalBrain
-                members={ANALYZERS}
+                members={analyzers}
                 activeCode={openCheck}
                 verdictLabel={tribunalLabel}
                 onSelect={(code) => {
@@ -469,7 +471,7 @@ export default function LandingPage() {
                   >
                     <Icon size={22} strokeWidth={1.5} />
                   </motion.div>
-                  <div className="font-display text-lg lg:text-xl text-ink-50 leading-tight">{r.title}</div>
+                  <div className="font-display text-lg lg:text-xl text-ink-50 leading-tight">{t(r.title)}</div>
                   <AnimatePresence initial={false}>
                     {open && (
                       <motion.p
@@ -480,7 +482,7 @@ export default function LandingPage() {
                         transition={{ duration: 0.25 }}
                         className="text-sm text-ink-300 leading-relaxed overflow-hidden pt-2"
                       >
-                        {r.body}
+                        {t(r.body)}
                       </motion.p>
                     )}
                   </AnimatePresence>
@@ -496,7 +498,7 @@ export default function LandingPage() {
             viewport={{ once: true, margin: "-50px" }}
             variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
           >
-            {ANALYZERS.map((a, i) => {
+            {analyzers.map((a, i) => {
               const Icon = a.Icon;
               const open = openCheck === a.code;
               return (
@@ -553,10 +555,10 @@ export default function LandingPage() {
                 <Sparkles size={18} strokeWidth={1.5} />
               </div>
               <div className="font-display text-xl md:text-2xl italic text-ink-300 leading-tight md:col-span-5">
-                Measured, not assumed.
+                {t("Measured, not assumed.")}
               </div>
               <div className="col-span-3 md:col-span-5 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">
-                benchmarked on 2022 and 2026 generators before it gets a vote
+                {t("benchmarked on 2022 and 2026 generators before it gets a vote")}
               </div>
             </motion.div>
           </motion.div>
@@ -573,16 +575,16 @@ export default function LandingPage() {
           >
             <div className="label-mono mb-3 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-signal-fuchsia rounded-full pulse-dot" />
-              Beyond the Upload
+              {t("Beyond the Upload")}
             </div>
             <div className="flex items-end justify-between flex-wrap gap-6">
               <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
-                A full <span className="italic text-iris">forensic</span>
+                {t("A full")} <span className="italic text-iris">{t("forensic")}</span>
                 <br />
-                workspace.
+                {t("workspace.")}
               </h2>
               <p className="max-w-md text-ink-200 leading-relaxed">
-                The verdict is where the work starts. Pick who you are and see what you get after the upload.
+                {t("The verdict is where the work starts. Pick who you are and see what you get after the upload.")}
               </p>
             </div>
           </motion.div>
@@ -600,19 +602,18 @@ export default function LandingPage() {
           >
             <div className="label-mono mb-3 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-signal-fuchsia rounded-full pulse-dot" />
-              Embeddable
+              {t("Embeddable")}
             </div>
             <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95] mb-6">
-              Drop a <span className="italic text-iris">badge</span>
+              {t("Drop a")} <span className="italic text-iris">{t("badge")}</span>
               <br />
-              on any page.
+              {t("on any page.")}
             </h2>
             <p className="text-ink-200 leading-relaxed max-w-md mb-8">
-              One script tag. Real-time verdict fed by your submission's SHA-256.
-              Public CORS, no API key required.
+              {t("One script tag. Real-time verdict fed by your submission's SHA-256. Public CORS, no API key required.")}
             </p>
             <MagneticBtn to={user ? "/embed" : "/register"} className="btn-forensic">
-              {user ? "Open Embed →" : "Get Started →"}
+              {user ? `${t("Open Embed")} →` : `${t("Get Started")} →`}
             </MagneticBtn>
           </motion.div>
 
@@ -649,12 +650,12 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.7 }}
           >
-            <div className="label-mono mb-6">Begin</div>
+            <div className="label-mono mb-6">{t("Begin")}</div>
             <h2 className="font-display text-7xl lg:text-[9rem] text-ink-50 leading-[0.85] tracking-tight">
-              Question <span className="italic text-iris">everything</span>.
+              {t("Question")} <span className="italic text-iris">{t("everything")}</span>.
             </h2>
             <p className="text-ink-200 mt-8 max-w-md mx-auto leading-relaxed">
-              Start on the free plan, no card needed. Schools and universities: see Classroom pricing.
+              {t("Start on the free plan, no card needed. Schools and universities: see Classroom pricing.")}
             </p>
             <div className="mt-12">
               <MagneticBtn to={authedCta} className="btn-forensic inline-flex text-sm">
@@ -669,15 +670,15 @@ export default function LandingPage() {
         <div className="max-w-[1280px] mx-auto px-6 lg:px-10 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <span>© ProofLayer Lab - {new Date().getFullYear()}</span>
-            <span className="text-iris">Confidence ≠ Certainty</span>
+            <span className="text-iris">{t("Confidence ≠ Certainty")}</span>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <a href="/pricing" className="hover:text-signal-amber transition-colors">Pricing</a>
-            <a href="https://api.prooflayer.cloud/api/docs/" className="hover:text-signal-amber transition-colors">API Docs</a>
-            <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors" title="Public for transparency; all rights reserved">Source (view only)</a>
-            <a href="/terms" className="hover:text-ink-300 transition-colors">Terms</a>
-            <a href="/privacy" className="hover:text-ink-300 transition-colors">Privacy</a>
-            <a href="/refund" className="hover:text-ink-300 transition-colors">Refund Policy</a>
+            <a href="/pricing" className="hover:text-signal-amber transition-colors">{t("Pricing")}</a>
+            <a href="https://api.prooflayer.cloud/api/docs/" className="hover:text-signal-amber transition-colors">{t("API Docs")}</a>
+            <a href="https://github.com/jeezdredd/prooflayer" className="hover:text-signal-amber transition-colors" title={t("Public for transparency; all rights reserved")}>{t("Source (view only)")}</a>
+            <a href="/terms" className="hover:text-ink-300 transition-colors">{t("Terms")}</a>
+            <a href="/privacy" className="hover:text-ink-300 transition-colors">{t("Privacy")}</a>
+            <a href="/refund" className="hover:text-ink-300 transition-colors">{t("Refund Policy")}</a>
           </div>
         </div>
       </footer>

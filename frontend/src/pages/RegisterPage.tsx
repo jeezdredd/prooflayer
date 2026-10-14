@@ -4,6 +4,8 @@ import { motion } from "motion/react";
 import { useRegister } from "../hooks/useAuth";
 import ShaderBackground from "../components/ui/ShaderBackground";
 import { AGE_HINT, AGE_LABEL, legalHref } from "../legal";
+import LangSwitch from "../components/LangSwitch";
+import { t } from "../i18n";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -32,6 +34,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center text-ink-100 relative overflow-hidden px-6 py-10">
       <ShaderBackground variant="dawn" />
+      <LangSwitch className="absolute top-4 right-4 z-20 bg-ink-950/60" />
       <div className="absolute inset-0 -z-10 bg-grid-fine bg-grid-fine opacity-[0.4] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,black,transparent)]" />
 
       <motion.div
@@ -61,9 +64,9 @@ export default function RegisterPage() {
                   transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
                 />
               </span>
-              <span className="label-mono">Access Request</span>
+              <span className="label-mono">{t("Access Request")}</span>
             </div>
-            <span className="font-mono text-[10px] text-ink-500">NEW · ID</span>
+            <span className="font-mono text-[10px] text-ink-500">{t("NEW · ID")}</span>
           </div>
 
           <motion.div
@@ -73,15 +76,15 @@ export default function RegisterPage() {
             variants={{ visible: { transition: { staggerChildren: 0.06, delayChildren: 0.15 } } }}
           >
             {[
-              { l: "Email", t: "email", v: email, set: setEmail, ph: "agent@field.org", auto: true },
-              { l: "Codename", t: "text", v: username, set: setUsername, ph: "Username" },
-              { l: "Password", t: "password", v: password, set: setPassword, ph: "Min 8 chars" },
-              { l: "Confirm Password", t: "password", v: passwordConfirm, set: setPasswordConfirm, ph: "" },
+              { l: t("Email"), kind: "email", v: email, set: setEmail, ph: "agent@field.org", auto: true },
+              { l: t("Username"), kind: "text", v: username, set: setUsername, ph: t("Username") },
+              { l: t("Password"), kind: "password", v: password, set: setPassword, ph: t("Min 8 chars") },
+              { l: t("Confirm Password"), kind: "password", v: passwordConfirm, set: setPasswordConfirm, ph: "" },
             ].map((f) => (
               <motion.div key={f.l} variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}>
                 <label className="label-mono block mb-2">{f.l}</label>
                 <input
-                  type={f.t}
+                  type={f.kind}
                   value={f.v}
                   onChange={(e) => f.set(e.target.value)}
                   required
@@ -96,20 +99,20 @@ export default function RegisterPage() {
               <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-300 leading-relaxed cursor-pointer">
                 <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required className="mt-0.5" />
                 <span>
-                  I accept the <a href={legalHref("/terms")} target="_blank" rel="noopener noreferrer" className="text-signal-amber hover:underline">Terms</a> and
-                  have read the <a href={legalHref("/privacy")} target="_blank" rel="noopener noreferrer" className="text-signal-amber hover:underline">Privacy Policy</a>.
+                  {t("I accept the")} <a href={legalHref("/terms")} target="_blank" rel="noopener noreferrer" className="text-signal-amber hover:underline">{t("Terms")}</a>{" "}
+                  {t("and have read the")} <a href={legalHref("/privacy")} target="_blank" rel="noopener noreferrer" className="text-signal-amber hover:underline">{t("Privacy Policy")}</a>.
                 </span>
               </label>
               <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-300 leading-relaxed cursor-pointer">
                 <input type="checkbox" checked={isAdult} onChange={(e) => setIsAdult(e.target.checked)} className="mt-0.5" />
                 <span>
-                  {AGE_LABEL}
-                  <span className="block text-ink-500">{AGE_HINT}</span>
+                  {t(AGE_LABEL)}
+                  <span className="block text-ink-500">{t(AGE_HINT)}</span>
                 </span>
               </label>
               <label className="flex items-start gap-2.5 font-mono text-[11px] text-ink-500 leading-relaxed cursor-pointer">
                 <input type="checkbox" checked={allowTraining} onChange={(e) => setAllowTraining(e.target.checked)} className="mt-0.5" />
-                <span>Optional: let ProofLayer use reviewed copies of my personal uploads to train its detectors. Never class work; withdraw any time.</span>
+                <span>{t("Optional: let ProofLayer use reviewed copies of my personal uploads to train its detectors. Never class work; withdraw any time.")}</span>
               </label>
             </motion.div>
 
@@ -121,7 +124,7 @@ export default function RegisterPage() {
                 className="flex items-center gap-2 p-3 border border-signal-blood bg-signal-blood/5"
               >
                 <span className="w-4 h-4 border border-signal-blood text-signal-blood text-[10px] font-bold flex items-center justify-center">!</span>
-                <span className="font-mono text-[11px] text-signal-blood">Registration rejected. Check inputs.</span>
+                <span className="font-mono text-[11px] text-signal-blood">{t("Registration rejected. Check inputs.")}</span>
               </motion.div>
             )}
 
@@ -132,15 +135,15 @@ export default function RegisterPage() {
               className="btn-forensic w-full justify-center disabled:opacity-40"
               whileTap={{ scale: 0.98 }}
             >
-              {register.isPending ? "Issuing credentials…" : "Request Clearance →"}
+              {register.isPending ? t("Creating account…") : `${t("Create account")} →`}
             </motion.button>
           </motion.div>
 
           <div className="dot-divider mx-6" />
           <div className="px-6 py-4 text-center font-mono text-[11px] text-ink-500">
-            Already cleared?{" "}
+            {t("Already have an account?")}{" "}
             <Link to={`/login${window.location.search}`} className="text-signal-cyan hover:underline">
-              Sign in →
+              {t("Sign in")} →
             </Link>
           </div>
         </form>

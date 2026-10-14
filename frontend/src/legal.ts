@@ -1,12 +1,13 @@
 import { IS_CLASSROOM_APP } from "./appMode";
+import { msg } from "./i18n";
 
 export const TERMS_VERSION = "2026-10-13";
 
-export const VERDICT_DISCLAIMER = "Probabilistic assessment. A person makes the decision.";
+export const VERDICT_DISCLAIMER = msg("Probabilistic assessment. A person makes the decision.");
 
-export const AGE_LABEL = "I am 18 or older";
+export const AGE_LABEL = msg("I am 18 or older");
 
-export const AGE_HINT = "Under 18? You can use everything except other people's public uploads, which may include adult material.";
+export const AGE_HINT = msg("Under 18? You can use everything except other people's public uploads, which may include adult material.");
 
 export const LEGAL = {
   brand: "ProofLayer",
