@@ -105,7 +105,7 @@ export default function TextReport({ submission }: { submission: Submission }) {
 
   return (
     <div className="px-6 py-5 border-b border-ink-700">
-      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">Text report</div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">Details for each check</div>
       <p className="text-xs text-ink-500 mb-2">Signals for a conversation with the student, not proof on their own.</p>
       <div className="divide-y divide-[var(--line-strong)]">
         {genre && typeof ge.genre === "string" && (

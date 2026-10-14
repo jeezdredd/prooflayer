@@ -7,12 +7,7 @@ import type { ClassSubmission, VerdictObjection } from "../types";
 import { toast } from "../components/ui/Toast";
 import { LEVEL_OPTIONS } from "../classroom/shared";
 import { VERDICT_DISCLAIMER } from "../legal";
-
-const VERDICT_CLASS: Record<string, string> = {
-  fake: "text-signal-blood", likely_fake: "text-signal-blood",
-  suspicious: "text-signal-amber", needs_review: "text-signal-amber",
-  authentic: "text-signal-sage", authentic_edited: "text-signal-sage",
-};
+import { PLAIN_VERDICT, STATUS_TEXT } from "../components/TeacherSummary";
 
 const BTN = "flex items-center gap-1.5 border border-[var(--line-strong)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300 hover:text-signal-amber";
 
@@ -30,15 +25,15 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
             {s.originality != null && <span className={s.originality < 60 ? "text-signal-blood" : s.originality < 85 ? "text-signal-amber" : "text-signal-sage"}> · {Math.round(s.originality)}% orig.</span>}
           </span>
           <span className="md:col-span-2 flex flex-col">
-            <span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${VERDICT_CLASS[s.final_verdict] || "text-ink-400"}`}>
-              {s.status === "completed" ? s.final_verdict.replace("_", " ") || "-" : s.status}
+            <span className={`text-sm leading-snug ${PLAIN_VERDICT[s.final_verdict] ? STATUS_TEXT[PLAIN_VERDICT[s.final_verdict].status] : "text-ink-400"}`}>
+              {s.status === "completed" ? PLAIN_VERDICT[s.final_verdict]?.teacher ?? "-" : s.status}
             </span>
             {s.status === "completed" && s.final_verdict && (
               <span className="text-[10px] leading-snug text-ink-600 mt-0.5">{VERDICT_DISCLAIMER}</span>
             )}
           </span>
           <span className="md:col-span-1 font-mono text-[11px] text-ink-400 text-right hidden md:block">
-            {s.final_score != null ? `${Math.round(s.final_score * 100)}%` : ""}
+            {s.final_score != null ? `risk ${Math.round(s.final_score * 100)}%` : ""}
           </span>
         </Link>
       ))}

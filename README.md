@@ -49,7 +49,8 @@ changelog with measured numbers lives in `wiki/concepts/tribunal.md`.
   translation (ru/en/fr), web search through self-hosted SearXNG
 - Class radar: works by different students built on one skeleton, and sudden jumps in a student's level
 - Assignment shadow: the server answers the assignment with AI as students of several ages would
-- Teacher report per work with every signal and its evidence; verdict objections with deadlines
+- Teacher report per work: a plain-language answer, one coloured tile per check (clear, look closer, flag,
+  needs more work, not checked) and a next step, with every signal's evidence below; verdict objections with deadlines
 - Student accounts (class members without a paid plan) only hand work in to their class, see their own
   results and object to a verdict; the ProofLayer tools (personal uploads, fact-check, compare, batch,
   feed, voting) are for teachers and are refused by the API (`classroom.access.NotStudentAccount`)

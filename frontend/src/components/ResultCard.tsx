@@ -4,7 +4,9 @@ import type { Submission } from "../types";
 import AnalyzerTimeline from "./AnalyzerTimeline";
 import TextReport from "./TextReport";
 import OriginalityPanel from "./OriginalityPanel";
+import TeacherSummary, { isTextSubmission } from "./TeacherSummary";
 import { VERDICT_DISCLAIMER } from "../legal";
+import { useAuthStore } from "../stores/authStore";
 
 const CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -187,6 +189,8 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
   const verdict = VERDICT_TONE[submission.final_verdict] || VERDICT_TONE.inconclusive;
   const score = submission.final_score;
   const isProcessing = submission.status === "processing" || submission.status === "pending";
+  const student = !!useAuthStore((s) => s.user?.student_only);
+  const textDone = !isProcessing && isTextSubmission(submission);
 
   return (
     <article className="case-card crop-marks animate-rise">
@@ -256,6 +260,8 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
         </div>
       </header>
 
+      <TeacherSummary submission={submission} student={student} />
+
       {verdict.sub && (
         <div className="px-6 py-2.5 border-b border-ink-700 bg-signal-amber/5 flex items-center gap-2.5">
           <span className="w-1 h-1 rounded-full bg-signal-amber shrink-0" />
@@ -321,9 +327,21 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
       <TextReport submission={submission} />
 
       {/* Pipeline */}
-      <div className="px-6 py-6">
-        <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} />
-      </div>
+      {textDone ? (
+        <details className="px-6 py-4 group">
+          <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 hover:text-ink-200">
+            <span className="group-open:hidden">+ Technical details</span>
+            <span className="hidden group-open:inline">- Technical details</span>
+          </summary>
+          <div className="pt-4">
+            <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} />
+          </div>
+        </details>
+      ) : (
+        <div className="px-6 py-6">
+          <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} />
+        </div>
+      )}
     </article>
   );
 }
