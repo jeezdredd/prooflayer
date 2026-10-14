@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  FileSearch, Fingerprint, SearchCheck, Columns2, GraduationCap, Copy, ShieldAlert, Terminal, FolderUp,
+  FileSearch, Fingerprint, SearchCheck, Columns2, GraduationCap, Copy, ShieldAlert, Terminal, FolderUp, PenLine,
 } from "lucide-react";
 
 type GroupId = "investigate" | "teach" | "build";
@@ -174,6 +174,34 @@ const CLASSROOM = (
   </div>
 );
 
+const WRITING = (
+  <div className={MONO}>
+    <PreviewHead left="AI writing · essay_ru.docx" right="ru · 1,240 tokens" />
+    {[
+      ["window 1", 0.93, "blood"],
+      ["window 2", 0.88, "blood"],
+      ["window 3", 0.41, "ink"],
+    ].map(([label, p, tone]) => (
+      <div key={label as string} className={ROW}>
+        <span className="text-ink-400">{label}</span>
+        <span className="flex items-center gap-3 flex-1 justify-end">
+          <span className="h-1 bg-[var(--line)] w-28 relative">
+            <span className={`absolute inset-y-0 left-0 ${tone === "blood" ? "bg-signal-blood" : "bg-ink-500"}`} style={{ width: `${(p as number) * 100}%` }} />
+          </span>
+          <span className="text-ink-300 tabular-nums w-8 text-right">{(p as number).toFixed(2)}</span>
+        </span>
+      </div>
+    ))}
+    <div className="mt-3 flex flex-wrap items-center gap-2 text-ink-400">
+      <span>above 99% of human essays</span>
+      <span className="text-ink-700">→</span>
+      <Pill tone="amber">flag</Pill>
+      <span className="text-ink-700">+ anti-bypass hit →</span>
+      <Pill tone="blood">synthetic</Pill>
+    </div>
+  </div>
+);
+
 const ORIGINALITY = (
   <div className={MONO}>
     <PreviewHead left="Originality · essay.docx" right="66% original" />
@@ -275,6 +303,12 @@ const FEATURES: Feature[] = [
     line: "Your school's own space where students hand in work and teachers see class submissions only.",
     facts: ["Class level from grade 1 to university year 6", "Vocabulary checked against what that grade usually writes", "Style compared with the student's own earlier work"],
     preview: CLASSROOM,
+  },
+  {
+    id: "writing", group: "teach", Icon: PenLine, title: "AI writing check", to: "/pricing",
+    line: "A classifier trained on human and machine writing in ru, en and fr, humanized rewrites included.",
+    facts: ["Flags 91-100% of AI text on held-out sets, including a model it never saw", "2-4% of human essays get a flag, none get convicted by it alone", "Per-part scores in the evidence show which section reads as machine text"],
+    preview: WRITING,
   },
   {
     id: "originality", group: "teach", Icon: Copy, title: "Originality check", to: "/pricing",

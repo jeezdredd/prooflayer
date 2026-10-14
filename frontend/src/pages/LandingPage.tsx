@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useIn
 import {
   ScanLine, Eye, Film, AudioLines, Type, Sparkles,
   Brain, Fingerprint,
-  Gavel, Scale, GraduationCap, Layers, ShieldCheck, Network,
+  Gavel, Scale, GraduationCap, Layers, ShieldCheck, Network, ShieldAlert,
 } from "lucide-react";
 import ShaderBackground from "../components/ui/ShaderBackground";
 import type { BrainMember } from "../components/landing/TribunalBrain";
@@ -28,7 +28,8 @@ const ANALYZERS: (BrainMember & { desc: string; Icon: typeof Brain })[] = [
   { code: "07", short: "Vision LLM", kind: "image", name: "Vision LLM", tag: "must name the defect", desc: "A cautious forensic prompt. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.", Icon: Eye },
   { code: "08", short: "Video", kind: "video", name: "Video Frame Sampler", tag: "whole clip, median verdict", desc: "Frames sampled across the whole clip, not the first eight seconds, each scored by the forensics ViT. The clip gets the median.", Icon: Film },
   { code: "09", short: "Audio", kind: "audio", name: "Audio Spectrogram", tag: "vocoder artifacts", desc: "MFCC variance, spectral flatness, pitch, noise floor. Vocoder artifacts and synthetic-voice patterns raise flags and a probability.", Icon: AudioLines },
-  { code: "10", short: "Text LLM", kind: "text", name: "Text LLM", tag: "authorship signals", desc: "AI authorship from perplexity, sentence rhythm, and discourse markers. Reads PDF and DOCX too.", Icon: Type },
+  { code: "10", short: "Text Classifier", kind: "text", name: "Text Classifier", tag: "trained on ru · en · fr", desc: "A multilingual encoder fine-tuned on human essays, pre-2022 Wikipedia and fresh writing from current open models, humanized rewrites included. On held-out text it flags 91-100% of machine writing and 2-4% of human essays. Alone it can only raise a flag, never convict. Reads PDF and DOCX too.", Icon: Type },
+  { code: "11", short: "Anti-bypass", kind: "text", name: "Anti-bypass", tag: "homoglyphs · hidden text", desc: "Latin letters hidden inside Cyrillic words and the reverse, invisible characters, odd spaces, and DOCX text that is hidden, white or 1pt. Silent unless it finds a trick; when it does, it is the second voice a conviction needs.", Icon: ShieldAlert },
 ];
 
 const TRIBUNAL_RULES = [
@@ -40,7 +41,7 @@ const TRIBUNAL_RULES = [
 
 
 const NUMBERS = [
-  { v: "10", l: "Active analyzers" },
+  { v: "11", l: "Active analyzers" },
   { v: "3", l: "Languages for text checks" },
   { v: "500MB", l: "Max upload" },
   { v: "REST", l: "Open API" },
@@ -234,7 +235,7 @@ export default function LandingPage() {
                 className="mt-10 text-lg text-ink-200 max-w-xl leading-relaxed"
               >
                 Forensic verification lab for synthetic media.
-                Ten analyzers cross-examine every file and publish evidence, not just verdicts.
+                Eleven analyzers cross-examine every file and publish evidence, not just verdicts.
               </motion.p>
 
               <motion.div
@@ -406,13 +407,13 @@ export default function LandingPage() {
                 {tribunalLabel}
               </div>
               <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95]">
-                Ten judges<span className="italic text-iris">,</span>
+                Eleven judges<span className="italic text-iris">,</span>
                 <br />
                 one verdict.
               </h2>
             </div>
             <p className="max-w-md text-ink-200 leading-relaxed">
-              Our own detection system. Ten independent checks fire into one weighted vote, and a
+              Our own detection system. Eleven independent checks fire into one weighted vote, and a
               human takes over when the bench is split.
               <span className="block mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-500">point at or tap a neuron to see what it checks</span>
             </p>
