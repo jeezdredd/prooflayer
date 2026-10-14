@@ -50,6 +50,7 @@ services:
     volumes:
       - media_data:/app/media
       - static_data:/app/staticfiles
+      - hf_cache:/root/.cache/huggingface
       - /srv/prooflayer/shared/samples:/app/samples:ro
     ports:
       - "127.0.0.1:8000:8000"

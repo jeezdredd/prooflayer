@@ -1,11 +1,9 @@
-from unittest.mock import patch
 
 import pytest
-from django.test import RequestFactory
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from content.pdf import generate_report_pdf
+from content.pdf import build_report_context
 from content.tests.factories import SubmissionFactory
 from provenance.models import ProvenanceResult
 from users.tests.factories import UserFactory
@@ -55,10 +53,6 @@ class TestProvenanceSensitiveMatches:
         assert len(response.data) == 3
 
 
-class StopRender(Exception):
-    pass
-
-
 @pytest.mark.django_db
 class TestPdfSensitiveMatches:
     def _titles(self, viewer):
@@ -71,12 +65,7 @@ class TestPdfSensitiveMatches:
                 similarity_score=0.9,
                 raw_data={"submission_id": str(match.id), "distance": 3},
             )
-        request = RequestFactory().get("/")
-        request.user = viewer
-        with patch("content.pdf.render_to_string", side_effect=StopRender) as render:
-            with pytest.raises(StopRender):
-                generate_report_pdf(own, request)
-        return {p.title for p in render.call_args.args[1]["provenance_results"]}
+        return {p["title"] for p in build_report_context(own, viewer)["provenance"]}
 
     def test_minor_pdf_omits_sensitive_match(self):
         assert self._titles(UserFactory(is_adult=False)) == {"ok.jpg"}

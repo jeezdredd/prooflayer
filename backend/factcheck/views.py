@@ -55,7 +55,7 @@ class FactCheckExportView(APIView):
         if not isinstance(result, dict):
             return Response({"error": "result required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            pdf_bytes = render_factcheck_pdf(result, text)
+            pdf_bytes = render_factcheck_pdf(result, text, getattr(request.user, "language", None))
         except Exception:
             logger.exception("PDF render failed")
             return Response({"error": "PDF generation failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

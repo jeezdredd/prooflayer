@@ -1,54 +1,74 @@
-from django.template.loader import render_to_string
-from django.utils import timezone
+import uuid
+
+from reports.copy import COPY, FC_ASSESSMENT_TONE, FC_TONE, lang_or_default, tone_set
+from reports.render import render_pdf, shared_context
+
+EXCERPT_CHARS = 1500
+MAX_SOURCES = 4
 
 
-VERDICT_COLORS = {
-    "mostly_accurate": "#16a34a",
-    "mixed": "#d97706",
-    "misleading": "#dc2626",
-    "no_claims": "#6b7280",
-}
-
-VERDICT_LABELS = {
-    "mostly_accurate": "Mostly Accurate",
-    "mixed": "Mixed Findings",
-    "misleading": "Misleading",
-    "no_claims": "No Claims Found",
-}
-
-ASSESSMENT_COLORS = {
-    "likely_true": "#16a34a",
-    "likely_false": "#dc2626",
-    "uncertain": "#d97706",
-}
-
-ASSESSMENT_LABELS = {
-    "likely_true": "Likely True",
-    "likely_false": "Likely False",
-    "uncertain": "Uncertain",
-}
+def _sources(claim: dict) -> list[dict]:
+    rows = []
+    wiki = claim.get("wikipedia") or {}
+    if wiki.get("url"):
+        rows.append({"title": f"Wikipedia · {wiki.get('title') or wiki['url']}", "url": wiki["url"]})
+    for source in claim.get("sources") or []:
+        if source.get("url"):
+            rows.append({"title": source.get("title") or source["url"], "url": source["url"]})
+    for check in claim.get("fact_checks") or []:
+        if check.get("url"):
+            title = " · ".join(part for part in (check.get("publisher"), check.get("rating")) if part) or check["url"]
+            rows.append({"title": title, "url": check["url"]})
+    return rows[:MAX_SOURCES]
 
 
-def render_factcheck_pdf(result: dict, original_text: str = "") -> bytes:
+def _confidence(value) -> int | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number <= 1:
+        number *= 100
+    return max(0, min(100, round(number)))
+
+
+def build_factcheck_context(result: dict, original_text: str = "", lang: str | None = None) -> dict:
+    lang = lang_or_default(lang)
+    c = COPY[lang]
     verdict = result.get("overall_verdict", "no_claims")
-    claims_view = []
-    for c in result.get("claims", []) or []:
-        a = c.get("assessment", "uncertain")
-        claims_view.append({
-            **c,
-            "display_color": ASSESSMENT_COLORS.get(a, "#6b7280"),
-            "display_label": ASSESSMENT_LABELS.get(a, "Uncertain"),
+    claims = []
+    for index, claim in enumerate(result.get("claims") or [], start=1):
+        assessment = claim.get("assessment", "uncertain")
+        claims.append({
+            "number": f"{index:02d}",
+            "text": claim.get("claim", ""),
+            "label": c["fc_assessment"].get(assessment, assessment),
+            "confidence": _confidence(claim.get("confidence")),
+            "explanation": claim.get("explanation", ""),
+            "sources": _sources(claim),
+            **tone_set(FC_ASSESSMENT_TONE.get(assessment, "ink")),
         })
-    html = render_to_string("factcheck/report.html", {
-        "result": result,
-        "claims": claims_view,
-        "entities": result.get("entities", []) or [],
-        "verdict": verdict,
-        "verdict_label": VERDICT_LABELS.get(verdict, "Unknown"),
-        "verdict_color": VERDICT_COLORS.get(verdict, "#6b7280"),
-        "original_text": original_text,
-        "generated_at": timezone.now(),
-    })
-    from weasyprint import HTML
+    count = len(claims)
+    if lang == "ru":
+        claims_line = f"Утверждений проверено: {count}"
+    else:
+        claims_line = f"{count} claim{'s' if count != 1 else ''} checked"
+    entities = []
+    for entity in result.get("entities") or []:
+        text = entity.get("text") if isinstance(entity, dict) else str(entity)
+        if text and text not in entities:
+            entities.append(text)
+    text = (original_text or "").strip()
+    return {
+        **shared_context(lang, c["factcheck_report"], uuid.uuid4().hex[:8].upper()),
+        **tone_set(FC_TONE.get(verdict, "ink")),
+        "headline": c["fc_headline"].get(verdict, verdict.replace("_", " ").capitalize()),
+        "claims_line": claims_line,
+        "claims": claims,
+        "entities": entities[:30],
+        "excerpt": text[:EXCERPT_CHARS].rstrip() + ("…" if len(text) > EXCERPT_CHARS else ""),
+    }
 
-    return HTML(string=html).write_pdf()
+
+def render_factcheck_pdf(result: dict, original_text: str = "", lang: str | None = None) -> bytes:
+    return render_pdf("factcheck/report.html", build_factcheck_context(result, original_text, lang))

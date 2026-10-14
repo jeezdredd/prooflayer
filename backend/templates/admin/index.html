@@ -12,7 +12,7 @@
     {% if dashboard %}
         {% with d=dashboard links=dashboard.links %}
             <div class="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2 lg:grid-cols-4">
-                {% component "unfold/components/card.html" with title="Submissions" icon="folder_open" %}
+                {% component "unfold/components/card.html" with title="Submissions" %}
                     {% component "unfold/components/title.html" %}{{ d.submissions.today }}{% endcomponent %}
                     <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">today</p>
                     <div class="mt-2">
@@ -21,7 +21,7 @@
                     </div>
                 {% endcomponent %}
 
-                {% component "unfold/components/card.html" with title="Pipeline" icon="sync" %}
+                {% component "unfold/components/card.html" with title="Pipeline" %}
                     {% component "unfold/components/title.html" %}{{ d.queue.processing }}{% endcomponent %}
                     <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">processing now</p>
                     <div class="mt-2">
@@ -35,7 +35,7 @@
                     </div>
                 {% endcomponent %}
 
-                {% component "unfold/components/card.html" with title="Review" icon="gavel" %}
+                {% component "unfold/components/card.html" with title="Review" %}
                     {% component "unfold/components/title.html" %}{{ d.queue.review }}{% endcomponent %}
                     <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">needs review or inconclusive</p>
                     <div class="mt-2">
@@ -47,7 +47,7 @@
                     </div>
                 {% endcomponent %}
 
-                {% component "unfold/components/card.html" with title="Tribunal" icon="balance" %}
+                {% component "unfold/components/card.html" with title="Tribunal" %}
                     {% component "unfold/components/title.html" %}{{ d.tribunal.label }}{% endcomponent %}
                     <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">fingerprint {{ d.tribunal.fingerprint }}</p>
                     <div class="mt-2">
@@ -99,7 +99,7 @@
             </div>
 
             <div class="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-3">
-                {% component "unfold/components/card.html" with title="Training data" icon="dataset" %}
+                {% component "unfold/components/card.html" with title="Training data" %}
                     {% component "unfold/components/title.html" %}{{ d.training.new_samples }} / {{ d.training.needed }}{% endcomponent %}
                     <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">new labelled samples since last promotion</p>
                     <div class="mt-2">
@@ -115,7 +115,7 @@
                     </div>
                 {% endcomponent %}
 
-                {% component "unfold/components/card.html" with title="Schools and users" icon="school" %}
+                {% component "unfold/components/card.html" with title="Schools and users" %}
                     {% component "unfold/components/title.html" %}{{ d.users.total }}{% endcomponent %}
                     <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">users, {{ d.users.week }} joined this week</p>
                     <div class="mt-2">
@@ -126,7 +126,7 @@
                     </div>
                 {% endcomponent %}
 
-                {% component "unfold/components/card.html" with title="Paid subscriptions" icon="credit_card" %}
+                {% component "unfold/components/card.html" with title="Paid subscriptions" %}
                     {% component "unfold/components/title.html" %}{{ d.billing.paid }}{% endcomponent %}
                     <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark">active, trialing or past due</p>
                     <div class="mt-2">

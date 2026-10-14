@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<style>
+  @font-face { font-family: "Plex"; src: url("fonts/IBMPlexSans-Regular.ttf"); font-weight: 400; }
+  @font-face { font-family: "Plex"; src: url("fonts/IBMPlexSans-Medium.ttf"); font-weight: 500; }
+  @font-face { font-family: "Plex"; src: url("fonts/IBMPlexSans-SemiBold.ttf"); font-weight: 600; }
+  @font-face { font-family: "Display"; src: url("fonts/InstrumentSerif-Regular.ttf"); font-style: normal; }
+  @font-face { font-family: "Display"; src: url("fonts/InstrumentSerif-Italic.ttf"); font-style: italic; }
+  @font-face { font-family: "DisplayCyr"; src: url("fonts/PT_Serif-Web-Regular.ttf"); font-style: normal; }
+  @font-face { font-family: "DisplayCyr"; src: url("fonts/PT_Serif-Web-Italic.ttf"); font-style: italic; }
+  @font-face { font-family: "Mono"; src: url("fonts/JetBrainsMono-Regular.ttf"); font-weight: 400; }
+  @font-face { font-family: "Mono"; src: url("fonts/JetBrainsMono-SemiBold.ttf"); font-weight: 600; }
+
+  @page {
+    size: A4;
+    margin: 15mm 15mm 18mm 15mm;
+    background: #07080c;
+    @bottom-left {
+      content: "PROOFLAYER  ·  {{ footer_line|upper }}";
+      font-family: "Mono"; font-size: 6pt; letter-spacing: 0.9pt; color: #3e4761;
+      vertical-align: top; padding-top: 5mm;
+    }
+    @bottom-right {
+      content: "{{ page_word|upper }} " counter(page) " {{ of_word|upper }} " counter(pages);
+      font-family: "Mono"; font-size: 6pt; letter-spacing: 0.9pt; color: #3e4761;
+      vertical-align: top; padding-top: 5mm;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Plex", sans-serif; font-size: 9pt; line-height: 1.55; color: #bac2d6; }
+  table { border-collapse: collapse; width: 100%; }
+  td { vertical-align: top; padding: 0; }
+  .display { font-family: {% if lang == "ru" %}"DisplayCyr", {% endif %}"Display", serif; font-weight: 400; }
+  .mono { font-family: "Mono", monospace; }
+
+  .top td { vertical-align: middle; }
+  .wordmark { height: 9mm; }
+  .top-meta { text-align: right; font-family: "Mono"; font-size: 6.5pt; letter-spacing: 1.2pt; text-transform: uppercase; color: #5d6783; line-height: 1.7; }
+  .top-meta b { color: #8d96b3; font-weight: 600; }
+  .rule { height: 0.35mm; margin: 6mm 0 7mm; background: linear-gradient(90deg, rgba(167,139,250,0.65), rgba(34,211,238,0.35) 45%, rgba(28,33,48,0) 100%); }
+
+  .hero { background: #0d1017; border: 0.3mm solid #1c2130; border-radius: 5mm; padding: 8mm 8mm 7mm; }
+  .hero-accent { height: 1mm; width: 18mm; border-radius: 1mm; margin-bottom: 6mm; }
+  .badge { display: inline-block; border-radius: 99mm; padding: 1.1mm 3.2mm 1.1mm 2.6mm; font-family: "Mono"; font-size: 6.5pt; letter-spacing: 1.4pt; text-transform: uppercase; }
+  .badge .dot { display: inline-block; width: 1.5mm; height: 1.5mm; border-radius: 1mm; margin-right: 1.6mm; vertical-align: 0.2mm; }
+  .headline { font-size: 30pt; line-height: 1.05; color: #f5f7fb; margin: 5mm 0 0; }
+  .score { font-size: 46pt; line-height: 1; margin-top: 6mm; }
+  .score-label { font-family: "Mono"; font-size: 6.5pt; letter-spacing: 1.4pt; text-transform: uppercase; color: #5d6783; margin-top: 1.5mm; }
+  .track { height: 1.6mm; border-radius: 1mm; background: #161a25; margin-top: 6mm; }
+  .fill { height: 1.6mm; border-radius: 1mm; }
+  .thumb-cell { width: 58mm; padding-left: 8mm; text-align: right; }
+  .thumb { max-width: 50mm; max-height: 58mm; border-radius: 3mm; border: 0.3mm solid #1c2130; }
+  .alert { margin-top: 5mm; padding: 2.4mm 3.5mm; border-radius: 2.5mm; border: 0.3mm solid rgba(255,87,115,0.4); background: rgba(255,87,115,0.08); color: #ff8fa3; font-size: 8.5pt; }
+
+  .section { margin-top: 9mm; }
+  .section-title { font-family: "Mono"; font-size: 6.5pt; letter-spacing: 1.6pt; text-transform: uppercase; color: #5d6783; margin-bottom: 3mm; page-break-after: avoid; }
+  .section-title .dot { display: inline-block; width: 1.4mm; height: 1.4mm; border-radius: 1mm; background: #a78bfa; margin-right: 2mm; vertical-align: 0.2mm; }
+  .card { background: #0d1017; border: 0.3mm solid #1c2130; border-radius: 4mm; padding: 5mm 6mm; }
+  .lead { font-size: 10.5pt; line-height: 1.6; color: #e4e8f3; margin: 0; }
+  .note { margin-top: 3mm; font-size: 8pt; color: #5d6783; }
+
+  .rows tr { page-break-inside: avoid; }
+  .rows td { padding: 2.6mm 0; border-bottom: 0.25mm solid #161a25; vertical-align: middle; }
+  .rows tr:last-child td { border-bottom: none; }
+  .rows .name { color: #e4e8f3; font-size: 9pt; }
+  .rows .pill-cell { width: 30mm; }
+  .rows .bar-cell { width: 34mm; padding-right: 3mm; }
+  .rows .pct { width: 12mm; text-align: right; font-family: "Mono"; font-size: 7.5pt; color: #8d96b3; }
+  .pill { display: inline-block; border-radius: 99mm; padding: 0.6mm 2.6mm; font-family: "Mono"; font-size: 6.2pt; letter-spacing: 1pt; text-transform: uppercase; }
+  .mini-track { height: 1.2mm; border-radius: 1mm; background: #161a25; }
+  .mini-fill { height: 1.2mm; border-radius: 1mm; }
+
+  .quote { border-left: 0.8mm solid #a78bfa; padding: 1mm 0 1mm 4mm; color: #e4e8f3; font-size: 9pt; white-space: pre-line; }
+  .big-num { font-size: 34pt; line-height: 1; }
+  .muted { color: #5d6783; }
+  .link { color: #a78bfa; text-decoration: none; word-break: break-all; font-size: 8pt; }
+  .src-title { color: #e4e8f3; font-size: 9pt; }
+
+  .details td { width: 33.33%; padding: 0 4mm 4mm 0; }
+  .label { font-family: "Mono"; font-size: 6pt; letter-spacing: 1.3pt; text-transform: uppercase; color: #5d6783; margin-bottom: 0.8mm; }
+  .value { color: #e4e8f3; font-size: 8.5pt; word-break: break-all; }
+  .value.mono { font-size: 7.5pt; }
+
+  .closing { margin-top: 9mm; padding-top: 4mm; border-top: 0.25mm solid #161a25; font-size: 7.5pt; color: #5d6783; }
+  .closing a { color: #8d96b3; text-decoration: none; }
+</style>
+</head>
+<body>
+  <table class="top">
+    <tr>
+      <td><img class="wordmark" src="assets/wordmark.png" alt="ProofLayer"></td>
+      <td class="top-meta">
+        <div><b>{{ report_title }}</b></div>
+        <div>{{ case_label }} {{ case_ref }}</div>
+        <div>{{ generated_label }} {{ generated_at }}</div>
+      </td>
+    </tr>
+  </table>
+  <div class="rule"></div>
+  {% block content %}{% endblock %}
+</body>
+</html>
