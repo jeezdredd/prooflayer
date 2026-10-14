@@ -1,27 +1,28 @@
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import type { AnalysisResult, ExpectedAnalyzer, Submission } from "../types";
+import { msg, t } from "../i18n";
 
 const ANALYZER_LABELS: Record<string, string> = {
-  metadata: "Metadata · EXIF",
-  ela: "Error Level Analysis",
-  ai_detector: "AI Image Ensemble",
-  llm_vision: "Vision LLM",
-  video_frame: "Video Frame Analysis",
-  audio_spectrogram: "Audio Spectrogram",
-  llm_text: "Text LLM",
-  text_classifier: "Text Classifier",
+  metadata: msg("Metadata · EXIF"),
+  ela: msg("Error Level Analysis"),
+  ai_detector: msg("AI Image Ensemble"),
+  llm_vision: msg("Vision LLM"),
+  video_frame: msg("Video Frame Analysis"),
+  audio_spectrogram: msg("Audio Spectrogram"),
+  llm_text: msg("Text LLM"),
+  text_classifier: msg("Text Classifier"),
   community_forensics: "Community Forensics · ViT",
   npr_detector: "NPR Detector · ViT",
   siglip_detector: "SigLIP Detector",
-  custom_detector: "ProofLayer Detector",
+  custom_detector: msg("ProofLayer Detector"),
   clip_probe: "CLIP Probe",
-  text_evasion: "Bypass Check",
-  text_grade_fit: "Age Fit",
-  text_style: "Style Consistency",
-  text_citations: "Ghost Citations",
-  text_genre: "Text Type",
-  text_shadow: "Assignment Shadow",
+  text_evasion: msg("Bypass Check"),
+  text_grade_fit: msg("Age Fit"),
+  text_style: msg("Style Consistency"),
+  text_citations: msg("Ghost Citations"),
+  text_genre: msg("Text Type"),
+  text_shadow: msg("Assignment Shadow"),
 };
 
 const ANALYZER_CODE: Record<string, string> = {
@@ -91,11 +92,11 @@ const ANALYZER_ETA_SECS: Record<string, number> = {
 };
 
 const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }> = {
-  authentic: { color: "text-signal-sage", bg: "bg-signal-sage/10 border-signal-sage/30", label: "Authentic" },
-  suspicious: { color: "text-signal-amber", bg: "bg-signal-amber/10 border-signal-amber/30", label: "Suspicious" },
-  fake: { color: "text-signal-blood", bg: "bg-signal-blood/10 border-signal-blood/30", label: "Fake" },
-  inconclusive: { color: "text-ink-400", bg: "bg-ink-800 border-ink-500", label: "Inconclusive" },
-  error: { color: "text-signal-blood/70", bg: "bg-signal-blood/5 border-signal-blood/30", label: "Error" },
+  authentic: { color: "text-signal-sage", bg: "bg-signal-sage/10 border-signal-sage/30", label: msg("Authentic") },
+  suspicious: { color: "text-signal-amber", bg: "bg-signal-amber/10 border-signal-amber/30", label: msg("Suspicious") },
+  fake: { color: "text-signal-blood", bg: "bg-signal-blood/10 border-signal-blood/30", label: msg("Fake") },
+  inconclusive: { color: "text-ink-400", bg: "bg-ink-800 border-ink-500", label: msg("Inconclusive") },
+  error: { color: "text-signal-blood/70", bg: "bg-signal-blood/5 border-signal-blood/30", label: msg("Error") },
 };
 
 interface Step {
@@ -135,12 +136,12 @@ function buildSteps(submission: Submission, runningAnalyzers?: Set<string>): Ste
   }
 
   if (isProcessing && (!runningAnalyzers || runningAnalyzers.size === 0)) {
-    const msg = (submission.status_message || "").toLowerCase();
-    const msgMatchIdx = msg
+    const statusText = (submission.status_message || "").toLowerCase();
+    const msgMatchIdx = statusText
       ? sources.findIndex(
           (s) =>
             s.state === "pending" &&
-            (msg.includes(s.name.toLowerCase()) || msg.includes(s.name.replace(/_/g, " ").toLowerCase()))
+            (statusText.includes(s.name.toLowerCase()) || statusText.includes(s.name.replace(/_/g, " ").toLowerCase()))
         )
       : -1;
     const targetIdx = msgMatchIdx >= 0 ? msgMatchIdx : sources.findIndex((s) => s.state === "pending");
@@ -196,7 +197,7 @@ function StateMarker({ state, verdict }: { state: Step["state"]; verdict: string
 
 function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; index: number }) {
   const [expanded, setExpanded] = useState(false);
-  const label = ANALYZER_LABELS[step.name] || step.name;
+  const label = ANALYZER_LABELS[step.name] ? t(ANALYZER_LABELS[step.name]) : step.name;
   const code = ANALYZER_CODE[step.name] || step.name.slice(0, 4).toUpperCase();
   const verdict = step.result?.verdict || "";
   const tone = VERDICT_TONE[verdict] || VERDICT_TONE.inconclusive;
@@ -249,23 +250,23 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                     {Math.round(step.result.confidence * 100)}%
                   </span>
                   <span className={clsx("badge", tone.color, "border-current")}>
-                    {tone.label}
+                    {t(tone.label)}
                   </span>
                 </>
               )}
               {step.state === "running" && (
                 <span className="badge text-signal-amber border-current">
-                  Running
+                  {t("Running")}
                 </span>
               )}
               {step.state === "pending" && (
                 <span className="badge text-ink-500 border-ink-700">
-                  Queued
+                  {t("Queued")}
                 </span>
               )}
               {step.state === "skipped" && (
                 <span className="badge text-ink-500 border-ink-700">
-                  Skipped
+                  {t("Skipped")}
                 </span>
               )}
             </div>
@@ -282,13 +283,13 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                 <div className="absolute inset-0 stripe-active" />
               </div>
               <div className="mt-1 flex justify-between text-[10px] font-mono text-ink-500">
-                <span>est ~{expectedSecs}s</span>
+                <span>{t("est ~{n}s", { n: expectedSecs })}</span>
                 <span className="text-signal-amber animate-pulse-soft">
                   {elapsed < expectedSecs
-                    ? `${(expectedSecs - elapsed).toFixed(1)}s remaining`
+                    ? t("{n}s remaining", { n: (expectedSecs - elapsed).toFixed(1) })
                     : elapsed > expectedSecs * 2
-                    ? `loading model... ${elapsed.toFixed(0)}s`
-                    : `still working... ${elapsed.toFixed(0)}s`}
+                    ? t("loading model... {n}s", { n: elapsed.toFixed(0) })
+                    : t("still working... {n}s", { n: elapsed.toFixed(0) })}
                 </span>
               </div>
             </div>
@@ -299,18 +300,18 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
           <div className="mt-3 pl-0 animate-fade-in-up">
             {step.description && (
               <p className="text-sm text-ink-300 leading-relaxed mb-3">
-                {step.description}
+                {t(step.description)}
               </p>
             )}
             {step.result?.error_message && (
               <div className="text-xs text-signal-blood font-mono mb-2">
-                ERROR: {step.result.error_message}
+                {t("ERROR")}: {step.result.error_message}
               </div>
             )}
             {step.result && Object.keys(step.result.evidence || {}).length > 0 && (
               <div className="bg-ink-950 border border-ink-700 p-3 relative">
                 <div className="absolute top-2 right-2 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-600">
-                  Evidence
+                  {t("Evidence")}
                 </div>
                 <pre className="font-mono text-[11px] text-ink-200 overflow-x-auto overflow-y-auto max-h-52 whitespace-pre-wrap leading-relaxed">
                   {JSON.stringify(
@@ -340,9 +341,9 @@ function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
   return (
     <div className="mt-3 bg-ink-950 border border-ink-700 p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">ELA Heatmap</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">{t("ELA Heatmap")}</span>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] text-ink-600">opacity</span>
+          <span className="font-mono text-[9px] text-ink-600">{t("opacity")}</span>
           <input
             type="range"
             min={0}
@@ -356,12 +357,12 @@ function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
       </div>
       <img
         src={fullUrl}
-        alt="ELA heatmap"
+        alt={t("ELA Heatmap")}
         className="max-h-72 max-w-full object-contain border border-ink-700"
         style={{ opacity: opacity / 100 }}
       />
       <p className="font-mono text-[9px] text-ink-600 mt-2">
-        Bright red = high error level = possible manipulation. Uniform areas suggest authentic regions.
+        {t("Bright red = high error level = possible manipulation. Uniform areas suggest authentic regions.")}
       </p>
     </div>
   );
@@ -394,17 +395,17 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
       {/* Section header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <span className="label-mono">Analyzer Pipeline</span>
+          <span className="label-mono">{t("Analyzer Pipeline")}</span>
           <span className="text-ink-700">/</span>
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 ticker">
-            {String(doneCount).padStart(2, "0")}<span className="text-ink-600">·</span>{String(totalCount).padStart(2, "0")} {isProcessing ? "RUNNING" : "COMPLETE"}
-            {skippedCount > 0 && <span className="text-ink-600 ml-2">{skippedCount} SKIPPED</span>}
+            {String(doneCount).padStart(2, "0")}<span className="text-ink-600">·</span>{String(totalCount).padStart(2, "0")} {isProcessing ? t("RUNNING") : t("COMPLETE")}
+            {skippedCount > 0 && <span className="text-ink-600 ml-2">{t("{n} SKIPPED", { n: skippedCount })}</span>}
           </span>
         </div>
         <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.14em]">
           <span className="ticker text-ink-200">{Math.round(overallPct)}%</span>
           {isProcessing && remainingSecs > 0 && (
-            <span className="text-signal-amber ticker">~{remainingSecs}S LEFT</span>
+            <span className="text-signal-amber ticker">{t("~{n}S LEFT", { n: remainingSecs })}</span>
           )}
         </div>
       </div>
@@ -436,7 +437,7 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
                   {running.map((s) => (
                     <span key={s.name} className="flex items-center gap-1.5 font-mono text-[11px] text-ink-200">
                       <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
-                      {ANALYZER_LABELS[s.name] || s.name}
+                      {ANALYZER_LABELS[s.name] ? t(ANALYZER_LABELS[s.name]) : s.name}
                     </span>
                   ))}
                 </div>
@@ -446,14 +447,14 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
               return (
                 <span className="flex items-center gap-2 font-mono text-[11px] text-ink-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
-                  Running {ANALYZER_LABELS[running[0].name] || running[0].name}...
+                  {t("Running {name}...", { name: ANALYZER_LABELS[running[0].name] ? t(ANALYZER_LABELS[running[0].name]) : running[0].name })}
                 </span>
               );
             }
             return (
               <span className="flex items-center gap-2 font-mono text-[11px] text-ink-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-signal-amber pulse-dot" />
-                {submission.status_message || "Processing..."}
+                {submission.status_message ? t(submission.status_message) : t("Processing...")}
               </span>
             );
           })()}
@@ -465,7 +466,7 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
         <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-blood/60 bg-signal-blood/5">
           <span className="mt-0.5 text-signal-blood text-[13px]">!</span>
           <span className="font-mono text-[11px] text-ink-300 leading-relaxed">
-            Background worker did not process this submission. Celery may be down or the task crashed before startup. Check worker logs and re-upload to retry.
+            {t("Background worker did not process this submission. Celery may be down or the task crashed before startup. Check worker logs and re-upload to retry.")}
           </span>
         </div>
       )}
@@ -475,7 +476,7 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
         <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-amber/60 bg-signal-amber/5">
           <span className="mt-0.5 text-signal-amber text-[13px]">⚠</span>
           <span className="font-mono text-[11px] text-ink-300 leading-relaxed">
-            Some analyzers did not complete ({skippedCount > 0 && `${skippedCount} skipped`}{skippedCount > 0 && errorCount > 0 && ", "}{errorCount > 0 && `${errorCount} failed`}). Final verdict may be inaccurate.
+            {t("Some analyzers did not complete ({skipped} skipped, {failed} failed). Final verdict may be inaccurate.", { skipped: skippedCount, failed: errorCount })}
           </span>
         </div>
       )}

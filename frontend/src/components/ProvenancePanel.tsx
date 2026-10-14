@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import { useProvenance } from "../hooks/useProvenance";
+import { msg, t } from "../i18n";
 
 const SOURCE_LABELS: Record<string, string> = {
-  phash_match: "Near-Duplicate (pHash)",
-  clip_neighbour: "Semantic Neighbour (CLIP)",
+  phash_match: msg("Near-Duplicate (pHash)"),
+  clip_neighbour: msg("Semantic Neighbour (CLIP)"),
   tineye: "TinEye",
   google_vision: "Google Vision",
-  c2pa: "C2PA Credentials",
+  c2pa: msg("C2PA Credentials"),
 };
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -33,18 +34,18 @@ export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) 
   if (isLoading) {
     return (
       <div className="case-card p-6 mt-4">
-        <h4 className="label-mono mb-3">Provenance</h4>
-        <p className="font-mono text-xs text-ink-500">Checking sources...</p>
+        <h4 className="label-mono mb-3">{t("Provenance")}</h4>
+        <p className="font-mono text-xs text-ink-500">{t("Checking sources...")}</p>
       </div>
     );
   }
 
   return (
     <div className="case-card p-6 mt-4">
-      <h4 className="label-mono mb-3">Provenance</h4>
+      <h4 className="label-mono mb-3">{t("Provenance")}</h4>
 
       {!results || results.length === 0 ? (
-        <p className="font-mono text-xs text-ink-500">No matches found in external sources or local index.</p>
+        <p className="font-mono text-xs text-ink-500">{t("No matches found in external sources or local index.")}</p>
       ) : (
         <div className="space-y-3">
           {results.map((r) => {
@@ -59,11 +60,11 @@ export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) 
                     <span
                       className={`font-mono text-[10px] uppercase tracking-[0.12em] px-2 py-0.5 border ${SOURCE_COLORS[r.source_type] ?? "bg-ink-900 text-ink-300 border-ink-700"}`}
                     >
-                      {SOURCE_LABELS[r.source_type] ?? r.source_type}
+                      {SOURCE_LABELS[r.source_type] ? t(SOURCE_LABELS[r.source_type]) : r.source_type}
                     </span>
                     {r.similarity_score !== null && (
                       <span className="font-mono text-[10px] text-ink-400 tabular-nums">
-                        {(r.similarity_score * 100).toFixed(0)}% sim
+                        {t("{n}% similar", { n: (r.similarity_score * 100).toFixed(0) })}
                       </span>
                     )}
                     {cosine !== null && (
@@ -73,7 +74,7 @@ export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) 
                     )}
                     {r.is_sensitive && (
                       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-amber border border-signal-amber/40 px-2 py-0.5">
-                        Sensitive
+                        {t("Sensitive")}
                       </span>
                     )}
                   </div>
@@ -85,7 +86,7 @@ export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) 
                       to={`/results/${neighbourId}`}
                       className="text-xs text-iris hover:text-iris-light transition font-mono"
                     >
-                      view neighbour &rarr;
+                      {t("view neighbour")} &rarr;
                     </Link>
                   )}
                   {r.source_url && (

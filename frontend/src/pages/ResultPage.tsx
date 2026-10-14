@@ -14,6 +14,7 @@ import { reanalyzeSubmission, togglePublic } from "../api/endpoints";
 import { IS_CLASSROOM_APP } from "../appMode";
 import { useAuthStore } from "../stores/authStore";
 import type { Submission } from "../types";
+import { t } from "../i18n";
 
 function DownloadReportButton({ submissionId }: { submissionId: string }) {
   const [loading, setLoading] = useState(false);
@@ -38,9 +39,9 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
       a.download = `prooflayer_report_${submissionId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Report downloaded");
+      toast.success(t("Report downloaded"));
     } catch {
-      toast.error("Failed to download report");
+      toast.error(t("Failed to download report"));
     } finally {
       setLoading(false);
     }
@@ -52,7 +53,7 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
       disabled={loading}
       className="font-mono text-[10px] uppercase tracking-[0.14em] border border-iris/60 text-iris hover:bg-iris/10 px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5"
     >
-      {loading ? "…" : "↓"} PDF Report
+      {loading ? "…" : "↓"} {t("PDF Report")}
     </button>
   );
 }
@@ -66,10 +67,10 @@ function ReanalyzeButton({ submissionId }: { submissionId: string }) {
     try {
       await reanalyzeSubmission(submissionId);
       await queryClient.invalidateQueries({ queryKey: ["submission", submissionId] });
-      toast.success("Re-analyzing with the current Tribunal");
+      toast.success(t("Re-analyzing with the current Tribunal"));
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
-      toast.error(code === "upload_limit_reached" ? "Monthly limit reached" : "Could not start re-analysis");
+      toast.error(code === "upload_limit_reached" ? t("Monthly limit reached") : t("Could not start re-analysis"));
     } finally {
       setLoading(false);
     }
@@ -81,7 +82,7 @@ function ReanalyzeButton({ submissionId }: { submissionId: string }) {
       disabled={loading}
       className="font-mono text-[10px] uppercase tracking-[0.14em] border border-signal-amber/40 text-signal-amber px-3 py-1.5 transition hover:bg-signal-amber/10 disabled:opacity-50"
     >
-      {loading ? "…" : "↻"} Re-analyze
+      {loading ? "…" : "↻"} {t("Re-analyze")}
     </button>
   );
 }
@@ -101,11 +102,11 @@ function TogglePublicButton({ submissionId, isPublic }: { submissionId: string; 
       queryClient.setQueryData(["submission", submissionId], (old: Submission | undefined) =>
         old ? { ...old, is_public: res.data.is_public, is_sensitive: res.data.is_sensitive } : old
       );
-      toast.success(res.data.is_public ? "Submission is now public" : "Submission set to private");
+      toast.success(res.data.is_public ? t("Submission is now public") : t("Submission set to private"));
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { code?: string; detail?: string } } })?.response?.data;
       if (data?.code === "adult_required") setAdultRequired(true);
-      toast.error(data?.detail || "Failed to update visibility");
+      toast.error(data?.detail ? t(data.detail) : t("Failed to update visibility"));
     } finally {
       setLoading(false);
     }
@@ -118,20 +119,20 @@ function TogglePublicButton({ submissionId, isPublic }: { submissionId: string; 
       {!isPublic && (
         <label className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 cursor-pointer">
           <input type="checkbox" checked={sensitive} onChange={(e) => setSensitive(e.target.checked)} />
-          Contains sensitive content
+          {t("Contains sensitive content")}
         </label>
       )}
       <button
         onClick={handleToggle}
         disabled={loading}
-        title={isPublic ? "Make private" : "Publish to the public feed"}
+        title={isPublic ? t("Make private") : t("Publish to the public feed")}
         className={`font-mono text-[10px] uppercase tracking-[0.14em] border px-3 py-1.5 transition disabled:opacity-50 flex items-center gap-1.5 ${
           isPublic
             ? "border-signal-sage/60 text-signal-sage hover:bg-signal-sage/10"
             : "border-ink-600 text-ink-400 hover:border-ink-400 hover:text-ink-200"
         }`}
       >
-        {loading ? "..." : isPublic ? "⬤ Public" : "○ Private"}
+        {loading ? "..." : isPublic ? `⬤ ${t("Public")}` : `○ ${t("Private")}`}
       </button>
     </div>
   );
@@ -191,9 +192,9 @@ export default function ResultPage() {
   if (isError || !submission) {
     return (
       <div className="text-center py-20">
-        <p className="text-ink-400 font-mono text-sm">Submission not found.</p>
+        <p className="text-ink-400 font-mono text-sm">{t("Submission not found.")}</p>
         <Link to={IS_CLASSROOM_APP ? "/" : "/upload"} className="mt-2 inline-block text-iris hover:text-iris-light underline text-sm">
-          {IS_CLASSROOM_APP ? "Back to your classes" : "Go back to upload"}
+          {IS_CLASSROOM_APP ? t("Back to your classes") : t("Go back to upload")}
         </Link>
       </div>
     );
@@ -205,16 +206,16 @@ export default function ResultPage() {
         <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em]">
           {IS_CLASSROOM_APP ? (
             <Link to="/" className="text-ink-400 hover:text-ink-100 transition">
-              &larr; Classes
+              &larr; {t("Classes")}
             </Link>
           ) : (
             <>
               <Link to="/dashboard" className="text-ink-400 hover:text-ink-100 transition">
-                &larr; Dashboard
+                &larr; {t("Dashboard")}
               </Link>
               <span className="text-ink-700">/</span>
               <Link to="/upload" className="text-iris hover:text-iris-light transition">
-                Verify another
+                {t("Verify another")}
               </Link>
             </>
           )}
@@ -222,7 +223,7 @@ export default function ResultPage() {
         {submission.status === "processing" && connected && (
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-signal-sage">
             <span className="w-1.5 h-1.5 rounded-full bg-signal-sage pulse-dot" />
-            Live
+            {t("Live")}
           </span>
         )}
         {submission.status === "completed" && (

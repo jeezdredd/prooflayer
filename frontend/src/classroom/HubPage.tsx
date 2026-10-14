@@ -6,6 +6,7 @@ import { classrooms, orgs } from "../api/endpoints";
 import type { Classroom } from "../types";
 import { toast } from "../components/ui/Toast";
 import { classPath, errorText, INPUT, ACTION, SECTION_LABEL, MAIN_URL } from "./shared";
+import { t } from "../i18n";
 
 function ClassRow({ c }: { c: Classroom }) {
   return (
@@ -34,10 +35,10 @@ export default function HubPage() {
     mutationFn: () => classrooms.join(code.trim()).then((r) => r.data),
     onSuccess: (c) => {
       queryClient.invalidateQueries({ queryKey: ["classroom-hub"] });
-      toast.success(`Joined ${c.name}`);
+      toast.success(t("Joined {name}", { name: c.name }));
       navigate(classPath(c));
     },
-    onError: (err) => toast.error(errorText(err, "Could not join")),
+    onError: (err) => toast.error(errorText(err, t("Could not join"))),
   });
 
   const createOrg = useMutation({
@@ -46,16 +47,16 @@ export default function HubPage() {
       queryClient.invalidateQueries({ queryKey: ["classroom-hub"] });
       navigate(`/${o.slug}`);
     },
-    onError: (err) => toast.error(errorText(err, "Could not create")),
+    onError: (err) => toast.error(errorText(err, t("Could not create"))),
   });
 
-  if (isLoading || !hub) return <p className="text-ink-500">Loading…</p>;
+  if (isLoading || !hub) return <p className="text-ink-500">{t("Loading…")}</p>;
 
   return (
     <div>
-      <h1 className="font-display text-5xl text-ink-50 leading-tight">Your classroom</h1>
+      <h1 className="font-display text-5xl text-ink-50 leading-tight">{t("Your classroom")}</h1>
       <p className="text-ink-400 mt-3 max-w-2xl">
-        Students hand in work to a class; teachers see each piece with its Tribunal verdict. Personal checks on the main site stay private.
+        {t("Students hand in work to a class; teachers see each piece with its Tribunal verdict. Personal checks on the main site stay private.")}
       </p>
 
       <form
@@ -65,22 +66,22 @@ export default function HubPage() {
           if (code.trim().length === 8) join.mutate();
         }}
       >
-        <div className="flex items-center gap-2 text-ink-50 font-display text-xl mb-3"><LogIn size={18} className="text-signal-amber/80" /> Join a class</div>
+        <div className="flex items-center gap-2 text-ink-50 font-display text-xl mb-3"><LogIn size={18} className="text-signal-amber/80" /> {t("Join a class")}</div>
         <div className="flex gap-2">
-          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CLASS CODE" maxLength={8} className={`${INPUT} font-mono tracking-[0.2em]`} />
-          <button type="submit" disabled={code.trim().length < 8 || join.isPending} className={ACTION}>Join</button>
+          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t("CLASS CODE")} maxLength={8} className={`${INPUT} font-mono tracking-[0.2em]`} />
+          <button type="submit" disabled={code.trim().length < 8 || join.isPending} className={ACTION}>{t("Join")}</button>
         </div>
       </form>
 
       {hub.organizations.length > 0 && (
         <section className="mt-10">
-          <div className={SECTION_LABEL}>Schools</div>
+          <div className={SECTION_LABEL}>{t("Schools")}</div>
           <div className="divide-y divide-[var(--line-strong)]">
             {hub.organizations.map((o) => (
               <Link key={o.slug} to={`/${o.slug}`} className="grid grid-cols-[auto_1fr_auto] gap-4 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
                 <Building2 size={16} className="text-signal-amber/80" />
                 <span className="text-ink-50">{o.name}</span>
-                <span className="font-mono text-[11px] text-ink-500">{o.role} · /{o.slug}</span>
+                <span className="font-mono text-[11px] text-ink-500">{t(o.role ?? "")} · /{o.slug}</span>
               </Link>
             ))}
           </div>
@@ -89,20 +90,20 @@ export default function HubPage() {
 
       {hub.enrolled.length > 0 && (
         <section className="mt-10">
-          <div className={SECTION_LABEL}>Classes you attend</div>
+          <div className={SECTION_LABEL}>{t("Classes you attend")}</div>
           <div className="divide-y divide-[var(--line-strong)]">{hub.enrolled.map((c) => <ClassRow key={c.id} c={c} />)}</div>
         </section>
       )}
 
       {hub.personal_classes.length > 0 && (
         <section className="mt-10">
-          <div className={SECTION_LABEL}>Classes without a school</div>
+          <div className={SECTION_LABEL}>{t("Classes without a school")}</div>
           <div className="divide-y divide-[var(--line-strong)]">{hub.personal_classes.map((c) => <ClassRow key={c.id} c={c} />)}</div>
         </section>
       )}
 
       <section className="mt-12 border-t border-[var(--line-strong)] pt-8 max-w-xl">
-        <div className="flex items-center gap-2 text-ink-50 font-display text-xl mb-2"><Plus size={18} className="text-signal-amber/80" /> Set up your school</div>
+        <div className="flex items-center gap-2 text-ink-50 font-display text-xl mb-2"><Plus size={18} className="text-signal-amber/80" /> {t("Set up your school")}</div>
         {hub.can_create_organization ? (
           <form
             className="space-y-2"
@@ -111,7 +112,7 @@ export default function HubPage() {
               if (orgName.trim() && slug.trim()) createOrg.mutate();
             }}
           >
-            <input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="Lyceum 239" maxLength={120} className={`${INPUT} w-full`} />
+            <input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder={t("Lyceum 239")} maxLength={120} className={`${INPUT} w-full`} />
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs text-ink-500">classroom.prooflayer.cloud/</span>
               <input
@@ -121,14 +122,14 @@ export default function HubPage() {
                 maxLength={40}
                 className={`${INPUT} font-mono`}
               />
-              <button type="submit" disabled={!orgName.trim() || slug.length < 3 || createOrg.isPending} className={`${ACTION} py-2`}>Create</button>
+              <button type="submit" disabled={!orgName.trim() || slug.length < 3 || createOrg.isPending} className={`${ACTION} py-2`}>{t("Create")}</button>
             </div>
-            <p className="text-xs text-ink-500">Teachers you invite work under the school's Education plan; they do not need their own.</p>
+            <p className="text-xs text-ink-500">{t("Teachers you invite work under the school's Education plan; they do not need their own.")}</p>
           </form>
         ) : (
           <p className="text-sm text-ink-400">
-            A school address needs the School or University plan. Teachers invited to an existing school can skip this.{" "}
-            <a href={`${MAIN_URL}/pricing`} className="underline hover:text-ink-100">See plans</a>
+            {t("A school address needs the School or University plan. Teachers invited to an existing school can skip this.")}{" "}
+            <a href={`${MAIN_URL}/pricing`} className="underline hover:text-ink-100">{t("See plans")}</a>
           </p>
         )}
       </section>

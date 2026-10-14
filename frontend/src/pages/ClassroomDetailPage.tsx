@@ -5,14 +5,15 @@ import { Copy, Download, RefreshCw, UserMinus, Archive } from "lucide-react";
 import { classrooms, objections } from "../api/endpoints";
 import type { ClassSubmission, VerdictObjection } from "../types";
 import { toast } from "../components/ui/Toast";
-import { LEVEL_OPTIONS } from "../classroom/shared";
+import { levelOptions } from "../classroom/shared";
+import { locale, msg, t, tn } from "../i18n";
 import { VERDICT_DISCLAIMER } from "../legal";
 import { PLAIN_VERDICT, STATUS_TEXT } from "../components/TeacherSummary";
 
 const BTN = "flex items-center gap-1.5 border border-[var(--line-strong)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300 hover:text-signal-amber";
 
 function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showStudent: boolean }) {
-  if (rows.length === 0) return <p className="text-sm text-ink-500 py-4">Nothing submitted yet.</p>;
+  if (rows.length === 0) return <p className="text-sm text-ink-500 py-4">{t("Nothing submitted yet.")}</p>;
   return (
     <div className="divide-y divide-[var(--line-strong)]">
       {rows.map((s) => (
@@ -21,19 +22,19 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
           {showStudent && <span className="md:col-span-2 text-ink-300 truncate">{s.student}</span>}
           <span className={`${showStudent ? "md:col-span-5" : "md:col-span-7"} text-ink-50 truncate`}>{s.original_filename}</span>
           <span className="md:col-span-2 font-mono text-[11px] text-ink-500 hidden md:block">
-            {s.words != null ? `${s.words} words` : s.mime_type.split("/")[0]}
-            {s.originality != null && <span className={s.originality < 60 ? "text-signal-blood" : s.originality < 85 ? "text-signal-amber" : "text-signal-sage"}> · {Math.round(s.originality)}% orig.</span>}
+            {s.words != null ? tn(s.words, "{n} word", "{n} words") : t(s.mime_type.split("/")[0])}
+            {s.originality != null && <span className={s.originality < 60 ? "text-signal-blood" : s.originality < 85 ? "text-signal-amber" : "text-signal-sage"}> · {t("{n}% original", { n: Math.round(s.originality) })}</span>}
           </span>
           <span className="md:col-span-2 flex flex-col">
             <span className={`text-sm leading-snug ${PLAIN_VERDICT[s.final_verdict] ? STATUS_TEXT[PLAIN_VERDICT[s.final_verdict].status] : "text-ink-400"}`}>
-              {s.status === "completed" ? PLAIN_VERDICT[s.final_verdict]?.teacher ?? "-" : s.status}
+              {s.status === "completed" ? (PLAIN_VERDICT[s.final_verdict] ? t(PLAIN_VERDICT[s.final_verdict].teacher) : "-") : t(s.status)}
             </span>
             {s.status === "completed" && s.final_verdict && (
-              <span className="text-[10px] leading-snug text-ink-600 mt-0.5">{VERDICT_DISCLAIMER}</span>
+              <span className="text-[10px] leading-snug text-ink-600 mt-0.5">{t(VERDICT_DISCLAIMER)}</span>
             )}
           </span>
           <span className="md:col-span-1 font-mono text-[11px] text-ink-400 text-right hidden md:block">
-            {s.final_score != null ? `risk ${Math.round(s.final_score * 100)}%` : ""}
+            {s.final_score != null ? t("risk {n}%", { n: Math.round(s.final_score * 100) }) : ""}
           </span>
         </Link>
       ))}
@@ -42,11 +43,19 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
 }
 
 const SHADOW_STATUS: Record<string, string> = {
-  pending: "queued",
-  running: "writing answers",
-  done: "ready",
-  failed: "failed",
+  pending: msg("queued"),
+  running: msg("writing answers"),
+  done: msg("ready"),
+  failed: msg("failed"),
 };
+
+const GRADE_JUMP = /^reads at grade (\d+), earlier work at about (\d+)$/;
+
+function jumpReason(reason: string): string {
+  const m = GRADE_JUMP.exec(reason);
+  if (m) return t("reads at grade {now}, earlier work at about {before}", { now: m[1], before: m[2] });
+  return t(reason);
+}
 
 function ShadowPanel({ classId }: { classId: string }) {
   const queryClient = useQueryClient();
@@ -65,23 +74,23 @@ function ShadowPanel({ classId }: { classId: string }) {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["classroom-shadows", classId] });
   const create = useMutation({
     mutationFn: () => classrooms.createShadow(classId, prompt.trim(), 8),
-    onSuccess: () => { setPrompt(""); refresh(); toast.success("Writing AI answers to the assignment"); },
+    onSuccess: () => { setPrompt(""); refresh(); toast.success(t("Writing AI answers to the assignment")); },
     onError: (e: { response?: { data?: { detail?: string; prompt?: string[] } } }) =>
-      toast.error(e.response?.data?.detail ?? e.response?.data?.prompt?.[0] ?? "Could not start"),
+      toast.error(t(e.response?.data?.detail ?? e.response?.data?.prompt?.[0] ?? "Could not start")),
   });
   const remove = useMutation({ mutationFn: (sid: string) => classrooms.deleteShadow(classId, sid), onSuccess: refresh });
   return (
     <section className="mb-8 border border-[var(--line-strong)] p-4">
-      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">Assignment shadow</div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">{t("Assignment shadow")}</div>
       <p className="text-xs text-ink-500 mb-3 max-w-2xl">
-        Paste the assignment. We ask an AI model to answer it as students of different ages would, then compare every work in this class with those answers sentence by sentence. A close match in the same order sends the work to review.
+        {t("Paste the assignment. We ask an AI model to answer it as students of different ages would, then compare every work in this class with those answers sentence by sentence. A close match in the same order sends the work to review.")}
       </p>
       <div className="flex flex-col md:flex-row gap-2">
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} maxLength={2000}
           placeholder="Напишите сочинение-рассуждение: нужно ли читать книги в эпоху интернета?"
           className="flex-1 bg-transparent border border-[var(--line-strong)] px-2.5 py-1.5 text-sm text-ink-50 outline-none focus:border-signal-amber" />
         <button type="button" disabled={prompt.trim().length < 15 || create.isPending} onClick={() => create.mutate()} className={`${BTN} disabled:opacity-40 self-start`}>
-          Generate answers
+          {t("Generate answers")}
         </button>
       </div>
       {sets.length > 0 && (
@@ -90,8 +99,8 @@ function ShadowPanel({ classId }: { classId: string }) {
             <div key={s.id} className="py-2">
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} className="flex-1 text-left text-sm text-ink-100 truncate hover:text-ink-50">{s.prompt}</button>
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500">{SHADOW_STATUS[s.status]} · {s.answers}/{s.target}</span>
-                <button type="button" onClick={() => remove.mutate(s.id)} className="font-mono text-[10px] uppercase text-ink-600 hover:text-signal-blood">Remove</button>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500">{t(SHADOW_STATUS[s.status])} · {s.answers}/{s.target}</span>
+                <button type="button" onClick={() => remove.mutate(s.id)} className="font-mono text-[10px] uppercase text-ink-600 hover:text-signal-blood">{t("Remove")}</button>
               </div>
               {s.error && <div className="text-xs text-signal-blood mt-1">{s.error}</div>}
               {open === s.id && detail && (
@@ -124,42 +133,42 @@ function RadarPanel({ classId }: { classId: string }) {
   return (
     <section className="mb-8 border border-[var(--line-strong)] p-4">
       <div className="flex items-baseline justify-between gap-3 mb-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">Class radar · last {radar.days} days</div>
-        <div className="font-mono text-[10px] text-ink-600">{radar.submissions} works compared</div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{tn(radar.days, "Class radar · last {n} day", "Class radar · last {n} days")}</div>
+        <div className="font-mono text-[10px] text-ink-600">{tn(radar.submissions, "{n} work compared", "{n} works compared")}</div>
       </div>
       {quiet ? (
-        <p className="text-sm text-ink-400">No shared skeletons and no sudden jumps. Patterns appear once a few works are in.</p>
+        <p className="text-sm text-ink-400">{t("No shared skeletons and no sudden jumps. Patterns appear once a few works are in.")}</p>
       ) : (
         <div className="grid md:grid-cols-2 gap-6 mt-2">
           <div>
-            <div className="text-sm text-ink-100 mb-1">Works built on the same skeleton</div>
-            <p className="text-xs text-ink-500 mb-2">Most sentences have a close match in the other work, in the same order. Often one shared prompt or source.</p>
+            <div className="text-sm text-ink-100 mb-1">{t("Works built on the same skeleton")}</div>
+            <p className="text-xs text-ink-500 mb-2">{t("Most sentences have a close match in the other work, in the same order. Often one shared prompt or source.")}</p>
             {!radar.skeleton_data.enough && (
               <p className="text-xs text-ink-400">
-                Not enough data yet: {radar.skeleton_data.works} of {radar.skeleton_data.need_works} works from {radar.skeleton_data.students} of {radar.skeleton_data.need_students} students. A class baseline is needed before any pair can stand out.
+                {t("Not enough data yet: {works} of {needWorks} works from {students} of {needStudents} students. A class baseline is needed before any pair can stand out.", { works: radar.skeleton_data.works, needWorks: radar.skeleton_data.need_works, students: radar.skeleton_data.students, needStudents: radar.skeleton_data.need_students })}
               </p>
             )}
-            {radar.skeleton_data.enough && radar.clusters.length === 0 && <p className="text-xs text-ink-600">None.</p>}
+            {radar.skeleton_data.enough && radar.clusters.length === 0 && <p className="text-xs text-ink-600">{t("None.")}</p>}
             {radar.clusters.map((group) => (
               <div key={group.join()} className="py-1.5 border-b border-[var(--line)] last:border-0 flex flex-wrap gap-x-3 gap-y-1">
                 {group.map((sid) => (
                   <Link key={sid} to={`/results/${sid}`} state={{ supervising: true }} className="text-signal-amber hover:underline text-sm">{names.get(sid) ?? sid.slice(0, 8)}</Link>
                 ))}
                 <span className="font-mono text-[11px] text-ink-500">
-                  {Math.round(100 * Math.max(...radar.shared_skeletons.filter((p) => group.includes(p.a.submission_id)).map((p) => p.aligned_share)))}% aligned
+                  {Math.round(100 * Math.max(...radar.shared_skeletons.filter((p) => group.includes(p.a.submission_id)).map((p) => p.aligned_share)))}% {t("aligned")}
                 </span>
               </div>
             ))}
           </div>
           <div>
-            <div className="text-sm text-ink-100 mb-1">Sudden jumps</div>
-            <p className="text-xs text-ink-500 mb-2">A work far from the same student's earlier ones. Judged only after {radar.jump_history_needed} earlier works, so a strong student is compared with their own level, not the class.</p>
-            {radar.level_jumps.length === 0 && <p className="text-xs text-ink-600">None.</p>}
+            <div className="text-sm text-ink-100 mb-1">{t("Sudden jumps")}</div>
+            <p className="text-xs text-ink-500 mb-2">{t("A work far from the same student's earlier ones. Judged only after {n} earlier works, so a strong student is compared with their own level, not the class.", { n: radar.jump_history_needed })}</p>
+            {radar.level_jumps.length === 0 && <p className="text-xs text-ink-600">{t("None.")}</p>}
             {radar.level_jumps.slice(0, 8).map((j) => (
               <Link key={j.submission_id} to={`/results/${j.submission_id}`} state={{ supervising: true }} className="block py-1.5 border-b border-[var(--line)] last:border-0 hover:bg-ink-800/40">
                 <span className="text-sm text-ink-100">{j.student}</span>
-                <span className="font-mono text-[10px] text-ink-600 ml-2">{new Date(j.created_at).toLocaleDateString()}</span>
-                <div className="text-xs text-signal-amber">{j.reasons.join("; ")}</div>
+                <span className="font-mono text-[10px] text-ink-600 ml-2">{new Date(j.created_at).toLocaleDateString(locale())}</span>
+                <div className="text-xs text-signal-amber">{j.reasons.map(jumpReason).join("; ")}</div>
               </Link>
             ))}
           </div>
@@ -186,10 +195,10 @@ function ObjectionRows({ classId }: { classId: string }) {
   return (
     <section className="mb-8">
       <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">
-        Objections {rows.length > 0 && <span className="text-signal-amber">· {rows.length} open</span>}
+        {t("Objections")} {rows.length > 0 && <span className="text-signal-amber">· {t("{n} open", { n: rows.length })}</span>}
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-ink-500">No open objections.</p>
+        <p className="text-sm text-ink-500">{t("No open objections.")}</p>
       ) : (
         <div className="divide-y divide-[var(--line-strong)]">
           {rows.map((o) => (
@@ -202,9 +211,9 @@ function ObjectionRows({ classId }: { classId: string }) {
               </span>
               <span className="md:col-span-4 flex items-center justify-end gap-2 font-mono text-[11px] text-ink-400">
                 {o.overdue && (
-                  <span className="border border-signal-blood/60 text-signal-blood px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]">Overdue</span>
+                  <span className="border border-signal-blood/60 text-signal-blood px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]">{t("Overdue")}</span>
                 )}
-                <span>answer by {new Date(o.due_at).toLocaleDateString()}</span>
+                <span>{t("answer by {date}", { date: new Date(o.due_at).toLocaleDateString(locale()) })}</span>
               </span>
             </Link>
           ))}
@@ -231,7 +240,7 @@ function TeacherView({ id }: { id: string }) {
     mutationFn: () => classrooms.rotateCode(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["classroom", id] });
-      toast.success("New join code issued; the old one no longer works");
+      toast.success(t("New join code issued; the old one no longer works"));
     },
   });
   const dropStudent = useMutation({
@@ -250,7 +259,7 @@ function TeacherView({ id }: { id: string }) {
     mutationFn: (level: number | null) => classrooms.update(id, { level }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["classroom", id] });
-      toast.success("Class year saved; new work is checked against it");
+      toast.success(t("Class year saved; new work is checked against it"));
     },
   });
 
@@ -264,50 +273,50 @@ function TeacherView({ id }: { id: string }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Export failed");
+      toast.error(t("Export failed"));
     }
   };
 
-  if (!cls) return <p className="text-ink-500">Loading…</p>;
+  if (!cls) return <p className="text-ink-500">{t("Loading…")}</p>;
 
-  const filterButtons: [string, string][] = [["flagged", "Flagged"], ["", "All"]];
+  const filterButtons: [string, string][] = [["flagged", t("Flagged")], ["", t("All")]];
 
   return (
     <div>
       <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
         <div>
-          <span className="label-mono">Classroom · teacher</span>
+          <span className="label-mono">{t("Classroom · teacher")}</span>
           <h1 className="font-display text-4xl text-white mt-2">{cls.name}</h1>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 border border-[var(--line-strong)] px-3 py-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">join code</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("join code")}</span>
             <span className="font-mono tracking-[0.2em] text-ink-50">{cls.join_code}</span>
-            <button type="button" aria-label="Copy code" onClick={() => navigator.clipboard.writeText(cls.join_code || "")} className="text-ink-400 hover:text-signal-amber"><Copy size={13} /></button>
-            <button type="button" aria-label="New code" onClick={() => rotate.mutate()} className="text-ink-400 hover:text-signal-amber"><RefreshCw size={13} /></button>
+            <button type="button" aria-label={t("Copy code")} onClick={() => navigator.clipboard.writeText(cls.join_code || "")} className="text-ink-400 hover:text-signal-amber"><Copy size={13} /></button>
+            <button type="button" aria-label={t("New code")} onClick={() => rotate.mutate()} className="text-ink-400 hover:text-signal-amber"><RefreshCw size={13} /></button>
           </div>
           <select
             value={cls.level ?? ""}
             onChange={(e) => setLevel.mutate(e.target.value === "" ? null : Number(e.target.value))}
-            aria-label="Class year"
-            title="Used to check whether vocabulary fits the students' age"
+            aria-label={t("Class year")}
+            title={t("Used to check whether vocabulary fits the students' age")}
             className="bg-ink-950 border border-[var(--line-strong)] px-2 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300 focus:border-signal-amber outline-none"
           >
-            <option value="">Year not set</option>
-            {LEVEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <option value="">{t("Year not set")}</option>
+            {levelOptions().map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           <button type="button" onClick={exportCsv} className={BTN}><Download size={13} /> CSV</button>
-          <button type="button" onClick={() => archive.mutate()} className={BTN}><Archive size={13} /> {cls.archived ? "Restore" : "Archive"}</button>
+          <button type="button" onClick={() => archive.mutate()} className={BTN}><Archive size={13} /> {cls.archived ? t("Restore") : t("Archive")}</button>
         </div>
       </div>
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--line-strong)] mb-8">
           {[
-            ["Students", String(stats.students)],
-            ["Submissions", String(stats.total)],
-            ["Flagged", String(stats.flagged)],
-            ["Flagged share", `${Math.round(stats.flagged_share * 100)}%`],
+            [t("Students"), String(stats.students)],
+            [t("Submissions"), String(stats.total)],
+            [t("Flagged"), String(stats.flagged)],
+            [t("Flagged share"), `${Math.round(stats.flagged_share * 100)}%`],
           ].map(([label, value]) => (
             <div key={label} className="bg-ink-950 p-4">
               <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{label}</div>
@@ -318,7 +327,7 @@ function TeacherView({ id }: { id: string }) {
       )}
 
       <p className="text-xs text-ink-500 mb-6 max-w-2xl">
-        Text verdicts come from the Tribunal's text classifier plus bypass, source and style checks. Treat a flag as a reason to talk to the student, not as proof.
+        {t("Text verdicts come from the Tribunal's text classifier plus bypass, source and style checks. Treat a flag as a reason to talk to the student, not as proof.")}
       </p>
 
       <RadarPanel classId={id} />
@@ -328,9 +337,9 @@ function TeacherView({ id }: { id: string }) {
 
       <div className="grid lg:grid-cols-12 gap-8">
         <section className="lg:col-span-4">
-          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">Students</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">{t("Students")}</div>
           {roster.length === 0 ? (
-            <p className="text-sm text-ink-500">Share the join code with your students.</p>
+            <p className="text-sm text-ink-500">{t("Share the join code with your students.")}</p>
           ) : (
             <div className="divide-y divide-[var(--line-strong)]">
               {roster.map((m) => (
@@ -339,9 +348,9 @@ function TeacherView({ id }: { id: string }) {
                     className={`flex-1 text-left truncate ${filter.student === m.user_id ? "text-signal-amber" : "text-ink-100 hover:text-ink-50"}`}>
                     {m.username}
                   </button>
-                  <span className="font-mono text-[11px] text-ink-500 tabular-nums" title="submissions">{m.total}</span>
-                  <span className={`font-mono text-[11px] tabular-nums ${m.flagged ? "text-signal-blood" : "text-ink-600"}`} title="flagged">{m.flagged} flagged</span>
-                  <button type="button" aria-label="Take out of class" onClick={() => dropStudent.mutate(m.user_id)} className="text-ink-600 hover:text-signal-blood"><UserMinus size={13} /></button>
+                  <span className="font-mono text-[11px] text-ink-500 tabular-nums" title={t("submissions")}>{m.total}</span>
+                  <span className={`font-mono text-[11px] tabular-nums ${m.flagged ? "text-signal-blood" : "text-ink-600"}`} title={t("flagged")}>{t("{n} flagged", { n: m.flagged })}</span>
+                  <button type="button" aria-label={t("Take out of class")} onClick={() => dropStudent.mutate(m.user_id)} className="text-ink-600 hover:text-signal-blood"><UserMinus size={13} /></button>
                 </div>
               ))}
             </div>
@@ -359,7 +368,7 @@ function TeacherView({ id }: { id: string }) {
                 </button>
               );
             })}
-            {filter.student != null && <span className="text-ink-400">one student</span>}
+            {filter.student != null && <span className="text-ink-400">{t("one student")}</span>}
           </div>
           <SubmissionRows rows={rows} showStudent />
         </section>
@@ -384,18 +393,18 @@ function StudentView({ id }: { id: string }) {
       navigate(cls?.organization_slug ? `/${cls.organization_slug}` : "/");
     },
   });
-  if (!cls) return <p className="text-ink-500">Loading…</p>;
+  if (!cls) return <p className="text-ink-500">{t("Loading…")}</p>;
   return (
     <div>
       <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
         <div>
-          <span className="label-mono">Classroom · {cls.owner_name}</span>
+          <span className="label-mono">{t("Classroom")} · {cls.owner_name}</span>
           <h1 className="font-display text-4xl text-white mt-2">{cls.name}</h1>
-          <p className="text-sm text-ink-400 mt-2">Your teacher sees only what you submit to this class, never your personal checks.</p>
+          <p className="text-sm text-ink-400 mt-2">{t("Your teacher sees only what you submit to this class, never your personal checks.")}</p>
         </div>
         <div className="flex gap-2">
-          <Link to="submit" className="border border-signal-amber/60 text-signal-amber px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] hover:bg-signal-amber/10">Submit work</Link>
-          <button type="button" onClick={() => exit.mutate()} className="border border-[var(--line-strong)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 hover:text-signal-blood">Leave</button>
+          <Link to="submit" className="border border-signal-amber/60 text-signal-amber px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] hover:bg-signal-amber/10">{t("Submit work")}</Link>
+          <button type="button" onClick={() => exit.mutate()} className="border border-[var(--line-strong)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 hover:text-signal-blood">{t("Leave")}</button>
         </div>
       </div>
       <SubmissionRows rows={rows} showStudent={false} />
@@ -406,7 +415,7 @@ function StudentView({ id }: { id: string }) {
 export default function ClassroomDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: cls, isError } = useQuery({ queryKey: ["classroom", id], queryFn: () => classrooms.detail(id!).then((r) => r.data), enabled: !!id });
-  if (isError) return <p className="text-ink-500">Classroom not found.</p>;
-  if (!cls || !id) return <p className="text-ink-500">Loading…</p>;
+  if (isError) return <p className="text-ink-500">{t("Classroom not found.")}</p>;
+  if (!cls || !id) return <p className="text-ink-500">{t("Loading…")}</p>;
   return cls.role === "teacher" ? <TeacherView id={id} /> : <StudentView id={id} />;
 }

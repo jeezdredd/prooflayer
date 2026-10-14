@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { Fragment, lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./stores/authStore";
@@ -14,6 +14,7 @@ import { NotFoundPage, ForbiddenPage, ServerErrorPage } from "./pages/ErrorPages
 import { ToastContainer } from "./components/ui/Toast";
 import ConsentBanner from "./components/ConsentBanner";
 import { CLASSROOM_URL, IS_CLASSROOM_APP } from "./appMode";
+import { useLangStore } from "./i18n";
 
 const UploadPage = lazy(() => import("./pages/UploadPage"));
 const ResultPage = lazy(() => import("./pages/ResultPage"));
@@ -110,20 +111,23 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const lang = useLangStore((s) => s.lang);
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <ErrorBoundary>
-          {IS_CLASSROOM_APP ? (
-            <Suspense fallback={<PageLoader />}>
-              <ClassroomRoutes />
-            </Suspense>
-          ) : (
-            <AppRoutes />
-          )}
-        </ErrorBoundary>
+        <Fragment key={lang}>
+          <ErrorBoundary>
+            {IS_CLASSROOM_APP ? (
+              <Suspense fallback={<PageLoader />}>
+                <ClassroomRoutes />
+              </Suspense>
+            ) : (
+              <AppRoutes />
+            )}
+          </ErrorBoundary>
+          <ConsentBanner />
+        </Fragment>
         <ToastContainer />
-        <ConsentBanner />
       </BrowserRouter>
     </QueryClientProvider>
   );

@@ -1,11 +1,12 @@
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { OriginalityMatch, Submission } from "../types";
+import { msg, t } from "../i18n";
 
 const KIND_LABEL: Record<OriginalityMatch["kind"], string> = {
-  exact: "word for word",
-  paraphrase: "reworded",
-  translation: "translated",
+  exact: msg("word for word"),
+  paraphrase: msg("reworded"),
+  translation: msg("translated"),
 };
 
 function tone(originality: number) {
@@ -39,21 +40,21 @@ export default function OriginalityPanel({ submission }: { submission: Submissio
   return (
     <div className="px-6 py-5 border-b border-ink-700">
       <div className="flex items-baseline justify-between gap-4 mb-2">
-        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">Originality</div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("Originality")}</div>
         {report.status === "done" && report.originality != null ? (
           <div className={`font-display text-3xl tabular-nums ${tone(report.originality)}`}>{Math.round(report.originality)}%</div>
         ) : (
-          <div className="font-mono text-[11px] text-ink-500">{report.status === "failed" ? "check failed" : "checking sources…"}</div>
+          <div className="font-mono text-[11px] text-ink-500">{report.status === "failed" ? t("check failed") : t("checking sources…")}</div>
         )}
       </div>
       {report.status === "done" && (
         <>
           <p className="text-xs text-ink-500 mb-3">
-            Compared with every work on ProofLayer{report.web_searched ? " and the open web" : ""}, including reworded and translated passages.
-            Quotes with references are fine; judge each match in context.
+            {report.web_searched ? t("Compared with every work on ProofLayer and the open web, including reworded and translated passages.") : t("Compared with every work on ProofLayer, including reworded and translated passages.")}{" "}
+            {t("Quotes with references are fine; judge each match in context.")}
           </p>
           {report.matches.length === 0 ? (
-            <p className="text-sm text-signal-sage">No matching sources found.</p>
+            <p className="text-sm text-signal-sage">{t("No matching sources found.")}</p>
           ) : (
             <div className="divide-y divide-[var(--line-strong)]">
               {report.matches.slice(0, 12).map((m, i) => (
@@ -62,7 +63,7 @@ export default function OriginalityPanel({ submission }: { submission: Submissio
                     <span className="font-mono text-[11px] tabular-nums text-ink-400 w-12">{m.share}%</span>
                     <span className="text-sm min-w-0"><SourceTitle match={m} /></span>
                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">
-                      {m.source === "web" ? "web" : "ProofLayer"} · {KIND_LABEL[m.kind]}
+                      {m.source === "web" ? t("web") : "ProofLayer"} · {t(KIND_LABEL[m.kind])}
                     </span>
                   </summary>
                   <div className="mt-2 pl-[3.75rem] space-y-1.5">

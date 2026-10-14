@@ -3,6 +3,8 @@ import { GraduationCap, LogOut } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { auth } from "../api/endpoints";
 import TermsGate from "../components/TermsGate";
+import LangSwitch from "../components/LangSwitch";
+import { t } from "../i18n";
 
 export default function ClassroomShell() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -27,19 +29,20 @@ export default function ClassroomShell() {
               Proof<span className="italic text-iris">Layer</span>
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-500 border-l border-[var(--line-strong)] pl-2.5">
-              Classroom
+              {t("Classroom")}
             </span>
           </Link>
           <div className="flex items-center gap-4 font-mono text-[11px] text-ink-400">
+            <LangSwitch />
             {isAuthenticated ? (
               <>
                 <span className="hidden sm:inline">{user?.username}</span>
-                <button type="button" onClick={signOut} className="hover:text-ink-100" aria-label="Sign out">
+                <button type="button" onClick={signOut} className="hover:text-ink-100" aria-label={t("Sign out")}>
                   <LogOut size={14} />
                 </button>
               </>
             ) : (
-              <Link to="/login" className="hover:text-ink-100 uppercase tracking-[0.14em]">Sign in</Link>
+              <Link to="/login" className="hover:text-ink-100 uppercase tracking-[0.14em]">{t("Sign in")}</Link>
             )}
           </div>
         </div>

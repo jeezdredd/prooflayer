@@ -11,6 +11,8 @@ import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
 import TermsGate from "./TermsGate";
 import { FeedbackModal, FeedbackTrigger } from "./FeedbackModal";
+import LangSwitch from "./LangSwitch";
+import { msg, t } from "../i18n";
 
 interface NavItem {
   to: string;
@@ -20,25 +22,25 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/upload", label: "Verify", code: "01", Icon: Upload },
-  { to: "/dashboard", label: "Dashboard", code: "02", Icon: LayoutDashboard },
-  { to: "/factcheck", label: "Fact Check", code: "03", Icon: ScrollText },
-  { to: "/classroom", label: "Classroom", code: "04", Icon: GraduationCap },
-  { to: "/community-fakes", label: "Community", code: "05", Icon: Users },
-  { to: "/feed", label: "Public Feed", code: "06", Icon: Globe },
-  { to: "/compare", label: "Compare", code: "07", Icon: GitCompareArrows },
-  { to: "/embed", label: "Embed", code: "08", Icon: Code2 },
-  { to: "/developers", label: "API", code: "09", Icon: KeyRound },
-  { to: "/pricing", label: "Pricing", code: "10", Icon: CreditCard },
-  { to: "/status", label: "Status", code: "11", Icon: Activity },
-  { to: "/credits", label: "Credits", code: "12", Icon: Layers },
+  { to: "/upload", label: msg("Verify"), code: "01", Icon: Upload },
+  { to: "/dashboard", label: msg("Dashboard"), code: "02", Icon: LayoutDashboard },
+  { to: "/factcheck", label: msg("Fact Check"), code: "03", Icon: ScrollText },
+  { to: "/classroom", label: msg("Classroom"), code: "04", Icon: GraduationCap },
+  { to: "/community-fakes", label: msg("Community"), code: "05", Icon: Users },
+  { to: "/feed", label: msg("Public Feed"), code: "06", Icon: Globe },
+  { to: "/compare", label: msg("Compare"), code: "07", Icon: GitCompareArrows },
+  { to: "/embed", label: msg("Embed"), code: "08", Icon: Code2 },
+  { to: "/developers", label: msg("API"), code: "09", Icon: KeyRound },
+  { to: "/pricing", label: msg("Pricing"), code: "10", Icon: CreditCard },
+  { to: "/status", label: msg("Status"), code: "11", Icon: Activity },
+  { to: "/credits", label: msg("Credits"), code: "12", Icon: Layers },
 ];
 
 function Time() {
-  const t = new Date();
+  const now = new Date();
   return (
     <span className="ticker">
-      {String(t.getUTCHours()).padStart(2, "0")}:{String(t.getUTCMinutes()).padStart(2, "0")} UTC
+      {String(now.getUTCHours()).padStart(2, "0")}:{String(now.getUTCMinutes()).padStart(2, "0")} UTC
     </span>
   );
 }
@@ -51,7 +53,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
         to="/"
         onClick={onNavigate}
         className="flex items-end gap-2 px-5 py-5 group"
-        title="Back to landing"
+        title={t("Back to landing")}
       >
         <span className="font-display text-[1.6rem] leading-none text-ink-50 tracking-tight">
           Proof<span className="italic text-iris">Layer</span>
@@ -64,14 +66,14 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
         className="mx-3 mb-4 px-3 py-2 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 hover:text-signal-amber transition-colors group rounded-sm"
       >
         <Home size={14} strokeWidth={1.5} />
-        <span>Landing</span>
+        <span>{t("Landing")}</span>
         <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
       </Link>
 
       <div className="px-5 mb-3">
         <div className="hairline" />
         <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-600 mt-3">
-          Pipeline
+          {t("Pipeline")}
         </div>
       </div>
 
@@ -105,7 +107,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                     <Icon size={16} strokeWidth={1.5} />
                   </span>
                   <span className="text-ink-500 mr-1 tabular-nums">{item.code}</span>
-                  <span>{item.label}</span>
+                  <span>{t(item.label)}</span>
                 </>
               )}
             </NavLink>
@@ -135,7 +137,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                 )}
                 <Shield size={16} strokeWidth={1.5} />
                 <span className="text-ink-500 mr-1 tabular-nums">13</span>
-                <span>Review</span>
+                <span>{t("Review")}</span>
               </>
             )}
           </NavLink>
@@ -157,7 +159,7 @@ function AgentFooter({ onLogout }: { onLogout: () => void }) {
         <div className="flex items-center gap-2 mb-1">
           <span className="w-1.5 h-1.5 rounded-full bg-signal-sage pulse-dot" />
           <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">
-            Agent
+            {t("Agent")}
           </span>
         </div>
         <div className="font-mono text-xs text-ink-200 truncate" title={user.email}>
@@ -167,7 +169,7 @@ function AgentFooter({ onLogout }: { onLogout: () => void }) {
           CASE/{caseId} · <Time />
         </div>
         <Link to="/account" className="mt-2 inline-block font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 hover:text-signal-amber">
-          Account &amp; privacy →
+          {t("Account & privacy")} →
         </Link>
       </div>
       <motion.button
@@ -176,8 +178,9 @@ function AgentFooter({ onLogout }: { onLogout: () => void }) {
         whileTap={{ scale: 0.98 }}
       >
         <LogOut size={13} strokeWidth={1.5} />
-        Logout
+        {t("Logout")}
       </motion.button>
+      <LangSwitch className="mt-2 justify-center" />
     </div>
   );
 }
@@ -209,10 +212,11 @@ export default function Layout() {
         <Link to="/" className="font-display text-2xl text-ink-50 leading-none">
           Proof<span className="italic text-iris">Layer</span>
         </Link>
+        <LangSwitch className="ml-auto mr-3" />
         <button
           onClick={() => setMobileOpen((v) => !v)}
           className="text-ink-200 p-1.5"
-          aria-label="Toggle menu"
+          aria-label={t("Toggle menu")}
         >
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>

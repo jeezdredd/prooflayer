@@ -1,4 +1,5 @@
 import type { Classroom } from "../types";
+import { t } from "../i18n";
 
 export const MAIN_URL: string = import.meta.env.VITE_MAIN_URL || "https://prooflayer.cloud";
 
@@ -13,17 +14,19 @@ export function classPath(c: Pick<Classroom, "id" | "organization_slug">): strin
 export function errorText(err: unknown, fallback: string): string {
   const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
   if (!data) return fallback;
-  if (typeof data.detail === "string") return data.detail;
+  if (typeof data.detail === "string") return t(data.detail);
   const first = Object.values(data)[0];
-  if (Array.isArray(first)) return String(first[0]);
+  if (Array.isArray(first)) return t(String(first[0]));
   return fallback;
 }
 
-export const LEVEL_OPTIONS: { value: number; label: string }[] = [
-  ...Array.from({ length: 11 }, (_, i) => ({ value: i + 1, label: `Grade ${i + 1}` })),
-  ...Array.from({ length: 6 }, (_, i) => ({ value: 12 + i, label: `University year ${i + 1}` })),
-];
+export function levelOptions(): { value: number; label: string }[] {
+  return [
+    ...Array.from({ length: 11 }, (_, i) => ({ value: i + 1, label: t("Grade {n}", { n: i + 1 }) })),
+    ...Array.from({ length: 6 }, (_, i) => ({ value: 12 + i, label: t("University year {n}", { n: i + 1 }) })),
+  ];
+}
 
 export function levelLabel(level: number | null | undefined): string {
-  return LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? "Year not set";
+  return levelOptions().find((o) => o.value === level)?.label ?? t("Year not set");
 }
