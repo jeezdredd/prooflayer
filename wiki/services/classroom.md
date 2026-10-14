@@ -91,3 +91,21 @@ work, Leave). Verify page shows a "Submit to" picker when the user belongs to an
 > Since Tribunal 1.5 essays go through `text_classifier` (fine-tuned e5-small, see
 > [[concepts/text-signals]]): about 2-4% of human essays get `suspicious`, none get `fake` on the
 > held-out set. The teacher view still says a flag is a reason to talk to the student.
+
+## Class radar (2026-10-14)
+
+`GET /classroom/classrooms/<id>/radar/?days=60` (teacher or school admin, `can_supervise`), code in
+`classroom/radar.py`, panel on the teacher view.
+
+- **Shared skeleton.** For every pair of works by different students in the window (completed, up to
+  200), sentence vectors from `plagiarism_sentence_vectors` are aligned: share of sentences whose best
+  match in the other work has cosine >= 0.88 (averaged both ways) and the share of aligned matches
+  that keep their order. A pair is reported when its share is an outlier for this class
+  (>= mean + 2.5 sd over all pairs, at least 0.35; with fewer than 6 pairs it must reach 0.5) and at
+  least 60% of matches are in order. The class baseline matters: one assignment topic makes every
+  pair similar, a shared prompt or source makes one pair stand out. Pairs are merged into clusters.
+- **Sudden jumps.** Per student, with at least two earlier works: readability grade (from
+  `text_grade_fit`) 3+ grades above the median of earlier works, `text_classifier` ai_probability
+  >= 0.75 when the earlier median was <= 0.3, or a `text_style` flag.
+
+Read-only, computed on request, never changes a verdict.

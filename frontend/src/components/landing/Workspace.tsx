@@ -171,6 +171,7 @@ const CLASSROOM = (
       </div>
     ))}
     <div className="mt-3 text-ink-500">Style drift vs. own earlier work: <span className="text-signal-amber">0.74</span> for D. Ivanov</div>
+    <div className="mt-1 text-ink-500">Radar: <span className="text-signal-amber">3 essays share one skeleton</span>, 84% of sentences aligned in order</div>
   </div>
 );
 
@@ -321,7 +322,7 @@ const FEATURES: Feature[] = [
   {
     id: "classroom", group: "teach", Icon: GraduationCap, title: "Classroom", to: "/pricing",
     line: "Your school's own space where students hand in work and teachers see class submissions only.",
-    facts: ["Class level from grade 1 to university year 6", "Vocabulary checked against what that grade usually writes", "Style compared with the student's own earlier work"],
+    facts: ["Class level from grade 1 to university year 6", "Vocabulary checked against what that grade usually writes", "Style compared with the student's own earlier work", "Class radar: essays built on one skeleton and sudden jumps in a student's level"],
     preview: CLASSROOM,
   },
   {

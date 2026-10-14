@@ -20,10 +20,13 @@ from users.permissions import IsVerifiedUser
 
 from .access import can_supervise, supervised_q
 from .models import Classroom, Membership
+from .radar import class_radar
 from .serializers import ClassroomSerializer, ClassSubmissionSerializer, MemberSerializer
 
 FLAGGED_VERDICTS = ("fake", "likely_fake", "suspicious", "needs_review")
 TIMELINE_DAYS = 30
+RADAR_DAYS = 60
+RADAR_MAX_DAYS = 365
 CanCreateClassroom = tier_feature("can_classroom", "Classroom")
 
 
@@ -159,6 +162,15 @@ class ClassroomViewSet(
             "by_verdict": by_verdict,
             "timeline": timeline,
         })
+
+    @action(detail=True, methods=["get"])
+    def radar(self, request, id=None):
+        classroom = self._owned()
+        try:
+            days = min(RADAR_MAX_DAYS, max(1, int(request.query_params.get("days", RADAR_DAYS))))
+        except ValueError:
+            days = RADAR_DAYS
+        return Response({"days": days, **class_radar(classroom, timezone.now() - timedelta(days=days))})
 
     @action(detail=True, methods=["get"], url_path="export.csv")
     def export_csv(self, request, id=None):

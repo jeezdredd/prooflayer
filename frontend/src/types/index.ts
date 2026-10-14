@@ -380,6 +380,19 @@ export interface ClassSubmission {
   originality: number | null;
 }
 
+export interface RadarRef {
+  submission_id: string;
+  student: string;
+}
+
+export interface ClassRadar {
+  days: number;
+  submissions: number;
+  shared_skeletons: { a: RadarRef; b: RadarRef; aligned_share: number; in_order: number }[];
+  clusters: string[][];
+  level_jumps: { submission_id: string; student: string; created_at: string; reasons: string[] }[];
+}
+
 export interface ClassStats {
   students: number;
   total: number;

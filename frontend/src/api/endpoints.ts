@@ -9,6 +9,7 @@ import type {
   Organization,
   ClassMember,
   ClassStats,
+  ClassRadar,
   ClassSubmission,
   Classroom,
   BatchDetail,
@@ -239,6 +240,7 @@ export const classrooms = {
   submissions: (id: string, params?: { student?: number; verdict?: string }) =>
     client.get<ClassSubmission[]>(`/classroom/classrooms/${id}/submissions/`, { params }),
   stats: (id: string) => client.get<ClassStats>(`/classroom/classrooms/${id}/stats/`),
+  radar: (id: string, days?: number) => client.get<ClassRadar>(`/classroom/classrooms/${id}/radar/`, { params: days ? { days } : undefined }),
   exportCsv: (id: string) => client.get<Blob>(`/classroom/classrooms/${id}/export.csv/`, { responseType: "blob" }),
 };
 
