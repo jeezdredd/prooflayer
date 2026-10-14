@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import LegalLayout from "../components/LegalLayout";
+import PrivacyRu from "./legal/PrivacyRu";
+import { currentLang } from "../i18n";
 import { LEGAL, operatorLine } from "../legal";
 
 const h2 = "text-ink-100 text-base mb-3";
@@ -12,6 +14,7 @@ function Mail({ to }: { to: string }) {
 }
 
 export default function PrivacyPage() {
+  if (currentLang() === "ru") return <PrivacyRu />;
   return (
     <LegalLayout title="Privacy Policy" updated={LEGAL.updated}>
       <section>
@@ -141,7 +144,7 @@ export default function PrivacyPage() {
         <h2 className={h2}>12. Cookies and browser storage</h2>
         <ul className={list}>
           <li>We set one strictly necessary cookie, <code className={label}>prooflayer_refresh</code>, on our API host. It keeps you signed in, including on classroom.prooflayer.cloud, and is httpOnly, Secure and SameSite=Lax.</li>
-          <li>Your browser keeps your access token in sessionStorage and your profile in localStorage, together with small flags such as whether you closed the cookie notice and whether this visit was already counted.</li>
+          <li>Your browser keeps your access token in sessionStorage and your profile in localStorage, together with small flags such as whether you closed the cookie notice, whether this visit was already counted and which language you chose.</li>
           <li>We do not use analytics or advertising cookies.</li>
         </ul>
       </section>

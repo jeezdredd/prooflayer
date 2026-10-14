@@ -66,6 +66,8 @@ changelog with measured numbers lives in `wiki/concepts/tribunal.md`.
 - PDF reports, embeddable widget, MV3 browser extension (Chrome + Firefox)
 - Free / Pro / Education / Enterprise tiers, JWT auth with httpOnly refresh rotation
 - Torch detectors run on GPU when available (AMD ROCm worker, see `wiki/services/gpu-rocm.md`)
+- Interface in Russian and English: RU/EN switch, browser language on first visit, Russian legal pages
+  (`frontend/src/i18n`, `npm run i18n:check` lists any text without a Russian translation)
 
 ## Stack
 
@@ -210,6 +212,7 @@ See `deploy/README.md`. Self-hosted Ubuntu homelab behind Cloudflare Tunnel. Dep
 pytest backend/
 pytest backend/factcheck/     # one app
 pytest -k test_caching        # filter by keyword
+cd frontend && npm run i18n:check   # every t() text has a Russian translation
 ```
 
 ## License

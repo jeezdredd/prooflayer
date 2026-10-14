@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import LangSwitch from "./LangSwitch";
-import { t } from "../i18n";
+import { currentLang, t } from "../i18n";
 
 interface Props {
   title: string;
@@ -30,6 +30,11 @@ export default function LegalLayout({ title, updated, children }: Props) {
         <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-ink-600 mb-4">{t("Legal")}</div>
         <h1 className="font-display text-3xl text-ink-50 mb-2">{title}</h1>
         <p className="font-mono text-[10px] text-ink-600 mb-10">{t("Last updated: {date}", { date: updated })}</p>
+        {currentLang() === "ru" && (
+          <p className="font-mono text-[11px] text-ink-500 border border-white/10 px-3 py-2 -mt-6 mb-10">
+            {t("This translation is provided for convenience. If the Russian and English texts differ, the English version applies.")}
+          </p>
+        )}
 
         <div className="space-y-8 font-mono text-[13px] text-ink-300 leading-relaxed">
           {children}

@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { t } from "../../i18n";
 
 export function Spinner({ size = 20, className }: { size?: number; className?: string }) {
   return (
@@ -6,7 +7,7 @@ export function Spinner({ size = 20, className }: { size?: number; className?: s
       className={clsx("inline-block rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin-slow", className)}
       style={{ width: size, height: size }}
       role="status"
-      aria-label="Loading"
+      aria-label={t("Loading…")}
     />
   );
 }

@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import LegalLayout from "../components/LegalLayout";
+import TermsRu from "./legal/TermsRu";
+import { currentLang } from "../i18n";
 import { LEGAL, operatorLine } from "../legal";
 
 export default function TermsPage() {
+  if (currentLang() === "ru") return <TermsRu />;
   return (
     <LegalLayout title="Terms of Service" updated={LEGAL.updated}>
       <section>

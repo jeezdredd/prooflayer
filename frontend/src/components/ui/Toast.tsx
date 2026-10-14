@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import clsx from "clsx";
 import { useEffect } from "react";
+import { t } from "../../i18n";
 
 type ToastKind = "success" | "error" | "info";
 
@@ -67,22 +68,22 @@ export function ToastContainer() {
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-      {toasts.map((t) => (
+      {toasts.map((item) => (
         <div
-          key={t.id}
+          key={item.id}
           className={clsx(
             "pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg animate-slide-in-right min-w-[280px] max-w-md",
-            KIND_STYLES[t.kind],
+            KIND_STYLES[item.kind],
           )}
         >
-          <div className={clsx("w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0", KIND_DOT[t.kind])}>
-            {KIND_ICONS[t.kind]}
+          <div className={clsx("w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0", KIND_DOT[item.kind])}>
+            {KIND_ICONS[item.kind]}
           </div>
-          <div className="text-sm flex-1">{t.message}</div>
+          <div className="text-sm flex-1">{item.message}</div>
           <button
-            onClick={() => dismiss(t.id)}
+            onClick={() => dismiss(item.id)}
             className="text-gray-400 hover:text-gray-700 text-lg leading-none"
-            aria-label="Dismiss"
+            aria-label={t("dismiss")}
           >
             ×
           </button>

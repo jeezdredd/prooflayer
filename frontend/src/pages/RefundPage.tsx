@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
 import LegalLayout from "../components/LegalLayout";
+import RefundRu from "./legal/RefundRu";
+import { currentLang } from "../i18n";
 import { LEGAL, operatorLine } from "../legal";
 
 const linkClass = "text-iris hover:underline";
 
 export default function RefundPage() {
+  if (currentLang() === "ru") return <RefundRu />;
   return (
     <LegalLayout title="Refund Policy" updated={LEGAL.updated}>
       <section>

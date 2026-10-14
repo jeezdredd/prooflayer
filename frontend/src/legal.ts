@@ -1,5 +1,5 @@
 import { IS_CLASSROOM_APP } from "./appMode";
-import { msg } from "./i18n";
+import { currentLang, msg } from "./i18n";
 
 export const TERMS_VERSION = "2026-10-13";
 
@@ -15,7 +15,9 @@ export const LEGAL = {
   operatorRegistration: "",
   operatorAddress: "",
   country: "Republic of Kazakhstan",
+  countryRu: "Республика Казахстан",
   updated: "October 13, 2026",
+  updatedRu: "13 октября 2026 г.",
   emails: {
     legal: "legal@prooflayer.cloud",
     finance: "finance@prooflayer.cloud",
@@ -25,8 +27,15 @@ export const LEGAL = {
 };
 
 export function operatorLine(): string {
+  const ru = currentLang() === "ru";
+  const country = ru ? LEGAL.countryRu : LEGAL.country;
   const parts = [LEGAL.operatorName, LEGAL.operatorRegistration, LEGAL.operatorAddress].filter(Boolean);
-  return parts.length ? `${parts.join(", ")}, ${LEGAL.country}` : `the operator of ProofLayer, ${LEGAL.country}`;
+  if (parts.length) return `${parts.join(", ")}, ${country}`;
+  return ru ? `оператор ProofLayer, ${country}` : `the operator of ProofLayer, ${country}`;
+}
+
+export function legalUpdated(): string {
+  return currentLang() === "ru" ? LEGAL.updatedRu : LEGAL.updated;
 }
 
 export function legalHref(path: string): string {

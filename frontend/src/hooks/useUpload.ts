@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { content } from "../api/endpoints";
 import { useUploadStore } from "../stores/uploadStore";
 import { toast } from "../components/ui/Toast";
+import { t } from "../i18n";
 
 export function useUploadFile() {
   const { setProgress, setSubmissionId, setStatus, setError } = useUploadStore();
@@ -20,13 +21,13 @@ export function useUploadFile() {
       if (err instanceof AxiosError && err.response?.status === 402) {
         const code = err.response.data?.code;
         if (code === "upload_limit_reached") {
-          const msg = "Monthly upload limit reached. Upgrade to Pro for more.";
-          setError(msg);
-          toast.error(msg);
+          const limitText = t("Monthly upload limit reached. Upgrade to Pro for more.");
+          setError(limitText);
+          toast.error(limitText);
           return;
         }
       }
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : t("Upload failed"));
     },
   });
 }

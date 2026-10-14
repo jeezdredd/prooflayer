@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import LegalLayout from "../components/LegalLayout";
+import DataProcessingRu from "./legal/DataProcessingRu";
+import { currentLang } from "../i18n";
 import { LEGAL, operatorLine } from "../legal";
 
 const SUBPROCESSORS: { name: string; country?: string; purpose: string }[] = [
@@ -42,6 +44,7 @@ const SUBPROCESSORS: { name: string; country?: string; purpose: string }[] = [
 ];
 
 export default function DataProcessingPage() {
+  if (currentLang() === "ru") return <DataProcessingRu />;
   const legalMail = `mailto:${LEGAL.emails.legal}`;
 
   return (
