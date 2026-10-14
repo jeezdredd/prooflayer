@@ -1,6 +1,7 @@
+import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Activity, Database, Zap, Cpu, Brain, HardDrive, RefreshCw, Mail } from "lucide-react";
+import { Activity, Brain, Cpu, Database, GraduationCap, HardDrive, Layers, Mail, Zap } from "lucide-react";
 import client from "../api/client";
 import { locale, msg, t } from "../i18n";
 
@@ -9,228 +10,249 @@ interface ServiceProbe {
   latency_ms?: number;
   error?: string;
   workers?: number;
-  worker_names?: string[];
   active_tasks?: number;
-  scheduled_tasks?: number;
   available_models?: string[];
   loaded_models?: string[];
   version?: string;
-  endpoint?: string;
   reason?: string;
   backend?: string;
-  from_email?: string;
   recent_failures?: number;
   active?: number;
   expected?: number;
-  drift?: Record<string, string[]>;
   ensemble?: string;
-  fingerprint?: string;
 }
 
-interface RetrainInfo {
+interface RunInfo {
+  status: string;
   started_at: string;
   finished_at: string | null;
-  status: string;
   samples_used: number;
-  hf_revision: string | null;
+  error: string;
+}
+
+interface TrainingQueue {
   media_type: string;
+  new_samples: number;
+  needed: number;
+  last_success: RunInfo | null;
+  last_attempt: RunInfo | null;
+  next_run: string;
 }
 
 interface SystemStatus {
   overall: "operational" | "degraded";
-  checked_at: number;
   services: Record<string, ServiceProbe>;
-  last_retrain: RetrainInfo | null;
+  training?: TrainingQueue;
 }
 
-const SERVICE_META: Record<string, { label: string; desc: string; Icon: typeof Activity }> = {
-  api: { label: msg("API"), desc: msg("Django REST gateway."), Icon: Activity },
-  database: { label: msg("Database"), desc: msg("PostgreSQL."), Icon: Database },
-  redis: { label: msg("Redis"), desc: msg("Celery broker + cache."), Icon: Zap },
-  celery: { label: msg("Workers"), desc: msg("Background analyzer pool."), Icon: Cpu },
-  ollama: { label: msg("Vision LLM"), desc: msg("Local inference - vision + text."), Icon: Brain },
-  storage: { label: msg("Object Store"), desc: msg("S3 blob store."), Icon: HardDrive },
-  email: { label: msg("Email"), desc: msg("Transactional mail (Resend)."), Icon: Mail },
-  analyzers: { label: msg("Analyzer Roster"), desc: msg("Seeded detector config vs. code."), Icon: Cpu },
+const SERVICES: { key: string; label: string; role: string; Icon: typeof Activity }[] = [
+  { key: "api", label: msg("API"), role: msg("Accepts uploads and serves results"), Icon: Activity },
+  { key: "database", label: msg("Database"), role: msg("Accounts, classes, verdicts"), Icon: Database },
+  { key: "redis", label: msg("Queue"), role: msg("Hands checks to the workers"), Icon: Zap },
+  { key: "celery", label: msg("Workers"), role: msg("Run the analyzers in the background"), Icon: Cpu },
+  { key: "ollama", label: msg("Language models"), role: msg("Vision model, fact-check and assignment shadow"), Icon: Brain },
+  { key: "storage", label: msg("File storage"), role: msg("Uploaded files and reports"), Icon: HardDrive },
+  { key: "email", label: msg("Email"), role: msg("Sign-in and billing letters"), Icon: Mail },
+  { key: "analyzers", label: msg("Tribunal"), role: msg("Every detector is loaded and configured"), Icon: Layers },
+];
+
+const STATE: Record<ServiceProbe["status"], { word: string; chip: string; dot: string }> = {
+  ok: { word: msg("Working"), chip: "text-signal-sage bg-signal-sage/10 border-signal-sage/30", dot: "bg-signal-sage" },
+  down: { word: msg("Down"), chip: "text-signal-blood bg-signal-blood/10 border-signal-blood/40", dot: "bg-signal-blood" },
+  skip: { word: msg("Not checked"), chip: "text-ink-400 bg-ink-800 border-[var(--line-strong)]", dot: "bg-ink-500" },
 };
 
-const ORDER = ["api", "database", "redis", "celery", "ollama", "storage", "email", "analyzers"];
+const SKIP_REASON = /^only (\d+) new approved samples, need (\d+)$/;
 
-function StatusDot({ status }: { status: ServiceProbe["status"] }) {
-  const tone =
-    status === "ok" ? "bg-signal-sage" :
-    status === "skip" ? "bg-ink-500" :
-    "bg-signal-blood";
+function facts(key: string, probe: ServiceProbe): string[] {
+  const out: string[] = [];
+  if (probe.latency_ms != null) out.push(t("{n} ms", { n: probe.latency_ms }));
+  if (key === "celery" && probe.workers != null) {
+    out.push(t("workers: {n}", { n: probe.workers }));
+    out.push(t("busy: {n}", { n: probe.active_tasks ?? 0 }));
+  }
+  if (key === "ollama") {
+    if (probe.loaded_models?.length) out.push(t("loaded: {names}", { names: probe.loaded_models.join(", ") }));
+    else if (probe.available_models) out.push(t("idle, {n} models ready", { n: probe.available_models.length }));
+  }
+  if (key === "analyzers" && probe.active != null && probe.expected != null) {
+    out.push(t("{active} of {expected} active", { active: probe.active, expected: probe.expected }));
+    if (probe.ensemble) out.push(probe.ensemble);
+  }
+  if (key === "redis" && probe.version) out.push(`v${probe.version}`);
+  if (key === "email" && probe.backend) out.push(t("via {name}", { name: probe.backend }));
+  if (probe.recent_failures) out.push(t("recent issues: {n}", { n: probe.recent_failures }));
+  return out;
+}
+
+function formatDate(value: string | null | undefined, withTime = false): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  return withTime
+    ? date.toLocaleString(locale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" });
+}
+
+function attemptText(run: RunInfo): string {
+  if (run.status === "success") return t("Retrained on {n} new examples", { n: run.samples_used });
+  if (run.status === "skipped") {
+    const m = SKIP_REASON.exec(run.error);
+    return m ? t("Skipped: {have} new examples, {need} needed", { have: m[1], need: m[2] }) : t("Skipped");
+  }
+  if (run.status === "failed") return t("Failed: {reason}", { reason: run.error || "-" });
+  return t("In progress");
+}
+
+function ServiceCard({ item, probe, index }: { item: (typeof SERVICES)[number]; probe?: ServiceProbe; index: number }) {
+  const Icon = item.Icon;
+  const state = STATE[probe?.status ?? "skip"];
+  const details = probe ? facts(item.key, probe) : [];
+  const problem = probe?.status === "down" ? probe.error : probe?.status === "skip" ? probe.reason : undefined;
   return (
-    <span className="relative inline-flex">
-      <span className={`w-2 h-2 rounded-full ${tone}`} />
-      {status === "ok" && (
-        <motion.span
-          className={`absolute inset-0 rounded-full ${tone}`}
-          animate={{ scale: [1, 2.4], opacity: [0.7, 0] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
-        />
-      )}
-    </span>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.03 }}
+      className="case-card p-4 flex gap-3.5"
+    >
+      <div className="w-9 h-9 shrink-0 rounded-md border border-[var(--line-strong)] flex items-center justify-center text-ink-300">
+        <Icon size={16} strokeWidth={1.5} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[15px] text-ink-50 leading-tight">{t(item.label)}</div>
+          <span className={clsx("shrink-0 inline-flex items-center gap-1.5 border px-2 py-0.5 text-[11px] rounded-full", state.chip)}>
+            <span className={clsx("w-1.5 h-1.5 rounded-full", state.dot)} />
+            {probe ? t(state.word) : t("checking…")}
+          </span>
+        </div>
+        <div className="text-xs text-ink-400 mt-1 leading-snug">{t(item.role)}</div>
+        {problem && <div className="text-xs text-signal-blood/90 mt-1.5 break-words">{t(problem)}</div>}
+        {details.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            {details.map((d) => (
+              <span key={d} className="font-mono text-[10px] text-ink-300 bg-white/[0.03] border border-[var(--line)] px-1.5 py-0.5 rounded">{d}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function TrainingCard({ training }: { training: TrainingQueue }) {
+  const pct = Math.min(100, Math.round((training.new_samples / Math.max(training.needed, 1)) * 100));
+  return (
+    <div className="case-card p-5">
+      <div className="flex items-start gap-3.5">
+        <div className="w-9 h-9 shrink-0 rounded-md border border-[var(--line-strong)] flex items-center justify-center text-ink-300">
+          <GraduationCap size={16} strokeWidth={1.5} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[15px] text-ink-50">{t("Detector retraining")}</div>
+          <p className="text-xs text-ink-400 mt-1 leading-relaxed max-w-xl">
+            {t("Our image detector retrains itself every week once reviewers have labelled enough new uploads as real or AI. Until then it keeps the current model.")}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <div className="flex items-baseline justify-between text-xs mb-1.5">
+          <span className="text-ink-300">{t("New labelled examples")}</span>
+          <span className="font-mono text-ink-100 tabular-nums">{training.new_samples} / {training.needed}</span>
+        </div>
+        <div className="h-1.5 bg-ink-800 rounded-full overflow-hidden">
+          <div className="h-full bg-signal-amber rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      <dl className="grid sm:grid-cols-3 gap-4 mt-5 text-xs">
+        <div>
+          <dt className="text-ink-500">{t("Last retrained")}</dt>
+          <dd className="text-ink-100 mt-1">{formatDate(training.last_success?.finished_at)}</dd>
+          {training.last_success && <dd className="text-ink-500 mt-0.5">{t("on {n} examples", { n: training.last_success.samples_used })}</dd>}
+        </div>
+        <div>
+          <dt className="text-ink-500">{t("Last attempt")}</dt>
+          <dd className="text-ink-100 mt-1">{formatDate(training.last_attempt?.started_at, true)}</dd>
+          {training.last_attempt && <dd className="text-ink-500 mt-0.5">{attemptText(training.last_attempt)}</dd>}
+        </div>
+        <div>
+          <dt className="text-ink-500">{t("Next check")}</dt>
+          <dd className="text-ink-100 mt-1">{formatDate(training.next_run, true)}</dd>
+          <dd className="text-ink-500 mt-0.5">{t("every Sunday")}</dd>
+        </div>
+      </dl>
+    </div>
   );
 }
 
 export default function StatusPage() {
-  const { data, isLoading, dataUpdatedAt } = useQuery<SystemStatus>({
+  const { data, dataUpdatedAt } = useQuery<SystemStatus>({
     queryKey: ["system-status"],
     queryFn: () => client.get("/system/status/").then((r) => r.data),
     refetchInterval: 5000,
     staleTime: 0,
   });
 
-  const services = data?.services || {};
+  const services = data?.services ?? {};
   const overall = data?.overall;
-  const lastRetrain = data?.last_retrain;
+  const down = SERVICES.filter((s) => services[s.key]?.status === "down");
+  const tone = overall === "operational" ? "border-signal-sage/40 bg-signal-sage/[0.06]" : overall === "degraded" ? "border-signal-amber/50 bg-signal-amber/[0.06]" : "border-[var(--line-strong)]";
+  const dot = overall === "operational" ? "bg-signal-sage" : overall === "degraded" ? "bg-signal-amber" : "bg-ink-500";
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-4xl">
+      <div className="label-mono mb-3">{t("System status")}</div>
+
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.4 }}
+        className={clsx("border rounded-lg p-5 flex items-center gap-4", tone)}
       >
-        <div className="label-mono flex items-center gap-2 mb-3">
-          <span className="w-1.5 h-1.5 bg-signal-cyan rounded-full pulse-dot" />
-          {t("System / Status")}
-        </div>
-        <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none">
-          {overall === "operational" ? (
-            <>
-              {t("All systems")} <span className="italic text-signal-sage">{t("operational")}</span>.
-            </>
-          ) : overall === "degraded" ? (
-            <>
-              {t("Service")} <span className="italic text-signal-amber">{t("degraded")}</span>.
-            </>
-          ) : (
-            <>
-              {t("Probing")}<span className="italic text-iris">…</span>
-            </>
+        <span className="relative inline-flex shrink-0">
+          <span className={clsx("w-3 h-3 rounded-full", dot)} />
+          {overall === "operational" && (
+            <motion.span
+              className={clsx("absolute inset-0 rounded-full", dot)}
+              animate={{ scale: [1, 2.4], opacity: [0.6, 0] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+            />
           )}
-        </h1>
-        <p className="text-ink-300 mt-3 max-w-xl leading-relaxed">
-          {t("Real-time component health. Probed every 5s.")}
-        </p>
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-xl text-ink-50">
+            {overall === "operational"
+              ? t("All systems are working")
+              : overall === "degraded"
+              ? t("Some services have problems")
+              : t("Checking services…")}
+          </div>
+          <div className="text-xs text-ink-400 mt-1">
+            {down.length > 0
+              ? t("Affected: {names}", { names: down.map((s) => t(s.label)).join(", ") })
+              : t("Checked every 5 seconds")}
+            {dataUpdatedAt ? ` · ${t("last check {time}", { time: new Date(dataUpdatedAt).toLocaleTimeString(locale()) })}` : ""}
+          </div>
+        </div>
       </motion.div>
 
-      <div className="mt-10 case-card">
-        <div className="flex items-center justify-between px-6 py-3 border-b border-white/5">
-          <span className="label-mono">{t("Probes")}</span>
-          <span className="font-mono text-[10px] text-ink-500 ticker">
-            {dataUpdatedAt ? t("LAST: {time}", { time: new Date(dataUpdatedAt).toLocaleTimeString(locale()) }) : "-"}
-          </span>
-        </div>
-
-        <div className="divide-y divide-white/5">
-          {ORDER.map((key, idx) => {
-            const meta = SERVICE_META[key];
-            const probe = services[key];
-            const Icon = meta.Icon;
-            return (
-              <motion.div
-                key={key}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: idx * 0.06 }}
-                className="grid grid-cols-12 gap-4 px-6 py-5 items-center"
-              >
-                <div className="col-span-1 text-signal-amber/70">
-                  <Icon size={18} strokeWidth={1.5} />
-                </div>
-                <div className="col-span-4">
-                  <div className="font-display text-xl text-ink-50 leading-tight">{t(meta.label)}</div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mt-1">
-                    {key.toUpperCase()}
-                  </div>
-                </div>
-                <div className="col-span-5 text-sm text-ink-300 leading-relaxed">
-                  {!probe || isLoading ? (
-                    <span className="font-mono text-ink-500">{t("probing…")}</span>
-                  ) : probe.status === "ok" ? (
-                    <span className="font-mono text-[11px] text-ink-300">
-                      {probe.latency_ms != null && `${probe.latency_ms} ms`}
-                      {probe.workers != null && ` · ${t("workers: {n}", { n: probe.workers })} · ${t("active: {n}", { n: probe.active_tasks ?? 0 })}`}
-                      {probe.loaded_models && probe.loaded_models.length > 0 && ` · ${t("loaded:")} ${probe.loaded_models.join(", ")}`}
-                      {probe.available_models && probe.loaded_models?.length === 0 && ` · ${t("idle ({n} models cached)", { n: probe.available_models.length })}`}
-                      {probe.version && ` · v${probe.version}`}
-                      {probe.backend && ` · ${t("via {name}", { name: probe.backend })}`}
-                      {probe.recent_failures != null && probe.recent_failures > 0 && ` · ${t("recent issues: {n}", { n: probe.recent_failures })}`}
-                      {probe.active != null && probe.expected != null && ` · ${t("{active}/{expected} active", { active: probe.active, expected: probe.expected })}`}
-                      {probe.ensemble && ` · ${probe.ensemble}`}
-                    </span>
-                  ) : probe.status === "skip" ? (
-                    <span className="font-mono text-[11px] text-ink-500">{probe.reason ? t(probe.reason) : t("skipped")}</span>
-                  ) : (
-                    <span className="font-mono text-[11px] text-signal-blood">{probe.error ? t(probe.error) : t("unreachable")}</span>
-                  )}
-                  <div className="text-xs text-ink-500 mt-1">{t(meta.desc)}</div>
-                </div>
-                <div className="col-span-2 flex items-center justify-end gap-2">
-                  <StatusDot status={probe?.status || "skip"} />
-                  <span className={`font-mono text-[10px] uppercase tracking-[0.16em] ${
-                    probe?.status === "ok" ? "text-signal-sage" :
-                    probe?.status === "down" ? "text-signal-blood" :
-                    "text-ink-500"
-                  }`}>
-                    {probe?.status ? t(probe.status) : "-"}
-                  </span>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+      <div className="grid sm:grid-cols-2 gap-3 mt-6">
+        {SERVICES.map((item, i) => (
+          <ServiceCard key={item.key} item={item} probe={services[item.key]} index={i} />
+        ))}
       </div>
 
-      <motion.div
-        className="mt-6 case-card"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.5 }}
-      >
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-white/5">
-          <RefreshCw size={14} strokeWidth={1.5} className="text-signal-amber/70" />
-          <span className="label-mono">{t("Model Updates")}</span>
+      {data?.training && (
+        <div className="mt-8">
+          <div className="label-mono mb-3">{t("Models")}</div>
+          <TrainingCard training={data.training} />
         </div>
-        <div className="px-6 py-5">
-          {lastRetrain ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">{t("Last Retrain")}</div>
-                <div className="font-mono text-xs text-ink-100">
-                  {new Date(lastRetrain.started_at).toLocaleDateString(locale())}
-                </div>
-              </div>
-              <div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">{t("Samples")}</div>
-                <div className="font-mono text-xs text-ink-100">{lastRetrain.samples_used}</div>
-              </div>
-              <div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">{t("Type")}</div>
-                <div className="font-mono text-xs text-ink-100">{lastRetrain.media_type}</div>
-              </div>
-              <div>
-                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-ink-500 mb-1">HF Revision</div>
-                <div className="font-mono text-xs text-ink-100 truncate" title={lastRetrain.hf_revision || ""}>
-                  {lastRetrain.hf_revision ? lastRetrain.hf_revision.slice(0, 10) : "n/a"}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <span className="font-mono text-[11px] text-ink-500">{t("No successful retrains yet.")}</span>
-          )}
-        </div>
-      </motion.div>
+      )}
 
-      <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 flex items-center gap-3">
-        <span>{t("Auto-refresh · 5s")}</span>
-        <span className="text-ink-700">·</span>
-        <span>{t("Public endpoint")}</span>
-        <span className="text-ink-700">·</span>
+      <div className="mt-8 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600">
+        {t("Public endpoint")} ·{" "}
         <a href="https://api.prooflayer.cloud/api/v1/system/status/" className="hover:text-signal-amber transition-colors">
           GET /api/v1/system/status/
         </a>

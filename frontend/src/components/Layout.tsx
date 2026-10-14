@@ -90,7 +90,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                   "group relative flex items-center gap-3 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors rounded-sm",
                   isActive
                     ? "text-ink-50"
-                    : "text-ink-500 hover:text-ink-100 hover:bg-white/[0.03]",
+                    : "text-ink-300 hover:text-ink-50 hover:bg-white/[0.04]",
                 )
               }
             >
@@ -106,7 +106,7 @@ function NavRail({ onNavigate }: { onNavigate?: () => void }) {
                   <span className={clsx("text-ink-400", isActive && "text-signal-amber")}>
                     <Icon size={16} strokeWidth={1.5} />
                   </span>
-                  <span className="text-ink-500 mr-1 tabular-nums">{item.code}</span>
+                  <span className="text-ink-500 mr-1 tabular-nums opacity-70">{item.code}</span>
                   <span>{t(item.label)}</span>
                 </>
               )}

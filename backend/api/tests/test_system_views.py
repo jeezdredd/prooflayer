@@ -1,11 +1,15 @@
 from contextlib import ExitStack
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
+from analyzers.models import RetrainRun, TrainingSample
+from api.system_views import _training_queue
 from users.tests.factories import UserFactory
 
 
@@ -192,3 +196,29 @@ class TestAnalyzerRosterProbe:
         assert probe["status"] == "ok"
         assert probe["active"] == probe["expected"]
         assert response.data["overall"] == "operational"
+
+
+@pytest.mark.django_db
+class TestTrainingQueue:
+    def _sample(self, n):
+        for i in range(n):
+            TrainingSample.objects.create(file="training/x.jpg", media_type="image", mime_type="image/jpeg", label="real", sha256=f"{i:064d}", source_ref="ref")
+
+    def test_counts_new_samples_since_last_success_and_shows_last_attempt(self, settings):
+        settings.RETRAIN_MIN_NEW_SAMPLES = 50
+        success = RetrainRun.objects.create(media_type="image", status=RetrainRun.Status.SUCCESS, samples_used=60)
+        RetrainRun.objects.filter(pk=success.pk).update(finished_at=timezone.now() - timedelta(days=10))
+        TrainingSample.objects.create(file="training/old.jpg", media_type="image", mime_type="image/jpeg", label="fake", sha256="a" * 64, source_ref="ref")
+        TrainingSample.objects.filter(sha256="a" * 64).update(created_at=timezone.now() - timedelta(days=20))
+        self._sample(3)
+        RetrainRun.objects.create(media_type="image", status=RetrainRun.Status.SKIPPED, error="only 3 new approved samples, need 50", finished_at=timezone.now())
+        queue = _training_queue("image")
+        assert queue["new_samples"] == 3
+        assert queue["needed"] == 50
+        assert queue["last_attempt"]["status"] == "skipped"
+        assert queue["last_success"] is not None
+        assert queue["next_run"]
+
+    def test_status_response_includes_training(self):
+        response = APIClient().get(reverse("system-status"))
+        assert "training" in response.data

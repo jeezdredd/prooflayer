@@ -16,6 +16,7 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from analyzers.ensemble import ensemble_info
+from analyzers.models import RetrainRun, TrainingSample
 from analyzers.roster import describe_drift, roster_drift
 from api.models import Feedback
 from content.models import Submission
@@ -283,6 +284,45 @@ def _last_retrain() -> dict | None:
         return None
 
 
+RETRAIN_WEEKDAY = 6
+RETRAIN_HOUR_UTC = 3
+
+
+def _next_weekly_run(now):
+    days_ahead = (RETRAIN_WEEKDAY - now.weekday()) % 7
+    candidate = (now + timedelta(days=days_ahead)).replace(hour=RETRAIN_HOUR_UTC, minute=0, second=0, microsecond=0)
+    if candidate <= now:
+        candidate += timedelta(days=7)
+    return candidate
+
+
+def _run_dict(run) -> dict | None:
+    if run is None:
+        return None
+    return {
+        "status": run.status,
+        "started_at": run.started_at.isoformat(),
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "samples_used": run.samples_used,
+        "error": run.error or "",
+    }
+
+
+def _training_queue(media_type: str = "image") -> dict:
+    now = timezone.now()
+    runs = RetrainRun.objects.filter(media_type=media_type)
+    last_success = runs.filter(status=RetrainRun.Status.SUCCESS).order_by("-finished_at").first()
+    since = last_success.finished_at if last_success and last_success.finished_at else now - timedelta(days=365)
+    return {
+        "media_type": media_type,
+        "new_samples": TrainingSample.objects.filter(media_type=media_type, created_at__gte=since).count(),
+        "needed": getattr(settings, "RETRAIN_MIN_NEW_SAMPLES", 50),
+        "last_success": _run_dict(last_success),
+        "last_attempt": _run_dict(runs.order_by("-started_at").first()),
+        "next_run": _next_weekly_run(now).isoformat(),
+    }
+
+
 TIMING_CACHE_KEY = "status:verdict_timing"
 TIMING_MIN_SAMPLES = 20
 
@@ -329,5 +369,6 @@ class SystemStatusView(APIView):
             "checked_at": time.time(),
             "services": services,
             "last_retrain": _last_retrain(),
+            "training": _training_queue("image"),
             "verdict_timing": _verdict_timing(),
         })
