@@ -13,6 +13,8 @@ export interface User {
   terms_version?: string;
   needs_terms?: boolean;
   student_only?: boolean;
+  language?: "en" | "ru";
+  email_updates?: boolean;
 }
 
 export interface Tokens {

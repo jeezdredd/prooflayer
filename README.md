@@ -120,7 +120,33 @@ flowchart LR
 
 Running workers pick up a promoted model without a restart, `manage.py rollback_detector` restores
 the previous one, and the status page shows progress, the last decision and the live-vs-candidate
-numbers.
+numbers. A candidate that is worse on the held-out set is rejected and the live model stays: on
+2026-10-14 a candidate trained on 246 fresh images caught 96 of 145 AI images against the live
+model's 107, so it was not promoted.
+
+## Admin
+
+`/admin/` (Django + Unfold) is the staff control room: a dashboard with system health and queue
+numbers, retrain runs with "run now" and "roll back", analyzer weights edited inline, re-analysis of
+any submission, objections, verdict overrides, training samples, subscriptions, shadow sets and
+product update emails.
+
+## Emails
+
+Every email uses one dark template in the site's style (`users/templates/email/message.html`) with a
+plain-text part, sent through Resend. Users get email in the language they use on the site.
+
+| Email | When |
+| --- | --- |
+| Confirm your email | after registration, link valid 48 hours |
+| Password reset | from "Forgot password?", link valid one hour, revokes all sessions |
+| Objection to a verdict | a student disputes a verdict, sent to the class teacher |
+| Product update | written in the admin in Russian and English, test to yourself, then send |
+| Retrain result | to the staff member who started a retrain |
+
+Product updates are on by default and can be turned off on the account page; each one carries an
+unsubscribe link and `List-Unsubscribe` one-click headers. `manage.py preview_emails --out dir`
+renders every email to HTML for a visual check.
 
 ## Architecture
 
@@ -215,6 +241,10 @@ The deploy clones the latest commit (shallow, with stall detection and retries),
 rolls the containers and checks `/api/v1/auth/health/`. Retrained models are shipped with
 `make ship-retrained` and `make ship-text`. See [`deploy/README.md`](deploy/README.md).
 
+When the server is unreachable, a Cloudflare Worker (`deploy/cloudflare/maintenance`) answers with a
+branded "we are updating the system" page in Russian or English instead of a Cloudflare error, and
+with JSON 503 on the API. `make maintenance-on` shows it on purpose during planned work.
+
 ## Testing
 
 ```bash
@@ -254,6 +284,9 @@ wiki/           Engineering notes and the Tribunal changelog
 - Personal uploads are deleted after 90 days; class work is never used for training.
 - Passwords are hashed with PBKDF2, API keys stored as SHA-256 hashes, webhooks signed with HMAC-SHA256.
 - Files are served only through short-lived signed links.
+- Training on reviewed personal uploads and web search for class originality checks are on by
+  default and can be switched off on the account and school pages.
+- Public endpoints are rate limited per IP; the status payload is cached for 10 seconds.
 
 Details: [Privacy Policy](https://prooflayer.cloud/privacy) · [Data Processing terms](https://prooflayer.cloud/data-processing).
 

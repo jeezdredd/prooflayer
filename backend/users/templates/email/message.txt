@@ -11,7 +11,9 @@
 {% endfor %}{% if details %}
 {% endif %}{% if cta_url %}{{ cta }}: {{ cta_url }}
 
-{% endif %}{% if footnote %}{{ footnote }}
+{% endif %}{{ signoff }}
+
+{% if footnote %}{{ footnote }}
 
 {% endif %}--
 ProofLayer · {{ tagline }}

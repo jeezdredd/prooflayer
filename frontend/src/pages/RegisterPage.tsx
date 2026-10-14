@@ -5,7 +5,7 @@ import { useRegister } from "../hooks/useAuth";
 import ShaderBackground from "../components/ui/ShaderBackground";
 import { AGE_HINT, AGE_LABEL, legalHref } from "../legal";
 import LangSwitch from "../components/LangSwitch";
-import { t } from "../i18n";
+import { t, currentLang } from "../i18n";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -28,6 +28,7 @@ export default function RegisterPage() {
       accept_terms: true,
       is_adult: isAdult,
       allow_training: allowTraining,
+      language: currentLang(),
     });
   };
 

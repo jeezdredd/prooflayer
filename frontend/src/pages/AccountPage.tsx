@@ -31,6 +31,15 @@ export default function AccountPage() {
     onError: () => toast.error(t("Could not save")),
   });
 
+  const updates = useMutation({
+    mutationFn: (on: boolean) => auth.updateMe({ email_updates: on }).then((r) => r.data),
+    onSuccess: (data) => {
+      setUser(data);
+      toast.success(data.email_updates ? t("Product updates are on") : t("Product updates are off"));
+    },
+    onError: () => toast.error(t("Could not save")),
+  });
+
   const age = useMutation({
     mutationFn: (isAdult: boolean) => auth.updateMe({ is_adult: isAdult }).then((r) => r.data),
     onSuccess: (data) => {
@@ -99,6 +108,23 @@ export default function AccountPage() {
         {user.training_consent_at && (
           <div className="font-mono text-[11px] text-ink-500 mt-2">{t("Consent given {date}", { date: new Date(user.training_consent_at).toLocaleDateString(locale()) })}</div>
         )}
+      </section>
+
+      <section className="border-t border-[var(--line-strong)] py-6">
+        <div className={LABEL}>{t("Emails")}</div>
+        <label className="mt-3 flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={user.email_updates !== false}
+            disabled={updates.isPending}
+            onChange={(e) => updates.mutate(e.target.checked)}
+            className="mt-1 accent-amber-400"
+          />
+          <span className="text-sm text-ink-300 leading-relaxed">
+            {t("Send me product updates: new detectors, features and changes to ProofLayer, a few times a month at most. Account and security emails always arrive.")}
+          </span>
+        </label>
+        <p className="font-mono text-[11px] text-ink-500 mt-3">{t("Emails come in the language you use on the site.")}</p>
       </section>
 
       <section className="border-t border-[var(--line-strong)] py-6">

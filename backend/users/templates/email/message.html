@@ -13,7 +13,7 @@
   a { color: #a78bfa; }
   @media (max-width: 620px) {
     .shell { padding: 28px 12px 36px !important; }
-    .card { padding: 30px 22px 28px !important; border-radius: 18px !important; }
+    .card { padding: 4px 22px 28px !important; }
     .h1 { font-size: 34px !important; }
     .cta a { display: block !important; text-align: center !important; }
   }
@@ -35,13 +35,24 @@
         </tr>
 
         <tr>
-          <td class="card" bgcolor="#0b0d13" style="background:#0b0d13;border:1px solid #1c2130;border-radius:22px;padding:44px 44px 38px;">
+          <td bgcolor="#0b0d13" style="background:#0b0d13;border:1px solid #1c2130;border-radius:22px;padding:0;">
+            <img src="{{ asset_base }}/email/banner-{{ tone }}.jpg" width="578" alt="" style="display:block;width:100%;max-width:578px;height:auto;border:0;border-radius:21px 21px 0 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+            <td class="card" style="padding:6px 44px 38px;">
 
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;">
               <tr>
-                <td style="border:1px solid {{ accent_border }};border-radius:999px;padding:6px 13px 6px 11px;font-family:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;font-size:10px;line-height:12px;letter-spacing:2px;text-transform:uppercase;color:{{ accent }};white-space:nowrap;">
-                  <span style="display:inline-block;width:6px;height:6px;border-radius:6px;background:{{ accent }};vertical-align:1px;margin-right:8px;"></span>{{ badge }}
+                <td>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="border:1px solid {{ accent_border }};border-radius:999px;padding:6px 13px 6px 11px;font-family:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;font-size:10px;line-height:12px;letter-spacing:2px;text-transform:uppercase;color:{{ accent }};white-space:nowrap;">
+                        <span style="display:inline-block;width:6px;height:6px;border-radius:6px;background:{{ accent }};vertical-align:1px;margin-right:8px;"></span>{{ badge }}
+                      </td>
+                    </tr>
+                  </table>
                 </td>
+                <td align="right" style="font-family:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;font-size:10px;line-height:12px;letter-spacing:1.5px;text-transform:uppercase;color:#3e4761;white-space:nowrap;">{{ case_ref }}</td>
               </tr>
             </table>
 
@@ -100,6 +111,8 @@
             {% endif %}
             {% endif %}
 
+            <p style="margin:4px 0 28px;font-family:'Instrument Serif',Georgia,'Times New Roman',serif;font-style:italic;font-size:20px;line-height:24px;color:#8d96b3;">{{ signoff }}</p>
+
             {% if footnote %}
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr><td style="height:1px;line-height:1px;font-size:1px;background:#1c2130;background-image:linear-gradient(90deg,rgba(167,139,250,0.5),rgba(34,211,238,0.25),rgba(28,33,48,0));">&nbsp;</td></tr>
@@ -109,6 +122,9 @@
             </table>
             {% endif %}
 
+            </td>
+            </tr>
+            </table>
           </td>
         </tr>
 

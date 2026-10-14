@@ -5,6 +5,7 @@ import { useLogin } from "../hooks/useAuth";
 import ShaderBackground from "../components/ui/ShaderBackground";
 import LangSwitch from "../components/LangSwitch";
 import { t } from "../i18n";
+import { legalHref } from "../legal";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -73,7 +74,10 @@ export default function LoginPage() {
               />
             </motion.div>
             <motion.div variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}>
-              <label className="label-mono block mb-2">{t("Password")}</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="label-mono">{t("Password")}</label>
+                <a href={legalHref("/forgot-password")} className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 hover:text-signal-amber transition-colors">{t("Forgot password?")}</a>
+              </div>
               <input
                 type="password"
                 value={password}

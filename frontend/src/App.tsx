@@ -16,6 +16,7 @@ import ConsentBanner from "./components/ConsentBanner";
 import { CLASSROOM_URL, IS_CLASSROOM_APP } from "./appMode";
 import { useLangStore } from "./i18n";
 import { useSessionSync } from "./auth/sessionSync";
+import { useLanguageSync } from "./auth/languageSync";
 
 const UploadPage = lazy(() => import("./pages/UploadPage"));
 const ResultPage = lazy(() => import("./pages/ResultPage"));
@@ -38,6 +39,9 @@ const DevelopersPage = lazy(() => import("./pages/DevelopersPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const DataProcessingPage = lazy(() => import("./pages/DataProcessingPage"));
 const BatchPage = lazy(() => import("./pages/BatchPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/PasswordResetPages").then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import("./pages/PasswordResetPages").then((m) => ({ default: m.ResetPasswordPage })));
+const UnsubscribePage = lazy(() => import("./pages/PasswordResetPages").then((m) => ({ default: m.UnsubscribePage })));
 const ClassroomRoutes = lazy(() => import("./classroom/ClassroomApp"));
 
 function PageLoader() {
@@ -76,6 +80,9 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/unsubscribe" element={<UnsubscribePage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/refund" element={<RefundPage />} />
@@ -115,6 +122,7 @@ function AppRoutes() {
 export default function App() {
   const lang = useLangStore((s) => s.lang);
   useSessionSync();
+  useLanguageSync();
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

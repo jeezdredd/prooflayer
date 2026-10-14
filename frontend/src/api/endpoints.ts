@@ -41,6 +41,7 @@ export interface RegisterPayload {
   accept_terms: true;
   is_adult: boolean;
   allow_training?: boolean;
+  language?: "en" | "ru";
 }
 
 export const auth = {
@@ -66,6 +67,15 @@ export const auth = {
 
   verifyEmail: (token: string) =>
     client.post<{ detail: string; email?: string }>("/auth/verify-email/", { token }),
+
+  requestPasswordReset: (email: string) =>
+    client.post<{ detail: string }>("/auth/password-reset/", { email }),
+
+  confirmPasswordReset: (uid: string, token: string, password: string) =>
+    client.post<{ detail: string }>("/auth/password-reset/confirm/", { uid, token, password }),
+
+  unsubscribe: (token: string) =>
+    client.post<{ detail: string; email: string }>("/auth/unsubscribe/", { token }),
 
   resendVerification: () =>
     client.post<{ detail: string; delivery: string }>("/auth/resend-verification/", {}),

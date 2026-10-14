@@ -46,6 +46,7 @@ export default function PrivacyPage() {
           <li><strong className={label}>To handle payments</strong> (contract and legal obligations): through Paddle, our merchant of record.</li>
           <li><strong className={label}>To keep the service safe and working</strong> (our legitimate interest): preventing abuse and fraud, enforcing usage limits, monitoring operations and fixing errors.</li>
           <li><strong className={label}>To show a result publicly</strong> (your choice): only if you make that result public, as described in section 5.</li>
+          <li><strong className={label}>To send product updates</strong> (our legitimate interest in telling users about the service): a few emails a month at most about new detectors and features, in the language you use on the site. On by default; every update has a one-click unsubscribe link, and you can turn updates off on your <Link to="/account" className={link}>account page</Link>. Account and security emails are always sent.</li>
           <li><strong className={label}>To improve our detectors</strong> (your consent): on by default, and you can turn it off at any time, as described in section 7.</li>
           <li><strong className={label}>Class work</strong> is processed on behalf of the school or university, as described in section 8.</li>
         </ul>

@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core import signing
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 from .emails import deliver
 from .models import User
@@ -25,6 +26,7 @@ COMMON = {
         "support": "Support",
         "link_hint": "Button not working? Paste this link into your browser:",
         "unsubscribe": "Unsubscribe from product updates",
+        "signoff": "The ProofLayer team",
     },
     "ru": {
         "tagline": "Автоматические ИИ-системы под надзором человека",
@@ -33,6 +35,7 @@ COMMON = {
         "support": "Поддержка",
         "link_hint": "Кнопка не работает? Вставьте ссылку в браузер:",
         "unsubscribe": "Отписаться от новостей",
+        "signoff": "Команда ProofLayer",
     },
 }
 
@@ -193,7 +196,9 @@ def render(context: dict) -> tuple[str, str]:
     blocks = context.get("blocks")
     if blocks is None:
         blocks = [{"text": p} for p in context.get("paragraphs", [])]
+    now = timezone.now()
     full = {
+        "case_ref": f"CASE/{now:%Y-%m%d} · {now:%H:%M} UTC",
         "site_url": settings.FRONTEND_URL,
         "asset_base": settings.FRONTEND_URL,
         "accent": accent,
