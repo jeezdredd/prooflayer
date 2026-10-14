@@ -1,5 +1,8 @@
 import clsx from "clsx";
-import { useLangStore, type Lang } from "../i18n";
+import { useId } from "react";
+import { motion } from "motion/react";
+import { Globe } from "lucide-react";
+import { t, useLangStore, type Lang } from "../i18n";
 
 const OPTIONS: { value: Lang; label: string }[] = [
   { value: "ru", label: "RU" },
@@ -8,19 +11,36 @@ const OPTIONS: { value: Lang; label: string }[] = [
 
 export default function LangSwitch({ className }: { className?: string }) {
   const { lang, setLang } = useLangStore();
+  const id = useId();
   return (
-    <div className={clsx("flex items-center border border-[var(--line-strong)] font-mono text-[10px] tracking-[0.14em]", className)}>
-      {OPTIONS.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => setLang(o.value)}
-          aria-pressed={lang === o.value}
-          className={clsx("px-2 py-1 transition-colors", lang === o.value ? "bg-ink-100 text-ink-950" : "text-ink-400 hover:text-ink-100")}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div
+      role="radiogroup"
+      aria-label={t("Interface language")}
+      className={clsx("inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-0.5 pl-2 backdrop-blur", className)}
+    >
+      <Globe size={12} strokeWidth={1.6} className="text-ink-500 shrink-0" />
+      {OPTIONS.map((o) => {
+        const active = lang === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => setLang(o.value)}
+            className={clsx("relative px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide transition-colors", active ? "text-ink-950" : "text-ink-400 hover:text-ink-100")}
+          >
+            {active && (
+              <motion.span
+                layoutId={`lang-pill-${id}`}
+                className="absolute inset-0 rounded-full bg-ink-100"
+                transition={{ type: "spring", stiffness: 500, damping: 35 }}
+              />
+            )}
+            <span className="relative">{o.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
