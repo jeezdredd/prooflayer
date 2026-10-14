@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import DashboardFilters from "../components/DashboardFilters";
 import SubmissionTable from "../components/SubmissionTable";
 import { useDashboard, useDashboardStats } from "../hooks/useDashboard";
+import { t, verdictText } from "../i18n";
 
 const VERDICT_COLORS: Record<string, string> = {
   authentic: "text-signal-sage",
@@ -29,18 +30,18 @@ export default function DashboardPage() {
     <div className="animate-rise">
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
         <div>
-          <span className="label-mono">Service / 02</span>
+          <span className="label-mono">{t("Service / 02")}</span>
           <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none mt-3">
-            Case <span className="italic text-signal-amber">Registry</span>
+            {t("Case")} <span className="italic text-signal-amber">{t("Registry")}</span>
           </h1>
           <p className="text-ink-400 mt-3 max-w-xl leading-relaxed">
-            All submissions with verdicts and forensic scores.
+            {t("All submissions with verdicts and forensic scores.")}
           </p>
         </div>
         {data && (
           <div className="text-right">
             <div className="font-display text-5xl text-ink-50 ticker">{data.count}</div>
-            <div className="label-mono mt-1">Total Submissions</div>
+            <div className="label-mono mt-1">{t("Total Submissions")}</div>
           </div>
         )}
       </div>
@@ -48,25 +49,25 @@ export default function DashboardPage() {
       {stats && stats.total > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="case-card p-4">
-            <div className="label-mono">Avg Score</div>
+            <div className="label-mono">{t("Avg Score")}</div>
             <div className="font-display text-3xl text-ink-50 ticker mt-1">
               {stats.avg_score !== null ? `${Math.round(stats.avg_score * 100)}%` : "-"}
             </div>
           </div>
           <div className="case-card p-4">
-            <div className="label-mono">Known Fakes</div>
+            <div className="label-mono">{t("Known Fakes")}</div>
             <div className="font-display text-3xl text-signal-blood ticker mt-1">
               {stats.known_fake_hits}
             </div>
           </div>
           <div className="case-card p-4 col-span-2">
-            <div className="label-mono mb-2">Verdict Breakdown</div>
+            <div className="label-mono mb-2">{t("Verdict Breakdown")}</div>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               {Object.entries(stats.by_verdict).map(([v, c]) => (
                 <div key={v} className="flex items-center gap-1.5 font-mono text-xs">
                   <span className={VERDICT_COLORS[v] || "text-ink-300"}>{c}</span>
                   <span className="text-ink-500 uppercase tracking-wider text-[10px]">
-                    {v.replace("_", " ")}
+                    {verdictText(v)}
                   </span>
                 </div>
               ))}

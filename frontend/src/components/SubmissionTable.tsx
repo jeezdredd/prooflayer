@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 import type { PaginatedResponse, SubmissionListItem } from "../types";
 import { Skeleton } from "./ui/Skeleton";
+import { t, verdictText } from "../i18n";
 
 interface SubmissionTableProps {
   data: PaginatedResponse<SubmissionListItem> | undefined;
@@ -13,7 +14,7 @@ interface SubmissionTableProps {
 const VERDICT_TONE: Record<string, { color: string; label: string }> = {
   authentic: { color: "text-signal-sage", label: "Authentic" },
   suspicious: { color: "text-signal-amber", label: "Suspicious" },
-  likely_fake: { color: "text-signal-blood", label: "Likely Fake" },
+  likely_fake: { color: "text-signal-blood", label: "Likely AI" },
   fake: { color: "text-signal-blood", label: "Fake" },
   needs_review: { color: "text-signal-violet", label: "Needs Review" },
   inconclusive: { color: "text-ink-300", label: "Inconclusive" },
@@ -62,9 +63,9 @@ export default function SubmissionTable({ data, isLoading, page, onPageChange }:
     return (
       <div className="case-card crop-marks py-20 text-center animate-fade-in">
         <div className="font-display text-5xl text-ink-300 mb-2">∅</div>
-        <p className="label-mono text-ink-200">Registry empty</p>
+        <p className="label-mono text-ink-200">{t("Registry empty")}</p>
         <p className="font-mono text-[11px] text-ink-500 mt-2">
-          Submit a file to seed the dossier.
+          {t("Submit a file to seed the dossier.")}
         </p>
       </div>
     );
@@ -76,11 +77,11 @@ export default function SubmissionTable({ data, isLoading, page, onPageChange }:
         {/* Header row */}
         <div className="grid grid-cols-[40px_1fr_120px_80px_80px_120px] gap-4 px-4 py-3 border-b border-ink-700 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">
           <span>#</span>
-          <span>File · Hash</span>
-          <span>Date</span>
-          <span>Size</span>
-          <span className="text-right">Score</span>
-          <span className="text-right">Verdict</span>
+          <span>{t("File · Hash")}</span>
+          <span>{t("Date")}</span>
+          <span>{t("Size")}</span>
+          <span className="text-right">{t("Score")}</span>
+          <span className="text-right">{t("Verdict")}</span>
         </div>
 
         {data.results.map((sub, idx) => {
@@ -114,7 +115,7 @@ export default function SubmissionTable({ data, isLoading, page, onPageChange }:
                   className="w-10 h-10 border border-ink-700 bg-ink-900 flex items-center justify-center font-mono text-[9px] text-ink-500"
                   style={{ display: sub.thumbnail_url ? "none" : "flex" }}
                 >
-                  {sub.mime_type?.split("/")[1]?.slice(0, 4).toUpperCase() || "FILE"}
+                  {sub.mime_type?.split("/")[1]?.slice(0, 4).toUpperCase() || t("FILE")}
                 </div>
                 <div className="min-w-0">
                   <div className="font-mono text-xs text-ink-100 truncate group-hover:text-signal-amber transition-colors">
@@ -149,7 +150,7 @@ export default function SubmissionTable({ data, isLoading, page, onPageChange }:
                     "border-current",
                   )}
                 >
-                  {isComplete ? tone.label : sub.status}
+                  {isComplete ? t(tone.label) : verdictText(sub.status)}
                 </span>
               </span>
             </div>
@@ -164,17 +165,17 @@ export default function SubmissionTable({ data, isLoading, page, onPageChange }:
             disabled={page === 1}
             className="text-ink-400 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            ← Prev
+            ← {t("Prev")}
           </button>
           <span className="text-ink-500 ticker">
-            Page {String(page).padStart(2, "0")} / {String(totalPages).padStart(2, "0")} · {data.count} total
+            {t("Page {page} / {pages} · {n} total", { page: String(page).padStart(2, "0"), pages: String(totalPages).padStart(2, "0"), n: data.count })}
           </span>
           <button
             onClick={() => onPageChange(page + 1)}
             disabled={page === totalPages}
             className="text-ink-400 hover:text-ink-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Next →
+            {t("Next")} →
           </button>
         </div>
       )}

@@ -4,6 +4,7 @@ import { Download } from "lucide-react";
 import { batches } from "../api/endpoints";
 import type { BatchDetail } from "../types";
 import { toast } from "../components/ui/Toast";
+import { t, verdictText } from "../i18n";
 
 const VERDICT_CLASS: Record<string, string> = {
   fake: "text-signal-blood",
@@ -38,11 +39,11 @@ export default function BatchPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Export failed");
+      toast.error(t("Export failed"));
     }
   };
 
-  if (isLoading || !data) return <p className="text-ink-500">Loading batch…</p>;
+  if (isLoading || !data) return <p className="text-ink-500">{t("Loading batch…")}</p>;
 
   const { summary } = data;
   const items = [...data.items].sort(
@@ -54,11 +55,11 @@ export default function BatchPage() {
     <div>
       <div className="flex items-end justify-between flex-wrap gap-4 mb-6">
         <div>
-          <span className="label-mono">Batch</span>
-          <h1 className="font-display text-4xl text-white mt-2">{data.name || "Untitled batch"}</h1>
+          <span className="label-mono">{t("Batch")}</span>
+          <h1 className="font-display text-4xl text-white mt-2">{data.name || t("Untitled batch")}</h1>
           <p className="font-mono text-[11px] text-ink-500 mt-2">
-            {summary.done}/{summary.total} analysed
-            {Object.entries(summary.by_verdict).map(([v, n]) => ` · ${n} ${v.replace("_", " ")}`)}
+            {t("{done}/{total} analysed", { done: summary.done, total: summary.total })}
+            {Object.entries(summary.by_verdict).map(([v, n]) => ` · ${n} ${verdictText(v)}`)}
           </p>
         </div>
         <button type="button" onClick={download}
@@ -78,7 +79,7 @@ export default function BatchPage() {
             <span className="md:col-span-6 text-ink-100 truncate">{it.original_filename}</span>
             <span className="md:col-span-2 font-mono text-[11px] text-ink-500 hidden md:block">{it.mime_type}</span>
             <span className={`md:col-span-2 font-mono text-[11px] uppercase tracking-[0.12em] ${VERDICT_CLASS[it.final_verdict] || "text-ink-400"}`}>
-              {it.status === "completed" ? it.final_verdict.replace("_", " ") || "-" : it.status}
+              {it.status === "completed" ? verdictText(it.final_verdict) : verdictText(it.status)}
             </span>
             <span className="md:col-span-2 font-mono text-[11px] text-ink-400 text-right hidden md:block">
               {it.final_score != null ? `${Math.round(it.final_score * 100)}%` : ""}
@@ -89,9 +90,9 @@ export default function BatchPage() {
 
       {data.skipped.length > 0 && (
         <div className="mt-8">
-          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">Skipped</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">{t("Skipped")}</div>
           {data.skipped.map((s, i) => (
-            <p key={i} className="font-mono text-[11px] text-ink-400">{s.name} - {s.reason}</p>
+            <p key={i} className="font-mono text-[11px] text-ink-400">{s.name} - {t(s.reason)}</p>
           ))}
         </div>
       )}

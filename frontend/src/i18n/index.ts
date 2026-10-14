@@ -6,6 +6,7 @@ export type Lang = "en" | "ru";
 const STORAGE_KEY = "lang";
 const STRINGS: Record<string, string> = ru.strings;
 const PLURALS: Record<string, string[]> = ru.plural;
+const PATTERNS: [RegExp, string][] = Object.entries(ru.patterns as Record<string, string>).map(([source, target]) => [new RegExp(source), target]);
 
 type Vars = Record<string, string | number>;
 
@@ -49,8 +50,15 @@ function fill(text: string, vars?: Vars): string {
   return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
 }
 
+function byPattern(text: string): string | undefined {
+  for (const [pattern, target] of PATTERNS) {
+    if (pattern.test(text)) return text.replace(pattern, target);
+  }
+  return undefined;
+}
+
 export function t(text: string, vars?: Vars): string {
-  const translated = currentLang() === "ru" ? STRINGS[text] ?? text : text;
+  const translated = currentLang() === "ru" ? STRINGS[text] ?? byPattern(text) ?? text : text;
   return fill(translated, vars);
 }
 
@@ -77,4 +85,23 @@ export function msg(text: string): string {
 
 export function locale(): string {
   return currentLang() === "ru" ? "ru-RU" : "en-GB";
+}
+
+const VERDICT_TEXT: Record<string, string> = {
+  authentic: msg("authentic"),
+  authentic_edited: msg("authentic, edited"),
+  suspicious: msg("suspicious"),
+  likely_fake: msg("likely fake"),
+  fake: msg("fake"),
+  needs_review: msg("needs review"),
+  inconclusive: msg("inconclusive"),
+  pending: msg("pending"),
+  processing: msg("processing"),
+  completed: msg("completed"),
+  failed: msg("failed"),
+};
+
+export function verdictText(code: string | null | undefined): string {
+  if (!code) return "-";
+  return t(VERDICT_TEXT[code] ?? code.replace(/_/g, " "));
 }

@@ -10,6 +10,7 @@ import { useShaderStore } from "../stores/shaderStore";
 import { toast } from "../components/ui/Toast";
 import { batches, classrooms as classroomApi } from "../api/endpoints";
 import { useQuery } from "@tanstack/react-query";
+import { t, tn } from "../i18n";
 
 export default function UploadPage() {
   const { status, progress, submissionId, reset } = useUploadStore();
@@ -48,12 +49,12 @@ export default function UploadPage() {
     try {
       const res = await batches.create(files, "", classroom || null);
       const skipped = res.data.skipped.length;
-      toast.success(`${res.data.summary.total} files queued${skipped ? `, ${skipped} skipped` : ""}`);
+      toast.success(tn(res.data.summary.total, "{n} file queued", "{n} files queued") + (skipped ? t(", {n} skipped", { n: skipped }) : ""));
       navigate(`/batches/${res.data.id}`);
     } catch (err: unknown) {
       const data = (err as { response?: { status?: number; data?: { code?: string; detail?: string; files?: string[] } } })?.response;
-      if (data?.status === 402) toast.error(data.data?.detail || "Monthly limit reached");
-      else toast.error(data?.data?.files?.[0] || "Batch upload failed");
+      if (data?.status === 402) toast.error(data.data?.detail ? t(data.data.detail) : t("Monthly limit reached"));
+      else toast.error(data?.data?.files?.[0] ? t(data.data.files[0]) : t("Batch upload failed"));
     } finally {
       setBatchUploading(false);
     }
@@ -64,8 +65,8 @@ export default function UploadPage() {
     setPendingFile(file);
     triggerBoost();
     upload.mutate({ file, classroom: classroom || null }, {
-      onSuccess: () => toast.success(`${file.name} uploaded`),
-      onError: () => toast.error("Upload failed"),
+      onSuccess: () => toast.success(t("{name} uploaded", { name: file.name })),
+      onError: () => toast.error(t("Upload failed")),
     });
   };
 
@@ -79,13 +80,13 @@ export default function UploadPage() {
       >
         <div className="label-mono flex items-center gap-2">
           <span className="w-1.5 h-1.5 bg-signal-amber rounded-full pulse-dot" />
-          Service / 01
+          {t("Service / 01")}
         </div>
         <h1 className="font-display text-[clamp(2.5rem,7vw,4.5rem)] text-ink-50 leading-[0.95] mt-4">
-          Verify <span className="italic text-iris">Content</span>.
+          {t("Verify")} <span className="italic text-iris">{t("Content")}</span>.
         </h1>
         <p className="text-ink-400 mt-4 max-w-xl leading-relaxed">
-          Submit image, video, audio, or text. Eleven analyzers run in parallel.
+          {t("Submit image, video, audio, or text. Eleven analyzers run in parallel.")}
         </p>
       </motion.div>
 
@@ -101,23 +102,23 @@ export default function UploadPage() {
         />
         {uploadTargets.length > 0 && (
           <label className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400">
-            Submit to
+            {t("Submit to")}
             <select
               value={classroom}
               onChange={(e) => setClassroom(e.target.value)}
               className="bg-ink-950 border border-[var(--line-strong)] px-2 py-1 normal-case tracking-normal text-ink-100 focus:border-signal-amber outline-none"
             >
-              <option value="">my own checks</option>
+              <option value="">{t("my own checks")}</option>
               {uploadTargets.map((c) => (
                 <option key={c.id} value={c.id}>
-                  class: {c.name}{c.role === "teacher" ? " (teacher)" : ""}
+                  {t("class:")} {c.name}{c.role === "teacher" ? ` (${t("teacher")})` : ""}
                 </option>
               ))}
             </select>
           </label>
         )}
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mt-3">
-          {batchUploading ? "uploading batch…" : "drop several files or a ZIP to check them as one batch (up to 100)"}
+          {batchUploading ? t("uploading batch…") : t("drop several files or a ZIP to check them as one batch (up to 100)")}
         </p>
       </motion.div>
 
@@ -151,11 +152,11 @@ export default function UploadPage() {
           >
             <div className="w-6 h-6 border border-signal-blood text-signal-blood text-xs font-bold flex items-center justify-center shrink-0">!</div>
             <div className="flex-1">
-              <p className="font-mono text-sm text-signal-blood">Upload failed</p>
-              <p className="font-mono text-xs text-signal-blood/70 mt-1">Check the file and try again.</p>
+              <p className="font-mono text-sm text-signal-blood">{t("Upload failed")}</p>
+              <p className="font-mono text-xs text-signal-blood/70 mt-1">{t("Check the file and try again.")}</p>
             </div>
             <button onClick={reset} className="btn-ghost shrink-0">
-              Reset
+              {t("Reset")}
             </button>
           </motion.div>
         )}
@@ -177,14 +178,14 @@ export default function UploadPage() {
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.97 }}
               >
-                Verify another file
+                {t("Verify another file")}
               </motion.button>
               <motion.button
                 onClick={() => navigate(`/results/${submission.id}`)}
                 className="btn-forensic"
                 whileTap={{ scale: 0.97 }}
               >
-                View full result →
+                {t("View full result")} →
               </motion.button>
             </div>
           </motion.div>

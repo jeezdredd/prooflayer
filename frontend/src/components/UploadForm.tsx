@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import clsx from "clsx";
 import { motion } from "motion/react";
 import { UploadCloud, Image, Film, AudioLines, FileText } from "lucide-react";
+import { msg, t } from "../i18n";
 
 const ALLOWED_TYPES = [
   "image/jpeg", "image/png", "image/webp",
@@ -19,10 +20,10 @@ const isZip = (f: File) => ZIP_TYPES.includes(f.type) || f.name.toLowerCase().en
 const MAX_SIZE = 500 * 1024 * 1024;
 
 const FORMAT_GROUPS = [
-  { label: "Image", formats: ["JPEG", "PNG", "WEBP"], color: "text-signal-cyan", Icon: Image },
-  { label: "Video", formats: ["MP4", "MOV", "MKV", "WEBM"], color: "text-signal-amber", Icon: Film },
-  { label: "Audio", formats: ["MP3", "WAV", "OGG", "FLAC"], color: "text-signal-violet", Icon: AudioLines },
-  { label: "Text", formats: ["TXT", "PDF", "DOCX"], color: "text-signal-sage", Icon: FileText },
+  { label: msg("Image"), formats: ["JPEG", "PNG", "WEBP"], color: "text-signal-cyan", Icon: Image },
+  { label: msg("Video"), formats: ["MP4", "MOV", "MKV", "WEBM"], color: "text-signal-amber", Icon: Film },
+  { label: msg("Audio"), formats: ["MP3", "WAV", "OGG", "FLAC"], color: "text-signal-violet", Icon: AudioLines },
+  { label: msg("Text"), formats: ["TXT", "PDF", "DOCX"], color: "text-signal-sage", Icon: FileText },
 ];
 
 interface UploadFormProps {
@@ -41,11 +42,11 @@ export default function UploadForm({ onFileSelect, onBatchSelect, disabled }: Up
     (file: File) => {
       setError(null);
       if (!ALLOWED_TYPES.includes(file.type)) {
-        setError(`Unsupported MIME type: ${file.type || "unknown"}`);
+        setError(t("Unsupported file type: {type}", { type: file.type || t("unknown") }));
         return;
       }
       if (file.size > MAX_SIZE) {
-        setError("File exceeds 500 MB limit.");
+        setError(t("File exceeds 500 MB limit."));
         return;
       }
       onFileSelect(file);
@@ -137,13 +138,13 @@ export default function UploadForm({ onFileSelect, onBatchSelect, disabled }: Up
 
           <h3 className="font-display text-3xl lg:text-4xl text-ink-50 leading-tight">
             {isDragging ? (
-              <>Release to <span className="italic text-signal-amber">submit</span></>
+              <>{t("Release to")} <span className="italic text-signal-amber">{t("submit")}</span></>
             ) : (
-              <>Drop file here or <span className="italic text-iris">click to browse</span></>
+              <>{t("Drop file here or")} <span className="italic text-iris">{t("click to browse")}</span></>
             )}
           </h3>
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-500 mt-3">
-            Max 500 MB · End-to-end JWT
+            {t("Max 500 MB · End-to-end JWT")}
           </p>
 
           {/* Format chips inline - hover reveals supported list */}
@@ -163,7 +164,7 @@ export default function UploadForm({ onFileSelect, onBatchSelect, disabled }: Up
                   )}
                 >
                   <Icon size={11} strokeWidth={2} />
-                  {label}
+                  {t(label)}
                 </span>
                 {hoverGroup === label && (
                   <motion.span

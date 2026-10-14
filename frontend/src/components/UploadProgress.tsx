@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { useEffect, useState } from "react";
+import { msg, t } from "../i18n";
 
 interface UploadProgressProps {
   progress: number;
@@ -10,22 +11,22 @@ interface UploadProgressProps {
 }
 
 const STAGES = [
-  { key: "uploading", label: "Transmit", code: "01" },
-  { key: "queued", label: "Queue", code: "02" },
-  { key: "analyzing", label: "Analyze", code: "03" },
+  { key: "uploading", label: msg("Transmit"), code: "01" },
+  { key: "queued", label: msg("Queue"), code: "02" },
+  { key: "analyzing", label: msg("Analyze"), code: "03" },
 ] as const;
 
 const TIPS = [
-  "Computing SHA-256 fingerprint…",
-  "Generating perceptual hash for similarity search…",
-  "Reading EXIF metadata and editor signatures…",
-  "Re-saving JPEG slice for ELA delta…",
-  "Loading image classifiers (ensemble vote)…",
-  "Pre-checking content type (photo vs diagram)…",
-  "Cold-loading vision model (first run is slow)…",
-  "Examining lighting, texture, fingers, eyes…",
-  "Aggregating weighted confidence…",
-  "Cross-referencing community fakes index…",
+  msg("Computing SHA-256 fingerprint…"),
+  msg("Generating perceptual hash for similarity search…"),
+  msg("Reading EXIF metadata and editor signatures…"),
+  msg("Re-saving JPEG slice for ELA delta…"),
+  msg("Loading image classifiers (ensemble vote)…"),
+  msg("Pre-checking content type (photo vs diagram)…"),
+  msg("Cold-loading vision model (first run is slow)…"),
+  msg("Examining lighting, texture, fingers, eyes…"),
+  msg("Aggregating weighted confidence…"),
+  msg("Cross-referencing community fakes index…"),
 ];
 
 export default function UploadProgress({
@@ -61,10 +62,10 @@ export default function UploadProgress({
       <div className="flex items-center justify-between px-6 py-3 border-b border-ink-700">
         <div className="flex items-center gap-3">
           <span className="w-1.5 h-1.5 rounded-full bg-signal-cyan pulse-dot" />
-          <span className="label-mono">Transmission</span>
+          <span className="label-mono">{t("Transmission")}</span>
         </div>
         <span className="font-mono text-[10px] text-ink-500 ticker">
-          {isUploading ? "OUTBOUND" : `PROCESSING · ${elapsed}s`}
+          {isUploading ? t("OUTBOUND") : t("PROCESSING · {n}s", { n: elapsed })}
         </span>
       </div>
 
@@ -72,7 +73,7 @@ export default function UploadProgress({
         {filename && (
           <div className="flex items-center gap-3 pb-4 mb-4 border-b border-dashed border-ink-700">
             <div className="w-10 h-10 border border-ink-600 flex items-center justify-center text-ink-300 font-mono text-[10px]">
-              {filename.split(".").pop()?.toUpperCase().slice(0, 4) || "FILE"}
+              {filename.split(".").pop()?.toUpperCase().slice(0, 4) || t("FILE")}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-mono text-xs text-ink-100 truncate">{filename}</div>
@@ -110,7 +111,7 @@ export default function UploadProgress({
                     !done && !active && "text-ink-500",
                   )}
                 >
-                  {stage.label}
+                  {t(stage.label)}
                 </span>
                 {i < STAGES.length - 1 && (
                   <div
@@ -141,7 +142,7 @@ export default function UploadProgress({
 
         <div className="mt-2 flex items-center justify-between font-mono text-[10px]">
           <span className={clsx("uppercase tracking-[0.14em] ticker", isUploading ? "text-signal-cyan" : "text-signal-amber")}>
-            {isUploading ? `TRANSMITTING · ${progress}%` : statusMessage || "PROCESSING…"}
+            {isUploading ? t("TRANSMITTING · {n}%", { n: progress }) : statusMessage ? t(statusMessage) : t("PROCESSING…")}
           </span>
           {!isUploading && (
             <span className="text-ink-500 uppercase tracking-[0.14em] ticker">
@@ -153,10 +154,10 @@ export default function UploadProgress({
         {/* Live tip log */}
         {!isUploading && (
           <div className="mt-4 border-l-2 border-signal-amber/40 pl-3 py-2 bg-signal-amber/[0.04]">
-            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">Worker log</div>
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">{t("Worker log")}</div>
             <div key={tipIdx} className="font-mono text-[11px] text-ink-200 leading-relaxed animate-fade-in-up">
               <span className="text-signal-amber mr-1.5">›</span>
-              {TIPS[tipIdx]}
+              {t(TIPS[tipIdx])}
             </div>
           </div>
         )}

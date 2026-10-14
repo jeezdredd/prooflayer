@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
+import { t, verdictText } from "../i18n";
 
 interface DashboardFiltersProps {
   onChange: (filters: Record<string, string>) => void;
@@ -38,7 +39,7 @@ export default function DashboardFilters({ onChange }: DashboardFiltersProps) {
         <Search size={14} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 pointer-events-none" />
         <input
           type="search"
-          placeholder="Search by filename…"
+          placeholder={t("Search by filename…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input-forensic pl-9"
@@ -49,9 +50,9 @@ export default function DashboardFilters({ onChange }: DashboardFiltersProps) {
         onChange={(e) => setStatus(e.target.value)}
         className="input-forensic w-40 cursor-pointer"
       >
-        <option value="">All statuses</option>
+        <option value="">{t("All statuses")}</option>
         {STATUSES.map((s) => (
-          <option key={s} value={s}>{s}</option>
+          <option key={s} value={s}>{verdictText(s)}</option>
         ))}
       </select>
       <select
@@ -59,9 +60,9 @@ export default function DashboardFilters({ onChange }: DashboardFiltersProps) {
         onChange={(e) => setVerdict(e.target.value)}
         className="input-forensic w-44 cursor-pointer"
       >
-        <option value="">All verdicts</option>
+        <option value="">{t("All verdicts")}</option>
         {VERDICTS.map((v) => (
-          <option key={v} value={v}>{v.replace("_", " ")}</option>
+          <option key={v} value={v}>{verdictText(v)}</option>
         ))}
       </select>
       {hasFilters && (
@@ -70,7 +71,7 @@ export default function DashboardFilters({ onChange }: DashboardFiltersProps) {
           className="flex items-center gap-1.5 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400 hover:text-signal-blood transition-colors"
         >
           <X size={12} strokeWidth={2} />
-          Clear
+          {t("Clear filters")}
         </button>
       )}
     </div>
