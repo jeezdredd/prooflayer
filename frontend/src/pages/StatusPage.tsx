@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Activity, Brain, Cpu, Database, GraduationCap, HardDrive, Layers, Mail, Zap } from "lucide-react";
+import { Activity, Brain, Cpu, Database, HardDrive, Layers, Mail, Zap } from "lucide-react";
 import client from "../api/client";
 import { locale, msg, t } from "../i18n";
 
@@ -22,16 +22,25 @@ interface ServiceProbe {
   ensemble?: string;
 }
 
+interface HoldoutNumbers {
+  real: number;
+  ai: number;
+  real_fake: number;
+  real_suspicious: number;
+  ai_caught: number;
+  ai_authentic: number;
+}
+
 interface RunInfo {
   status: string;
   started_at: string;
   finished_at: string | null;
   samples_used: number;
   error: string;
+  metrics?: { live?: HoldoutNumbers; candidate?: HoldoutNumbers; fetched?: number; db_samples?: number };
 }
 
 interface TrainingQueue {
-  media_type: string;
   new_samples: number;
   needed: number;
   last_success: RunInfo | null;
@@ -56,33 +65,28 @@ const SERVICES: { key: string; label: string; role: string; Icon: typeof Activit
   { key: "analyzers", label: msg("Tribunal"), role: msg("Every detector is loaded and configured"), Icon: Layers },
 ];
 
-const STATE: Record<ServiceProbe["status"], { word: string; chip: string; dot: string }> = {
-  ok: { word: msg("Working"), chip: "text-signal-sage bg-signal-sage/10 border-signal-sage/30", dot: "bg-signal-sage" },
-  down: { word: msg("Down"), chip: "text-signal-blood bg-signal-blood/10 border-signal-blood/40", dot: "bg-signal-blood" },
-  skip: { word: msg("Not checked"), chip: "text-ink-400 bg-ink-800 border-[var(--line-strong)]", dot: "bg-ink-500" },
+const STATE: Record<ServiceProbe["status"], { word: string; text: string; dot: string }> = {
+  ok: { word: msg("Working"), text: "text-signal-sage", dot: "bg-signal-sage" },
+  down: { word: msg("Down"), text: "text-signal-blood", dot: "bg-signal-blood" },
+  skip: { word: msg("Not checked"), text: "text-ink-400", dot: "bg-ink-500" },
 };
 
 const SKIP_REASON = /^only (\d+) new approved samples, need (\d+)$/;
 
-function facts(key: string, probe: ServiceProbe): string[] {
-  const out: string[] = [];
-  if (probe.latency_ms != null) out.push(t("{n} ms", { n: probe.latency_ms }));
-  if (key === "celery" && probe.workers != null) {
-    out.push(t("workers: {n}", { n: probe.workers }));
-    out.push(t("busy: {n}", { n: probe.active_tasks ?? 0 }));
-  }
+function detail(key: string, probe: ServiceProbe): string {
+  const parts: string[] = [];
+  if (key === "celery" && probe.workers != null) parts.push(t("workers: {n}", { n: probe.workers }), t("busy: {n}", { n: probe.active_tasks ?? 0 }));
   if (key === "ollama") {
-    if (probe.loaded_models?.length) out.push(t("loaded: {names}", { names: probe.loaded_models.join(", ") }));
-    else if (probe.available_models) out.push(t("idle, {n} models ready", { n: probe.available_models.length }));
+    if (probe.loaded_models?.length) parts.push(t("loaded: {names}", { names: probe.loaded_models.join(", ") }));
+    else if (probe.available_models) parts.push(t("idle, {n} models ready", { n: probe.available_models.length }));
   }
-  if (key === "analyzers" && probe.active != null && probe.expected != null) {
-    out.push(t("{active} of {expected} active", { active: probe.active, expected: probe.expected }));
-    if (probe.ensemble) out.push(probe.ensemble);
-  }
-  if (key === "redis" && probe.version) out.push(`v${probe.version}`);
-  if (key === "email" && probe.backend) out.push(t("via {name}", { name: probe.backend }));
-  if (probe.recent_failures) out.push(t("recent issues: {n}", { n: probe.recent_failures }));
-  return out;
+  if (key === "analyzers" && probe.active != null && probe.expected != null) parts.push(t("{active} of {expected} active", { active: probe.active, expected: probe.expected }));
+  if (key === "redis" && probe.version) parts.push(`v${probe.version}`);
+  if (key === "email" && probe.backend) parts.push(t("via {name}", { name: probe.backend }));
+  if (probe.recent_failures) parts.push(t("recent issues: {n}", { n: probe.recent_failures }));
+  if (probe.status === "down" && probe.error) parts.push(t(probe.error));
+  if (probe.status === "skip" && probe.reason) parts.push(t(probe.reason));
+  return parts.join(" · ");
 }
 
 function formatDate(value: string | null | undefined, withTime = false): string {
@@ -93,72 +97,72 @@ function formatDate(value: string | null | undefined, withTime = false): string 
     : date.toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" });
 }
 
-function attemptText(run: RunInfo): string {
-  if (run.status === "success") return t("Retrained on {n} new examples", { n: run.samples_used });
+function attemptText(run: RunInfo): { text: string; tone: string } {
+  if (run.status === "success") return { text: t("New model promoted"), tone: "text-signal-sage" };
+  if (run.status === "rejected") return { text: t("Candidate rejected: {reason}", { reason: run.error }), tone: "text-signal-amber" };
   if (run.status === "skipped") {
     const m = SKIP_REASON.exec(run.error);
-    return m ? t("Skipped: {have} new examples, {need} needed", { have: m[1], need: m[2] }) : t("Skipped");
+    return { text: m ? t("Skipped: {have} new examples, {need} needed", { have: m[1], need: m[2] }) : t("Skipped: {reason}", { reason: t(run.error) }), tone: "text-ink-400" };
   }
-  if (run.status === "failed") return t("Failed: {reason}", { reason: run.error || "-" });
-  return t("In progress");
+  if (run.status === "failed") return { text: t("Failed: {reason}", { reason: run.error || "-" }), tone: "text-signal-blood" };
+  return { text: t("In progress"), tone: "text-signal-amber" };
 }
 
-function ServiceCard({ item, probe, index }: { item: (typeof SERVICES)[number]; probe?: ServiceProbe; index: number }) {
-  const Icon = item.Icon;
-  const state = STATE[probe?.status ?? "skip"];
-  const details = probe ? facts(item.key, probe) : [];
-  const problem = probe?.status === "down" ? probe.error : probe?.status === "skip" ? probe.reason : undefined;
+function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.03 }}
-      className="case-card p-4 flex gap-3.5"
-    >
-      <div className="w-9 h-9 shrink-0 rounded-md border border-[var(--line-strong)] flex items-center justify-center text-ink-300">
-        <Icon size={16} strokeWidth={1.5} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="text-[15px] text-ink-50 leading-tight">{t(item.label)}</div>
-          <span className={clsx("shrink-0 inline-flex items-center gap-1.5 border px-2 py-0.5 text-[11px] rounded-full", state.chip)}>
-            <span className={clsx("w-1.5 h-1.5 rounded-full", state.dot)} />
-            {probe ? t(state.word) : t("checking…")}
-          </span>
-        </div>
-        <div className="text-xs text-ink-400 mt-1 leading-snug">{t(item.role)}</div>
-        {problem && <div className="text-xs text-signal-blood/90 mt-1.5 break-words">{t(problem)}</div>}
-        {details.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2.5">
-            {details.map((d) => (
-              <span key={d} className="font-mono text-[10px] text-ink-300 bg-white/[0.03] border border-[var(--line)] px-1.5 py-0.5 rounded">{d}</span>
-            ))}
-          </div>
-        )}
-      </div>
-    </motion.div>
+    <div className="bg-ink-950 px-4 py-3.5">
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{label}</div>
+      <div className={clsx("font-display text-2xl mt-1 tabular-nums", tone ?? "text-ink-50")}>{value}</div>
+    </div>
   );
 }
 
-function TrainingCard({ training }: { training: TrainingQueue }) {
+function HoldoutTable({ live, candidate }: { live: HoldoutNumbers; candidate: HoldoutNumbers }) {
+  const rows: [string, keyof HoldoutNumbers, boolean][] = [
+    [msg("AI caught"), "ai_caught", true],
+    [msg("AI called authentic"), "ai_authentic", false],
+    [msg("Real photos called AI"), "real_fake", false],
+    [msg("Real photos called suspicious"), "real_suspicious", false],
+  ];
+  return (
+    <table className="w-full text-xs mt-4">
+      <thead>
+        <tr className="text-ink-500 font-mono text-[10px] uppercase tracking-[0.14em]">
+          <th className="text-left font-normal py-1.5">{t("Held-out check")}</th>
+          <th className="text-right font-normal py-1.5">{t("Live model")}</th>
+          <th className="text-right font-normal py-1.5">{t("Candidate")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(([label, key, higherBetter]) => {
+          const better = higherBetter ? candidate[key] > live[key] : candidate[key] < live[key];
+          const worse = higherBetter ? candidate[key] < live[key] : candidate[key] > live[key];
+          return (
+            <tr key={key} className="border-t border-[var(--line)]">
+              <td className="py-1.5 text-ink-300">{t(label)}</td>
+              <td className="py-1.5 text-right tabular-nums text-ink-200">{live[key]}</td>
+              <td className={clsx("py-1.5 text-right tabular-nums", better ? "text-signal-sage" : worse ? "text-signal-blood" : "text-ink-200")}>{candidate[key]}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function TrainingBlock({ training }: { training: TrainingQueue }) {
   const pct = Math.min(100, Math.round((training.new_samples / Math.max(training.needed, 1)) * 100));
+  const attempt = training.last_attempt ? attemptText(training.last_attempt) : null;
+  const metrics = training.last_attempt?.metrics;
   return (
     <div className="case-card p-5">
-      <div className="flex items-start gap-3.5">
-        <div className="w-9 h-9 shrink-0 rounded-md border border-[var(--line-strong)] flex items-center justify-center text-ink-300">
-          <GraduationCap size={16} strokeWidth={1.5} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[15px] text-ink-50">{t("Detector retraining")}</div>
-          <p className="text-xs text-ink-400 mt-1 leading-relaxed max-w-xl">
-            {t("Our image detector retrains itself every week once reviewers have labelled enough new uploads as real or AI. Until then it keeps the current model.")}
-          </p>
-        </div>
-      </div>
+      <p className="text-sm text-ink-300 leading-relaxed max-w-2xl">
+        {t("Every Sunday the image detector pulls fresh examples from OpenFake and reviewed uploads, trains a candidate and checks it on a frozen held-out set. The candidate replaces the live model only if no real photo is called AI and detection improves.")}
+      </p>
 
       <div className="mt-5">
         <div className="flex items-baseline justify-between text-xs mb-1.5">
-          <span className="text-ink-300">{t("New labelled examples")}</span>
+          <span className="text-ink-300">{t("New examples since the last model")}</span>
           <span className="font-mono text-ink-100 tabular-nums">{training.new_samples} / {training.needed}</span>
         </div>
         <div className="h-1.5 bg-ink-800 rounded-full overflow-hidden">
@@ -168,21 +172,22 @@ function TrainingCard({ training }: { training: TrainingQueue }) {
 
       <dl className="grid sm:grid-cols-3 gap-4 mt-5 text-xs">
         <div>
-          <dt className="text-ink-500">{t("Last retrained")}</dt>
+          <dt className="text-ink-500">{t("Model in use since")}</dt>
           <dd className="text-ink-100 mt-1">{formatDate(training.last_success?.finished_at)}</dd>
-          {training.last_success && <dd className="text-ink-500 mt-0.5">{t("on {n} examples", { n: training.last_success.samples_used })}</dd>}
         </div>
         <div>
           <dt className="text-ink-500">{t("Last attempt")}</dt>
           <dd className="text-ink-100 mt-1">{formatDate(training.last_attempt?.started_at, true)}</dd>
-          {training.last_attempt && <dd className="text-ink-500 mt-0.5">{attemptText(training.last_attempt)}</dd>}
+          {attempt && <dd className={clsx("mt-0.5", attempt.tone)}>{attempt.text}</dd>}
         </div>
         <div>
-          <dt className="text-ink-500">{t("Next check")}</dt>
+          <dt className="text-ink-500">{t("Next attempt")}</dt>
           <dd className="text-ink-100 mt-1">{formatDate(training.next_run, true)}</dd>
           <dd className="text-ink-500 mt-0.5">{t("every Sunday")}</dd>
         </div>
       </dl>
+
+      {metrics?.live && metrics?.candidate && <HoldoutTable live={metrics.live} candidate={metrics.candidate} />}
     </div>
   );
 }
@@ -197,65 +202,74 @@ export default function StatusPage() {
 
   const services = data?.services ?? {};
   const overall = data?.overall;
-  const down = SERVICES.filter((s) => services[s.key]?.status === "down");
-  const tone = overall === "operational" ? "border-signal-sage/40 bg-signal-sage/[0.06]" : overall === "degraded" ? "border-signal-amber/50 bg-signal-amber/[0.06]" : "border-[var(--line-strong)]";
-  const dot = overall === "operational" ? "bg-signal-sage" : overall === "degraded" ? "bg-signal-amber" : "bg-ink-500";
+  const working = SERVICES.filter((s) => services[s.key]?.status === "ok").length;
+  const roster = services.analyzers;
 
   return (
-    <div className="max-w-4xl">
-      <div className="label-mono mb-3">{t("System status")}</div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className={clsx("border rounded-lg p-5 flex items-center gap-4", tone)}
-      >
-        <span className="relative inline-flex shrink-0">
-          <span className={clsx("w-3 h-3 rounded-full", dot)} />
-          {overall === "operational" && (
-            <motion.span
-              className={clsx("absolute inset-0 rounded-full", dot)}
-              animate={{ scale: [1, 2.4], opacity: [0.6, 0] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-            />
-          )}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="text-xl text-ink-50">
-            {overall === "operational"
-              ? t("All systems are working")
-              : overall === "degraded"
-              ? t("Some services have problems")
-              : t("Checking services…")}
-          </div>
-          <div className="text-xs text-ink-400 mt-1">
-            {down.length > 0
-              ? t("Affected: {names}", { names: down.map((s) => t(s.label)).join(", ") })
-              : t("Checked every 5 seconds")}
-            {dataUpdatedAt ? ` · ${t("last check {time}", { time: new Date(dataUpdatedAt).toLocaleTimeString(locale()) })}` : ""}
-          </div>
+    <div className="max-w-5xl">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <div className="label-mono flex items-center gap-2 mb-3">
+          <span className={clsx("w-1.5 h-1.5 rounded-full pulse-dot", overall === "degraded" ? "bg-signal-amber" : "bg-signal-sage")} />
+          {t("System / Status")}
         </div>
+        <h1 className="font-display text-5xl lg:text-6xl text-ink-50 leading-none">
+          {overall === "operational" ? (
+            <>{t("All systems")} <span className="italic text-signal-sage">{t("operational")}</span>.</>
+          ) : overall === "degraded" ? (
+            <>{t("Service")} <span className="italic text-signal-amber">{t("degraded")}</span>.</>
+          ) : (
+            <>{t("Probing")}<span className="italic text-iris">…</span></>
+          )}
+        </h1>
+        <p className="text-ink-300 mt-3">
+          {t("Real-time component health. Probed every 5s.")}
+          {dataUpdatedAt ? ` ${t("Last check {time}.", { time: new Date(dataUpdatedAt).toLocaleTimeString(locale()) })}` : ""}
+        </p>
       </motion.div>
 
-      <div className="grid sm:grid-cols-2 gap-3 mt-6">
-        {SERVICES.map((item, i) => (
-          <ServiceCard key={item.key} item={item} probe={services[item.key]} index={i} />
-        ))}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--line-strong)] border border-[var(--line-strong)] mt-8">
+        <Stat label={t("Services working")} value={data ? `${working} / ${SERVICES.length}` : "-"} tone={data && working < SERVICES.length ? "text-signal-amber" : "text-signal-sage"} />
+        <Stat label={t("Tribunal")} value={roster?.ensemble?.replace("Tribunal ", "") ?? "-"} />
+        <Stat label={t("Active analyzers")} value={roster?.active != null ? `${roster.active} / ${roster.expected}` : "-"} />
+        <Stat label={t("Database latency")} value={services.database?.latency_ms != null ? t("{n} ms", { n: services.database.latency_ms }) : "-"} />
+      </div>
+
+      <div className="label-mono mt-10 mb-3">{t("Services")}</div>
+      <div className="case-card divide-y divide-[var(--line)]">
+        {SERVICES.map((item) => {
+          const probe = services[item.key];
+          const state = STATE[probe?.status ?? "skip"];
+          const Icon = item.Icon;
+          return (
+            <div key={item.key} className="flex items-center gap-4 px-5 py-3.5">
+              <Icon size={16} strokeWidth={1.5} className="text-ink-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="text-sm text-ink-50">{t(item.label)}</span>
+                  <span className="text-xs text-ink-500">{t(item.role)}</span>
+                </div>
+                {probe && detail(item.key, probe) && <div className="font-mono text-[11px] text-ink-400 mt-0.5 truncate">{detail(item.key, probe)}</div>}
+              </div>
+              {probe?.latency_ms != null && <span className="font-mono text-[11px] text-ink-500 tabular-nums hidden sm:inline">{t("{n} ms", { n: probe.latency_ms })}</span>}
+              <span className={clsx("flex items-center gap-1.5 text-xs shrink-0 w-28 justify-end", state.text)}>
+                <span className={clsx("w-1.5 h-1.5 rounded-full", state.dot)} />
+                {probe ? t(state.word) : t("checking…")}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {data?.training && (
-        <div className="mt-8">
-          <div className="label-mono mb-3">{t("Models")}</div>
-          <TrainingCard training={data.training} />
-        </div>
+        <>
+          <div className="label-mono mt-10 mb-3">{t("Self-improving detector")}</div>
+          <TrainingBlock training={data.training} />
+        </>
       )}
 
       <div className="mt-8 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600">
         {t("Public endpoint")} ·{" "}
-        <a href="https://api.prooflayer.cloud/api/v1/system/status/" className="hover:text-signal-amber transition-colors">
-          GET /api/v1/system/status/
-        </a>
+        <a href="https://api.prooflayer.cloud/api/v1/system/status/" className="hover:text-signal-amber transition-colors">GET /api/v1/system/status/</a>
       </div>
     </div>
   );

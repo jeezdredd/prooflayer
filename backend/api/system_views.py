@@ -305,6 +305,7 @@ def _run_dict(run) -> dict | None:
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "samples_used": run.samples_used,
         "error": run.error or "",
+        "metrics": {k: run.metrics.get(k) for k in ("live", "candidate", "fetched", "db_samples")} if run.metrics else {},
     }
 
 

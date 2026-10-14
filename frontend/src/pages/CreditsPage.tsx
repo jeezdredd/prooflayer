@@ -69,6 +69,7 @@ const INFRA: Tech[] = [
   { name: "AMD ROCm", href: "https://www.amd.com/en/products/software/rocm.html", note: msg("GPU for the language models"), icon: "amd" },
   { name: "Paddle", href: "https://www.paddle.com", note: msg("Payments and invoices"), icon: "paddle" },
   { name: "Resend", href: "https://resend.com", note: msg("Transactional email"), icon: "resend" },
+  { name: "Apple iCloud Mail", href: "https://www.icloud.com/mail", note: msg("Support and legal mailboxes on our domain"), icon: "icloud" },
 ];
 
 const DATA: Tech[] = [
