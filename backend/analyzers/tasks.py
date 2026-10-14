@@ -5,12 +5,13 @@ from asgiref.sync import async_to_sync
 from celery import chord, group, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from channels.layers import get_channel_layer
+from django.conf import settings
 from django.core.cache import cache
 
 from content.models import Submission
 from content.storage_utils import local_file
 
-from users.emails import deliver
+from users import mail
 from users.tasks import deliver_submission_webhook
 
 from .aggregator import aggregate
@@ -241,7 +242,6 @@ def run_weekly_retrain(
     epochs_override=None,
 ):
     from datetime import timedelta
-    from django.conf import settings
     from django.core.management import call_command
     from django.utils import timezone
     from io import StringIO
@@ -326,7 +326,6 @@ def run_weekly_retrain(
 
 
 def _notify_retrain(run):
-    from django.conf import settings
     import requests
 
     url = getattr(settings, "DISCORD_WEBHOOK_URL", "")
@@ -351,33 +350,29 @@ def _notify_retrain(run):
 
 
 def _email_retrain(run):
-    from django.conf import settings
-    from django.core.mail import EmailMultiAlternatives
-
     user = run.triggered_by
     if not user or not user.email:
         return
-    status = run.status
-    subject = f"[ProofLayer] Retrain {status}: {run.media_type}"
-    lines = [
-        f"Retrain run {run.id} finished with status: {status}.",
-        f"Media type: {run.media_type}",
-        f"Samples used: {run.samples_used}",
-    ]
+    tone = {"success": "sage", "failed": "blood", "rejected": "amber"}.get(run.status, "violet")
+    details = [("Run", str(run.id)), ("Media type", run.media_type), ("Status", run.status), ("Samples", str(run.samples_used))]
     if run.hf_revision:
-        lines.append(f"HF revision: {run.hf_revision}")
-    if run.error:
-        lines.append(f"Error: {run.error}")
-    text_body = "\n".join(lines)
-    html_body = "<p>" + "</p><p>".join(lines) + "</p>"
+        details.append(("Revision", run.hf_revision[:80]))
+    context = {
+        **mail.COMMON["en"],
+        "lang": "en",
+        "tone": tone,
+        "subject": f"[ProofLayer] Retrain {run.status}: {run.media_type}",
+        "preheader": run.error[:140] if run.error else f"Retrain finished: {run.status}",
+        "badge": "Detector",
+        "heading": "Retrain",
+        "accent_word": run.status,
+        "paragraphs": [run.error] if run.error else [],
+        "details": details,
+        "cta": "Open the admin",
+        "cta_url": f"{settings.PUBLIC_API_URL.rsplit('/api/', 1)[0]}/admin/",
+        "reason": "You get this email because you started this retrain.",
+    }
     try:
-        msg = EmailMultiAlternatives(
-            subject=subject,
-            body=text_body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[user.email],
-        )
-        msg.attach_alternative(html_body, "text/html")
-        deliver(msg, kind="retrain", user=user)
+        mail.send(kind="retrain", to=[user.email], context=context, user=user)
     except Exception as exc:
         logger.warning("retrain email failed: %s", exc)

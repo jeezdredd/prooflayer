@@ -123,7 +123,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "200/hour",
-        "public": "1200/hour",
+        "public": "600/hour",
         "user": "500/hour",
         "upload": "30/hour",
         "register": "5/hour",
@@ -225,6 +225,7 @@ else:
     EMAIL_MODE = "console"
 EMAIL_CONFIGURED = EMAIL_MODE != "console"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+PASSWORD_RESET_TIMEOUT = 60 * 60
 PUBLIC_API_URL = (os.environ.get("PUBLIC_API_URL") or os.environ.get("VITE_API_URL") or "http://localhost:8000/api/v1").rstrip("/")
 
 PADDLE_API_KEY = os.environ.get("PADDLE_API_KEY", "")

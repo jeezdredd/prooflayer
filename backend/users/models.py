@@ -25,6 +25,10 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
+    class Language(models.TextChoices):
+        EN = "en", "English"
+        RU = "ru", "Русский"
+
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to="avatars/", blank=True)
     bio = models.TextField(max_length=500, blank=True)
@@ -35,6 +39,8 @@ class User(AbstractUser):
     age_confirmed_at = models.DateTimeField(null=True, blank=True)
     terms_version = models.CharField(max_length=20, blank=True)
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    language = models.CharField(max_length=5, choices=Language.choices, default=Language.EN)
+    email_updates = models.BooleanField(default=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
@@ -151,3 +157,50 @@ class ApiKey(models.Model):
         if not raw or not raw.startswith(API_KEY_PREFIX):
             return None
         return cls.objects.select_related("user").filter(key_hash=_hash_api_key(raw)).first()
+
+
+class ProductUpdate(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SENDING = "sending", "Sending"
+        SENT = "sent", "Sent"
+
+    title_en = models.CharField(max_length=160)
+    title_ru = models.CharField(max_length=160)
+    summary_en = models.CharField(max_length=300, blank=True, help_text="Inbox preview line")
+    summary_ru = models.CharField(max_length=300, blank=True, help_text="Строка превью во входящих")
+    body_en = models.TextField(help_text="Paragraphs separated by a blank line. Lines starting with '- ' become a list.")
+    body_ru = models.TextField(help_text="Абзацы через пустую строку. Строки с '- ' становятся списком.")
+    cta_label_en = models.CharField(max_length=60, blank=True)
+    cta_label_ru = models.CharField(max_length=60, blank=True)
+    cta_url = models.URLField(blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    recipients = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "product_updates"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title_en
+
+    def localized(self, lang: str) -> dict:
+        ru = lang == User.Language.RU
+        return {
+            "title": self.title_ru if ru else self.title_en,
+            "summary": (self.summary_ru if ru else self.summary_en) or "",
+            "body": self.body_ru if ru else self.body_en,
+            "cta_label": (self.cta_label_ru if ru else self.cta_label_en) or "",
+        }
+
+
+class ProductUpdateDelivery(models.Model):
+    update = models.ForeignKey(ProductUpdate, on_delete=models.CASCADE, related_name="deliveries")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="update_deliveries")
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "product_update_deliveries"
+        constraints = [models.UniqueConstraint(fields=["update", "user"], name="uniq_update_delivery")]

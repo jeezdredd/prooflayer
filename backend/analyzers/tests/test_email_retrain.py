@@ -23,5 +23,5 @@ def test_retrain_email_logs():
 def test_retrain_email_failure_swallowed():
     user = UserFactory()
     run = RetrainRun.objects.create(media_type="image", status="success", triggered_by=user)
-    with patch("analyzers.tasks.deliver", side_effect=RuntimeError("boom")):
+    with patch("users.mail.deliver", side_effect=RuntimeError("boom")):
         _email_retrain(run)

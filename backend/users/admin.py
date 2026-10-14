@@ -1,11 +1,12 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
 
 from unfold.admin import ModelAdmin
 
-from .models import ApiKey, EmailLog, User
+from .models import ApiKey, EmailLog, ProductUpdate, User
+from .tasks import send_product_update, send_product_update_to, update_audience
 
 
 class EmailUserCreationForm(UserCreationForm):
@@ -46,6 +47,7 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
         ("Personal", {"fields": ("first_name", "last_name", "avatar", "bio")}),
         ("Permissions", {"fields": ("is_verified", "is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Age and terms", {"fields": ("is_adult", "age_confirmed_at", "terms_version", "terms_accepted_at")}),
+        ("Email", {"fields": ("language", "email_updates", "allow_training", "training_consent_at")}),
         ("Dates", {"fields": ("last_login", "date_joined")}),
     )
 
@@ -87,3 +89,32 @@ class ApiKeyAdmin(ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(ProductUpdate)
+class ProductUpdateAdmin(ModelAdmin):
+    list_display = ("title_en", "status", "created_at", "sent_at", "recipients")
+    list_filter = ("status",)
+    readonly_fields = ("status", "created_at", "sent_at", "recipients")
+    actions = ("send_test_to_me", "send_to_subscribers")
+    fieldsets = (
+        ("English", {"fields": ("title_en", "summary_en", "body_en", "cta_label_en")}),
+        ("Русский", {"fields": ("title_ru", "summary_ru", "body_ru", "cta_label_ru")}),
+        ("Button and delivery", {"fields": ("cta_url", "status", "created_at", "sent_at", "recipients")}),
+    )
+
+    @admin.action(description="Send a test copy to me")
+    def send_test_to_me(self, request, queryset):
+        for update in queryset:
+            send_product_update_to(update, request.user)
+        self.message_user(request, f"Sent {queryset.count()} test email(s) to {request.user.email} in {request.user.language.upper()}.")
+
+    @admin.action(description="Send to all subscribers")
+    def send_to_subscribers(self, request, queryset):
+        for update in queryset:
+            if update.status == ProductUpdate.Status.SENT:
+                self.message_user(request, f"“{update}” was already sent.", messages.WARNING)
+                continue
+            audience = update_audience(update).count()
+            send_product_update.delay(update.pk)
+            self.message_user(request, f"“{update}” is going out to {audience} subscribers.")

@@ -1,12 +1,18 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils import timezone
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -19,7 +25,8 @@ from content.sensitivity import unpublish_all
 
 from .models import EmailLog, EmailVerificationToken
 from .serializers import AcceptTermsSerializer, RegisterSerializer, UserSerializer, age_fields
-from .tasks import send_verification_email
+from .mail import user_from_unsubscribe_token
+from .tasks import send_password_reset_email, send_verification_email
 
 User = get_user_model()
 
@@ -37,6 +44,10 @@ class ResendVerificationThrottle(UserRateThrottle):
 class LoginThrottle(AnonRateThrottle):
     scope = "login"
     rate = "20/hour"
+
+
+class PasswordResetThrottle(AnonRateThrottle):
+    scope = "password_reset"
 
 
 def _set_refresh_cookie(response, refresh: str) -> None:
@@ -242,3 +253,65 @@ class ResendVerificationView(APIView):
         send_verification_email.delay(user.id)
         delivery = "email" if settings.EMAIL_CONFIGURED else "console"
         return Response({"detail": "queued", "delivery": delivery})
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+    throttle_classes = (PasswordResetThrottle,)
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip()
+        user = User.objects.filter(email__iexact=email, is_active=True).first() if email else None
+        if user is not None:
+            send_password_reset_email.delay(user.id)
+        return Response({"detail": "If the address has an account, a reset link is on its way."})
+
+
+def _user_from_uid(uid: str):
+    try:
+        pk = force_str(urlsafe_base64_decode(uid or ""))
+    except (TypeError, ValueError):
+        return None
+    return User.objects.filter(pk=pk, is_active=True).first() if pk.isdigit() else None
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+    throttle_classes = (PasswordResetThrottle,)
+
+    def post(self, request):
+        user = _user_from_uid(request.data.get("uid", ""))
+        token = request.data.get("token", "")
+        if user is None or not default_token_generator.check_token(user, token):
+            return Response({"detail": "This reset link is invalid or has expired."}, status=status.HTTP_400_BAD_REQUEST)
+        password = request.data.get("password", "")
+        try:
+            validate_password(password, user)
+        except DjangoValidationError as exc:
+            return Response({"password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(password)
+        fields = ["password"]
+        if not user.is_verified:
+            user.is_verified = True
+            fields.append("is_verified")
+        user.save(update_fields=fields)
+        for outstanding in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=outstanding)
+        return Response({"detail": "Password changed. Sign in with the new one."})
+
+
+class UnsubscribeView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request):
+        token = request.query_params.get("token") or request.data.get("token") or ""
+        user = user_from_unsubscribe_token(token)
+        if user is None:
+            return Response({"detail": "This unsubscribe link is invalid."}, status=status.HTTP_400_BAD_REQUEST)
+        if user.email_updates:
+            user.email_updates = False
+            user.save(update_fields=["email_updates"])
+        return Response({"detail": "unsubscribed", "email": user.email})

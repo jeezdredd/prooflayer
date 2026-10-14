@@ -28,10 +28,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     accept_terms = serializers.BooleanField(write_only=True, error_messages={"required": ACCEPT_TERMS_MESSAGE})
     is_adult = serializers.BooleanField(required=False, default=False)
     allow_training = serializers.BooleanField(required=False, default=True)
+    language = serializers.ChoiceField(choices=User.Language.choices, required=False, default=User.Language.EN)
 
     class Meta:
         model = User
-        fields = ("id", "email", "username", "password", "password_confirm", "allow_training", "accept_terms", "is_adult")
+        fields = ("id", "email", "username", "password", "password_confirm", "allow_training", "accept_terms", "is_adult", "language")
         read_only_fields = ("id",)
 
     def validate_accept_terms(self, value):
@@ -65,6 +66,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "id", "email", "username", "avatar", "bio", "is_verified", "is_staff", "date_joined",
             "allow_training", "training_consent_at", "is_adult", "terms_version", "needs_terms", "student_only",
+            "language", "email_updates",
         )
         read_only_fields = (
             "id", "email", "is_verified", "is_staff", "date_joined", "training_consent_at", "terms_version",

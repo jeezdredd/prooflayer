@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<title>{{ subject }}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; padding: 0; background: #050608; -webkit-text-size-adjust: 100%; }
+  a { color: #a78bfa; }
+  @media (max-width: 620px) {
+    .shell { padding: 28px 12px 36px !important; }
+    .card { padding: 30px 22px 28px !important; border-radius: 18px !important; }
+    .h1 { font-size: 34px !important; }
+    .cta a { display: block !important; text-align: center !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#050608;">
+<div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#050608;">{{ preheader }}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#050608" style="background:#050608;background-image:radial-gradient(640px 320px at 50% 0%, rgba(167,139,250,0.16), rgba(5,6,8,0) 70%);">
+  <tr>
+    <td align="center" class="shell" style="padding:48px 16px 56px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;width:100%;">
+
+        <tr>
+          <td style="padding:0 6px 30px;">
+            <a href="{{ site_url }}" style="text-decoration:none;">
+              <img src="{{ asset_base }}/email/wordmark.png" width="150" height="45" alt="ProofLayer" style="display:block;border:0;outline:none;width:150px;height:45px;color:#e4e8f3;font-family:Georgia,serif;font-size:28px;">
+            </a>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="card" bgcolor="#0b0d13" style="background:#0b0d13;border:1px solid #1c2130;border-radius:22px;padding:44px 44px 38px;">
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 26px;">
+              <tr>
+                <td style="border:1px solid {{ accent_border }};border-radius:999px;padding:6px 13px 6px 11px;font-family:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;font-size:10px;line-height:12px;letter-spacing:2px;text-transform:uppercase;color:{{ accent }};white-space:nowrap;">
+                  <span style="display:inline-block;width:6px;height:6px;border-radius:6px;background:{{ accent }};vertical-align:1px;margin-right:8px;"></span>{{ badge }}
+                </td>
+              </tr>
+            </table>
+
+            <h1 class="h1" style="margin:0 0 22px;font-family:'Instrument Serif',Georgia,'Times New Roman',serif;font-weight:400;font-size:42px;line-height:1.08;letter-spacing:-0.5px;color:#f5f7fb;">
+              {{ heading }}{% if accent_word %} <em style="font-style:italic;color:#a78bfa;">{{ accent_word }}</em>{% endif %}
+            </h1>
+
+            {% for block in blocks %}
+              {% if block.list %}
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px;">
+                  {% for item in block.list %}
+                  <tr>
+                    <td width="22" valign="top" style="padding:3px 0 10px;font-family:'JetBrains Mono',Menlo,monospace;font-size:13px;line-height:22px;color:{{ accent }};">&#8250;</td>
+                    <td valign="top" style="padding:3px 0 10px;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#bac2d6;">{{ item }}</td>
+                  </tr>
+                  {% endfor %}
+                </table>
+              {% else %}
+                <p style="margin:0 0 16px;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#bac2d6;">{{ block.text }}</p>
+              {% endif %}
+            {% endfor %}
+
+            {% if quote %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 22px;">
+              <tr>
+                <td style="background:#10131c;border:1px solid #1c2130;border-left:3px solid {{ accent }};border-radius:14px;padding:18px 20px;">
+                  <div style="font-family:'JetBrains Mono',Menlo,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#5d6783;margin:0 0 8px;">{{ quote_label }}</div>
+                  <div style="font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#e4e8f3;white-space:pre-line;">{{ quote }}</div>
+                </td>
+              </tr>
+            </table>
+            {% endif %}
+
+            {% if details %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 26px;border:1px solid #1c2130;border-radius:14px;border-collapse:separate;">
+              {% for label, value in details %}
+              <tr>
+                <td style="padding:13px 18px;{% if not forloop.last %}border-bottom:1px solid #161a25;{% endif %}font-family:'JetBrains Mono',Menlo,monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#5d6783;white-space:nowrap;">{{ label }}</td>
+                <td align="right" style="padding:13px 18px;{% if not forloop.last %}border-bottom:1px solid #161a25;{% endif %}font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;color:#e4e8f3;">{{ value }}</td>
+              </tr>
+              {% endfor %}
+            </table>
+            {% endif %}
+
+            {% if cta_url %}
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta" style="margin:14px 0 30px;">
+              <tr>
+                <td bgcolor="#a78bfa" style="border-radius:999px;background:#a78bfa;background-image:linear-gradient(120deg,#a78bfa 0%,#22d3ee 58%,#f5b042 100%);">
+                  <a href="{{ cta_url }}" style="display:inline-block;padding:15px 30px;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:18px;font-weight:600;color:#050608;text-decoration:none;border-radius:999px;">{{ cta }}&nbsp;&nbsp;&rarr;</a>
+                </td>
+              </tr>
+            </table>
+            {% if show_link %}
+            <p style="margin:0 0 6px;font-family:'JetBrains Mono',Menlo,monospace;font-size:11px;line-height:18px;color:#5d6783;">{{ link_hint }}</p>
+            <p style="margin:0 0 26px;font-family:'JetBrains Mono',Menlo,monospace;font-size:11px;line-height:18px;word-break:break-all;"><a href="{{ cta_url }}" style="color:#8d96b3;text-decoration:underline;">{{ cta_url }}</a></p>
+            {% endif %}
+            {% endif %}
+
+            {% if footnote %}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr><td style="height:1px;line-height:1px;font-size:1px;background:#1c2130;background-image:linear-gradient(90deg,rgba(167,139,250,0.5),rgba(34,211,238,0.25),rgba(28,33,48,0));">&nbsp;</td></tr>
+              <tr>
+                <td style="padding:20px 0 0;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:21px;color:#5d6783;">{{ footnote }}</td>
+              </tr>
+            </table>
+            {% endif %}
+
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:30px 10px 0;">
+            <p style="margin:0 0 12px;font-family:'JetBrains Mono',Menlo,monospace;font-size:10px;line-height:16px;letter-spacing:1.8px;text-transform:uppercase;color:#5d6783;">ProofLayer &middot; {{ tagline }}</p>
+            <p style="margin:0 0 12px;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:19px;color:#3e4761;">{{ reason }}</p>
+            <p style="margin:0;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:19px;color:#5d6783;">
+              <a href="{{ site_url }}/privacy" style="color:#8d96b3;text-decoration:none;">{{ privacy }}</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="{{ site_url }}/terms" style="color:#8d96b3;text-decoration:none;">{{ terms }}</a>&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="mailto:support@prooflayer.cloud" style="color:#8d96b3;text-decoration:none;">{{ support }}</a>{% if unsubscribe_url %}&nbsp;&nbsp;&middot;&nbsp;&nbsp;<a href="{{ unsubscribe_url }}" style="color:#8d96b3;text-decoration:underline;">{{ unsubscribe }}</a>{% endif %}
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,271 @@
+from django.conf import settings
+from django.core import signing
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+
+from .emails import deliver
+from .models import User
+
+LANGS = ("en", "ru")
+UNSUBSCRIBE_SALT = "product-updates-unsubscribe"
+
+ACCENTS = {
+    "amber": ("#f5b042", "rgba(245,176,66,0.35)"),
+    "violet": ("#a78bfa", "rgba(167,139,250,0.35)"),
+    "sage": ("#4ade80", "rgba(74,222,128,0.35)"),
+    "blood": ("#ff5773", "rgba(255,87,115,0.35)"),
+    "cyan": ("#22d3ee", "rgba(34,211,238,0.35)"),
+}
+
+COMMON = {
+    "en": {
+        "tagline": "Automated AI systems under human supervision",
+        "privacy": "Privacy",
+        "terms": "Terms",
+        "support": "Support",
+        "link_hint": "Button not working? Paste this link into your browser:",
+        "unsubscribe": "Unsubscribe from product updates",
+    },
+    "ru": {
+        "tagline": "Автоматические ИИ-системы под надзором человека",
+        "privacy": "Конфиденциальность",
+        "terms": "Условия",
+        "support": "Поддержка",
+        "link_hint": "Кнопка не работает? Вставьте ссылку в браузер:",
+        "unsubscribe": "Отписаться от новостей",
+    },
+}
+
+COPY = {
+    "verify": {
+        "en": {
+            "subject": "Confirm your email for ProofLayer",
+            "preheader": "One click and your account is ready. The link works for 48 hours.",
+            "badge": "Account",
+            "heading": "Confirm your",
+            "accent_word": "email",
+            "paragraphs": [
+                "Hi {name}, thanks for joining ProofLayer.",
+                "Confirm this address so we can keep your account safe and send you results, receipts and security notices.",
+            ],
+            "cta": "Confirm email",
+            "footnote": "The link works for 48 hours. If you did not create an account, ignore this email and nothing will happen.",
+            "reason": "You get this email because this address was used to sign up for ProofLayer.",
+        },
+        "ru": {
+            "subject": "Подтвердите почту для ProofLayer",
+            "preheader": "Один клик, и аккаунт готов. Ссылка действует 48 часов.",
+            "badge": "Аккаунт",
+            "heading": "Подтвердите",
+            "accent_word": "почту",
+            "paragraphs": [
+                "Здравствуйте, {name}! Спасибо, что присоединились к ProofLayer.",
+                "Подтвердите адрес, чтобы мы могли защитить ваш аккаунт и присылать результаты, чеки и уведомления о безопасности.",
+            ],
+            "cta": "Подтвердить почту",
+            "footnote": "Ссылка действует 48 часов. Если вы не создавали аккаунт, просто проигнорируйте это письмо.",
+            "reason": "Вы получили это письмо, потому что этот адрес указали при регистрации в ProofLayer.",
+        },
+    },
+    "password_reset": {
+        "en": {
+            "subject": "Reset your ProofLayer password",
+            "preheader": "Choose a new password. The link works for one hour.",
+            "badge": "Security",
+            "heading": "Set a new",
+            "accent_word": "password",
+            "paragraphs": [
+                "We got a request to reset the password for {email}.",
+                "Choose a new one with the button below. After that, sign in again on your other devices.",
+            ],
+            "cta": "Choose a new password",
+            "footnote": "The link works for one hour and only once. If you did not ask for this, ignore the email: your password stays the same.",
+            "reason": "You get this email because a password reset was requested for your ProofLayer account.",
+        },
+        "ru": {
+            "subject": "Сброс пароля ProofLayer",
+            "preheader": "Задайте новый пароль. Ссылка действует один час.",
+            "badge": "Безопасность",
+            "heading": "Задайте новый",
+            "accent_word": "пароль",
+            "paragraphs": [
+                "Мы получили запрос на сброс пароля для {email}.",
+                "Задайте новый пароль кнопкой ниже. На других устройствах после этого нужно будет войти заново.",
+            ],
+            "cta": "Задать новый пароль",
+            "footnote": "Ссылка действует один час и срабатывает один раз. Если вы не запрашивали сброс, проигнорируйте письмо: пароль останется прежним.",
+            "reason": "Вы получили это письмо, потому что для вашего аккаунта ProofLayer запросили сброс пароля.",
+        },
+    },
+    "objection": {
+        "en": {
+            "subject": "Objection to a verdict: {title}",
+            "preheader": "{student} asked for a human review. Please answer by {due}.",
+            "badge": "Objection",
+            "heading": "A student asked for",
+            "accent_word": "a review",
+            "paragraphs": [
+                "{student} disagrees with the automated verdict on “{title}”.",
+                "ProofLayer verdicts are probabilistic. Please look at the work yourself and answer the objection before the deadline.",
+            ],
+            "quote_label": "Their reason",
+            "labels": {"student": "Student", "class": "Class", "due": "Answer by"},
+            "cta": "Open the result",
+            "footnote": "A person, not the model, makes the final decision. Your answer is shown to the student.",
+            "reason": "You get this email because the work was handed in to a class you teach on ProofLayer.",
+        },
+        "ru": {
+            "subject": "Возражение на вердикт: {title}",
+            "preheader": "{student} просит пересмотра человеком. Ответьте до {due}.",
+            "badge": "Возражение",
+            "heading": "Ученик просит",
+            "accent_word": "пересмотра",
+            "paragraphs": [
+                "{student} не согласен с автоматическим вердиктом по работе «{title}».",
+                "Вердикты ProofLayer вероятностные. Посмотрите работу сами и ответьте на возражение до срока.",
+            ],
+            "quote_label": "Причина",
+            "labels": {"student": "Ученик", "class": "Класс", "due": "Ответить до"},
+            "cta": "Открыть результат",
+            "footnote": "Окончательное решение принимает человек, а не модель. Ваш ответ увидит ученик.",
+            "reason": "Вы получили это письмо, потому что работа сдана в класс, который вы ведёте в ProofLayer.",
+        },
+    },
+    "update": {
+        "en": {
+            "badge": "What's new",
+            "reason": "You get product updates because they are on in your ProofLayer account. You can turn them off there at any time.",
+        },
+        "ru": {
+            "badge": "Что нового",
+            "reason": "Вы получаете новости, потому что они включены в вашем аккаунте ProofLayer. Выключить их можно там в любой момент.",
+        },
+    },
+}
+
+
+def lang_of(user) -> str:
+    lang = getattr(user, "language", "") or "en"
+    return lang if lang in LANGS else "en"
+
+
+def unsubscribe_token(user) -> str:
+    return signing.dumps({"u": user.pk}, salt=UNSUBSCRIBE_SALT, compress=True)
+
+
+def user_from_unsubscribe_token(token: str):
+    try:
+        data = signing.loads(token or "", salt=UNSUBSCRIBE_SALT)
+    except signing.BadSignature:
+        return None
+    return User.objects.filter(pk=data.get("u")).first()
+
+
+def split_body(body: str) -> list[dict]:
+    blocks = []
+    for chunk in [c.strip() for c in (body or "").replace("\r\n", "\n").split("\n\n") if c.strip()]:
+        lines = [line.strip() for line in chunk.split("\n") if line.strip()]
+        if all(line.startswith("- ") for line in lines):
+            blocks.append({"list": [line[2:].strip() for line in lines]})
+        else:
+            blocks.append({"text": " ".join(lines)})
+    return blocks
+
+
+def _fill(value, values: dict):
+    if isinstance(value, str):
+        return value.format(**values)
+    if isinstance(value, list):
+        return [_fill(v, values) for v in value]
+    if isinstance(value, dict):
+        return {k: _fill(v, values) for k, v in value.items()}
+    return value
+
+
+def build(kind: str, lang: str, values: dict | None = None) -> dict:
+    lang = lang if lang in LANGS else "en"
+    copy = _fill(COPY[kind][lang], values or {})
+    return {**COMMON[lang], **copy, "lang": lang}
+
+
+def render(context: dict) -> tuple[str, str]:
+    accent, accent_border = ACCENTS.get(context.get("tone", "violet"), ACCENTS["violet"])
+    blocks = context.get("blocks")
+    if blocks is None:
+        blocks = [{"text": p} for p in context.get("paragraphs", [])]
+    full = {
+        "site_url": settings.FRONTEND_URL,
+        "asset_base": settings.FRONTEND_URL,
+        "accent": accent,
+        "accent_border": accent_border,
+        **context,
+        "blocks": blocks,
+    }
+    return render_to_string("email/message.txt", full), render_to_string("email/message.html", full)
+
+
+def send(*, kind: str, to: list[str], context: dict, user=None, headers: dict | None = None) -> str:
+    text_body, html_body = render(context)
+    msg = EmailMultiAlternatives(
+        subject=context["subject"],
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=to,
+        headers=headers or {},
+    )
+    msg.attach_alternative(html_body, "text/html")
+    return deliver(msg, kind=kind, user=user)
+
+
+def unsubscribe_page_url(user) -> str:
+    return f"{settings.FRONTEND_URL}/unsubscribe?token={unsubscribe_token(user)}"
+
+
+def unsubscribe_headers(user) -> dict:
+    one_click = f"{settings.PUBLIC_API_URL}/auth/unsubscribe/?token={unsubscribe_token(user)}"
+    return {
+        "List-Unsubscribe": f"<{one_click}>, <mailto:support@prooflayer.cloud?subject=unsubscribe>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    }
+
+
+def verification_context(user, link: str) -> dict:
+    context = build("verify", lang_of(user), {"name": user.username or user.email})
+    context.update(tone="violet", cta_url=link, show_link=True)
+    return context
+
+
+def password_reset_context(user, link: str) -> dict:
+    context = build("password_reset", lang_of(user), {"email": user.email})
+    context.update(tone="amber", cta_url=link, show_link=True)
+    return context
+
+
+def objection_context(*, lang: str, student: str, title: str, classroom: str, reason: str, due: str, link: str) -> dict:
+    context = build("objection", lang, {"student": student, "title": title, "due": due})
+    labels = context.pop("labels")
+    details = [(labels["student"], student)]
+    if classroom:
+        details.append((labels["class"], classroom))
+    details.append((labels["due"], due))
+    context.update(tone="amber", quote=reason, details=details, cta_url=link)
+    return context
+
+
+def update_context(update, user) -> dict:
+    lang = lang_of(user)
+    local = update.localized(lang)
+    blocks = split_body(local["body"])
+    first_text = next((b["text"] for b in blocks if "text" in b), "")
+    context = build("update", lang)
+    context.update(
+        tone="violet",
+        subject=local["title"],
+        preheader=local["summary"] or first_text[:140],
+        heading=local["title"],
+        blocks=blocks,
+        cta=local["cta_label"],
+        cta_url=update.cta_url if local["cta_label"] else "",
+        unsubscribe_url=unsubscribe_page_url(user),
+    )
+    return context

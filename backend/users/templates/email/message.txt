@@ -1,0 +1,21 @@
+{% autoescape off %}{{ heading }}{% if accent_word %} {{ accent_word }}{% endif %}
+
+{% for block in blocks %}{% if block.list %}{% for item in block.list %}- {{ item }}
+{% endfor %}
+{% else %}{{ block.text }}
+
+{% endif %}{% endfor %}{% if quote %}{{ quote_label }}:
+{{ quote }}
+
+{% endif %}{% for label, value in details %}{{ label }}: {{ value }}
+{% endfor %}{% if details %}
+{% endif %}{% if cta_url %}{{ cta }}: {{ cta_url }}
+
+{% endif %}{% if footnote %}{{ footnote }}
+
+{% endif %}--
+ProofLayer · {{ tagline }}
+{{ reason }}
+{{ site_url }}{% if unsubscribe_url %}
+{{ unsubscribe }}: {{ unsubscribe_url }}{% endif %}
+{% endautoescape %}

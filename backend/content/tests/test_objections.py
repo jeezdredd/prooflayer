@@ -117,7 +117,7 @@ class TestFiling:
 
     def test_email_failure_does_not_break_request(self, django_capture_on_commit_callbacks):
         _owner, _teacher, classroom, student = _school_class()
-        with patch("users.tasks.deliver", side_effect=RuntimeError("smtp down")):
+        with patch("users.mail.deliver", side_effect=RuntimeError("smtp down")):
             with django_capture_on_commit_callbacks(execute=True):
                 response = _object(student, _work(student, classroom))
         assert response.status_code == 201

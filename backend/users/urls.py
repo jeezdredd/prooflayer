@@ -7,9 +7,12 @@ from .views import (
     CookieTokenRefreshView,
     LogoutView,
     MeView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
     RegisterView,
     ResendVerificationView,
     SessionView,
+    UnsubscribeView,
     VerifyEmailView,
 )
 
@@ -23,6 +26,9 @@ urlpatterns = [
     path("accept-terms/", AcceptTermsView.as_view(), name="accept-terms"),
     path("verify-email/", VerifyEmailView.as_view(), name="verify-email"),
     path("resend-verification/", ResendVerificationView.as_view(), name="resend-verification"),
+    path("password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
+    path("password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+    path("unsubscribe/", UnsubscribeView.as_view(), name="unsubscribe"),
     path("api-keys/", ApiKeyListCreateView.as_view(), name="api-key-list"),
     path("api-keys/<int:id>/", ApiKeyDetailView.as_view(), name="api-key-detail"),
 ]
