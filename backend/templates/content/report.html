@@ -27,10 +27,27 @@
     </div>
   </div>
 
-  {% if excerpt %}
+  {% if excerpt and not passages %}
   <div class="section">
     <div class="section-title"><span class="dot"></span>{{ c.excerpt }}</div>
     <div class="card"><div class="quote">{{ excerpt }}</div></div>
+  </div>
+  {% endif %}
+
+  {% if passages %}
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>{{ c.passages }}</div>
+    <div class="card">
+      {% for p in passages %}
+      <table style="margin-bottom: 3mm; page-break-inside: avoid;">
+        <tr>
+          <td style="border-left: 0.8mm solid {{ p.tone }}; background: {{ p.tone_bg }}; padding: 2.5mm 4mm; border-radius: 0 2mm 2mm 0; color: #e4e8f3;">{{ p.text }}</td>
+          <td class="mono" style="width: 14mm; text-align: right; font-size: 8pt; color: {{ p.tone }}; padding-top: 2.5mm;">{{ p.pct }}%</td>
+        </tr>
+      </table>
+      {% endfor %}
+      <div class="note">{{ c.passages_note }}</div>
+    </div>
   </div>
   {% endif %}
 

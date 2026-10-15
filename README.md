@@ -97,6 +97,7 @@ A separate app at `classroom.prooflayer.cloud` for schools and universities.
 - Organizations, classes with join codes and class year (grade 1 to university year 6), teacher and admin roles
 - Students only hand work in and see their own results; the ProofLayer tools stay with teachers
 - Each work opens with a plain answer ("Looks like the student's own work", "Worth a closer look") and one coloured tile per check, then the evidence
+- The whole text is shown with the passages that read most machine-like highlighted and scored, in the app and in the PDF report
 - Originality on every upload: winnowed fingerprints, e5 sentence vectors for rewording and translation, optional web search through self-hosted SearXNG
 - Class radar: works built on one skeleton and sudden jumps in a student's level
 - Assignment shadow: the server answers the assignment with AI the way students of different ages would and compares every work with it

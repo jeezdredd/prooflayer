@@ -19,6 +19,9 @@ from reports.render import image_data_uri, render_pdf, shared_context
 
 EXCERPT_CHARS = 700
 MAX_SOURCES = 6
+MAX_PASSAGES = 3
+PASSAGE_FLOOR = 0.45
+PASSAGE_CHARS = 600
 
 
 def _members(results, lang: str) -> list[dict]:
@@ -74,6 +77,24 @@ def _claims(factcheck, lang: str) -> list[dict]:
     return rows
 
 
+def _passages(results) -> list[dict]:
+    classifier = next((r for r in results if r.analyzer.name == "text_classifier"), None)
+    segments = ((classifier.evidence or {}).get("segments") or []) if classifier else []
+    if len(segments) < 2:
+        return []
+    picked = sorted((s for s in segments if s.get("ai_probability", 0) >= PASSAGE_FLOOR), key=lambda s: -s["ai_probability"])[:MAX_PASSAGES]
+    rows = []
+    for segment in picked:
+        text = (segment.get("text") or segment.get("excerpt") or "").strip()
+        tone = "blood" if segment["ai_probability"] >= 0.75 else "amber"
+        rows.append({
+            "text": text[:PASSAGE_CHARS].rstrip() + ("…" if len(text) > PASSAGE_CHARS else ""),
+            "pct": round(segment["ai_probability"] * 100),
+            **tone_set(tone),
+        })
+    return rows
+
+
 def _short_hash(value: str) -> str:
     return f"{value[:16]}…{value[-8:]}" if value and len(value) > 28 else (value or "-")
 
@@ -112,6 +133,7 @@ def build_report_context(submission, user=None) -> dict:
         "thumbnail": image_data_uri(submission.thumbnail),
         "excerpt": excerpt,
         "members": _members(results, lang),
+        "passages": _passages(results),
         "originality": _originality(report_payload(submission, user), lang),
         "provenance": [
             {

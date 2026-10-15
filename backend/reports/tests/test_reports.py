@@ -33,6 +33,23 @@ class TestSubmissionReport:
         flat = [cell[0] for row in context["details"] for cell in row]
         assert "Статус" not in flat and "MIME" not in " ".join(flat)
 
+    def test_passages_pick_the_most_machine_like_segments(self):
+        submission = SubmissionFactory(final_verdict="needs_review", final_score=0.6, mime_type="text/plain")
+        AnalysisResultFactory(
+            submission=submission,
+            analyzer=AnalyzerConfigFactory(name="text_classifier"),
+            verdict="suspicious",
+            confidence=0.5,
+            evidence={"segments": [
+                {"excerpt": "a", "text": "human part", "ai_probability": 0.1},
+                {"excerpt": "b", "text": "machine part", "ai_probability": 0.92},
+                {"excerpt": "c", "text": "mixed part", "ai_probability": 0.5},
+            ]},
+        )
+        passages = build_report_context(submission, None)["passages"]
+        assert [p["text"] for p in passages] == ["machine part", "mixed part"]
+        assert passages[0]["pct"] == 92
+
     def test_english_is_default_and_unknown_verdict_is_readable(self):
         submission = SubmissionFactory(final_verdict="", final_score=None)
         context = build_report_context(submission, None)

@@ -93,6 +93,10 @@ def sample_submission_context(lang: str, kind: str, image: Path | None) -> dict:
         "thumbnail": _image_uri(image) if image and kind == "image" else "",
         "excerpt": SAMPLE_ESSAY[lang] if kind == "text" else "",
         "members": _members([_Result(*v) for v in votes], lang),
+        "passages": [
+            {"text": SAMPLE_ESSAY[lang], "pct": 91, **tone_set("blood")},
+            {"text": SAMPLE_ESSAY[lang][:180] + "…", "pct": 58, **tone_set("amber")},
+        ] if kind == "text" else [],
         "originality": originality,
         "provenance": [{"title": "Reverse image match · stock photo archive", "url": "https://example.com/photo/4232", "similarity": 91}] if kind == "image" else [],
         "claims": [],

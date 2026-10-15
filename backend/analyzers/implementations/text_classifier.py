@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 TEXT_LIMIT = 200_000
 MIN_TOKENS = 120
 SEGMENT_EXCERPT = 240
+SEGMENT_TEXT = 2000
 
 _state = {"calibration": None, "dir": None}
 
@@ -102,7 +103,9 @@ class TextClassifierAnalyzer(BaseAnalyzer):
         if len(segments) >= 2:
             margins = model.segment_margins(segments)
             probs = [round(probability(m, entry["knots"]), 3) for m in margins]
-            evidence["segments"] = [{"excerpt": s[:SEGMENT_EXCERPT], "ai_probability": p} for s, p in zip(segments, probs)]
+            evidence["segments"] = [
+                {"excerpt": s[:SEGMENT_EXCERPT], "text": s[:SEGMENT_TEXT], "ai_probability": p} for s, p in zip(segments, probs)
+            ]
             evidence["segment_spread"] = round(max(probs) - min(probs), 3)
         confidence = round(abs(ai_probability - 0.5) * 2, 4)
         if strict is not None and result.score >= strict:

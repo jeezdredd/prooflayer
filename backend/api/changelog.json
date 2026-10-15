@@ -1,5 +1,18 @@
 [
   {
+    "slug": "highlighted-passages",
+    "date": "2026-10-15",
+    "kind": "feature",
+    "title": {
+      "en": "Highlighted passages in essays",
+      "ru": "Подсветка фрагментов в сочинениях"
+    },
+    "body": {
+      "en": "Text results now show the whole work with the passages that read machine-like marked in colour and a score next to each, so a teacher can go through specific lines with the student. The same passages appear in the PDF report. Passage scores are indicative and never change the verdict on their own.",
+      "ru": "В результатах проверки текста теперь показывается вся работа, а фрагменты, похожие на машинный текст, подсвечены цветом с оценкой рядом. Учитель может разобрать конкретные строки с учеником. Те же фрагменты попадают в PDF-отчёт. Оценки по фрагментам ориентировочные и сами по себе вердикт не меняют."
+    }
+  },
+  {
     "slug": "pdf-reports-redesign",
     "date": "2026-10-14",
     "kind": "improvement",

@@ -216,6 +216,7 @@ class TestAnalyzer:
         assert out.verdict == "authentic"
         probs = [s["ai_probability"] for s in out.evidence["segments"]]
         assert max(probs) > 0.9 and out.evidence["segment_spread"] > 0.8
+        assert " ".join(s["text"] for s in out.evidence["segments"]) == text
 
     def test_human_range_is_authentic(self, tmp_path):
         out = _run(tmp_path, -5.0)

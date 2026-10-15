@@ -81,7 +81,7 @@ export default function TextReport({ submission }: { submission: Submission }) {
   const classifierResult = byName(submission, "text_classifier");
   if (!evasion && !grade && !style && !citations && !genre && !shadow && !classifierResult) return null;
   const cl = (classifierResult?.evidence ?? {}) as Evidence;
-  const segments = (cl.segments as { excerpt: string; ai_probability: number }[] | undefined) ?? [];
+  const segments = (cl.segments as { excerpt: string; text?: string; ai_probability: number }[] | undefined) ?? [];
   const spread = typeof cl.segment_spread === "number" ? cl.segment_spread : 0;
   const sh = (shadow?.evidence ?? {}) as Evidence;
   const shadowPairs = (sh.pairs as { student: string; ai: string; similarity: number }[] | undefined) ?? [];
@@ -209,15 +209,30 @@ export default function TextReport({ submission }: { submission: Submission }) {
         )}
         {segments.length >= 2 && (
           <Row tone={spread >= SEGMENT_SPREAD_ALERT ? "alert" : "muted"} title={spread >= SEGMENT_SPREAD_ALERT ? t("Some passages read far more machine-like than the rest") : t("Passages read alike")}>
-            <div className="mt-1 space-y-1.5">
-              {segments.map((s, i) => (
-                <div key={i} className="grid grid-cols-[3rem_1fr] gap-2 items-start">
-                  <div className="mt-1.5 h-1 bg-[var(--line-strong)] relative">
-                    <span className={`absolute inset-y-0 left-0 ${s.ai_probability >= 0.75 ? "bg-signal-blood" : s.ai_probability >= 0.45 ? "bg-signal-amber" : "bg-signal-sage"}`} style={{ width: `${Math.round(s.ai_probability * 100)}%` }} />
-                  </div>
-                  <div className={s.ai_probability >= 0.75 ? "text-ink-100" : "text-ink-500"}>{s.excerpt}{s.excerpt.length >= 240 ? "..." : ""}</div>
-                </div>
-              ))}
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-500">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-signal-blood/40" />{t("reads machine-like (75%+)")}</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-signal-amber/30" />{t("mixed (45-75%)")}</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm border border-white/15" />{t("reads human")}</span>
+            </div>
+            <div className="mt-3 rounded-xl border border-white/5 bg-ink-950/40 p-3 max-h-[30rem] overflow-y-auto space-y-1.5">
+              {segments.map((seg, i) => {
+                const pct = Math.round(seg.ai_probability * 100);
+                const high = seg.ai_probability >= 0.75;
+                const mid = !high && seg.ai_probability >= 0.45;
+                const body = seg.text ?? `${seg.excerpt}${seg.excerpt.length >= 240 ? "..." : ""}`;
+                return (
+                  <p
+                    key={i}
+                    title={t("{n}% machine-like", { n: pct })}
+                    className={`relative rounded-r-lg border-l-2 py-2 pl-3 pr-14 text-[13px] leading-relaxed whitespace-pre-line ${
+                      high ? "border-signal-blood/70 bg-signal-blood/10 text-ink-50" : mid ? "border-signal-amber/60 bg-signal-amber/[0.07] text-ink-100" : "border-transparent text-ink-400"
+                    }`}
+                  >
+                    {body}
+                    <span className={`absolute right-2.5 top-2 font-mono text-[10px] ${high ? "text-signal-blood" : mid ? "text-signal-amber" : "text-ink-600"}`}>{pct}%</span>
+                  </p>
+                );
+              })}
             </div>
             <div className="mt-1.5 text-ink-600">{t("Per-passage scores are indicative and do not change the verdict.")}</div>
           </Row>
