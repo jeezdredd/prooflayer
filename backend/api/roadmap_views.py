@@ -5,10 +5,11 @@ from api.models import RoadmapItem
 
 class RoadmapItemSerializer(serializers.ModelSerializer):
     body = serializers.CharField(allow_blank=True, required=False, max_length=600)
+    body_ru = serializers.CharField(allow_blank=True, required=False, max_length=600)
 
     class Meta:
         model = RoadmapItem
-        fields = ["id", "title", "body", "status", "eta", "position", "is_published", "updated_at"]
+        fields = ["id", "title", "title_ru", "body", "body_ru", "status", "eta", "eta_ru", "position", "is_published", "updated_at"]
         read_only_fields = ["id", "updated_at"]
 
 

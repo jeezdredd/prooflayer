@@ -4,16 +4,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import client from "../../api/client";
 import { useAuthStore } from "../../stores/authStore";
 import { toast } from "../ui/Toast";
-import { msg, t } from "../../i18n";
+import { currentLang, msg, t } from "../../i18n";
 
 type Status = "exploring" | "building" | "beta";
 
 interface RoadmapItem {
   id: string;
   title: string;
+  title_ru: string;
   body: string;
+  body_ru: string;
   status: Status;
   eta: string;
+  eta_ru: string;
   position: number;
   is_published: boolean;
 }
@@ -30,8 +33,13 @@ const KEY = ["roadmap"];
 const FIELD = "w-full bg-transparent border border-[var(--line-strong)] px-2.5 py-1.5 text-sm text-ink-50 outline-none focus:border-signal-amber";
 const SMALL_BTN = "font-mono text-[10px] uppercase tracking-[0.14em] px-2.5 py-1.5 border transition-colors disabled:opacity-40";
 
+function localized(item: RoadmapItem, field: "title" | "body" | "eta"): string {
+  const ru = item[`${field}_ru` as const];
+  return currentLang() === "ru" && ru ? ru : item[field];
+}
+
 function emptyDraft(position: number): Draft {
-  return { title: "", body: "", status: "exploring", eta: "", position, is_published: true };
+  return { title: "", title_ru: "", body: "", body_ru: "", status: "exploring", eta: "", eta_ru: "", position, is_published: true };
 }
 
 function Editor({ initial, onSave, onCancel, onDelete, busy }: {
@@ -48,7 +56,7 @@ function Editor({ initial, onSave, onCancel, onDelete, busy }: {
       className="space-y-2.5"
       onSubmit={(e) => {
         e.preventDefault();
-        if (d.title.trim()) onSave({ ...d, title: d.title.trim(), body: d.body.trim(), eta: d.eta.trim() });
+        if (d.title.trim()) onSave({ ...d, title: d.title.trim(), body: d.body.trim(), eta: d.eta.trim(), title_ru: d.title_ru.trim(), body_ru: d.body_ru.trim(), eta_ru: d.eta_ru.trim() });
       }}
     >
       <input className={FIELD} value={d.title} maxLength={120} placeholder={t("Title")} onChange={(e) => set("title", e.target.value)} autoFocus />
@@ -62,6 +70,10 @@ function Editor({ initial, onSave, onCancel, onDelete, busy }: {
         <input className={FIELD} type="number" min={0} value={d.position} title={t("Order")} aria-label={t("Order")} onChange={(e) => set("position", Math.max(0, Number(e.target.value) || 0))} />
       </div>
       <input className={FIELD} value={d.eta} maxLength={40} placeholder={t("ETA, e.g. Q1 2027 (optional)")} onChange={(e) => set("eta", e.target.value)} />
+      <div className="pt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">RU</div>
+      <input className={FIELD} value={d.title_ru} maxLength={120} placeholder={t("Title in Russian")} onChange={(e) => set("title_ru", e.target.value)} />
+      <textarea className={`${FIELD} min-h-[88px] resize-y`} value={d.body_ru} maxLength={600} placeholder={t("Description in Russian")} onChange={(e) => set("body_ru", e.target.value)} />
+      <input className={FIELD} value={d.eta_ru} maxLength={40} placeholder={t("ETA in Russian (optional)")} onChange={(e) => set("eta_ru", e.target.value)} />
       <label className="flex items-center gap-2 text-xs text-ink-400">
         <input type="checkbox" checked={d.is_published} onChange={(e) => set("is_published", e.target.checked)} className="accent-amber-400" />
         {t("Visible to visitors")}
@@ -160,10 +172,10 @@ export default function Roadmap() {
                       <span className={`w-1.5 h-1.5 rounded-full ${s.dot} ${item.status === "building" ? "pulse-dot" : ""}`} />
                       {t(s.label)}
                     </span>
-                    {item.eta && <span className="text-ink-500">{item.eta}</span>}
+                    {localized(item, "eta") && <span className="text-ink-500">{localized(item, "eta")}</span>}
                   </div>
-                  <h3 className="font-display text-2xl text-ink-50 leading-tight mt-5">{item.title}</h3>
-                  {item.body && <p className="text-sm text-ink-400 leading-relaxed mt-3">{item.body}</p>}
+                  <h3 className="font-display text-2xl text-ink-50 leading-tight mt-5">{localized(item, "title")}</h3>
+                  {localized(item, "body") && <p className="text-sm text-ink-400 leading-relaxed mt-3">{localized(item, "body")}</p>}
                   {isStaff && (
                     <div className="mt-auto pt-5 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.14em]">
                       <span className="text-ink-600">{item.is_published ? `#${item.position}` : "hidden"}</span>

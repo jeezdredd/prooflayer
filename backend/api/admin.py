@@ -23,7 +23,7 @@ class RoadmapItemAdmin(ModelAdmin):
     list_display = ("title", "status", "eta", "position", "is_published", "updated_at")
     list_editable = ("status", "eta", "position", "is_published")
     list_filter = ("status", "is_published")
-    search_fields = ("title", "body")
+    search_fields = ("title", "title_ru", "body", "body_ru")
     ordering = ("position", "created_at")
 
 

@@ -40,9 +40,12 @@ class RoadmapItem(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=120)
+    title_ru = models.CharField(max_length=120, blank=True, default="")
     body = models.TextField(blank=True, default="")
+    body_ru = models.TextField(blank=True, default="")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.EXPLORING)
     eta = models.CharField(max_length=40, blank=True, default="")
+    eta_ru = models.CharField(max_length=40, blank=True, default="")
     position = models.PositiveIntegerField(default=0)
     is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
