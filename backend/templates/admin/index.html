@@ -8,8 +8,25 @@
     {% include "unfold/helpers/site_branding.html" %}
 {% endblock %}
 
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        .pl-dashboard .material-symbols-outlined.absolute.-left-6 {
+            left: 0 !important;
+            transform: translateY(-50%) !important;
+            font-size: 2.5rem !important;
+            line-height: 1 !important;
+            opacity: 0.55;
+        }
+        .pl-dashboard .grow.relative.pl-8 {
+            padding-left: 3.75rem !important;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
     {% if dashboard %}
+        <div class="pl-dashboard">
         {% with d=dashboard links=dashboard.links %}
             <div class="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2 lg:grid-cols-4">
                 {% component "unfold/components/card.html" with title="Submissions" icon="folder_open" %}
@@ -160,6 +177,7 @@
                 {% endif %}
             {% endcomponent %}
         {% endwith %}
+        </div>
     {% else %}
         <div class="flex flex-col lg:flex-row lg:gap-8">
             <div class="grow">

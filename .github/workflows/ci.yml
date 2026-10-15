@@ -6,25 +6,30 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
-          POSTGRES_DB: prooflayer_test
+          POSTGRES_DB: prooflayer
           POSTGRES_USER: prooflayer
-          POSTGRES_PASSWORD: prooflayer_test
+          POSTGRES_PASSWORD: prooflayer_dev
         ports:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 3s
-          --health-retries 5
+          --health-retries 10
 
       redis:
         image: redis:7.4-alpine
@@ -34,68 +39,82 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 3s
-          --health-retries 5
+          --health-retries 10
 
     env:
       DJANGO_SETTINGS_MODULE: config.settings.test
-      DATABASE_URL: postgres://prooflayer:prooflayer_test@localhost:5432/prooflayer_test
-      REDIS_URL: redis://localhost:6379/0
-      CELERY_BROKER_URL: redis://localhost:6379/0
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: prooflayer
+      POSTGRES_USER: prooflayer
+      POSTGRES_PASSWORD: prooflayer_dev
+      REDIS_URL: redis://localhost:6379/1
+      CELERY_BROKER_URL: redis://localhost:6379/1
       SECRET_KEY: ci-test-secret-key
+      UV_INDEX_STRATEGY: unsafe-best-match
+      UV_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install system dependencies
+      - name: Install system libraries
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y libmagic1 libpango-1.0-0 libpangoft2-1.0-0
+          sudo apt-get install -y --no-install-recommends libmagic1 libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b fonts-liberation
 
-      - name: Install dependencies
-        working-directory: backend
-        run: uv pip install --system -e ".[dev]"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
-      - name: Run migrations
-        working-directory: backend
-        run: python manage.py migrate
+      - name: Install Python dependencies
+        run: |
+          uv venv
+          uv pip install -r pyproject.toml --extra dev
+          uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+      - name: Check for missing migrations
+        run: .venv/bin/python backend/manage.py makemigrations --check --dry-run
 
       - name: Run tests
-        working-directory: backend
-        run: pytest --tb=short -q
+        run: .venv/bin/pytest backend -q -p no:warnings --tb=short
 
   frontend:
-    name: Frontend lint + build
+    name: Frontend typecheck, i18n and build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Enable pnpm
+        run: corepack enable
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: frontend
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Type check
-        working-directory: frontend
-        run: pnpm tsc --noEmit
+        run: pnpm exec tsc --noEmit
+
+      - name: Russian translations complete
+        run: node scripts/i18n-check.mjs
 
       - name: Build
-        working-directory: frontend
         env:
           VITE_API_URL: https://api.prooflayer.cloud/api/v1
-        run: pnpm build
+        run: pnpm exec vite build
