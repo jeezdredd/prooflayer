@@ -42,8 +42,8 @@ def validate_mime_type(file):
             mime = guessed
 
     mime = MIME_ALIASES.get(mime, mime)
-    if mime == "application/zip" and _is_docx(file):
-        mime = DOCX_MIME
+    if mime in ("application/zip", DOCX_MIME):
+        mime = DOCX_MIME if _is_docx(file) else "application/zip"
 
     if mime not in settings.ALLOWED_MIME_TYPES:
         raise ValidationError(
