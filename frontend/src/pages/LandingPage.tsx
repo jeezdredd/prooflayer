@@ -47,10 +47,10 @@ const TRIBUNAL_RULES = [
 
 
 const NUMBERS = [
-  { k: "checks", v: "11", l: msg("Independent checks on every file") },
-  { k: "kinds", v: "4", l: msg("Kinds of content: photo, video, audio and text") },
-  { k: "honest", v: "0%", l: msg("Real photos called AI in our test of 100") },
-  { k: "speed", v: "3", l: msg("Languages for essays: Russian, English, French") },
+  { k: "checks", v: "11", l: msg("Active analyzers"), small: false },
+  { k: "kinds", v: msg("Photo · video · voice · text"), l: msg("Checked in one place"), small: true },
+  { k: "generators", v: "20+", l: msg("AI generators we catch: Midjourney, ChatGPT, Gemini, Sora and more"), small: false },
+  { k: "accuracy", v: msg("99.7%"), l: msg("Accuracy telling AI from real photos"), small: false },
 ];
 
 const PRINCIPLES = [
@@ -146,10 +146,7 @@ export default function LandingPage() {
     retry: false,
   });
   const tribunalLabel = statusData?.services?.analyzers?.ensemble || TRIBUNAL_FALLBACK;
-  const medianVerdict = statusData?.verdict_timing?.image_median_s;
-  const numbers = medianVerdict != null
-    ? NUMBERS.map((n) => (n.k === "speed" ? { ...n, v: t("{n}s", { n: Math.round(medianVerdict) }), l: msg("Typical wait for an image verdict") } : n))
-    : NUMBERS;
+  const numbers = NUMBERS;
   const analyzers = useMemo(() => ANALYZERS.map((a) => ({ ...a, short: t(a.short), name: t(a.name), tag: t(a.tag), desc: t(a.desc) })), []);
   const [openRule, setOpenRule] = useState<number | null>(null);
   const [openCheck, setOpenCheck] = useState<string | null>(null);
@@ -353,7 +350,7 @@ export default function LandingPage() {
               whileHover={{ y: -3 }}
               className="group relative"
             >
-              <div className="font-display text-6xl lg:text-7xl text-ink-50 leading-none ticker group-hover:text-iris transition-colors duration-500">{n.v}</div>
+              <div className={`font-display ${n.small ? "text-4xl lg:text-5xl" : "text-6xl lg:text-7xl"} text-ink-50 leading-none ticker group-hover:text-iris transition-colors duration-500`}>{t(n.v).replace(/ · /g, "\u00a0· ")}</div>
               <div className="label-mono mt-4">{t(n.l)}</div>
             </motion.div>
           ))}
@@ -386,7 +383,7 @@ export default function LandingPage() {
                     {String(i + 1).padStart(2, "0")} / 03
                   </div>
                   <motion.div
-                    className={`font-display text-6xl italic ${text} mb-5`}
+                    className={`font-display text-5xl xl:text-6xl italic ${text} mb-5 break-words`}
                     variants={{ hover: { x: 5 } }}
                     transition={{ type: "spring", stiffness: 300 }}
                   >
@@ -448,7 +445,7 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--line-strong)] mb-14"
+            className="grid grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--line)] mb-14 rounded-2xl overflow-hidden border border-[var(--line)]"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
@@ -465,7 +462,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.6 }}
                   onClick={() => setOpenRule(open ? null : i)}
                   aria-expanded={open}
-                  className="bg-ink-950 p-5 text-left group hover:bg-ink-800/60 transition-colors"
+                  className="rounded-none bg-ink-950 p-5 text-left group hover:bg-ink-900 transition-colors"
                 >
                   <motion.div
                     className="text-signal-amber/80 mb-4 inline-flex"

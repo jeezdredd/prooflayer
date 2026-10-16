@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Instrument Serif"', "Times New Roman", "serif"],
+        display: ['"Instrument Serif"', '"Lora"', "Times New Roman", "serif"],
         mono: ['"JetBrains Mono"', "SF Mono", "Menlo", "monospace"],
         sans: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
       },

@@ -84,7 +84,7 @@
 
 @layer components {
   .font-display {
-    font-family: "Instrument Serif", "Times New Roman", serif;
+    font-family: "Instrument Serif", "Lora", "Times New Roman", serif;
     font-weight: 400;
     letter-spacing: -0.02em;
   }
