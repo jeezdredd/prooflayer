@@ -142,7 +142,8 @@ ssh ubuntu-dev "systemctl is-active prooflayer-gpu-guard"
 ## Ollama on the GPU (Vulkan)
 
 Ollama runs on the RX 6700S through Vulkan, not ROCm. Benchmark on 245 held-out images (qwen2.5vl:3b,
-lid closed, 2026-10-15):
+lid closed, 2026-10-15); prod runs qwen2.5vl:7b (6.3 s per image, 5.0 GiB, 0 failures, 21/145 AI caught
+vs 12/145 for 3b, 0/100 real photos flagged by either):
 
 | Backend | Seconds per image | VRAM | Stability |
 |---------|------------------|------|-----------|

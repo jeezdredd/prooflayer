@@ -86,14 +86,14 @@ If unsure, choose uncertain. Being wrong on a real photo is worse than being wro
 
 class LLMImageAnalyzer(BaseAnalyzer):
     name = "llm_vision"
-    version = "1.2.0"
+    version = "1.3.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
         ollama_url = getattr(settings, "OLLAMA_URL", "http://ollama:11434")
-        vision_model = getattr(settings, "OLLAMA_VISION_MODEL", "qwen2.5vl:3b")
+        vision_model = getattr(settings, "OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
 
         try:
             image_b64 = _encode_image_for_vision(file_path)

@@ -30,7 +30,7 @@
     "8 AI answers": "8 ИИ-ответов",
     "84% of sentences aligned in order": "84% предложений совпадают по порядку",
     "99.5% uptime SLA": "SLA доступности 99,5%",
-    "A cautious forensic prompt on our own GPU, about four seconds an image. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.": "Осторожная инструкция для модели на нашей видеокарте, около четырёх секунд на изображение. Модель должна назвать конкретный дефект на этом изображении (шесть пальцев, бессмысленный текст, разные серьги) или промолчать.",
+    "A cautious forensic prompt on our own GPU, about six seconds an image. It must point to a concrete defect in this image - six fingers, impossible text, mismatched earrings - or it says nothing.": "Осторожная инструкция для модели на нашей видеокарте, около шести секунд на изображение. Модель должна назвать конкретный дефект на этом изображении (шесть пальцев, бессмысленный текст, разные серьги) или промолчать.",
     "A classifier trained on human and machine writing in ru, en and fr, humanized rewrites included.": "Классификатор, обученный на текстах людей и нейросетей на русском, английском и французском, включая тексты, переписанные сервисами-«очеловечивателями».",
     "A full": "Полный набор",
     "A linear probe on CLIP embeddings, a different network from the forensics models, so when it agrees with them the agreement means something. Calibrated so real photos stay below the line.": "Линейная модель поверх CLIP, другой нейросети, чем у основных детекторов, поэтому их согласие действительно что-то значит. Откалибрована так, чтобы настоящие фото оставались ниже порога.",

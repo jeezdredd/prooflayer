@@ -8,8 +8,8 @@
       "ru": "Визуальная модель работает на нашей видеокарте"
     },
     "body": {
-      "en": "The vision model that looks for concrete defects in images now runs on our own graphics card instead of the processor: about 4 seconds an image instead of 20-35, so image checks finish much sooner. On our test set of 100 real photos it still called none of them AI. Nothing leaves our server.",
-      "ru": "Визуальная модель, которая ищет конкретные дефекты на изображениях, теперь работает на нашей видеокарте, а не на процессоре: около 4 секунд на изображение вместо 20-35, так что проверка картинок заканчивается заметно быстрее. На нашем тестовом наборе из 100 настоящих фотографий она по-прежнему ни одну не назвала ИИ. Данные не покидают наш сервер."
+      "en": "The vision model that looks for concrete defects in images now runs on our own graphics card instead of the processor, and it is a larger model (Qwen2.5-VL 7B instead of 3B): about 6 seconds an image instead of 20-35, and it names defects in 75% more AI images on our test set. Of 100 real photos in the same set it called none AI. Nothing leaves our server.",
+      "ru": "Визуальная модель, которая ищет конкретные дефекты на изображениях, теперь работает на нашей видеокарте, а не на процессоре, и это модель крупнее (Qwen2.5-VL 7B вместо 3B): около 6 секунд на изображение вместо 20-35, и на нашем тестовом наборе она находит дефекты на 75% большем числе ИИ-изображений. Из 100 настоящих фотографий того же набора ни одну не назвала ИИ. Данные не покидают наш сервер."
     }
   },
   {

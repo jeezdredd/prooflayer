@@ -68,7 +68,7 @@ services:
       - PLAGIARISM_SEARCH_PROVIDERS=${PLAGIARISM_SEARCH_PROVIDERS:-searxng,brave,ddg}
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
-      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:7b}
       - HF_TOKEN=${HF_TOKEN:-}
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
@@ -124,7 +124,7 @@ services:
       - PLAGIARISM_SEARCH_PROVIDERS=${PLAGIARISM_SEARCH_PROVIDERS:-searxng,brave,ddg}
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
-      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:7b}
       - HF_TOKEN=${HF_TOKEN:-}
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
@@ -241,7 +241,7 @@ services:
     entrypoint:
       - /bin/sh
       - -c
-      - "ollama pull ${OLLAMA_MODEL:-qwen2.5:3b} && ollama pull ${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}"
+      - "ollama pull ${OLLAMA_MODEL:-qwen2.5:3b} && ollama pull ${OLLAMA_VISION_MODEL:-qwen2.5vl:7b}"
     volumes:
       - ollama_data:/root/.ollama
 

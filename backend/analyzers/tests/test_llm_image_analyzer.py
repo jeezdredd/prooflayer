@@ -38,10 +38,10 @@ class TestVisionVerdicts:
 
 @patch("analyzers.implementations.llm_image_analyzer.http_requests.post")
 def test_request_is_deterministic_and_names_model(post, image_path, settings):
-    settings.OLLAMA_VISION_MODEL = "qwen2.5vl:3b"
+    settings.OLLAMA_VISION_MODEL = "qwen2.5vl:7b"
     post.return_value = _reply("human_photo", "No concrete defects are visible and the image looks like a normal photograph.")
     out = LLMImageAnalyzer().analyze(image_path, {})
     payload = post.call_args.kwargs["json"]
-    assert payload["model"] == "qwen2.5vl:3b"
+    assert payload["model"] == "qwen2.5vl:7b"
     assert payload["options"] == {"temperature": 0}
-    assert out.evidence["model"] == "qwen2.5vl:3b"
+    assert out.evidence["model"] == "qwen2.5vl:7b"
