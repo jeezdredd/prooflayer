@@ -23,6 +23,9 @@ FAMILY_SHARE = {("en", 0, "daigt"): 0.6}
 COLING_EN_HUMAN_SHARE = 0.15
 PRIORITY_SOURCES = {"wiki-pre2022"}
 TEST_ONLY_MODES = {"attack:recursive"}
+HELDOUT_HUMANIZERS = {"humbot", "undetectable", "stealth-writer", "walter-writes", "gptinf", "notegpt"}
+HUMANIZER_MIN_WORDS = 80
+GENERATED_FILES = ("ai.jsonl", "adversarial.jsonl")
 CHAT_TAIL = re.compile(
     r"^(would you like|do you want|let me know|i hope|hope this|notes?:|word count|\(word count|feel free|is there anything|"
     r"хотите|надеюсь|примечание|souhaitez|n.h[ée]site|j.esp[èe]re|remarque)",
@@ -41,7 +44,12 @@ def latin_share(text: str) -> float:
 
 
 def is_fresh(mode: str) -> bool:
-    return mode in ("generate", "humanize") or mode.startswith("attack:")
+    return mode in ("generate", "humanize") or mode.startswith(("attack:", "humanizer:"))
+
+
+def humanizer_split(source_text: str) -> str:
+    share = bucket("humanizer:" + hashlib.sha1(normalize_for_model(source_text).encode()).hexdigest())
+    return "train" if share < 0.6 else "calib" if share < 0.75 else "test"
 
 
 def strip_chat_wrapper(text: str) -> str:
@@ -72,6 +80,7 @@ class Command(BaseCommand):
         parser.add_argument("--raw", default="dataset/text_raw")
         parser.add_argument("--eval", default="dataset/text_eval")
         parser.add_argument("--gen", default="dataset/text_gen")
+        parser.add_argument("--humanizers", default="dataset/humanizers/all.jsonl")
         parser.add_argument("--out", default="dataset/text_t4")
         parser.add_argument("--train-cap", type=int, default=2500, help="max texts per class per language in train")
         parser.add_argument("--calib-cap", type=int, default=400)
@@ -85,6 +94,7 @@ class Command(BaseCommand):
         self._legacy(raw, pool)
         self._extra(raw, pool)
         self._fresh(Path(opts["gen"]), pool)
+        self._humanizers(Path(opts["humanizers"]), pool)
         pool["test"] += self._frozen_test(Path(opts["eval"]))
 
         seen, picked = set(), {s: [] for s in SPLITS}
@@ -164,9 +174,8 @@ class Command(BaseCommand):
         for name in ("seeds.jsonl", "wiki_seeds.jsonl"):
             if (gen / name).exists():
                 hints |= {s["id"]: s["hint"] for s in map(json.loads, open(gen / name))}
-        if not (gen / "ai.jsonl").exists():
-            return
-        for r in map(json.loads, open(gen / "ai.jsonl")):
+        generated = [r for name in GENERATED_FILES if (gen / name).exists() for r in map(json.loads, open(gen / name))]
+        for r in generated:
             heldout = r["generator"] in HELDOUT_GENERATORS or r.get("base_generator") in HELDOUT_GENERATORS
             if (heldout or r["mode"] in TEST_ONLY_MODES) and r["split"] != "test":
                 continue
@@ -175,6 +184,21 @@ class Command(BaseCommand):
                 continue
             source = "fresh-wiki" if r.get("genre") == "wiki" else "fresh"
             pool[r["split"]].append(row(r["id"], r["lang"], r["split"], 1, source, text, r["generator"], r["mode"]))
+
+    def _humanizers(self, path: Path, pool: dict):
+        if not path.exists():
+            return
+        for i, r in enumerate(map(json.loads, open(path))):
+            split = humanizer_split(r["input"])
+            if r["humanizer"] in HELDOUT_HUMANIZERS:
+                split = "test"
+            if len(r["output"].split()) >= HUMANIZER_MIN_WORDS:
+                rid = f'hum-{r["bench"]}-{r["humanizer"]}-{i}'
+                mode = f'humanizer:{r["humanizer"]}'
+                pool[split].append(row(rid, "en", split, 1, "humanizer-bench", r["output"], "", mode))
+            home = humanizer_split(r["input"])
+            rid = f'hum-src-{r["bench"]}-{i}'
+            pool[home].append(row(rid, "en", home, 1, "frontier-2026", r["input"], "", "frontier"))
 
     def _frozen_test(self, eval_dir: Path) -> list:
         rows = []
