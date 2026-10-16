@@ -157,7 +157,7 @@ export default function LandingPage() {
   const authedLabel = user ? `${t("Open Dashboard")} →` : `${t("Begin Investigation")} →`;
 
   return (
-    <div className="min-h-screen text-ink-100 relative">
+    <div className="min-h-screen text-ink-100 relative legible">
       <ShaderBackground variant="noir" />
 
       {/* HEADER */}
@@ -241,7 +241,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.6 }}
                 className="mt-10 text-lg text-ink-200 max-w-xl leading-relaxed"
               >
-                {t("Forensic verification lab for synthetic media. Eleven analyzers cross-examine every file and publish evidence, not just verdicts.")}
+                {t("We check photos, video, voice and text for AI. Eleven independent analyzers examine every file and show you the evidence, not just the verdict.")}
               </motion.p>
 
               <motion.div
@@ -338,7 +338,7 @@ export default function LandingPage() {
 
         {/* NUMBERS STRIP */}
         <motion.div
-          className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-x-10 gap-y-10"
+          className="mt-24 grid grid-cols-2 md:grid-cols-[0.75fr_1fr_1.1fr_1fr] gap-x-10 gap-y-10"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
@@ -359,7 +359,7 @@ export default function LandingPage() {
               ) : (
                 <div className={`font-display ${n.small ? "text-4xl lg:text-5xl" : "text-6xl lg:text-7xl"} text-ink-50 leading-none ticker group-hover:text-iris transition-colors duration-500`}>{t(n.v)}</div>
               )}
-              <div className="label-mono mt-4">{t(n.l)}</div>
+              <div className="label-mono mt-4 !text-ink-300 leading-relaxed">{t(n.l)}</div>
             </motion.div>
           ))}
         </motion.div>
