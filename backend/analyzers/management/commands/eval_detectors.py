@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand
 from PIL import Image
 
 from analyzers.aggregator import aggregate
+from analyzers.content_credentials import read_manifest, summarize
 from analyzers.ensemble import ensemble_info
 from analyzers.registry import load_analyzer_class
 from content.services import extract_metadata
@@ -160,6 +161,9 @@ class Command(BaseCommand):
 
         for idx, (path, label) in enumerate(samples, 1):
             metadata = extract_metadata(path)
+            manifest = read_manifest(path)
+            if manifest:
+                metadata["c2pa_summary"] = summarize(manifest)
             results = []
             row = {"path": path, "label": label}
 

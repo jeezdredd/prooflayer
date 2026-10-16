@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 
 from analyzers.base import AnalysisOutput, BaseAnalyzer
+from analyzers.watermarks import find_known_watermark
 
 AI_TOOL_SIGNATURES = [
     "stable diffusion",
@@ -48,19 +49,18 @@ AI_TOOL_SIGNATURES = [
     "draw things",
     "krea",
     "magnific",
+    "made with google ai",
+    "google ai",
+    "imagined with ai",
+    "meta ai",
     "generative fill",
     "generative ai",
     "ai generated",
     "ai-generated",
 ]
 
-C2PA_AI_MARKERS = (
-    "trainedalgorithmicmedia",
-    "compositewithtrainedalgorithmicmedia",
-    "algorithmicmedia",
-)
-
-XMP_AI_MARKERS = C2PA_AI_MARKERS + ("digitalsourcetype",)
+AI_GENERATED_PATTERN = re.compile(r"(?<!compositewith)trainedalgorithmicmedia")
+AI_EDITED_MARKERS = ("compositewithtrainedalgorithmicmedia", "compositesynthetic")
 
 GENERATION_PARAM_MARKERS = (
     "negative prompt",
@@ -101,7 +101,7 @@ def camera_signature(metadata: dict) -> dict:
 
 class MetadataAnalyzer(BaseAnalyzer):
     name = "metadata"
-    version = "1.6.0"
+    version = "1.7.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -121,6 +121,16 @@ class MetadataAnalyzer(BaseAnalyzer):
         evidence["c2pa"] = self._check_c2pa_ai(metadata)
         if evidence["c2pa"]["ai_declared"]:
             flags.append("c2pa_ai_declared")
+        elif evidence["c2pa"]["ai_edited"]:
+            flags.append("c2pa_ai_edited")
+
+        evidence["watermark"] = find_known_watermark(file_path)
+        if evidence["watermark"]:
+            flags.append("invisible_watermark")
+
+        proof = bool(evidence["watermark"]) or (evidence["c2pa"]["ai_declared"] and evidence["c2pa"].get("trusted") is True)
+        evidence["provenance_proof"] = proof
+        evidence["ai_trace"] = self._ai_trace(evidence)
 
         evidence["gps"] = self._check_gps_plausibility(metadata)
         if evidence["gps"]["suspicious"]:
@@ -140,12 +150,18 @@ class MetadataAnalyzer(BaseAnalyzer):
 
         strong_flags = [f for f in flags if f not in ("metadata_stripped", "camera_signature")]
 
-        if "c2pa_ai_declared" in flags:
+        if proof:
+            confidence = 0.98
+            verdict = "fake"
+        elif "c2pa_ai_declared" in flags:
             confidence = 0.95
             verdict = "fake"
         elif "ai_tool_signature" in flags or "generation_parameters" in flags:
             confidence = 0.9
             verdict = "fake"
+        elif "c2pa_ai_edited" in flags:
+            confidence = 0.7
+            verdict = "suspicious"
         elif len(strong_flags) >= 2:
             confidence = 0.8
             verdict = "suspicious"
@@ -230,27 +246,56 @@ class MetadataAnalyzer(BaseAnalyzer):
         return result
 
     def _check_c2pa_ai(self, metadata: dict) -> dict:
-        result = {"ai_declared": False, "marker": None, "source": None}
-        xmp = metadata.get("xmp")
-        if isinstance(xmp, str):
-            lowered = xmp.lower()
-            for marker in XMP_AI_MARKERS[:-1]:
-                if marker in lowered:
-                    result["ai_declared"] = True
-                    result["marker"] = marker
-                    result["source"] = "xmp"
-                    return result
+        result = {"ai_declared": False, "ai_edited": False, "marker": None, "source": None}
+        summary = metadata.get("c2pa_summary")
+        if isinstance(summary, dict):
+            for key in ("generator", "signed_by", "signed_at", "state", "trusted", "problems"):
+                result[key] = summary.get(key)
+            result["source"] = "c2pa_manifest"
+            if summary.get("ai") == "generated":
+                result["ai_declared"] = True
+                result["marker"] = "trainedAlgorithmicMedia"
+                return result
+            if summary.get("ai") == "edited":
+                result["ai_edited"] = True
+                result["marker"] = next((s for s in summary.get("source_types") or [] if s.lower() in AI_EDITED_MARKERS), None)
+                return result
 
-        c2pa = metadata.get("c2pa")
-        if c2pa:
-            lowered = str(c2pa).lower()
-            for marker in C2PA_AI_MARKERS:
-                if marker in lowered:
-                    result["ai_declared"] = True
-                    result["marker"] = marker
-                    result["source"] = "c2pa_manifest"
-                    return result
+        texts = [("xmp", metadata.get("xmp"))]
+        if not isinstance(summary, dict):
+            texts.append(("c2pa_manifest", metadata.get("c2pa")))
+        for source, text in texts:
+            if not text:
+                continue
+            lowered = str(text).lower()
+            if AI_GENERATED_PATTERN.search(lowered):
+                result.update(ai_declared=True, marker="trainedAlgorithmicMedia", source=source)
+                return result
+            edited = next((m for m in AI_EDITED_MARKERS if m in lowered), None)
+            if edited:
+                result.update(ai_edited=True, marker=edited, source=source)
+                return result
         return result
+
+    def _ai_trace(self, evidence: dict) -> list[dict]:
+        trace = []
+        c2pa = evidence["c2pa"]
+        if c2pa["ai_declared"] or c2pa["ai_edited"]:
+            trace.append({
+                "kind": "c2pa" if c2pa["source"] == "c2pa_manifest" else "xmp",
+                "ai": "generated" if c2pa["ai_declared"] else "edited",
+                "generator": c2pa.get("generator"),
+                "signed_by": c2pa.get("signed_by"),
+                "trusted": c2pa.get("trusted"),
+                "state": c2pa.get("state"),
+            })
+        if evidence["watermark"]:
+            trace.append({"kind": "watermark", "ai": "generated", "generator": evidence["watermark"]["name"], "signed_by": evidence["watermark"]["vendor"], "match": evidence["watermark"]["match"]})
+        if evidence["ai_tool"]["detected"]:
+            trace.append({"kind": "software_tag", "ai": "generated", "generator": evidence["ai_tool"]["tool"], "field": evidence["ai_tool"]["field"]})
+        if evidence["generation_params"]["detected"]:
+            trace.append({"kind": "generation_params", "ai": "generated", "field": evidence["generation_params"]["field"]})
+        return trace
 
     def _check_gps_plausibility(self, metadata: dict) -> dict:
         exif = metadata.get("exif", {})

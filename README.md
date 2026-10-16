@@ -8,7 +8,7 @@ essay and returns one verdict with the evidence behind it.
 
 [Website](https://prooflayer.cloud) · [Classroom](https://classroom.prooflayer.cloud) · [API reference](https://api.prooflayer.cloud/api/docs/) · [System status](https://prooflayer.cloud/status)
 
-![Tribunal](https://img.shields.io/badge/Tribunal-1.6.1-7c6af7)
+![Tribunal](https://img.shields.io/badge/Tribunal-1.7.0-7c6af7)
 ![Python](https://img.shields.io/badge/Python-3.12-3776ab)
 ![Django](https://img.shields.io/badge/Django-5.1-092e20)
 ![React](https://img.shields.io/badge/React-18-61dafb)
@@ -63,7 +63,7 @@ Measured changes are recorded in [`wiki/concepts/tribunal.md`](wiki/concepts/tri
 | `custom_detector` | 3.5 | ViT fine-tuned on reviewed uploads and current generators, own calibration, retrained automatically |
 | `clip_probe` | 2.5 | Linear probe on CLIP embeddings, an independent backbone |
 | `ai_detector` | 1.0 | Two image classifiers behind a screenshot / diagram gate |
-| `metadata` | 1.5 | EXIF / XMP, generation parameters, C2PA Content Credentials |
+| `metadata` | 1.5 | C2PA Content Credentials checked against the official trust list, IPTC AI labels, Stable Diffusion / FLUX hidden watermarks, EXIF, generation parameters; a verified signature or decoded watermark is proof on its own |
 | `ela` | 0.75 | Error Level Analysis, manipulation channel only |
 | `llm_vision` | 1.5 | Qwen2.5-VL 7B on our GPU (about 6 s per image); must name a concrete defect, otherwise abstains |
 | `video_frame` | 2.0 | Frames across the whole clip, median verdict |
@@ -86,7 +86,8 @@ Same 245 images (100 real, 145 from 20 current generators) for every version, fu
 | Version | Ensemble AUC | AI caught | AI called authentic | Real called AI | Real called suspicious |
 |---|---|---|---|---|---|
 | 1.3 to 1.6 | 0.998 | 108 / 145 | 6 | **0 / 100** | 1 |
-| **1.6.1** | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
+| 1.6.1 | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
+| **1.7.0** | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
 
 The hard constraint for every release: no real photo may be called AI.
 

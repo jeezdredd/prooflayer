@@ -1,5 +1,18 @@
 [
   {
+    "slug": "ai-traces",
+    "date": "2026-10-16",
+    "kind": "feature",
+    "title": {
+      "en": "AI traces: Content Credentials and hidden watermarks",
+      "ru": "Следы ИИ: Content Credentials и скрытые водяные знаки"
+    },
+    "body": {
+      "en": "Image results now have an AI traces section. We read C2PA Content Credentials and check the signature against the official trust list (Google, Adobe, Microsoft and others), read IPTC AI labels, and decode the hidden watermarks of Stable Diffusion and FLUX. A verified AI signature or a decoded watermark settles the verdict on its own. Google SynthID, which OpenAI also uses, can only be read by Google, so the section links to synthid.com to check the file there. Content Credentials were not being read before this release; that is fixed.",
+      "ru": "В результатах проверки изображений появился раздел «Следы ИИ». Мы читаем Content Credentials (C2PA) и проверяем подпись по официальному списку доверенных (Google, Adobe, Microsoft и другие), читаем метки ИИ в IPTC и расшифровываем скрытые водяные знаки Stable Diffusion и FLUX. Проверенная подпись ИИ или найденный водяной знак сами по себе определяют вердикт. Google SynthID, которым пользуется и OpenAI, может прочитать только Google, поэтому в разделе есть ссылка на synthid.com для проверки файла там. До этого выпуска Content Credentials фактически не читались, это исправлено."
+    }
+  },
+  {
     "slug": "fresh-verdict-after-detector-update",
     "date": "2026-10-16",
     "kind": "fix",

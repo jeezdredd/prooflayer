@@ -2347,6 +2347,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "accelerate" },
     { name = "boto3" },
+    { name = "c2pa-python" },
     { name = "celery", extra = ["redis"] },
     { name = "channels" },
     { name = "channels-redis" },
@@ -2389,9 +2390,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-c2pa = [
-    { name = "c2pa-python" },
-]
 dev = [
     { name = "django-debug-toolbar" },
     { name = "factory-boy" },
@@ -2405,7 +2403,7 @@ dev = [
 requires-dist = [
     { name = "accelerate", specifier = ">=0.30,<2.0" },
     { name = "boto3", specifier = ">=1.35,<2.0" },
-    { name = "c2pa-python", marker = "extra == 'c2pa'", specifier = ">=0.6,<1.0" },
+    { name = "c2pa-python", specifier = ">=0.6,<1.0" },
     { name = "celery", extras = ["redis"], specifier = ">=5.4,<5.5" },
     { name = "channels", specifier = ">=4.1,<5.0" },
     { name = "channels-redis", specifier = ">=4.2,<5.0" },
@@ -2452,7 +2450,7 @@ requires-dist = [
     { name = "whitenoise", specifier = ">=6.8,<7.0" },
     { name = "wordfreq", specifier = ">=3.1,<4" },
 ]
-provides-extras = ["c2pa", "dev"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "propcache"

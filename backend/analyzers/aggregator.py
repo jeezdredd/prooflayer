@@ -24,6 +24,7 @@ DISAGREEMENT_MIN_VOTERS = 2
 DISAGREEMENT_MIN_MINORITY_SHARE = 0.3
 SINGLE_VOTER_MIN_SHARE = 0.5
 SINGLE_VOTER_MIN_PROB = 0.9
+PROVENANCE_PROOF_FLOOR = 0.95
 AUTHENTIC_EDITED_AI_CEIL = 0.30
 CONTEXT_ANALYZERS = {"text_grade_fit", "text_style", "text_citations", "text_genre", "text_shadow"}
 CONTEXT_FLAG_FLOOR = 0.6
@@ -157,6 +158,9 @@ def _aggregate_core(results: list[AnalysisResult]) -> tuple[float, str]:
         return 0.5, "inconclusive"
 
     final_score = weighted_score / total_weight
+
+    if any((r.evidence or {}).get("provenance_proof") for r in valid_results):
+        return round(max(final_score, PROVENANCE_PROOF_FLOOR), 4), "fake"
 
     if _community_forensics_priority(valid_results):
         return round(max(final_score, 0.85), 4), "fake"

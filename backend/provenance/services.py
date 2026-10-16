@@ -4,6 +4,7 @@ import logging
 import requests as http_requests
 from django.conf import settings
 
+from analyzers.content_credentials import read_manifest
 from content.storage_utils import local_file
 
 logger = logging.getLogger(__name__)
@@ -206,45 +207,7 @@ def run_clip_neighbor_lookup(submission):
 
 
 def read_c2pa_manifest(path: str) -> str | None:
-    """Return the raw C2PA manifest JSON for a local file, or None.
-
-    c2pa-python moved to a stream-based Reader API in 0.5.0 and dropped the old
-    module-level read_file helper, so try the modern entrypoints first.
-    """
-    try:
-        import c2pa
-    except ImportError:
-        return None
-
-    reader_cls = getattr(c2pa, "Reader", None)
-    if reader_cls is not None:
-        try:
-            with reader_cls(path) as reader:
-                return reader.json()
-        except TypeError:
-            try:
-                with open(path, "rb") as fh, reader_cls(fh) as reader:
-                    return reader.json()
-            except Exception as exc:
-                logger.debug("C2PA Reader stream read failed: %s", exc)
-        except Exception as exc:
-            logger.debug("C2PA Reader read failed: %s", exc)
-
-    from_file = getattr(getattr(c2pa, "c2pa_api", None), "Reader", None)
-    if from_file is not None and hasattr(from_file, "from_file"):
-        try:
-            return from_file.from_file(path).json
-        except Exception as exc:
-            logger.debug("C2PA c2pa_api.Reader failed: %s", exc)
-
-    legacy = getattr(c2pa, "read_file", None)
-    if legacy is not None:
-        try:
-            return legacy(path, None)
-        except Exception as exc:
-            logger.debug("C2PA legacy read_file failed: %s", exc)
-
-    return None
+    return read_manifest(path)
 
 
 def extract_c2pa(submission):

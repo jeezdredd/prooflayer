@@ -68,6 +68,29 @@ need a new signal (another backbone or frequency-domain features), not more Open
 
 ## Changelog
 
+### 1.7.0 - 2026-10-16
+
+Provenance traces become proof.
+
+- `metadata` 1.7.0 reads C2PA through `analyzers/content_credentials.py` with the official C2PA trust
+  list plus the frozen interim list vendored in `analyzers/trust/c2pa-trust-anchors.pem` (Google,
+  Adobe, Microsoft, Truepic, camera makers). `c2pa-python` was an optional extra and was never
+  installed in the image, so C2PA had been silently skipped; it is now a main dependency.
+- `trainedAlgorithmicMedia` = generated, `compositeWithTrainedAlgorithmicMedia` / `compositeSynthetic`
+  = AI-edited (suspicious only), plain `algorithmicMedia` (procedural) is no longer counted as AI.
+- `analyzers/watermarks.py` decodes the imwatermark dwtDct marks of SDXL, FLUX.1 (BFL reference
+  code), SD 1.x and SD 2.x. 0 hits on 1350 real photos across all datasets, 15 ms per image; the mark
+  survives PNG but not JPEG re-encoding.
+- New rule: `provenance_proof` (Trusted C2PA declaring generation, or a decoded watermark) returns
+  `fake` with score >= 0.95 regardless of the bench. Untrusted or tampered credentials still vote
+  through `metadata` as before.
+- SynthID (Google, also OpenAI since 2026) has no public API; the result page links to synthid.com.
+- `openfake_test` unchanged (all files are stripped of credentials and marks): 107/145, real -> fake
+  0/100.
+- Vision member experiments the same day (7b at 672 px, 1024 px, crop of the region the retrained
+  detector found most suspicious): none changed a single Tribunal verdict on the 38 AI images the
+  bench misses (1/38 each), so the vision member stays an explainer.
+
 ### 1.6.1 - 2026-10-14
 
 Image fixes after a real press photo (Nikon D3S EXIF, plain studio background) came out

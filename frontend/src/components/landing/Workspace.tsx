@@ -58,7 +58,7 @@ function PreviewHead({ left, right }: { left: string; right?: string }) {
 function EvidencePreview() {
   return (
     <div className={MONO}>
-      <PreviewHead left="Case/2026-0507 · img_4232.png" right="Tribunal 1.6.1 · fp 9c1e…" />
+      <PreviewHead left="Case/2026-0507 · img_4232.png" right="Tribunal 1.7.0 · fp 9c1e…" />
       {[
         ["Forensics ViT", "0.91", "×3.5", "blood"],
         ["Retrained", "0.88", "×3.5", "blood"],
@@ -311,7 +311,7 @@ function ApiPreview() {
   <span className="text-ink-500">POST https://you.example/hook</span>{`
   X-ProofLayer-Signature: sha256=4f1c…
   { "verdict": "fake", "score": 0.87,
-    "tribunal_version": "1.6.1" }`}
+    "tribunal_version": "1.7.0" }`}
       </pre>
     </div>
   );

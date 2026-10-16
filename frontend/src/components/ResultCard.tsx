@@ -4,6 +4,7 @@ import type { Submission } from "../types";
 import AnalyzerTimeline from "./AnalyzerTimeline";
 import TextReport from "./TextReport";
 import OriginalityPanel from "./OriginalityPanel";
+import AiTracePanel from "./AiTracePanel";
 import TeacherSummary, { isTextSubmission } from "./TeacherSummary";
 import { VERDICT_DISCLAIMER } from "../legal";
 import { useAuthStore } from "../stores/authStore";
@@ -300,6 +301,8 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
           </div>
         </div>
       )}
+
+      <AiTracePanel submission={submission} />
 
       {/* Image preview */}
       {submission.file_url && submission.mime_type?.startsWith("image/") && (
