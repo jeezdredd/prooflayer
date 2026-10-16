@@ -48,10 +48,13 @@ class TestCatalogShape:
         assert enterprise.monthly_usd is None and enterprise.yearly_usd is None
         assert not enterprise.self_serve
 
-    def test_yearly_is_ten_months(self):
+    def test_prices_end_in_99_and_yearly_saves_about_a_sixth(self):
         for plan in PLANS.values():
-            if plan.monthly_usd is not None:
-                assert plan.yearly_usd == plan.monthly_usd * 10
+            if not plan.monthly_usd:
+                continue
+            assert round(plan.monthly_usd * 100) % 100 == 99
+            assert round(plan.yearly_usd * 100) % 1200 == 1188
+            assert 0.16 <= 1 - plan.yearly_usd / (plan.monthly_usd * 12) <= 0.18
 
     def test_only_education_plans_get_classroom(self):
         assert {k for k, p in PLANS.items() if p.classroom} == {"education", "university"}

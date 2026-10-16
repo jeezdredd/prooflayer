@@ -48,7 +48,7 @@ export default function SubscriptionGate({ children, feature }: Props) {
         {feature
           ? <><span className="font-mono text-ink-200">{feature}</span> {t("requires a Pro subscription.")}</>
           : t("This feature requires a Pro subscription.")}
-        {" "}{t("Upgrade for $12/month to unlock all features.")}
+        {" "}{t("Upgrade for $11.99/month to unlock all features.")}
       </p>
       {sub && (
         <p className="text-xs text-ink-600 font-mono mt-2">

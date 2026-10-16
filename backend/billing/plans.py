@@ -10,8 +10,8 @@ class Plan:
     key: str
     name: str
     audience: str
-    monthly_usd: int | None
-    yearly_usd: int | None
+    monthly_usd: float | None
+    yearly_usd: float | None
     uploads_per_month: int
     api_per_minute: int
     teacher_seats: int
@@ -44,14 +44,14 @@ PLANS: dict[str, Plan] = {
         ),
         Plan(
             key="pro", name="Pro", audience="Journalists, researchers, fact-checkers.",
-            monthly_usd=12, yearly_usd=120, uploads_per_month=500, api_per_minute=120, teacher_seats=0, schools=0,
+            monthly_usd=11.99, yearly_usd=119.88, uploads_per_month=500, api_per_minute=120, teacher_seats=0, schools=0,
             compare=True, embed=True, api=True, vlm=True, pdf=True,
             priority_support=False, sla=False, on_premise=False, self_serve=True,
             highlights=("500 checks a month", "API keys and signed webhooks", "Compare, embed, PDF reports"),
         ),
         Plan(
             key="education", name="School", audience="Schools, colleges and lyceums.",
-            monthly_usd=250, yearly_usd=2500, uploads_per_month=3000, api_per_minute=120, teacher_seats=30, schools=1,
+            monthly_usd=249.99, yearly_usd=2495.88, uploads_per_month=3000, api_per_minute=120, teacher_seats=30, schools=1,
             compare=True, embed=True, api=True, vlm=True, pdf=True,
             priority_support=True, sla=False, on_premise=False, self_serve=True,
             highlights=(
@@ -61,7 +61,7 @@ PLANS: dict[str, Plan] = {
         ),
         Plan(
             key="university", name="University", audience="Universities and faculties.",
-            monthly_usd=500, yearly_usd=5000, uploads_per_month=15000, api_per_minute=300, teacher_seats=250, schools=10,
+            monthly_usd=499.99, yearly_usd=4991.88, uploads_per_month=15000, api_per_minute=300, teacher_seats=250, schools=10,
             compare=True, embed=True, api=True, vlm=True, pdf=True,
             priority_support=True, sla=False, on_premise=False, self_serve=True,
             highlights=(

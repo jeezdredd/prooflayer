@@ -1,5 +1,18 @@
 [
   {
+    "slug": "new-prices",
+    "date": "2026-10-16",
+    "kind": "improvement",
+    "title": {
+      "en": "New prices, and yearly plans shown per month",
+      "ru": "Новые цены и годовые тарифы в пересчёте на месяц"
+    },
+    "body": {
+      "en": "Pro is now $11.99 a month, School $249.99 and University $499.99. Paying yearly works out at $9.99, $207.99 and $415.99 a month, about 17% less, and the pricing page shows exactly what you pay once a year.",
+      "ru": "Pro теперь стоит $11.99 в месяц, «Школа» $249.99, «Университет» $499.99. При оплате за год выходит $9.99, $207.99 и $415.99 в месяц, примерно на 17% дешевле, а на странице тарифов видно точную сумму годового платежа."
+    }
+  },
+  {
     "slug": "teacher-checks-any-work",
     "date": "2026-10-16",
     "kind": "feature",

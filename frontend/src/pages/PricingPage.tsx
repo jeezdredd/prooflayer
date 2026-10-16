@@ -30,6 +30,20 @@ const LOOK: Record<PlanKey, { Icon: typeof Zap; accent: string; ring: string }> 
 };
 
 const fmt = (n: number) => n.toLocaleString("en-US").replace(/,/g, " ");
+const money = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/,/g, " ");
+
+function Price({ amount }: { amount: number }) {
+  const cents = Math.round(amount * 100);
+  const whole = Math.floor(cents / 100);
+  const rest = cents % 100;
+  return (
+    <span className="font-display text-5xl text-ink-50 tabular-nums leading-none">
+      <span className="text-2xl align-top mr-0.5 text-ink-300">$</span>
+      {fmt(whole)}
+      {rest > 0 && <span className="text-2xl align-top text-ink-300">.{String(rest).padStart(2, "0")}</span>}
+    </span>
+  );
+}
 
 const TABLE_ROWS: { label: string; value: (p: PlanInfo) => string | boolean }[] = [
   { label: msg("Checks / month"), value: (p) => fmt(p.uploads_per_month) },
@@ -241,7 +255,8 @@ export default function PricingPage() {
             const Icon = look.Icon;
             const current = !user?.is_staff && sub?.tier === plan.key;
             const featured = plan.key === "pro" || plan.key === "education";
-            const price = billingInterval === "year" ? plan.yearly_usd : plan.monthly_usd;
+            const yearly = billingInterval === "year";
+            const price = yearly && plan.yearly_usd != null ? plan.yearly_usd / 12 : plan.monthly_usd;
             const canPay = plan.checkout[billingInterval];
             const isFree = plan.key === "free";
             const loading = checkoutPlan === plan.key;
@@ -265,11 +280,16 @@ export default function PricingPage() {
                 <p className="text-sm text-ink-400 mt-2 min-h-[2.5rem]">{t(plan.audience)}</p>
 
                 <div className="mt-6 flex items-baseline gap-2">
-                  <span className="font-display text-5xl text-ink-50">{price == null ? t("Custom") : `$${fmt(price)}`}</span>
-                  {price != null && <span className="text-sm text-ink-500">{isFree ? t("forever") : billingInterval === "year" ? t("/ year") : t("/ month")}</span>}
+                  {price == null ? <span className="font-display text-5xl text-ink-50">{t("Custom")}</span> : <Price amount={price} />}
+                  {price != null && <span className="text-sm text-ink-500">{isFree ? t("forever") : t("/ month")}</span>}
                 </div>
                 <div className="text-xs text-ink-500 h-4 mt-1.5">
-                  {billingInterval === "year" && !isFree && plan.yearly_usd != null ? t("≈ ${n} a month", { n: fmt(Math.round(plan.yearly_usd / 12)) }) : ""}
+                  {yearly && !isFree && plan.yearly_usd != null && plan.monthly_usd != null ? (
+                    <>
+                      <span className="line-through text-ink-600 mr-1.5">${money(plan.monthly_usd * 12)}</span>
+                      {t("${n} billed once a year", { n: money(plan.yearly_usd) })}
+                    </>
+                  ) : ""}
                 </div>
 
                 <button
