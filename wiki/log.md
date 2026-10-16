@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-16] brand-landing | Tribunal stays Latin in Russian, real photos in the compare preview
+
+- Source: ru.json (12 strings), reports/copy.py, api 0013 (roadmap + changelog ru fields), Workspace ReviewPreview with /samples/compare-{original,edited}.webp
+- Pages updated: [[concepts/tribunal]]
+
 ## [2026-10-16] objections-copy | Objection form names the teacher only for class work
 
 - Source: SubmissionDetailSerializer `in_class` (classroom_id set), ObjectionPanel copy: class work -> "Tell your teacher...", personal work -> "Tell our reviewers..."; "assessment" -> "verdict" everywhere in the panel

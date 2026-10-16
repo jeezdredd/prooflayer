@@ -22,7 +22,7 @@ import { msg, t } from "../i18n";
 
 const TribunalBrain = lazy(() => import("../components/landing/TribunalBrain"));
 
-const TRIBUNAL_FALLBACK = "Tribunal 1.7.1";
+const TRIBUNAL_FALLBACK = "Tribunal 1.8.0";
 
 const ANALYZERS: (BrainMember & { desc: string; Icon: typeof Brain })[] = [
   { code: "01", short: msg("Metadata"), kind: "provenance", name: msg("Metadata & Provenance"), tag: msg("C2PA · IPTC · hidden watermarks"), desc: msg("Reads the traces generators leave on purpose: C2PA Content Credentials checked against the official trust list (Google, Adobe, Microsoft and others), IPTC AI labels, the hidden watermarks of Stable Diffusion and FLUX, and generation settings left by A1111 and ComfyUI. A verified signature or a decoded watermark settles the case on its own; a damaged watermark or stripped credentials are reported as an attempt to hide AI traces."), Icon: Fingerprint },

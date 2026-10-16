@@ -66,6 +66,13 @@ reproduce on the calibration pool (fit-on-test optimism). Decision: keep 1.3 for
 candidate stays in ~/.cache/huggingface/prooflayer-retrained-candidate for reference. Next gains
 need a new signal (another backbone or frequency-domain features), not more OpenFake samples.
 
+## Name in Russian (2026-10-16)
+
+"Tribunal" is a brand name and stays in Latin letters in the Russian UI, PDF reports and data
+("версия Tribunal", "вердикт Tribunal", "текущей версией Tribunal"). The Russian «Трибунал» reads as a
+military court and a sentence; «Совет», «Экспертиза», «Консилиум» and others were considered and
+rejected by the owner. Migration api 0013 rewrote stored roadmap and changelog Russian text.
+
 ## Changelog
 
 ### 1.8.0 - 2026-10-16

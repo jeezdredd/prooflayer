@@ -58,7 +58,7 @@ function PreviewHead({ left, right }: { left: string; right?: string }) {
 function EvidencePreview() {
   return (
     <div className={MONO}>
-      <PreviewHead left="Case/2026-0507 · img_4232.png" right="Tribunal 1.7.1 · fp 9c1e…" />
+      <PreviewHead left="Case/2026-0507 · img_4232.png" right="Tribunal 1.8.0 · fp 9c1e…" />
       {[
         ["Forensics ViT", "0.91", "×3.5", "blood"],
         ["Retrained", "0.88", "×3.5", "blood"],
@@ -137,11 +137,11 @@ function ReviewPreview() {
       <PreviewHead left="Compare · A vs B" />
       <div className="grid grid-cols-2 gap-3">
         {[
-          ["A · original.jpg", "0.08", "sage", "authentic"],
-          ["B · edited.jpg", "0.64", "amber", "split"],
-        ].map(([name, score, tone, verdict]) => (
+          ["A · original.jpg", "0.08", "sage", "authentic", "/samples/compare-original.webp"],
+          ["B · edited.jpg", "0.64", "amber", "split", "/samples/compare-edited.webp"],
+        ].map(([name, score, tone, verdict, src]) => (
           <div key={name} className="border border-[var(--line)] p-3">
-            <div className="aspect-[4/3] bg-gradient-to-br from-ink-800 to-ink-950 mb-2" />
+            <img src={src} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover rounded-md bg-ink-900 mb-2" />
             <div className="text-ink-400">{t(name)}</div>
             <div className="mt-1 flex items-center justify-between">
               <span className="text-ink-600 tabular-nums">{score}</span>

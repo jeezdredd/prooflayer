@@ -5,11 +5,12 @@ from django.apps import apps
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from api.models import RoadmapItem
+from api.models import ChangelogEntry, RoadmapItem
 from users.tests.factories import UserFactory
 
 LIST = "roadmap-list"
 PASSPORT_MIGRATION = importlib.import_module("api.migrations.0010_roadmap_passport_is_writing_replay")
+BRAND_MIGRATION = importlib.import_module("api.migrations.0013_tribunal_brand_in_russian")
 
 
 def detail(item):
@@ -82,3 +83,22 @@ class TestOctoberRefresh:
         replay = RoadmapItem.objects.get(title="Writing replay")
         assert replay.title_ru == "Запись процесса письма"
         assert "already run in Classroom" in replay.body
+
+
+@pytest.mark.django_db
+class TestTribunalBrandInRussian:
+    def test_russian_text_uses_the_latin_brand(self):
+        item = RoadmapItem.objects.create(
+            title="Tribunal 2.0", title_ru="Трибунал 2.0", body_ru="Новый голос в Трибунале, вердикт Трибунала.", position=900,
+        )
+        entry = ChangelogEntry.objects.create(
+            slug="brand-test", date="2026-10-16", title_en="x", title_ru="Перепроверка текущим Трибуналом", body_en="x", body_ru="Весь Трибунал",
+        )
+        BRAND_MIGRATION.rename(apps, None)
+        item.refresh_from_db()
+        entry.refresh_from_db()
+        assert item.title_ru == "Tribunal 2.0"
+        assert item.body_ru == "Новый голос в Tribunal, вердикт Tribunal."
+        assert entry.title_ru == "Перепроверка текущей версией Tribunal"
+        assert entry.body_ru == "Весь Tribunal"
+
