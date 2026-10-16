@@ -5,6 +5,9 @@ import pytest
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from analyzers import ensemble
+from analyzers.ensemble import roster_revision
+from analyzers.implementations.llm_image_analyzer import LLMImageAnalyzer
 from analyzers.tests.factories import AnalysisResultFactory
 from content.models import KnownFakeHash, Submission
 from content.services import (
@@ -101,7 +104,7 @@ class TestCheckKnownFake:
 @pytest.mark.django_db
 class TestFindCachedResult:
     def test_returns_completed_match(self):
-        sub = SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.COMPLETED)
+        sub = SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.COMPLETED, tribunal_revision=roster_revision())
         other = SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.PENDING)
         result = find_cached_result("a" * 64, other.id)
         assert result == sub
@@ -110,6 +113,21 @@ class TestFindCachedResult:
         sub = SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.COMPLETED)
         result = find_cached_result("a" * 64, sub.id)
         assert result is None
+
+    def test_ignores_result_from_older_revision(self):
+        SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.COMPLETED, tribunal_revision="0ld0ld0ld0ld")
+        SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.COMPLETED, tribunal_revision="")
+        other = SubmissionFactory(sha256_hash="a" * 64)
+        assert find_cached_result("a" * 64, other.id) is None
+
+    def test_revision_follows_member_version(self, monkeypatch):
+        before = roster_revision()
+        ensemble.roster_revision.cache_clear()
+        monkeypatch.setattr(LLMImageAnalyzer, "version", "9.9.9")
+        try:
+            assert roster_revision() != before
+        finally:
+            ensemble.roster_revision.cache_clear()
 
     def test_ignores_non_completed(self):
         SubmissionFactory(sha256_hash="a" * 64, status=Submission.Status.PROCESSING)

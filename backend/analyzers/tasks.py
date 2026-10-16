@@ -15,7 +15,7 @@ from users import mail
 from users.tasks import deliver_submission_webhook
 
 from .aggregator import aggregate
-from .ensemble import ensemble_info
+from .ensemble import ensemble_info, roster_revision
 from .models import AnalysisResult, AnalyzerConfig, TrainingSample
 from .registry import load_analyzer_class
 from analyzers import auto_retrain
@@ -196,11 +196,12 @@ def aggregate_verdicts(result_ids, submission_id):
     tribunal = ensemble_info()
     submission.tribunal_version = tribunal["version"]
     submission.tribunal_fingerprint = tribunal["fingerprint"]
+    submission.tribunal_revision = roster_revision()
     submission.status = Submission.Status.COMPLETED
     submission.status_message = ""
     submission.save(update_fields=[
         "final_score", "final_verdict", "status", "status_message",
-        "tribunal_version", "tribunal_fingerprint",
+        "tribunal_version", "tribunal_fingerprint", "tribunal_revision",
     ])
     if submission.api_key_id:
         deliver_submission_webhook.delay(str(submission.id))

@@ -6,6 +6,8 @@ import imagehash
 import numpy as np
 from PIL import ExifTags, Image
 
+from analyzers.ensemble import roster_revision
+
 logger = logging.getLogger(__name__)
 
 
@@ -240,6 +242,7 @@ def find_cached_result(sha256_hash, exclude_id):
         .filter(
             sha256_hash=sha256_hash,
             status=Submission.Status.COMPLETED,
+            tribunal_revision=roster_revision(),
             updated_at__gte=cutoff,
         )
         .exclude(id=exclude_id)

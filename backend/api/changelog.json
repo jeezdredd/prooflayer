@@ -1,5 +1,18 @@
 [
   {
+    "slug": "fresh-verdict-after-detector-update",
+    "date": "2026-10-16",
+    "kind": "fix",
+    "title": {
+      "en": "Re-uploads get a fresh verdict after a detector update",
+      "ru": "Повторная загрузка после обновления детекторов проверяется заново"
+    },
+    "body": {
+      "en": "Uploading a file we had already checked reused the earlier result for two weeks, even if a detector had been improved since. Now a stored result is reused only when every detector is still the same version; otherwise the file is checked again.",
+      "ru": "Если загрузить файл, который мы уже проверяли, две недели показывался прежний результат, даже если детекторы с тех пор улучшились. Теперь сохранённый результат используется, только если все детекторы той же версии, иначе файл проверяется заново."
+    }
+  },
+  {
     "slug": "vision-judge-on-gpu",
     "date": "2026-10-16",
     "kind": "improvement",

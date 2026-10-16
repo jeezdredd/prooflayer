@@ -1,6 +1,8 @@
 import hashlib
+from functools import lru_cache
 
 from analyzers.management.commands.seed_analyzers import ANALYZERS
+from analyzers.registry import load_analyzer_class
 
 ENSEMBLE_NAME = "Tribunal"
 ENSEMBLE_SLUG = "tribunal"
@@ -21,6 +23,15 @@ def roster_fingerprint(entries) -> str:
     canonical = "|".join(
         f"{e['name']}:{e['analyzer_class']}:{float(e['weight']):.4f}"
         for e in sorted(entries, key=lambda e: e["name"])
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
+
+
+@lru_cache(maxsize=1)
+def roster_revision() -> str:
+    canonical = ENSEMBLE_VERSION + "|" + "|".join(
+        f"{e['name']}:{load_analyzer_class(e['analyzer_class']).version}:{float(e['weight']):.4f}"
+        for e in sorted(ANALYZERS, key=lambda e: e["name"])
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
 
