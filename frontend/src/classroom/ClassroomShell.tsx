@@ -1,10 +1,12 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { GraduationCap, LogOut } from "lucide-react";
+import { ArrowLeft, GraduationCap, LogOut } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { auth } from "../api/endpoints";
 import TermsGate from "../components/TermsGate";
 import LangSwitch from "../components/LangSwitch";
 import { t } from "../i18n";
+import { MAIN_URL } from "./shared";
+import StatusPulse from "./StatusPulse";
 
 export default function ClassroomShell() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -32,7 +34,18 @@ export default function ClassroomShell() {
               {t("Classroom")}
             </span>
           </Link>
-          <div className="flex items-center gap-4 font-mono text-[11px] text-ink-400">
+          <div className="flex items-center gap-3 sm:gap-4 font-mono text-[11px] text-ink-400">
+            <StatusPulse />
+            {!user?.student_only && (
+              <a
+                href={isAuthenticated ? `${MAIN_URL}/dashboard` : MAIN_URL}
+                className="flex items-center gap-1.5 hover:text-ink-100 uppercase tracking-[0.14em]"
+                title={t("Back to ProofLayer")}
+              >
+                <ArrowLeft size={13} />
+                <span className="hidden sm:inline">{t("ProofLayer")}</span>
+              </a>
+            )}
             <LangSwitch />
             {isAuthenticated ? (
               <>

@@ -1,5 +1,18 @@
 [
   {
+    "slug": "classroom-status-and-way-back",
+    "date": "2026-10-16",
+    "kind": "improvement",
+    "title": {
+      "en": "Classroom: system status at a glance and a way back",
+      "ru": "Классы: статус систем одним взглядом и путь назад"
+    },
+    "body": {
+      "en": "The Classroom header now shows a small live status signal. One click opens a short card: whether checking work, files and reports, and sign-in and email are working, and which Tribunal version gives the verdicts. Teachers can also jump back to their main ProofLayer workspace from any Classroom page.",
+      "ru": "В шапке раздела «Классы» появился маленький живой индикатор статуса. По клику открывается короткая карточка: работают ли проверка работ, файлы и отчёты, вход и почта, и какая версия Tribunal выносит вердикты. Учителя также могут вернуться в основной кабинет ProofLayer с любой страницы классов."
+    }
+  },
+  {
     "slug": "ai-traces",
     "date": "2026-10-16",
     "kind": "feature",
