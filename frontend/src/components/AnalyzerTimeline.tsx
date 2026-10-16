@@ -362,7 +362,7 @@ function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
         style={{ opacity: opacity / 100 }}
       />
       <p className="font-mono text-[9px] text-ink-600 mt-2">
-        {t("Bright red = high error level = possible manipulation. Uniform areas suggest authentic regions.")}
+        {t("Bright red areas compress differently from the rest of the image, which is where it may have been edited. Even colour means no sign of edits.")}
       </p>
     </div>
   );
@@ -466,7 +466,7 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
         <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-blood/60 bg-signal-blood/5">
           <span className="mt-0.5 text-signal-blood text-[13px]">!</span>
           <span className="font-mono text-[11px] text-ink-300 leading-relaxed">
-            {t("Background worker did not process this submission. Celery may be down or the task crashed before startup. Check worker logs and re-upload to retry.")}
+            {t("This check did not start. Upload the file again; if it happens again, let us know.")}
           </span>
         </div>
       )}

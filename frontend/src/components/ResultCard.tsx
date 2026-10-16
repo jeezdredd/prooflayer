@@ -297,7 +297,7 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
           <span className="w-6 h-6 border border-signal-blood text-signal-blood text-xs flex items-center justify-center font-bold">!</span>
           <div className="flex-1">
             <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-signal-blood">{t("Known fake match")}</div>
-            <div className="text-sm text-ink-200">{t("SHA-256 found in known-fake registry. High confidence forgery.")}</div>
+            <div className="text-sm text-ink-200">{t("This exact file is already in our list of confirmed fakes.")}</div>
           </div>
         </div>
       )}

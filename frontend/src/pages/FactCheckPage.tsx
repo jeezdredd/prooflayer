@@ -38,10 +38,10 @@ const SAMPLE_PROMPTS = [
 ];
 
 const STAGES: Array<{ key: FactCheckStage; label: string }> = [
-  { key: "extracting", label: msg("Extracting named entities via spaCy NER") },
-  { key: "searching", label: msg("Fetching DuckDuckGo + Wikipedia context") },
-  { key: "assessing", label: msg("Assessing claims with qwen2.5") },
-  { key: "cross_referencing", label: msg("Cross-referencing Google Fact Check") },
+  { key: "extracting", label: msg("Finding factual claims in the text") },
+  { key: "searching", label: msg("Looking up what the web and Wikipedia say") },
+  { key: "assessing", label: msg("Weighing each claim") },
+  { key: "cross_referencing", label: msg("Checking fact-checkers' records") },
   { key: "done", label: msg("Complete") },
 ];
 
@@ -202,7 +202,7 @@ function FactCheckPageInner() {
           {t("Fact")} <span className="italic text-signal-amber">{t("Check")}</span>
         </h1>
         <p className="text-ink-400 mt-3 leading-relaxed max-w-xl">
-          {t("Paste text, URL, or upload PDF/DOCX. NER + LLM extract claims, cross-referenced against Wikipedia + Google Fact Check.")}
+          {t("Paste text or a link, or upload a PDF or DOCX. We find the factual claims in it and check them against Wikipedia and fact-checkers' records.")}
         </p>
       </div>
 
@@ -259,7 +259,7 @@ function FactCheckPageInner() {
               className="w-full px-3 py-2 font-mono text-sm text-ink-100 bg-white/[0.02] border border-white/10 rounded-sm focus:outline-none focus:border-signal-amber"
             />
             <p className="font-mono text-[10px] text-ink-500 mt-2">
-              {t("Fetches article text via Trafilatura. SSRF-guarded (no private IPs).")}
+              {t("We fetch the article text from the link and check it.")}
             </p>
           </div>
         )}
@@ -364,7 +364,7 @@ function FactCheckPageInner() {
       {isError && (
         <div className="mt-4 p-4 border border-signal-blood bg-signal-blood/5 flex items-center gap-3 animate-fade-in">
           <span className="w-5 h-5 border border-signal-blood text-signal-blood text-[10px] font-bold flex items-center justify-center">!</span>
-          <span className="font-mono text-xs text-signal-blood">{t("Analysis failed. Check that Ollama is running.")}</span>
+          <span className="font-mono text-xs text-signal-blood">{t("The check failed. Please try again in a moment.")}</span>
         </div>
       )}
 
