@@ -75,6 +75,10 @@ rejected by the owner. Migration api 0013 rewrote stored roadmap and changelog R
 
 ## Changelog
 
+### 1.9.0 - 2026-10-17
+
+`text_classifier` 1.2.0 runs t7: Russian academic prose stops reading as AI (abstracts flagged 40-49% -> 2.5-9%), academic AI caught 97-100%, attacks caught more often. English encyclopedic/news false flags rose (wiki 7.9 -> 12.6%, news 2.5 -> 5.5%). See [[concepts/text-signals]].
+
 ### 1.8.1 - 2026-10-16
 
 `text_citations` 1.1.0: GOST references parsed, web-search fallback, unfound Cyrillic books stay unchecked. Real Russian bibliographies no longer flagged (13/14 missing -> 0). See [[concepts/text-signals]].

@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-17] tribunal-1.9 | Text model t7 trained on academic prose
+
+- Source: frozen academic/news FPR check, scripts/fetch_academic_texts.py, academic generation, text_t7, t6 vs t7 comparison
+- Pages updated: [[concepts/text-signals]], [[concepts/tribunal]], [[hot]]
+
 ## [2026-10-16] citations-ru | Real Russian books no longer flagged as invented
 
 - Source: live check on 26 real sources (scripts in session), analyzers/text/citations.py, tests

@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-17: **Tribunal 1.9.0, text model t7** - trained on 3k human academic texts + 2.7k AI academic texts; Russian scientific abstracts flagged 40-49% -> 2.5-9%; Russian GOST references no longer called invented (1.8.1). Open: English encyclopedic/news false flags rose (wiki 12.6%, news 5.5%). See [[concepts/text-signals]].
+
 - 2026-10-16 (c): **Tribunal 1.8.0, text model t6** - trained on 24 commercial humanizers + detector-guided paraphrase attacks; six unseen humanizers caught 49% -> 91%, human student essays flagged 0.8% en / 1.7% ru; French news regressed to 7.3%. `scripts/eval_humanizers.py` reproduces the comparison. See [[concepts/text-signals]].
 
 - 2026-10-16 (b): **UI motion + lighter cards** - hero word blur-in and scanner over "or by AI", beam on the Popular pricing card, image scan and a live analyzer checklist (real `expected_analyzers`) during upload, shimmer on loading labels, a dotted "searching" orb on originality and fact-check. Gold card trim, outlined badges and boxed timeline markers removed. See [[frontend/ui-motion]].

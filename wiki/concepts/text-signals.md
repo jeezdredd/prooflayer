@@ -162,6 +162,36 @@ Weaker than t4 on English character attacks (homoglyph 63 -> 42%) and some small
 groups; `text_evasion` still catches the character tricks. Shipped with `make ship-text
 TEXT_DIR=dataset/text_models/e5-small-t6`.
 
+## Academic register, model t7 (2026-10-17, Tribunal 1.9.0, `text_classifier` 1.2.0)
+
+Frozen human sets in `dataset/text_eval_academic/` (pre-2022): arXiv and PubMed abstracts + body chunks
+(`ccdv/*-summarization` test), Russian abstracts (`ai-forever/ru-scibench-grnti-classification` test,
+`mlsa-iai-msu-lab/ru_sci_bench` first rows), Gazeta.ru and CNN news. t6 flagged (ai_probability >= 0.5)
+40.5% / 49% of Russian abstracts, 0% of English academic text.
+
+Fix: `scripts/fetch_academic_texts.py` -> `dataset/text_academic/human.jsonl` (3083 human texts, disjoint
+from the frozen sets, hash split) + `dataset/text_gen/academic_seeds.jsonl` (real titles as hints);
+`generate_text_ai.py` genres `academic-abstract` / `academic-body`; ~2700 AI texts (gemma3-4b, qwen3-4b,
+qwen2.5-7b train/calib; gemma3-12b test only) + bypass/student attacks. `build_text_train` caps each
+academic family at 20% (AI 30%) so calibration keeps essays and wiki. `dataset/text_t7`, 20 563 rows.
+
+| flagged human | t6 | t7 |
+|---|---|---|
+| ru abstracts GRNTI / RuSciBench (frozen) | 40.5% / 49% | 2.5% / 9% |
+| ru wiki-pre2022 (test) | 5.0% | 0% |
+| ru CoAT essays (test) | 1.7% | 2.0% |
+| en DAIGT essays (test) | 0.8% | 1.2% |
+| en wiki-pre2022 (test) | 7.9% | 12.6% |
+| en TextSight encyclopedic (test) | 28.4% | 32.9% |
+| en CNN news (frozen) | 2.5% | 5.5% |
+| ru Gazeta news (frozen) | 1.5% | 0.5% |
+| en academic arXiv / PubMed | 0% | 0% |
+
+Recall: held-out humanizers 91 -> 90%, seen 86 -> 90%, adversarial en/fr/ru 57/72/67 -> 67/90/71%,
+academic AI en 100%, ru 97-100% (gemma3-12b unseen 97%), llama3.2 78 -> 84%, qwen2.5 91 -> 96%.
+**Open:** English encyclopedic and news register got worse; next model should add English news and
+encyclopedic human text the same way.
+
 ## Russian sources and GOST references (2026-10-16)
 
 Live check on 26 real sources: English 12/12 found, Russian books without DOI 1/14 found, so every

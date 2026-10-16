@@ -59,7 +59,7 @@ def probability(score: float, knots: list[tuple[float, float]]) -> float:
 
 class TextClassifierAnalyzer(BaseAnalyzer):
     name = "text_classifier"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]

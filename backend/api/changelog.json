@@ -1,5 +1,18 @@
 [
   {
+    "slug": "academic-russian-text",
+    "date": "2026-10-16",
+    "kind": "improvement",
+    "title": {
+      "en": "Russian academic writing is no longer mistaken for AI",
+      "ru": "Русский научный стиль больше не принимается за ИИ"
+    },
+    "body": {
+      "en": "Russian abstracts, term papers and reports are full of set phrases like «Статья посвящена…», and our text check had never seen enough human writing of that kind: on real Russian scientific abstracts it flagged 40-49%. The text model is now trained on two thousand human academic texts and on AI-written abstracts and papers in the same register. False flags on Russian abstracts fell to 2.5-9%, AI-written academic text is caught 97-100% of the time, and plain AI text and paraphrase attacks are caught more often than before.",
+      "ru": "В русских аннотациях, курсовых и рефератах много устойчивых оборотов вроде «Статья посвящена…», а наша проверка текста почти не видела таких человеческих текстов: на настоящих русских научных аннотациях она ошибочно отмечала 40-49%. Теперь модель обучена на двух тысячах научных текстов людей и на аннотациях и статьях того же стиля, написанных ИИ. Ложные срабатывания на русских аннотациях упали до 2,5-9%, научный текст от ИИ распознаётся в 97-100% случаев, а обычный текст ИИ и атаки перефразированием ловятся чаще, чем раньше."
+    }
+  },
+  {
     "slug": "russian-sources-checked-fairly",
     "date": "2026-10-16",
     "kind": "fix",

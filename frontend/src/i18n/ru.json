@@ -1556,12 +1556,12 @@
     "Analyzing image": "Анализируем изображение",
     "Analyzing video": "Анализируем видео",
     "Analyzers": "Анализаторы",
-    "A multilingual encoder fine-tuned on human essays, pre-2022 Wikipedia, fresh writing from current open models and the output of 24 commercial AI humanizers. On held-out text it flags 91-100% of machine writing, 91% of humanized text from tools it never saw in training and about 1-2% of human essays, and marks the passages that read most machine-like. Alone it can only raise a flag, never convict. Reads PDF and DOCX too.": "Многоязычный энкодер, дообученный на сочинениях людей, Википедии до 2022 года, свежих текстах современных открытых моделей и выдаче 24 коммерческих «хуманайзеров». На отложенных текстах распознаёт 91-100% машинных текстов и 91% текстов после «хуманайзеров», которых не было в обучении, а ошибочно отмечает около 1-2% сочинений людей. Подсвечивает фрагменты, больше всего похожие на машинный текст. В одиночку может только подать сигнал, но не обвинить. Читает PDF и DOCX.",
     "Verdict upheld": "Вердикт оставлен без изменений",
     "Verdict changed": "Вердикт изменён",
     "Object to this verdict": "Оспорить вердикт",
     "Tell your teacher why you think this verdict is wrong. Your teacher reads every objection and answers it.": "Расскажите учителю, почему вы считаете вердикт неверным. Учитель читает каждое возражение и отвечает на него.",
-    "Tell our reviewers why you think this verdict is wrong. A person reads every objection and answers it.": "Расскажите нашим проверяющим, почему вы считаете вердикт неверным. Каждое возражение читает и разбирает человек."
+    "Tell our reviewers why you think this verdict is wrong. A person reads every objection and answers it.": "Расскажите нашим проверяющим, почему вы считаете вердикт неверным. Каждое возражение читает и разбирает человек.",
+    "A multilingual encoder fine-tuned on human essays, academic papers and pre-2022 Wikipedia, on fresh writing from current open models and on the output of 24 commercial AI humanizers. On held-out text it flags 90-100% of machine writing, including humanized text from tools it never saw in training, and about 1-2% of human essays, and marks the passages that read most machine-like. Alone it can only raise a flag, never convict. Reads PDF and DOCX too.": "Многоязычный энкодер, дообученный на сочинениях и научных статьях людей, Википедии до 2022 года, свежих текстах современных открытых моделей и выдаче 24 коммерческих «хуманайзеров». На отложенных текстах распознаёт 90-100% машинных текстов, включая тексты после «хуманайзеров», которых не было в обучении, а ошибочно отмечает около 1-2% сочинений людей. Подсвечивает фрагменты, больше всего похожие на машинный текст. В одиночку может только подать сигнал, но не обвинить. Читает PDF и DOCX."
   },
   "plural": {
     "All {n} sources exist": [

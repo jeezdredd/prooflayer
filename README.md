@@ -68,7 +68,7 @@ Measured changes are recorded in [`wiki/concepts/tribunal.md`](wiki/concepts/tri
 | `llm_vision` | 1.5 | Qwen2.5-VL 7B on our GPU (about 6 s per image); must name a concrete defect, otherwise abstains |
 | `video_frame` | 2.0 | Frames across the whole clip, median verdict |
 | `audio_spectrogram` | 2.0 | Spectral features of synthetic voices |
-| `text_classifier` | 2.5 | multilingual-e5-small fine-tuned on human essays, pre-2022 Wikipedia, current model output, the output of 24 commercial humanizers and detector-guided paraphrase attacks (91% of six held-out humanizers caught, 1-2% of human essays flagged); per-language calibration, per-passage scores; can flag, never convict alone |
+| `text_classifier` | 2.5 | multilingual-e5-small fine-tuned on human essays, pre-2022 Wikipedia, current model output, the output of 24 commercial humanizers, detector-guided paraphrase attacks and Russian / English academic prose written by people and by models (90% of six held-out humanizers caught, 1-2% of human essays and 2.5-9% of Russian scientific abstracts flagged); per-language calibration, per-passage scores; can flag, never convict alone |
 | `text_evasion` | 2.0 | Humanizer tricks: homoglyphs, look-alike punctuation, stray accents on common words, styled / fullwidth letters, invisible characters, hidden / white / 1 pt DOCX text |
 
 Context members never vote; a flag sends the work to human review:
