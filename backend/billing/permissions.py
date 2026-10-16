@@ -44,4 +44,3 @@ def tier_feature(flag: str, feature: str) -> type[HasTierFeature]:
 
 CanCompare = tier_feature("can_compare", "Compare")
 CanUseApi = tier_feature("can_api", "API access")
-CanEmbed = tier_feature("can_embed", "Widget embed")

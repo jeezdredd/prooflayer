@@ -1,4 +1,7 @@
+import importlib
+
 import pytest
+from django.apps import apps
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -6,6 +9,7 @@ from api.models import RoadmapItem
 from users.tests.factories import UserFactory
 
 LIST = "roadmap-list"
+PASSPORT_MIGRATION = importlib.import_module("api.migrations.0010_roadmap_passport_is_writing_replay")
 
 
 def detail(item):
@@ -71,3 +75,11 @@ class TestOctoberRefresh:
             "Humanizer-proof text check", "Manipulation map", "Document forgery check", "Image history", "AI music check",
         ]
         assert all(RoadmapItem.objects.get(title=t).title_ru for t in published)
+
+    def test_shipped_passport_lines_are_not_promised_again(self):
+        RoadmapItem.objects.create(title="Authorship Passport", title_ru="Паспорт авторства", status="exploring", position=70)
+        PASSPORT_MIGRATION.forward(apps, None)
+        assert not RoadmapItem.objects.filter(title="Authorship Passport").exists()
+        replay = RoadmapItem.objects.get(title="Writing replay")
+        assert replay.title_ru == "Запись процесса письма"
+        assert "already run in Classroom" in replay.body

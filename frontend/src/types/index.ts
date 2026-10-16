@@ -253,7 +253,6 @@ export interface PlanInfo {
   teacher_seats: number;
   schools: number;
   compare: boolean;
-  embed: boolean;
   api: boolean;
   vlm: boolean;
   pdf: boolean;
@@ -274,7 +273,6 @@ export interface SubscriptionInfo {
   can_use_vlm: boolean;
   can_download_pdf: boolean;
   can_compare: boolean;
-  can_embed: boolean;
   can_api: boolean;
   can_classroom: boolean;
   stripe_subscription_id: string;

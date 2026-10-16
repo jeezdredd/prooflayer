@@ -17,7 +17,6 @@ class Plan:
     teacher_seats: int
     schools: int
     compare: bool
-    embed: bool
     api: bool
     vlm: bool
     pdf: bool
@@ -38,21 +37,21 @@ PLANS: dict[str, Plan] = {
         Plan(
             key="free", name="Free", audience="Try it on your own files.",
             monthly_usd=0, yearly_usd=0, uploads_per_month=50, api_per_minute=0, teacher_seats=0, schools=0,
-            compare=False, embed=False, api=False, vlm=False, pdf=False,
+            compare=False, api=False, vlm=False, pdf=False,
             priority_support=False, sla=False, on_premise=False, self_serve=False,
             highlights=("50 checks a month", "Every Tribunal member", "Public feed and community votes"),
         ),
         Plan(
             key="pro", name="Pro", audience="Journalists, researchers, fact-checkers.",
             monthly_usd=11.99, yearly_usd=119.88, uploads_per_month=500, api_per_minute=120, teacher_seats=0, schools=0,
-            compare=True, embed=True, api=True, vlm=True, pdf=True,
+            compare=True, api=True, vlm=True, pdf=True,
             priority_support=False, sla=False, on_premise=False, self_serve=True,
-            highlights=("500 checks a month", "API keys and signed webhooks", "Compare, embed, PDF reports"),
+            highlights=("500 checks a month", "API keys and signed webhooks", "Compare and PDF reports"),
         ),
         Plan(
             key="education", name="School", audience="Schools, colleges and lyceums.",
             monthly_usd=249.99, yearly_usd=2495.88, uploads_per_month=3000, api_per_minute=120, teacher_seats=30, schools=1,
-            compare=True, embed=True, api=True, vlm=True, pdf=True,
+            compare=True, api=True, vlm=True, pdf=True,
             priority_support=True, sla=False, on_premise=False, self_serve=True,
             highlights=(
                 "3 000 checks a month", "Your own school address in Classroom",
@@ -62,7 +61,7 @@ PLANS: dict[str, Plan] = {
         Plan(
             key="university", name="University", audience="Universities and faculties.",
             monthly_usd=499.99, yearly_usd=4991.88, uploads_per_month=15000, api_per_minute=300, teacher_seats=250, schools=10,
-            compare=True, embed=True, api=True, vlm=True, pdf=True,
+            compare=True, api=True, vlm=True, pdf=True,
             priority_support=True, sla=False, on_premise=False, self_serve=True,
             highlights=(
                 "15 000 checks a month", "Up to 10 faculties, each with its own address",
@@ -72,7 +71,7 @@ PLANS: dict[str, Plan] = {
         Plan(
             key="enterprise", name="Enterprise", audience="Newsrooms, platforms, trust and safety teams.",
             monthly_usd=None, yearly_usd=None, uploads_per_month=50000, api_per_minute=600, teacher_seats=0, schools=0,
-            compare=True, embed=True, api=True, vlm=True, pdf=True,
+            compare=True, api=True, vlm=True, pdf=True,
             priority_support=True, sla=True, on_premise=True, self_serve=False,
             highlights=(
                 "Volume and price agreed with you", "600 API requests a minute per key",

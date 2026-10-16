@@ -67,10 +67,6 @@ class Subscription(models.Model):
         return self.plan.compare
 
     @property
-    def can_embed(self) -> bool:
-        return self.plan.embed
-
-    @property
     def can_classroom(self) -> bool:
         return self.plan.classroom
 

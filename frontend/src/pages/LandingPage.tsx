@@ -3,6 +3,8 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useInView, animate } from "motion/react";
 import {
+  BadgeCheck,
+  EyeOff,
   ScanLine, Eye, Film, AudioLines, Type, Sparkles,
   Brain, Fingerprint,
   Gavel, Scale, GraduationCap, Layers, ShieldCheck, Network, ShieldAlert,
@@ -39,14 +41,16 @@ const TRIBUNAL_RULES = [
   { Icon: ShieldCheck, title: msg("Calibrated on real photos"), body: msg("Thresholds are set on the tail of real-photo scores across hundreds of originals, so lifting recall on new generators added zero false accusations.") },
   { Icon: Gavel, title: msg("Split bench goes to a human"), body: msg("When confident members disagree and the minority carries real weight, the case is escalated for review instead of averaged into a shrug.") },
   { Icon: Fingerprint, title: msg("Every verdict is traceable"), body: msg("Each result carries the Tribunal version and a fingerprint of the exact roster and weights that produced it.") },
+  { Icon: BadgeCheck, title: msg("Proof outranks votes"), body: msg("A verified Content Credentials signature or a decoded generator watermark settles the case on its own, whatever the detectors say.") },
+  { Icon: EyeOff, title: msg("Hiding traces is a trace"), body: msg("Damaged watermarks, cut-out credentials and disguised characters are named in the result as an attempt to hide AI traces.") },
 ];
 
 
 const NUMBERS = [
-  { v: "11", l: msg("Active analyzers") },
-  { v: "3", l: msg("Languages for text checks") },
-  { v: "500MB", l: msg("Max upload") },
-  { v: "REST", l: msg("Open API") },
+  { k: "checks", v: "11", l: msg("Independent checks on every file") },
+  { k: "kinds", v: "4", l: msg("Kinds of content: photo, video, audio and text") },
+  { k: "honest", v: "0%", l: msg("Real photos called AI in our test of 100") },
+  { k: "speed", v: "3", l: msg("Languages for essays: Russian, English, French") },
 ];
 
 const PRINCIPLES = [
@@ -144,7 +148,7 @@ export default function LandingPage() {
   const tribunalLabel = statusData?.services?.analyzers?.ensemble || TRIBUNAL_FALLBACK;
   const medianVerdict = statusData?.verdict_timing?.image_median_s;
   const numbers = medianVerdict != null
-    ? NUMBERS.map((n) => (n.l === "Languages for text checks" ? { v: t("{n}s", { n: Math.round(medianVerdict) }), l: msg("Median image verdict, last 14 days") } : n))
+    ? NUMBERS.map((n) => (n.k === "speed" ? { ...n, v: t("{n}s", { n: Math.round(medianVerdict) }), l: msg("Typical wait for an image verdict") } : n))
     : NUMBERS;
   const analyzers = useMemo(() => ANALYZERS.map((a) => ({ ...a, short: t(a.short), name: t(a.name), tag: t(a.tag), desc: t(a.desc) })), []);
   const [openRule, setOpenRule] = useState<number | null>(null);
@@ -343,7 +347,7 @@ export default function LandingPage() {
         >
           {numbers.map((n) => (
             <motion.div
-              key={n.l}
+              key={n.k}
               variants={fadeUp}
               transition={{ duration: 0.6 }}
               whileHover={{ y: -3 }}
@@ -444,7 +448,7 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[var(--line-strong)] mb-14"
+            className="grid grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--line-strong)] mb-14"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
@@ -590,54 +594,6 @@ export default function LandingPage() {
           </motion.div>
 
           <Workspace />
-        </section>
-
-        {/* EMBED WIDGET */}
-        <section className="pb-28 grid lg:grid-cols-2 gap-14 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-          >
-            <div className="label-mono mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-signal-fuchsia rounded-full pulse-dot" />
-              {t("Embeddable")}
-            </div>
-            <h2 className="font-display text-6xl lg:text-7xl text-ink-50 leading-[0.95] mb-6">
-              {t("Drop a")} <span className="italic text-iris">{t("badge")}</span>
-              <br />
-              {t("on any page.")}
-            </h2>
-            <p className="text-ink-200 leading-relaxed max-w-md mb-8">
-              {t("One script tag. Real-time verdict fed by your submission's SHA-256. Public CORS, no API key required.")}
-            </p>
-            <MagneticBtn to={user ? "/embed" : "/register"} className="btn-forensic">
-              {user ? `${t("Open Embed")} →` : `${t("Get Started")} →`}
-            </MagneticBtn>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="case-card crop-marks group overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--line)]">
-              <span className="label-mono">embed.html</span>
-              <div className="flex gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-signal-blood/40 group-hover:bg-signal-blood transition-colors" />
-                <span className="w-2.5 h-2.5 rounded-full bg-signal-amber/40 group-hover:bg-signal-amber transition-colors" />
-                <span className="w-2.5 h-2.5 rounded-full bg-signal-sage/40 group-hover:bg-signal-sage transition-colors" />
-              </div>
-            </div>
-            <pre className="font-mono text-[13px] text-ink-100 p-6 leading-relaxed overflow-x-auto bg-ink-950/80">
-<span className="text-ink-500">{"<!-- one line, anywhere -->"}</span>{"\n"}
-<span className="text-signal-violet">{"<script"}</span> <span className="text-signal-cyan">src</span>=<span className="text-signal-amber">"https://prooflayer.cloud/widget.js"</span><span className="text-signal-violet">{"></script>"}</span>{"\n"}
-<span className="text-signal-violet">{"<div"}</span> <span className="text-signal-cyan">data-prooflayer-sha256</span>=<span className="text-signal-amber">"7a3f2c..."</span><span className="text-signal-violet">{"></div>"}</span>
-            </pre>
-          </motion.div>
         </section>
 
         <Roadmap />

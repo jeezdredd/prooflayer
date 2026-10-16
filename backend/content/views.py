@@ -52,7 +52,7 @@ from .serializers import (
     SubmissionListSerializer,
     VerdictOverrideSerializer,
 )
-from .throttles import UploadRateThrottle, WidgetRateThrottle
+from .throttles import UploadRateThrottle
 from .validators import validate_file_size, validate_mime_type
 
 User = get_user_model()
@@ -351,46 +351,6 @@ class PublicSubmissionDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         public = Submission.objects.filter(is_public=True, status=Submission.Status.COMPLETED)
         return for_viewer(public, self.request.user).select_related("user")
-
-
-class WidgetEmbedView(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = []
-    throttle_classes = [WidgetRateThrottle]
-
-    def get(self, request, sha256):
-        submission = (
-            Submission.objects.filter(
-                sha256_hash=sha256,
-                status=Submission.Status.COMPLETED,
-                is_public=True,
-                is_sensitive=False,
-            )
-            .order_by("-created_at")
-            .first()
-        )
-        if not submission:
-            return Response(
-                {
-                    "found": False,
-                    "verdict": "unknown",
-                    "score": None,
-                    "is_known_fake": False,
-                },
-                headers={"Access-Control-Allow-Origin": "*"},
-            )
-
-        return Response(
-            {
-                "found": True,
-                "submission_id": str(submission.id),
-                "verdict": submission.final_verdict or "inconclusive",
-                "score": submission.final_score,
-                "is_known_fake": submission.is_known_fake,
-                "submitted_at": submission.created_at.isoformat(),
-            },
-            headers={"Access-Control-Allow-Origin": "*"},
-        )
 
 
 class AnalyzeUrlView(APIView):

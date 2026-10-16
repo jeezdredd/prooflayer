@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import {
   Upload, LayoutDashboard, ScrollText, Users, GitCompareArrows,
-  Code2, Activity, Shield, LogOut, Menu, X, Layers, Globe, CreditCard, KeyRound, GraduationCap, Settings, Sparkles,
+  Activity, Shield, LogOut, Menu, X, Layers, Globe, CreditCard, KeyRound, GraduationCap, Settings, Sparkles,
 } from "lucide-react";
 import ShaderBackground from "./ui/ShaderBackground";
 import EmailVerifyBanner from "./EmailVerifyBanner";
@@ -45,7 +45,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: msg("For developers"),
     items: [
       { to: "/developers", label: msg("API"), Icon: KeyRound },
-      { to: "/embed", label: msg("Embed"), Icon: Code2 },
     ],
   },
   {

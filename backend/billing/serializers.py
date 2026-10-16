@@ -13,7 +13,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "can_use_vlm",
             "can_download_pdf",
             "can_compare",
-            "can_embed",
             "can_api",
             "can_classroom",
             "uploads_per_month",

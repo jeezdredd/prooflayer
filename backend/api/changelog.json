@@ -1,5 +1,18 @@
 [
   {
+    "slug": "front-page-plain-words",
+    "date": "2026-10-16",
+    "kind": "improvement",
+    "title": {
+      "en": "Front page in plain words; the embeddable badge is retired",
+      "ru": "Главная простыми словами; встраиваемый значок убран"
+    },
+    "body": {
+      "en": "The numbers on the front page now say what matters to a person rather than to a developer: how many independent checks every file gets, what kinds of content we check, how often a real photo is wrongly called AI in our test, and how long an image verdict usually takes. The Tribunal section lists two new rules: proof outranks votes, and hiding traces is a trace. The embeddable verification badge is retired; nobody used it.",
+      "ru": "Цифры на главной теперь говорят о том, что важно человеку, а не разработчику: сколько независимых проверок проходит каждый файл, какой контент мы проверяем, как часто настоящее фото по ошибке называют ИИ в нашем тесте и сколько обычно ждать вердикта по фото. В разделе о Трибунале появились два новых правила: доказательство важнее голосов, и сокрытие следов тоже след. Встраиваемый значок проверки убран: им никто не пользовался."
+    }
+  },
+  {
     "slug": "hidden-ai-trace-attempts",
     "date": "2026-10-16",
     "kind": "feature",

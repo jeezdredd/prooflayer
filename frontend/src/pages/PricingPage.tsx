@@ -51,7 +51,6 @@ const TABLE_ROWS: { label: string; value: (p: PlanInfo) => string | boolean }[] 
   { label: msg("Public feed & community"), value: () => true },
   { label: msg("PDF reports"), value: (p) => p.pdf },
   { label: msg("Compare tool"), value: (p) => p.compare },
-  { label: msg("Widget embed"), value: (p) => p.embed },
   { label: msg("API keys & webhooks"), value: (p) => (p.api ? t("{n}/min", { n: p.api_per_minute }) : false) },
   { label: msg("Classroom addresses"), value: (p) => (p.classroom ? String(p.schools) : false) },
   { label: msg("Teacher seats"), value: (p) => (p.teacher_seats ? String(p.teacher_seats) : false) },

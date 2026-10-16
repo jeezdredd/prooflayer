@@ -136,22 +136,6 @@ class TestPublicDetail:
 
 
 @pytest.mark.django_db
-class TestWidgetEmbed:
-    def test_sensitive_item_is_not_disclosed(self):
-        _public(True, sha256_hash="c" * 64)
-        response = _client().get(reverse("widget-embed", kwargs={"sha256": "c" * 64}))
-        assert response.status_code == 200
-        assert response.data["found"] is False
-
-    def test_safe_copy_still_found_when_sensitive_copy_exists(self):
-        safe = _public(False, sha256_hash="d" * 64)
-        _public(True, sha256_hash="d" * 64)
-        response = _client().get(reverse("widget-embed", kwargs={"sha256": "d" * 64}))
-        assert response.data["found"] is True
-        assert response.data["submission_id"] == str(safe.id)
-
-
-@pytest.mark.django_db
 class TestStatusView:
     def setup_method(self):
         self.owner = _minor()

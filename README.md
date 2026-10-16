@@ -43,7 +43,7 @@ essay and returns one verdict with the evidence behind it.
 | **Audio** | Synthetic voice and vocoder artifact detection |
 | **Text** | AI-writing classifier for ru / en / fr, bypass detection (homoglyphs, invisible and hidden text), invented sources and reference formatting, originality and plagiarism with paraphrase and translation matching |
 | **Education** | Schools, classes and student accounts, a plain-language teacher report, class radar, assignment shadow, verdict objections |
-| **Platform** | Fact-check, compare, human review queue, batch upload, PDF reports, embeddable badge, REST API with signed webhooks, browser extension, Russian and English interface |
+| **Platform** | Fact-check, compare, human review queue, batch upload, PDF reports, REST API with signed webhooks, browser extension, Russian and English interface |
 
 Every result is probabilistic and says so. A flag is a reason to look closer and to talk to the
 person, never proof on its own.
@@ -276,7 +276,7 @@ backend/
   analyzers/    Tribunal members, text checks, aggregator, auto retrain
   classroom/    Organizations, classes, roster, radar, assignment shadow, demo data
   plagiarism/   Fingerprints, sentence vectors, web search
-  content/      Submissions, upload pipeline, batches, PDF reports, widget
+  content/      Submissions, upload pipeline, batches, PDF reports
   factcheck/    Claim extraction and checking
   provenance/   Perceptual hash matching
   billing/      Plans, quotas, Paddle

@@ -24,7 +24,6 @@ const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const FactCheckPage = lazy(() => import("./pages/FactCheckPage"));
 const CommunityFakesPage = lazy(() => import("./pages/CommunityFakesPage"));
 const ComparePage = lazy(() => import("./pages/ComparePage"));
-const EmbedPage = lazy(() => import("./pages/EmbedPage"));
 const ReviewQueuePage = lazy(() => import("./pages/ReviewQueuePage"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
 const ChangelogPage = lazy(() => import("./pages/ChangelogPage"));
@@ -96,7 +95,6 @@ function AppRoutes() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/community-fakes" element={<CommunityFakesPage />} />
-            <Route path="/embed" element={<EmbedPage />} />
             <Route path="/results/:id" element={<ResultPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/changelog" element={<ChangelogPage />} />
