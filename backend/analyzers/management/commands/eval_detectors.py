@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand
 from PIL import Image
 
 from analyzers.aggregator import aggregate
+from analyzers.ensemble import ensemble_info
 from analyzers.registry import load_analyzer_class
 from content.services import extract_metadata
 
@@ -148,8 +149,6 @@ class Command(BaseCommand):
             except Exception as exc:
                 self.stderr.write(f"skip {name}: {exc}")
 
-        from analyzers.ensemble import ensemble_info
-
         info = ensemble_info()
         self.stdout.write(f"{info['label']} (roster {info['fingerprint']}): {len(samples)} images, {len(analyzers)} analyzers")
 
@@ -186,7 +185,7 @@ class Command(BaseCommand):
                 if prob is not None:
                     per_analyzer[name].scores.append(float(prob))
                     per_analyzer[name].labels.append(label)
-                row[name] = {"verdict": output.verdict, "ai_probability": prob}
+                row[name] = {"verdict": output.verdict, "ai_probability": prob, "confidence": output.confidence, "evidence": output.evidence}
 
             if results:
                 score, verdict = aggregate(results)
