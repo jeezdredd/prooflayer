@@ -58,3 +58,16 @@ class TestRoadmap:
         client = APIClient()
         client.force_authenticate(UserFactory(is_staff=True))
         assert client.post(reverse(LIST), {"title": "Long", "body": "x" * 601}).status_code == 400
+
+
+@pytest.mark.django_db
+class TestOctoberRefresh:
+    def test_roadmap_shows_only_upcoming_work(self):
+        rows = RoadmapItem.objects.filter(is_published=True).order_by("position")
+        published = list(rows.values_list("title", flat=True))
+        assert "Text detector v2" not in published
+        assert "Highlighted passages in essays" not in published
+        assert published[:5] == [
+            "Humanizer-proof text check", "Manipulation map", "Document forgery check", "Image history", "AI music check",
+        ]
+        assert all(RoadmapItem.objects.get(title=t).title_ru for t in published)
