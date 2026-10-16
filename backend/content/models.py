@@ -100,6 +100,13 @@ class Submission(models.Model):
     tribunal_version = models.CharField(max_length=16, blank=True)
     tribunal_fingerprint = models.CharField(max_length=16, blank=True)
     tribunal_revision = models.CharField(max_length=16, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="uploads_for_students",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

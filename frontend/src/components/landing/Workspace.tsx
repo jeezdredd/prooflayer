@@ -368,7 +368,7 @@ const FEATURES: Feature[] = [
   {
     id: "classroom", group: "teach", Icon: GraduationCap, title: msg("Classroom"), to: "/pricing",
     line: msg("Your school's own space: students only hand in work and see their results, the tools stay with teachers."),
-    facts: [msg("Every work opens with a plain answer and a coloured tile per check: AI writing, copying, hidden tricks, age fit, own style, sources"), msg("Interface in Russian and English for teachers and students"), msg("Class level from grade 1 to university year 6"), msg("Vocabulary checked against the grade and against the student's own level, so strong students are not flagged"), msg("Personal comparisons wait for three earlier works: no verdict from one or two"), msg("Class radar: essays built on one skeleton and sudden jumps in a student's level")],
+    facts: [msg("Every work opens with a plain answer and a coloured tile per check: AI writing, copying, hidden tricks, age fit, own style, sources"), msg("Interface in Russian and English for teachers and students"), msg("Class level from grade 1 to university year 6"), msg("Vocabulary checked against the grade and against the student's own level, so strong students are not flagged"), msg("Personal comparisons wait for three earlier works: no verdict from one or two"), msg("Class radar: essays built on one skeleton and sudden jumps in a student's level"), msg("Teachers can upload any work themselves and file it under a student")],
     preview: <ClassroomPreview />,
   },
   {

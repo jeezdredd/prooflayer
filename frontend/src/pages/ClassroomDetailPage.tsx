@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Download, RefreshCw, UserMinus, Archive } from "lucide-react";
+import { Copy, Download, FileCheck, RefreshCw, UserMinus, Archive } from "lucide-react";
 import { classrooms, objections } from "../api/endpoints";
 import type { ClassSubmission, VerdictObjection } from "../types";
 import { toast } from "../components/ui/Toast";
@@ -19,7 +19,12 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
       {rows.map((s) => (
         <Link key={s.id} to={`/results/${s.id}`} state={{ supervising: showStudent }}
           className="grid grid-cols-[1fr_auto] md:grid-cols-12 gap-3 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
-          {showStudent && <span className="md:col-span-2 text-ink-300 truncate">{s.student}</span>}
+          {showStudent && (
+            <span className="md:col-span-2 text-ink-300 truncate">
+              {s.student}
+              {s.uploaded_by && <span className="block font-mono text-[10px] text-ink-600 truncate">{t("uploaded by {name}", { name: s.uploaded_by })}</span>}
+            </span>
+          )}
           <span className={`${showStudent ? "md:col-span-5" : "md:col-span-7"} text-ink-50 truncate`}>{s.original_filename}</span>
           <span className="md:col-span-2 font-mono text-[11px] text-ink-500 hidden md:block">
             {s.words != null ? tn(s.words, "{n} word", "{n} words") : t(s.mime_type.split("/")[0])}
@@ -305,6 +310,7 @@ function TeacherView({ id }: { id: string }) {
             <option value="">{t("Year not set")}</option>
             {levelOptions().map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          <Link to="submit" className="flex items-center gap-1.5 border border-signal-amber/60 text-signal-amber px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] hover:bg-signal-amber/10"><FileCheck size={13} /> {t("Check work")}</Link>
           <button type="button" onClick={exportCsv} className={BTN}><Download size={13} /> CSV</button>
           <button type="button" onClick={() => archive.mutate()} className={BTN}><Archive size={13} /> {cls.archived ? t("Restore") : t("Archive")}</button>
         </div>
@@ -350,6 +356,7 @@ function TeacherView({ id }: { id: string }) {
                   </button>
                   <span className="font-mono text-[11px] text-ink-500 tabular-nums" title={t("submissions")}>{m.total}</span>
                   <span className={`font-mono text-[11px] tabular-nums ${m.flagged ? "text-signal-blood" : "text-ink-600"}`} title={t("flagged")}>{t("{n} flagged", { n: m.flagged })}</span>
+                  <Link to={`submit?student=${m.user_id}`} aria-label={t("Check work by {name}", { name: m.username })} title={t("Check work by {name}", { name: m.username })} className="text-ink-600 hover:text-signal-amber"><FileCheck size={13} /></Link>
                   <button type="button" aria-label={t("Take out of class")} onClick={() => dropStudent.mutate(m.user_id)} className="text-ink-600 hover:text-signal-blood"><UserMinus size={13} /></button>
                 </div>
               ))}

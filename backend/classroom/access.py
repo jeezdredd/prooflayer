@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import BasePermission
@@ -65,24 +66,33 @@ def is_member(classroom: Classroom, user) -> bool:
 
 
 def classroom_for_upload(user, classroom_id) -> Classroom | None:
-    """The classroom a student (or the teacher) is uploading into, or None for a personal upload.
-
-    Uploads into a class are charged to the owner's Education plan, so the owner must still hold
-    it; otherwise a lapsed teacher plan would silently start billing students.
-    """
     if not classroom_id:
         return None
     try:
         classroom = Classroom.objects.select_related("owner", "organization__owner").get(id=classroom_id)
     except (Classroom.DoesNotExist, ValueError, ValidationError) as exc:
         raise NotFound("Classroom not found.") from exc
-    if classroom.owner_id != user.id and not is_member(classroom, user):
+    if not can_supervise(classroom, user) and not is_member(classroom, user):
         raise NotFound("Classroom not found.")
     if classroom.archived:
         raise ValidationError({"classroom": ["This classroom is archived."]})
     if not tier_allows(classroom.billing_owner, "can_classroom"):
         raise PermissionDenied("The Education plan behind this class is not active; uploads are paused.")
     return classroom
+
+
+def upload_author(user, classroom: Classroom | None, student_id) -> tuple:
+    if not student_id:
+        return user, None
+    if classroom is None or not can_supervise(classroom, user):
+        raise PermissionDenied("Only the teacher of this class can upload work for a student.")
+    try:
+        student = get_user_model().objects.get(id=int(student_id))
+    except (ValueError, TypeError, get_user_model().DoesNotExist) as exc:
+        raise ValidationError({"student": ["Student not found in this class."]}) from exc
+    if not is_member(classroom, student):
+        raise ValidationError({"student": ["Student not found in this class."]})
+    return student, user
 
 
 def quota_owner(user, classroom: Classroom | None):

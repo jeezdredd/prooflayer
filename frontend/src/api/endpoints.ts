@@ -83,10 +83,11 @@ export const auth = {
 };
 
 export const content = {
-  upload: (file: File, onProgress?: (progress: number) => void, classroom?: string | null) => {
+  upload: (file: File, onProgress?: (progress: number) => void, classroom?: string | null, student?: number | null) => {
     const formData = new FormData();
     formData.append("file", file);
     if (classroom) formData.append("classroom", classroom);
+    if (student) formData.append("student", String(student));
     return client.post<Submission>("/content/submissions/", formData, {
       headers: { "Content-Type": "multipart/form-data" },
       onUploadProgress: (e) => {
@@ -229,11 +230,12 @@ export const apiKeys = {
 };
 
 export const batches = {
-  create: (files: File[], name = "", classroom?: string | null) => {
+  create: (files: File[], name = "", classroom?: string | null, student?: number | null) => {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
     if (name) form.append("name", name);
     if (classroom) form.append("classroom", classroom);
+    if (student) form.append("student", String(student));
     return client.post<BatchDetail>("/content/batches/", form, { headers: { "Content-Type": "multipart/form-data" } });
   },
   detail: (id: string) => client.get<BatchDetail>(`/content/batches/${id}/`),

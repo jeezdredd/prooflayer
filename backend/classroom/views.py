@@ -121,7 +121,7 @@ class ClassroomViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _class_submissions(self, classroom):
-        qs = Submission.objects.filter(classroom=classroom).select_related("user", "plagiarism_report")
+        qs = Submission.objects.filter(classroom=classroom).select_related("user", "uploaded_by", "plagiarism_report")
         if not can_supervise(classroom, self.request.user):
             return qs.filter(user=self.request.user)
         params = self.request.query_params

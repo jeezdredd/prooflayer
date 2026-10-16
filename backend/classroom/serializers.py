@@ -64,6 +64,7 @@ class ClassSubmissionSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
     student_id = serializers.IntegerField(source="user_id")
     student = serializers.CharField(source="user.username")
+    uploaded_by = serializers.CharField(source="uploaded_by.username", default=None)
     words = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
 

@@ -1,5 +1,15 @@
 {
   "strings": {
+    "Teachers can upload any work themselves and file it under a student": "Учитель может сам загрузить любую работу и привязать её к ученику",
+    "Check work": "Проверить работу",
+    "uploaded by {name}": "загрузил(а) {name}",
+    "Check work by {name}": "Проверить работу ученика {name}",
+    "{name} is being checked": "{name} отправлен на проверку",
+    "Upload any work yourself: a scanned page, an email attachment, an essay from another platform. Pick the student so it joins their history and the style comparison with their earlier work.": "Загрузите любую работу сами: скан страницы, вложение из письма, сочинение с другой платформы. Выберите ученика, чтобы работа попала в его историю и в сравнение стиля с прежними работами.",
+    "Whose work is this?": "Чья это работа?",
+    "No student, just check it": "Без ученика, просто проверить",
+    "{name} will see this work and its verdict, like anything they hand in.": "{name} увидит эту работу и вердикт, как и всё, что сдаёт сам(а).",
+    "Not linked to any student. It counts towards the class plan.": "Не привязана к ученику. Учитывается в лимите тарифа класса.",
     "Checking work": "Проверка работ",
     "Detectors, workers and language models": "Детекторы, обработчики и языковые модели",
     "Files and reports": "Файлы и отчёты",

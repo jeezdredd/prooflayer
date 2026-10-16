@@ -1,5 +1,18 @@
 [
   {
+    "slug": "teacher-checks-any-work",
+    "date": "2026-10-16",
+    "kind": "feature",
+    "title": {
+      "en": "Teachers can check any work themselves",
+      "ru": "Учитель может сам проверить любую работу"
+    },
+    "body": {
+      "en": "In Classroom, a teacher can now upload any work: a scanned page, an email attachment, an essay from another platform. Pick the student it belongs to and it joins their history, so the style comparison with their earlier work keeps working; or leave it unassigned for a quick check. The class list shows who uploaded each work. Uploads count towards the class plan.",
+      "ru": "В разделе «Классы» учитель теперь может сам загрузить любую работу: скан страницы, вложение из письма, сочинение с другой платформы. Выберите ученика, и работа попадёт в его историю, а сравнение стиля с прежними работами продолжит работать. Или оставьте её без ученика для быстрой проверки. В списке класса видно, кто загрузил каждую работу. Загрузки учитываются в лимите тарифа класса."
+    }
+  },
+  {
     "slug": "classroom-status-and-way-back",
     "date": "2026-10-16",
     "kind": "improvement",

@@ -379,6 +379,7 @@ export interface ClassSubmission {
   created_at: string;
   student_id: number;
   student: string;
+  uploaded_by: string | null;
   words: number | null;
   originality: number | null;
 }

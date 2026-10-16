@@ -24,6 +24,7 @@ from classroom.access import (
     deny_student_only,
     quota_owner,
     supervised_q,
+    upload_author,
     visible_submissions_q,
 )
 from common.age import can_view_sensitive
@@ -127,6 +128,7 @@ class SubmissionViewSet(
         classroom = classroom_for_upload(request.user, request.data.get("classroom"))
         if classroom is None:
             deny_student_only(request.user)
+        author, uploaded_by = upload_author(request.user, classroom, request.data.get("student"))
         try:
             check_quota(quota_owner(request.user, classroom))
         except QuotaExceeded as exc:
@@ -135,9 +137,10 @@ class SubmissionViewSet(
         validate_file_size(file)
         mime_type = validate_mime_type(file)
         submission = create_submission(
-            request.user, file, mime_type,
+            author, file, mime_type,
             api_key=request.auth if isinstance(request.auth, ApiKey) else None,
             classroom=classroom,
+            uploaded_by=uploaded_by,
         )
         serializer = SubmissionCreateSerializer(submission)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

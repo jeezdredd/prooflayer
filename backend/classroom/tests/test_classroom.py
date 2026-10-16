@@ -250,3 +250,72 @@ class TestDocuments:
         text = extract_text(_docx_bytes("one two three"), DOCX_MIME)
         assert "one two three" in text
         assert document_stats(text)["words"] == 3
+
+
+@pytest.mark.django_db
+@patch("content.intake.process_submission.delay")
+class TestTeacherUploadsForStudent:
+    def test_teacher_checks_work_on_behalf_of_student(self, _delay):
+        teacher, classroom, student = _class_with_student()
+        response = _client(teacher).post(
+            reverse("submission-list"),
+            {"file": _jpeg(), "classroom": str(classroom.id), "student": str(student.id)},
+            format="multipart",
+        )
+        assert response.status_code == 201
+        sub = Submission.objects.get(id=response.data["id"])
+        assert sub.user_id == student.id and sub.uploaded_by_id == teacher.id and sub.classroom_id == classroom.id
+        assert uploads_this_month(teacher) == 1
+        listed = _client(teacher).get(reverse("classroom-submissions", kwargs={"id": classroom.id})).data
+        assert listed[0]["student_id"] == student.id and listed[0]["uploaded_by"] == teacher.username
+        assert _client(student).get(reverse("submission-detail", kwargs={"id": sub.id})).status_code == 200
+
+    def test_teacher_upload_without_student_stays_with_teacher(self, _delay):
+        teacher, classroom, _ = _class_with_student()
+        response = _client(teacher).post(
+            reverse("submission-list"), {"file": _jpeg(), "classroom": str(classroom.id)}, format="multipart"
+        )
+        sub = Submission.objects.get(id=response.data["id"])
+        assert sub.user_id == teacher.id and sub.uploaded_by_id is None
+
+    def test_student_cannot_upload_for_classmate(self, _delay):
+        _, classroom, student = _class_with_student()
+        classmate = UserFactory(is_verified=True)
+        Membership.objects.create(classroom=classroom, user=classmate)
+        response = _client(student).post(
+            reverse("submission-list"),
+            {"file": _jpeg(), "classroom": str(classroom.id), "student": str(classmate.id)},
+            format="multipart",
+        )
+        assert response.status_code == 403
+        assert not Submission.objects.filter(user=classmate).exists()
+
+    def test_teacher_cannot_assign_work_to_outsider(self, _delay):
+        teacher, classroom, _ = _class_with_student()
+        outsider = UserFactory(is_verified=True)
+        response = _client(teacher).post(
+            reverse("submission-list"),
+            {"file": _jpeg(), "classroom": str(classroom.id), "student": str(outsider.id)},
+            format="multipart",
+        )
+        assert response.status_code == 400
+        assert not Submission.objects.filter(user=outsider).exists()
+
+    def test_student_without_class_is_rejected(self, _delay):
+        teacher, _, student = _class_with_student()
+        response = _client(teacher).post(
+            reverse("submission-list"), {"file": _jpeg(), "student": str(student.id)}, format="multipart"
+        )
+        assert response.status_code == 403
+
+    def test_teacher_batch_for_student(self, _delay):
+        teacher, classroom, student = _class_with_student()
+        response = _client(teacher).post(
+            reverse("batch-list"),
+            {"files": [_jpeg(), _jpeg()], "classroom": str(classroom.id), "student": str(student.id)},
+            format="multipart",
+        )
+        assert response.status_code == 201
+        subs = Submission.objects.filter(batch_id=response.data["id"])
+        assert subs.count() == 2
+        assert set(subs.values_list("user_id", "uploaded_by_id")) == {(student.id, teacher.id)}
