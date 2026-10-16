@@ -71,9 +71,8 @@ class TestOctoberRefresh:
         published = list(rows.values_list("title", flat=True))
         assert "Text detector v2" not in published
         assert "Highlighted passages in essays" not in published
-        assert published[:5] == [
-            "Humanizer-proof text check", "Manipulation map", "Document forgery check", "Image history", "AI music check",
-        ]
+        assert "Humanizer-proof text check" not in published
+        assert published[:4] == ["Manipulation map", "Document forgery check", "Image history", "AI music check"]
         assert all(RoadmapItem.objects.get(title=t).title_ru for t in published)
 
     def test_shipped_passport_lines_are_not_promised_again(self):

@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-16] tribunal-1.8 | Humanizer-robust text classifier t6
+
+- Source: train_text_classifier on dataset/text_t6, scripts/eval_humanizers.py (t4 / t5b / t6), scores.jsonl human flag rates
+- Pages updated: [[concepts/text-signals]], [[concepts/tribunal]], [[hot]]
+
 ## [2026-10-16] ui | Motion effects, live analyzer checklist, lighter card style
 
 - Source: f306ec3 (index.css, SearchingOrb, TaskSteps, UploadProgress, AnalyzerTimeline, Landing/Pricing/Upload/FactCheck pages), effects modelled on 21st.dev picks and built in-house

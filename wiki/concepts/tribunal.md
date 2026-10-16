@@ -68,6 +68,14 @@ need a new signal (another backbone or frequency-domain features), not more Open
 
 ## Changelog
 
+### 1.8.0 - 2026-10-16
+
+`text_classifier` 1.1.0 runs model t6, trained with the output of 24 commercial humanizers and a
+detector-guided paraphrase attack. Six humanizers held out of training: 49% -> 91% caught. Human
+student essays flagged 0.8% en, 1.7% ru. French news regressed 4.7 -> 7.3%. Details and the full table
+in [[concepts/text-signals]]. Version bump also invalidates cached text verdicts
+(`tribunal_revision`).
+
 ### 1.7.1 - 2026-10-16
 
 Attempts to hide AI traces are reported as such.

@@ -137,6 +137,31 @@ Two more **context members** (`aggregator.CONTEXT_ANALYZERS`, never in the vote)
   crops of both classes. v3 measured: lowercase dropped en AI recall 96% -> 71%, stripped punctuation
   96% -> 46% (ru 98% -> 69%); human flags did not rise.
 
+## Humanizer-robust classifier t6 (2026-10-16, Tribunal 1.8.0, `text_classifier` 1.1.0)
+
+Training set `dataset/text_t6` (18 163 rows, e5-small, 2 epochs, max-len 384) adds two sources to t4:
+- `_humanizers`: HumanizerBench + AI Humanizer Benchmark (CC-BY-4.0, `dataset/humanizers/all.jsonl`,
+  2 381 pairs from 24 tools). Six tools are held out of training entirely: humbot, undetectable,
+  stealth-writer, walter-writes, gptinf, notegpt. Other tools split by input hash 60/15/25.
+- `dataset/text_gen/adversarial.jsonl` (251 rows): `scripts/adversarial_paraphrase.py`, the Cheng et al.
+  2025 detector-guided paraphrase attack against our own t4 with an MLX paraphraser.
+
+Compared with `scripts/eval_humanizers.py <model>...` (en threshold = each model's `threshold_fpr1`):
+
+| model | 6 held-out humanizers (612) | seen tools, unseen texts (442) | adversarial test en / fr / ru |
+|---|---|---|---|
+| t4 (prod before) | 49% | 52% | 50 / 62 / 67% |
+| t5b (humanizers only) | 87% | 81% | 43 / 62 / 62% |
+| **t6 (shipped)** | **91%** | **86%** | **57 / 72 / 67%** |
+
+Human texts flagged (ai_probability >= 0.5, which is what `suspicious` uses), test split:
+en student essays (DAIGT) 2/254 = 0.8% (t4 1.6%); ru CoAT 1.7% (t4 3.0%); fr news 7.3% (t4 4.7%,
+t5b 4.3%: a regression); pre-2022 Wikipedia en 7.9%, fr 7.1%, ru 5.0%; TextSight encyclopedic
+Wikipedia en ~28% for every model (known weak spot: encyclopedic register reads machine-like).
+Weaker than t4 on English character attacks (homoglyph 63 -> 42%) and some small legacy generator
+groups; `text_evasion` still catches the character tricks. Shipped with `make ship-text
+TEXT_DIR=dataset/text_models/e5-small-t6`.
+
 ## Personal baselines before any personal flag (2026-10-14)
 
 Signals that compare a student with themselves or the class never flag on one or two works:

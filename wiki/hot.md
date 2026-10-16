@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-16 (c): **Tribunal 1.8.0, text model t6** - trained on 24 commercial humanizers + detector-guided paraphrase attacks; six unseen humanizers caught 49% -> 91%, human student essays flagged 0.8% en / 1.7% ru; French news regressed to 7.3%. `scripts/eval_humanizers.py` reproduces the comparison. See [[concepts/text-signals]].
+
 - 2026-10-16 (b): **UI motion + lighter cards** - hero word blur-in and scanner over "or by AI", beam on the Popular pricing card, image scan and a live analyzer checklist (real `expected_analyzers`) during upload, shimmer on loading labels, a dotted "searching" orb on originality and fact-check. Gold card trim, outlined badges and boxed timeline markers removed. See [[frontend/ui-motion]].
 
 - 2026-10-16 (a): **Tribunal 1.7, GPU vision, Classroom, pricing, copy** - Ollama on the RX 6700S via Vulkan with qwen2.5vl:7b; verdict cache keyed on `tribunal_revision`; AI traces from C2PA and SDXL/FLUX/SD watermarks plus trace-hiding reports (`text_evasion` 1.1.0, metadata 1.8.0); teachers upload work for a student (`uploaded_by`); prices 11.99 / 249.99 / 499.99; embed widget removed; landing asks "Made by a person, or by AI?". Humanizer data and an adversarial paraphrase attack feed the next text model (t5b/t6). See [[log]].

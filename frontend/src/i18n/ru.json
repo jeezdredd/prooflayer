@@ -109,7 +109,6 @@
     "A classifier trained on human and machine writing in ru, en and fr, humanized rewrites included.": "Классификатор, обученный на текстах людей и нейросетей на русском, английском и французском, включая тексты, переписанные сервисами-«очеловечивателями».",
     "A full": "Полный набор",
     "A linear probe on CLIP embeddings, a different network from the forensics models, so when it agrees with them the agreement means something. Calibrated so real photos stay below the line.": "Простая модель поверх CLIP, нейросети, не связанной с основными детекторами, поэтому когда они соглашаются, это действительно что-то значит. Настроена так, чтобы настоящие фото оставались ниже порога.",
-    "A multilingual encoder fine-tuned on human essays, pre-2022 Wikipedia and fresh writing from current open models, humanized rewrites included. On held-out text it flags 91-100% of machine writing and 2-4% of human essays, and marks the passages that read most machine-like. Alone it can only raise a flag, never convict. Reads PDF and DOCX too.": "Многоязычный энкодер, дообученный на сочинениях людей, Википедии до 2022 года и свежих текстах современных открытых моделей, включая тексты после сервисов-«очеловечивателей». На отложенных текстах распознаёт 91-100% машинных текстов и ошибочно отмечает 2-4% сочинений людей, а также подсвечивает фрагменты, больше всего похожие на машинный текст. В одиночку может только подать сигнал, но не обвинить. Читает PDF и DOCX.",
     "A research-style text with no sources at all": "Исследовательский текст совсем без источников",
     "A school address needs the School or University plan. Teachers invited to an existing school can skip this.": "Для адреса школы нужен тариф «Школа» или «Университет». Учителям, которых пригласили в существующую школу, это не нужно.",
     "A student is only compared with themselves once there is enough of their work, so nobody is flagged on their first pieces.": "С прежними работами ученика сравниваем, только когда их наберётся достаточно, поэтому по первым работам сигналов нет.",
@@ -1560,7 +1559,8 @@
     "фамилия и инициалы через запятую и с пробелами: Иванов, И. И.": "фамилия и инициалы через запятую и с пробелами: Иванов, И. И.",
     "Analyzing image": "Анализируем изображение",
     "Analyzing video": "Анализируем видео",
-    "Analyzers": "Анализаторы"
+    "Analyzers": "Анализаторы",
+    "A multilingual encoder fine-tuned on human essays, pre-2022 Wikipedia, fresh writing from current open models and the output of 24 commercial AI humanizers. On held-out text it flags 91-100% of machine writing, 91% of humanized text from tools it never saw in training and about 1-2% of human essays, and marks the passages that read most machine-like. Alone it can only raise a flag, never convict. Reads PDF and DOCX too.": "Многоязычный энкодер, дообученный на сочинениях людей, Википедии до 2022 года, свежих текстах современных открытых моделей и выдаче 24 коммерческих «хуманайзеров». На отложенных текстах распознаёт 91-100% машинных текстов и 91% текстов после «хуманайзеров», которых не было в обучении, а ошибочно отмечает около 1-2% сочинений людей. Подсвечивает фрагменты, больше всего похожие на машинный текст. В одиночку может только подать сигнал, но не обвинить. Читает PDF и DOCX."
   },
   "plural": {
     "All {n} sources exist": [

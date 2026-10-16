@@ -1,5 +1,18 @@
 [
   {
+    "slug": "humanizer-proof-text",
+    "date": "2026-10-16",
+    "kind": "improvement",
+    "title": {
+      "en": "Text run through an AI humanizer is now caught",
+      "ru": "Текст после «хуманайзера» теперь распознаётся"
+    },
+    "body": {
+      "en": "Services that promise to make AI writing undetectable rewrite it until a detector gives up. Our text check now learns from the output of 24 such tools and from rewrites built specifically to slip past it. On six humanizers it never saw in training it catches 91% of their output, up from 49%, while flagging about 1-2% of human essays. Plain AI text is still caught as before, and the passages that read most machine-like are still highlighted.",
+      "ru": "Сервисы, которые обещают сделать текст ИИ незаметным, переписывают его, пока детектор не сдастся. Наша проверка текста теперь учится на выдаче 24 таких сервисов и на переписанных текстах, созданных специально, чтобы её обойти. На шести «хуманайзерах», которых не было в обучении, она распознаёт 91% их текстов вместо 49%, а ошибочно отмечает около 1-2% сочинений людей. Обычный текст ИИ распознаётся как раньше, и самые машинные фрагменты по-прежнему подсвечиваются."
+    }
+  },
+  {
     "slug": "hidden-ai-trace-attempts",
     "date": "2026-10-16",
     "kind": "feature",
