@@ -359,7 +359,7 @@ export default function LandingPage() {
         {/* PRINCIPLES */}
         <section className="py-28">
           <motion.div
-            className="grid md:grid-cols-3 gap-x-10 gap-y-12"
+            className="grid lg:grid-cols-3 gap-x-10 gap-y-12"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
@@ -383,7 +383,7 @@ export default function LandingPage() {
                     {String(i + 1).padStart(2, "0")} / 03
                   </div>
                   <motion.div
-                    className={`font-display text-5xl xl:text-6xl italic ${text} mb-5 break-words`}
+                    className={`font-display text-[clamp(2.25rem,3.6vw,3.25rem)] italic ${text} mb-5 whitespace-nowrap`}
                     variants={{ hover: { x: 5 } }}
                     transition={{ type: "spring", stiffness: 300 }}
                   >
