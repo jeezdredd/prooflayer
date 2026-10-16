@@ -49,7 +49,7 @@ const TRIBUNAL_RULES = [
 const NUMBERS = [
   { k: "checks", v: "11", l: msg("Active analyzers"), small: false },
   { k: "kinds", v: msg("Photo · video · voice · text"), l: msg("Checked in one place"), small: true },
-  { k: "generators", v: "20+", l: msg("AI generators we catch: Midjourney, ChatGPT, Gemini, Sora and more"), small: false },
+  { k: "generators", v: "20+", l: msg("AI models we catch in text, photos, video and voice: ChatGPT, Gemini, Midjourney, Sora and more"), small: false },
   { k: "accuracy", v: msg("99.7%"), l: msg("Accuracy telling AI from real photos"), small: false },
 ];
 
