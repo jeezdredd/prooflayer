@@ -64,3 +64,10 @@ accept terms, optional "I am 18 or older"). Age only gates material:
 Known gaps: no automatic NSFW detection yet (sensitive marking is manual or by report); the
 websocket progress channel does not check sensitivity (low risk: no media); terms acceptance is a
 UI gate, the API does not refuse calls from users with `needs_terms`.
+
+## Objection copy (2026-10-16)
+
+The submission detail returns `in_class` (true when `classroom_id` is set). The objection form only
+mentions the teacher for class work; personal checks say "our reviewers" (they go to `ADMINS`). The
+panel says "verdict", never "assessment", since personal checks have nothing to do with grading.
+

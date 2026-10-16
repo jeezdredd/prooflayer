@@ -11,8 +11,8 @@ const FIELD = "w-full bg-transparent border border-[var(--line-strong)] px-3 py-
 const ACTION = "border border-signal-amber/60 text-signal-amber px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] hover:bg-signal-amber/10 disabled:opacity-40";
 
 const DECISION_LABEL: Record<ObjectionDecision, string> = {
-  upheld: msg("Assessment upheld"),
-  changed: msg("Assessment changed"),
+  upheld: msg("Verdict upheld"),
+  changed: msg("Verdict changed"),
 };
 
 function errorInfo(err: unknown): { status?: number; message: string } {
@@ -116,7 +116,7 @@ function RespondForm({ objection, submissionId }: { objection: VerdictObjection;
   );
 }
 
-function CreateForm({ submissionId }: { submissionId: string }) {
+function CreateForm({ submissionId, inClass }: { submissionId: string; inClass: boolean }) {
   const store = useStoreObjection(submissionId);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -135,7 +135,7 @@ function CreateForm({ submissionId }: { submissionId: string }) {
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className={ACTION}>
-        {t("Object to this assessment")}
+        {t("Object to this verdict")}
       </button>
     );
   }
@@ -148,7 +148,7 @@ function CreateForm({ submissionId }: { submissionId: string }) {
       }}
     >
       <p className="text-sm text-ink-400 leading-relaxed">
-        {t("Tell your teacher or our reviewers why you think the assessment is wrong. A person reads every objection and answers it.")}
+        {inClass ? t("Tell your teacher why you think this verdict is wrong. Your teacher reads every objection and answers it.") : t("Tell our reviewers why you think this verdict is wrong. A person reads every objection and answers it.")}
       </p>
       <textarea
         value={reason}
@@ -187,7 +187,7 @@ export default function ObjectionPanel({ submission, supervising }: { submission
           {objection.status === "open" && !isAuthor && <RespondForm objection={objection} submissionId={submission.id} />}
         </>
       ) : (
-        <CreateForm submissionId={submission.id} />
+        <CreateForm submissionId={submission.id} inClass={!!submission.in_class} />
       )}
     </section>
   );

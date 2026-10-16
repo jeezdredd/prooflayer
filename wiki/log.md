@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-16] objections-copy | Objection form names the teacher only for class work
+
+- Source: SubmissionDetailSerializer `in_class` (classroom_id set), ObjectionPanel copy: class work -> "Tell your teacher...", personal work -> "Tell our reviewers..."; "assessment" -> "verdict" everywhere in the panel
+- Pages updated: [[concepts/privacy-and-data]]
+
 ## [2026-10-16] tribunal-1.8 | Humanizer-robust text classifier t6
 
 - Source: train_text_classifier on dataset/text_t6, scripts/eval_humanizers.py (t4 / t5b / t6), scores.jsonl human flag rates

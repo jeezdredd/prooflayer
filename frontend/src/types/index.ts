@@ -91,6 +91,7 @@ export interface VerdictObjection {
 export interface Submission {
   originality?: OriginalityReport | null;
   objection?: VerdictObjection | null;
+  in_class?: boolean;
   id: string;
   original_filename: string;
   mime_type: string;

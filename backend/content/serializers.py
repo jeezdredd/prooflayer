@@ -126,6 +126,7 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
     ensemble = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
     objection = serializers.SerializerMethodField()
+    in_class = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -149,6 +150,7 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "ensemble",
             "originality",
             "objection",
+            "in_class",
             "analysis_results",
             "similar_submissions",
             "expected_analyzers",
@@ -159,6 +161,9 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
     def get_originality(self, obj):
         request = self.context.get("request")
         return report_payload(obj, getattr(request, "user", None))
+
+    def get_in_class(self, obj):
+        return obj.classroom_id is not None
 
     def get_objection(self, obj):
         request = self.context.get("request")

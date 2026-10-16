@@ -242,3 +242,21 @@ class TestDetailField:
         assert latest_objection_payload(work, colleague) is None
         assert latest_objection_payload(work, None) is None
         assert latest_objection_payload(work, UserFactory(is_staff=True))["submission_id"] == str(work.id)
+
+
+@pytest.mark.django_db
+class TestInClassFlag:
+    def test_class_work_is_marked_in_class(self):
+        _, _, classroom, student = _school_class()
+        work = _work(student, classroom)
+        response = _client(student).get(reverse("submission-detail", kwargs={"id": work.id}))
+        assert response.status_code == 200
+        assert response.data["in_class"] is True
+
+    def test_personal_work_is_not_in_class(self):
+        author = UserFactory(is_verified=True)
+        work = _work(author)
+        response = _client(author).get(reverse("submission-detail", kwargs={"id": work.id}))
+        assert response.status_code == 200
+        assert response.data["in_class"] is False
+
