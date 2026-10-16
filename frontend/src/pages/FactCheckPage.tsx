@@ -5,6 +5,7 @@ import type { FactCheckMode, FactCheckStage } from "../types";
 import SubscriptionGate from "../components/SubscriptionGate";
 import { factcheck } from "../api/endpoints";
 import { msg, t, tn } from "../i18n";
+import SearchingOrb from "../components/SearchingOrb";
 
 const VERDICT_TONE: Record<string, { color: string; label: string }> = {
   mostly_accurate: { color: "text-signal-sage", label: msg("Mostly Accurate") },
@@ -351,8 +352,9 @@ function FactCheckPageInner() {
                     )}
                     {done && <div className="absolute inset-y-0 left-0 right-0 bg-signal-sage/40" />}
                   </div>
-                  <span className={clsx("font-mono text-[10px] text-right", active ? "text-signal-amber" : done ? "text-signal-sage" : "text-ink-600")}>
-                    {t(s.label)}
+                  <span className={clsx("flex items-center gap-2 font-mono text-[10px] text-right", active ? "text-signal-amber" : done ? "text-signal-sage" : "text-ink-600")}>
+                    {active && s.key === "searching" && <SearchingOrb size={18} />}
+                    <span className={clsx(active && "shimmer-text")}>{t(s.label)}</span>
                   </span>
                 </div>
               );

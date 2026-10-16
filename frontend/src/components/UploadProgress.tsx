@@ -1,6 +1,8 @@
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { msg, t } from "../i18n";
+import TaskSteps from "./TaskSteps";
+import type { Step } from "./AnalyzerTimeline";
 
 interface UploadProgressProps {
   progress: number;
@@ -8,6 +10,9 @@ interface UploadProgressProps {
   statusMessage?: string;
   filename?: string;
   fileSize?: number;
+  previewUrl?: string;
+  previewKind?: "image" | "video";
+  steps?: Step[];
 }
 
 const STAGES = [
@@ -35,6 +40,9 @@ export default function UploadProgress({
   statusMessage,
   filename,
   fileSize,
+  previewUrl,
+  previewKind,
+  steps,
 }: UploadProgressProps) {
   const isUploading = status === "uploading";
   const currentStage = isUploading
@@ -61,7 +69,7 @@ export default function UploadProgress({
     <div className="case-card crop-marks mt-6 animate-rise">
       <div className="flex items-center justify-between px-6 py-3 border-b border-ink-700">
         <div className="flex items-center gap-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-signal-cyan pulse-dot" />
+          <span className="w-1.5 h-1.5 rounded-full bg-signal-cyan animate-pulse" />
           <span className="label-mono">{t("Transmission")}</span>
         </div>
         <span className="font-mono text-[10px] text-ink-500 ticker">
@@ -72,7 +80,7 @@ export default function UploadProgress({
       <div className="px-6 py-5">
         {filename && (
           <div className="flex items-center gap-3 pb-4 mb-4 border-b border-dashed border-ink-700">
-            <div className="w-10 h-10 border border-ink-600 flex items-center justify-center text-ink-300 font-mono text-[10px]">
+            <div className="w-10 h-10 rounded-lg bg-ink-800 flex items-center justify-center text-ink-300 font-mono text-[10px]">
               {filename.split(".").pop()?.toUpperCase().slice(0, 4) || t("FILE")}
             </div>
             <div className="flex-1 min-w-0">
@@ -81,6 +89,31 @@ export default function UploadProgress({
                 <div className="font-mono text-[10px] text-ink-500 mt-0.5 ticker">
                   {formatSize(fileSize)} {isUploading && `· ${progress}%`}
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {previewUrl && previewKind && (
+          <div className="mb-5 flex justify-center overflow-hidden rounded-lg bg-ink-900/60">
+            <div className="relative overflow-hidden">
+              {previewKind === "image" ? (
+                <img src={previewUrl} alt="" className={clsx("block max-w-full max-h-72 transition-opacity duration-700", isUploading ? "opacity-50" : "opacity-90")} />
+              ) : (
+                <video src={previewUrl} muted playsInline preload="metadata" className={clsx("block max-w-full max-h-72 transition-opacity duration-700", isUploading ? "opacity-50" : "opacity-90")} />
+              )}
+              {!isUploading && (
+                <>
+                  <div className="scan-grid absolute inset-0 pointer-events-none" />
+                  <div className="scan-line absolute inset-x-0 pointer-events-none" />
+                  <span className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-signal-cyan/80 rounded-none" />
+                  <span className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-signal-cyan/80 rounded-none" />
+                  <span className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-signal-cyan/80 rounded-none" />
+                  <span className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-signal-cyan/80 rounded-none" />
+                  <span className="absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink-950/80 border border-signal-cyan/40 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-signal-cyan backdrop-blur-sm">
+                    {previewKind === "image" ? t("Analyzing image") : t("Analyzing video")}
+                  </span>
+                </>
               )}
             </div>
           </div>
@@ -97,7 +130,7 @@ export default function UploadProgress({
                   className={clsx(
                     "w-7 h-7 border flex items-center justify-center font-mono text-[10px] shrink-0 transition-all",
                     done && "border-signal-sage text-signal-sage bg-signal-sage/10",
-                    active && "border-signal-amber text-signal-amber bg-signal-amber/10 pulse-dot",
+                    active && "border-signal-amber text-signal-amber bg-signal-amber/10",
                     !done && !active && "border-ink-700 text-ink-500 bg-ink-850",
                   )}
                 >
@@ -141,7 +174,7 @@ export default function UploadProgress({
         </div>
 
         <div className="mt-2 flex items-center justify-between font-mono text-[10px]">
-          <span className={clsx("uppercase tracking-[0.14em] ticker", isUploading ? "text-signal-cyan" : "text-signal-amber")}>
+          <span className={clsx("uppercase tracking-[0.14em] ticker", isUploading ? "text-signal-cyan" : "shimmer-text text-signal-amber")}>
             {isUploading ? t("TRANSMITTING · {n}%", { n: progress }) : statusMessage ? t(statusMessage) : t("PROCESSING…")}
           </span>
           {!isUploading && (
@@ -152,7 +185,9 @@ export default function UploadProgress({
         </div>
 
         {/* Live tip log */}
-        {!isUploading && (
+        {!isUploading && steps && steps.length > 0 && <TaskSteps steps={steps} />}
+
+        {!isUploading && !(steps && steps.length > 0) && (
           <div className="mt-4 border-l-2 border-signal-amber/40 pl-3 py-2 bg-signal-amber/[0.04]">
             <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500 mb-1">{t("Worker log")}</div>
             <div key={tipIdx} className="font-mono text-[11px] text-ink-200 leading-relaxed animate-fade-in-up">

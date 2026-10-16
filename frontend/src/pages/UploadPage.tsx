@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import UploadForm from "../components/UploadForm";
 import UploadProgress from "../components/UploadProgress";
+import { buildSteps } from "../components/AnalyzerTimeline";
 import ResultCard from "../components/ResultCard";
 import { useUploadFile, useSubmissionDetail } from "../hooks/useUpload";
 import { useUploadStore } from "../stores/uploadStore";
@@ -20,6 +21,22 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const isMountedRef = useRef(false);
+  const [preview, setPreview] = useState<{ url: string; kind: "image" | "video" } | null>(null);
+
+  useEffect(() => {
+    if (!pendingFile) {
+      setPreview(null);
+      return;
+    }
+    const kind = pendingFile.type.startsWith("image/") ? "image" : pendingFile.type.startsWith("video/") ? "video" : null;
+    if (!kind) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingFile);
+    setPreview({ url, kind });
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
 
   const isComplete = submission?.status === "completed" || submission?.status === "failed";
 
@@ -137,6 +154,9 @@ export default function UploadPage() {
               statusMessage={submission?.status_message}
               filename={pendingFile?.name}
               fileSize={pendingFile?.size}
+              previewUrl={preview?.url}
+              previewKind={preview?.kind}
+              steps={submission ? buildSteps(submission) : undefined}
             />
           </motion.div>
         )}

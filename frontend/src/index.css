@@ -143,20 +143,8 @@
     transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   }
 
-  .case-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 24px;
-    right: 24px;
-    height: 1px;
-    background: linear-gradient(to right, transparent, var(--signal-amber), transparent);
-    opacity: 0.45;
-  }
-
   .case-card:hover {
-    border-color: rgba(245, 176, 66, 0.25);
-    box-shadow: 0 0 60px -20px rgba(245, 176, 66, 0.4);
+    border-color: rgba(255, 255, 255, 0.14);
   }
 
   /* ========== CROP MARKS ========== */
@@ -368,7 +356,8 @@
     letter-spacing: 0.14em;
     font-weight: 600;
     padding: 0.3rem 0.6rem;
-    border: 1px solid currentColor;
+    border: 0;
+    background: color-mix(in srgb, currentColor 12%, transparent);
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
@@ -530,4 +519,104 @@
 
 .legible .text-iris {
   text-shadow: none;
+}
+
+@property --beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.beam-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--beam-angle), transparent 0deg, transparent 250deg, rgb(167 139 250 / 0.15) 290deg, var(--signal-violet) 330deg, #ffffff 350deg, var(--signal-cyan) 356deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: beam-spin 5s linear infinite;
+  pointer-events: none;
+}
+@keyframes beam-spin {
+  to { --beam-angle: 360deg; }
+}
+
+.scan-text::before,
+.scan-text::after {
+  content: "";
+  position: absolute;
+  top: 6%;
+  bottom: 2%;
+  pointer-events: none;
+  opacity: 0;
+  transform: skewX(-12deg);
+}
+.scan-text::before {
+  width: 22%;
+  background: linear-gradient(to right, transparent, rgb(167 139 250 / 0.16));
+  mix-blend-mode: screen;
+  animation: text-scan-band 6.5s cubic-bezier(0.65, 0, 0.35, 1) 1.6s infinite;
+}
+.scan-text::after {
+  width: 2px;
+  background: linear-gradient(to bottom, transparent, #ffffff 25%, #ffffff 75%, transparent);
+  box-shadow: 0 0 10px 1px rgb(167 139 250 / 0.9), 0 0 28px 6px rgb(34 211 238 / 0.35);
+  animation: text-scan-bar 6.5s cubic-bezier(0.65, 0, 0.35, 1) 1.6s infinite;
+}
+@keyframes text-scan-bar {
+  0% { left: -2%; opacity: 0; }
+  5% { opacity: 1; }
+  38% { opacity: 1; }
+  44% { left: 102%; opacity: 0; }
+  100% { left: 102%; opacity: 0; }
+}
+@keyframes text-scan-band {
+  0% { left: -24%; opacity: 0; }
+  5% { opacity: 1; }
+  38% { opacity: 1; }
+  44% { left: 80%; opacity: 0; }
+  100% { left: 80%; opacity: 0; }
+}
+
+
+.scan-grid {
+  background-image: linear-gradient(rgb(34 211 238 / 0.08) 1px, transparent 1px), linear-gradient(90deg, rgb(34 211 238 / 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.scan-line {
+  top: -30%;
+  height: 30%;
+  background: linear-gradient(to bottom, transparent, rgb(34 211 238 / 0.2));
+  border-bottom: 2px solid rgb(34 211 238 / 0.9);
+  box-shadow: 0 8px 22px -4px rgb(34 211 238 / 0.65);
+  animation: scan-down 2.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes scan-down {
+  0% { top: -30%; }
+  100% { top: 100%; }
+}
+
+.shimmer-text {
+  background: linear-gradient(110deg, currentColor 0%, currentColor 40%, rgb(255 255 255 / 0.95) 50%, currentColor 60%, currentColor 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-text 2.2s linear infinite;
+}
+@keyframes shimmer-text {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+
+.check-draw path {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  animation: check-draw 0.45s ease-out forwards;
+}
+@keyframes check-draw {
+  to { stroke-dashoffset: 0; }
 }

@@ -265,7 +265,7 @@ export default function PricingPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-                className={clsx("relative flex flex-col rounded-xl border bg-white/[0.02] p-7", featured ? look.ring : "border-white/10", featured && "shadow-[0_0_60px_-30px_rgba(124,106,247,0.6)]")}
+                className={clsx("relative flex flex-col rounded-xl border bg-white/[0.02] p-7", featured ? look.ring : "border-white/10", featured && "beam-border shadow-[0_0_60px_-30px_rgba(124,106,247,0.6)]")}
               >
                 {(current || featured) && (
                   <span className={clsx("absolute -top-3 left-7 text-[11px] rounded-full px-2.5 py-0.5 border bg-ink-950", current ? "text-signal-sage border-signal-sage/40" : "text-signal-violet border-iris/40")}>

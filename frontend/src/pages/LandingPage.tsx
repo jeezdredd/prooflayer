@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useInView, animate } from "motion/react";
 import {
@@ -140,6 +140,11 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, filter: "blur(0px)" },
 };
 
+const wordBlur = {
+  hidden: { opacity: 0, y: 14, filter: "blur(14px)" },
+  visible: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] as const } },
+};
+
 export default function LandingPage() {
   const { data: statusData } = useQuery<{ services?: { analyzers?: { ensemble?: string } }; verdict_timing?: { image_median_s: number | null; samples: number } }>({
     queryKey: ["system-status-ensemble"],
@@ -226,14 +231,19 @@ export default function LandingPage() {
               variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } }}
             >
               <motion.h1
-                variants={fadeUp}
-                transition={{ duration: 0.7 }}
+                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.09 } } }}
                 className="font-display text-[clamp(3rem,8vw,7.5rem)] leading-[0.92] tracking-[-0.025em] text-ink-50"
               >
-                {t("Made by a person,")}
+                {t("Made by a person,").split(" ").map((word, i) => (
+                  <Fragment key={i}>
+                    <motion.span variants={wordBlur} className="inline-block">{word}</motion.span>{" "}
+                  </Fragment>
+                ))}
                 <br />
-                <span className="italic text-iris">{t("or by AI")}</span>
-                <span className="text-ink-50">?</span>
+                <motion.span variants={wordBlur} className="scan-text relative inline-block">
+                  <span className="italic text-iris pr-[0.04em]">{t("or by AI")}</span>
+                </motion.span>
+                <motion.span variants={wordBlur} className="inline-block text-ink-50">?</motion.span>
               </motion.h1>
 
               <motion.p

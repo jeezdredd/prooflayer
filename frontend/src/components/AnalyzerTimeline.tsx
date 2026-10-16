@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { AnalysisResult, ExpectedAnalyzer, Submission } from "../types";
 import { msg, t } from "../i18n";
 
-const ANALYZER_LABELS: Record<string, string> = {
+export const ANALYZER_LABELS: Record<string, string> = {
   metadata: msg("Metadata · EXIF"),
   ela: msg("Error Level Analysis"),
   ai_detector: msg("AI Image Ensemble"),
@@ -99,14 +99,14 @@ const VERDICT_TONE: Record<string, { color: string; bg: string; label: string }>
   error: { color: "text-signal-blood/70", bg: "bg-signal-blood/5 border-signal-blood/30", label: msg("Error") },
 };
 
-interface Step {
+export interface Step {
   name: string;
   description: string;
   result?: AnalysisResult;
   state: "done" | "running" | "pending" | "skipped";
 }
 
-function buildSteps(submission: Submission, runningAnalyzers?: Set<string>): Step[] {
+export function buildSteps(submission: Submission, runningAnalyzers?: Set<string>): Step[] {
   const expected: ExpectedAnalyzer[] = submission.expected_analyzers || [];
   const isProcessing = submission.status === "processing" || submission.status === "pending";
   const isFailed = submission.status === "failed";
@@ -163,36 +163,21 @@ function useElapsed(active: boolean) {
   return secs;
 }
 
+const VERDICT_DOT: Record<string, string> = {
+  authentic: "bg-signal-sage",
+  suspicious: "bg-signal-amber",
+  fake: "bg-signal-blood",
+  inconclusive: "bg-ink-400",
+  error: "bg-signal-blood/60",
+};
+
 function StateMarker({ state, verdict }: { state: Step["state"]; verdict: string }) {
-  if (state === "done") {
-    const tone = VERDICT_TONE[verdict] || VERDICT_TONE.inconclusive;
-    const sym =
-      verdict === "authentic" ? "✓" : verdict === "fake" || verdict === "suspicious" ? "!" : verdict === "error" ? "×" : "-";
-    return (
-      <div className={clsx("w-7 h-7 border flex items-center justify-center text-sm font-bold animate-check-pop", tone.color, tone.bg)}>
-        {sym}
-      </div>
-    );
-  }
-  if (state === "running") {
-    return (
-      <div className="w-7 h-7 border border-signal-amber bg-signal-amber/10 flex items-center justify-center relative">
-        <span className="w-2 h-2 bg-signal-amber pulse-dot text-signal-amber" />
-      </div>
-    );
-  }
-  if (state === "skipped") {
-    return (
-      <div className="w-7 h-7 border border-ink-700 bg-ink-850 flex items-center justify-center text-ink-500 text-sm">
-        ×
-      </div>
-    );
-  }
-  return (
-    <div className="w-7 h-7 border border-dashed border-ink-600 flex items-center justify-center">
-      <div className="w-1 h-1 bg-ink-500" />
-    </div>
-  );
+  let dot;
+  if (state === "done") dot = <span className={clsx("w-2 h-2 rounded-full animate-check-pop", VERDICT_DOT[verdict] || VERDICT_DOT.inconclusive)} />;
+  else if (state === "running") dot = <span className="w-3 h-3 rounded-full border-[1.5px] border-signal-amber/25 border-t-signal-amber animate-spin" />;
+  else if (state === "skipped") dot = <span className="w-2 h-2 rounded-full bg-ink-700" />;
+  else dot = <span className="w-2 h-2 rounded-full border border-ink-600" />;
+  return <div className="w-7 h-7 flex items-center justify-center">{dot}</div>;
 }
 
 function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; index: number }) {
@@ -227,7 +212,6 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
               <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 ticker">
                 #{String(index + 1).padStart(2, "0")} · {code}
               </span>
-              <span className="text-ink-700">/</span>
               <span className="font-display text-lg text-ink-50 group-hover:text-signal-amber transition-colors leading-none">
                 {label}
               </span>

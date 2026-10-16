@@ -2,6 +2,7 @@ import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { OriginalityMatch, Submission } from "../types";
 import { msg, t } from "../i18n";
+import SearchingOrb from "./SearchingOrb";
 
 const KIND_LABEL: Record<OriginalityMatch["kind"], string> = {
   exact: msg("word for word"),
@@ -39,12 +40,19 @@ export default function OriginalityPanel({ submission }: { submission: Submissio
 
   return (
     <div className="px-6 py-5 border-b border-ink-700">
-      <div className="flex items-baseline justify-between gap-4 mb-2">
+      <div className={`flex justify-between gap-4 mb-2 ${report.status === "done" && report.originality != null ? "items-baseline" : "items-center"}`}>
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("Originality")}</div>
         {report.status === "done" && report.originality != null ? (
           <div className={`font-display text-3xl tabular-nums ${tone(report.originality)}`}>{Math.round(report.originality)}%</div>
         ) : (
-          <div className="font-mono text-[11px] text-ink-500">{report.status === "failed" ? t("check failed") : t("checking sources…")}</div>
+          report.status === "failed" ? (
+            <div className="font-mono text-[11px] text-ink-500">{t("check failed")}</div>
+          ) : (
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.04] py-1 pl-1.5 pr-3 font-mono text-[11px] text-ink-400">
+              <SearchingOrb size={22} />
+              <span className="shimmer-text">{t("checking sources…")}</span>
+            </div>
+          )
         )}
       </div>
       {report.status === "done" && (
