@@ -19,7 +19,15 @@ ANONYMIZED = re.compile(r"Generic_\w+|\b[A-Z]{3,}_NAME\b|PROPER_NAME")
 HELDOUT_GENERATORS = {"gemma3-12b"}
 COLING_EN_AI = {"gpt4o", "gpt4", "llama3-70b", "llama3-8b", "gemma2-9b-it", "gemma-7b-it", "mixtral-8x7b", "cohere", "gpt-3.5-turbo"}
 SPLITS = ("train", "calib", "test")
-FAMILY_SHARE = {("en", 0, "daigt"): 0.6}
+FAMILY_SHARE = {
+    ("en", 0, "daigt"): 0.6,
+    ("en", 0, "academic-arxiv"): 0.2,
+    ("en", 0, "academic-pubmed"): 0.2,
+    ("ru", 0, "academic-ru-grnti"): 0.2,
+    ("ru", 0, "academic-ru-scibench"): 0.2,
+    ("en", 1, "fresh-academic"): 0.3,
+    ("ru", 1, "fresh-academic"): 0.3,
+}
 COLING_EN_HUMAN_SHARE = 0.15
 PRIORITY_SOURCES = {"wiki-pre2022"}
 TEST_ONLY_MODES = {"attack:recursive"}
