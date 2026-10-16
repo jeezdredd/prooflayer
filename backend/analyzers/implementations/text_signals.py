@@ -58,7 +58,7 @@ def baseline_note(have: int) -> dict:
 
 class TextEvasionAnalyzer(BaseAnalyzer):
     name = "text_evasion"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]

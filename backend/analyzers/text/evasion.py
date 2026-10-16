@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from lxml import etree
+from wordfreq import zipf_frequency
 
 CYRILLIC_LOOKALIKES = set("аеорсухіјѕԁԛԝАВЕНІЈКМОРСТХЅ")
 LATIN_LOOKALIKES = set("aeopcyxijsdqwABEHIJKMOPCTXS")
@@ -29,6 +30,32 @@ INVISIBLE = {
 }
 ODD_SPACES = {chr(c) for c in range(0x2000, 0x200B)} | {" ", " ", "　", "⠀"}
 
+LOOKALIKE_PUNCT = {
+    "\u2024": "one dot leader",
+    "\ufe52": "small full stop",
+    "\uff0e": "fullwidth full stop",
+    "\u0589": "Armenian full stop",
+    "\u06d4": "Arabic full stop",
+    "\ua4f8": "Lisu tone mark (looks like a full stop)",
+    "\ua4f9": "Lisu tone mark (looks like a comma)",
+    "\ufe50": "small comma",
+    "\uff0c": "fullwidth comma",
+    "\u060c": "Arabic comma",
+    "\uff1a": "fullwidth colon",
+    "\uff1b": "fullwidth semicolon",
+    "\uff01": "fullwidth exclamation mark",
+    "\uff1f": "fullwidth question mark",
+}
+CJK_RANGES = ((0x3040, 0x30FF), (0x3400, 0x4DBF), (0x4E00, 0x9FFF), (0xAC00, 0xD7AF))
+CJK_TOLERANCE = 20
+STYLED_RANGES = ((0x1D400, 0x1D7FF), (0xFF21, 0xFF3A), (0xFF41, 0xFF5A), (0x24B6, 0x24E9))
+COMMON_WORD_ZIPF = 4.0
+WORD_LANGS = ("en", "ru", "fr")
+COMMON_MARKS = {
+    chr(c)
+    for c in (0x0300, 0x0301, 0x0302, 0x0303, 0x0304, 0x0306, 0x0307, 0x0308, 0x030A, 0x030B, 0x030C, 0x0327, 0x0328)
+}
+
 TOKEN_RE = re.compile(r"\S+")
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 WHITE = {"FFFFFF", "FEFEFE", "FDFDFD", "FCFCFC"}
@@ -43,6 +70,9 @@ class EvasionReport:
     tag_characters: int = 0
     hidden_runs: list[dict] = field(default_factory=list)
     letters: int = 0
+    lookalike_punctuation: Counter = field(default_factory=Counter)
+    stray_marks: int = 0
+    styled_letter_words: list[str] = field(default_factory=list)
 
     @property
     def invisible_total(self) -> int:
@@ -69,6 +99,18 @@ class EvasionReport:
             score = max(score, 0.7)
         if self.odd_spaces >= 10 and self.letters and self.odd_spaces / max(1, self.letters) > 0.005:
             score = max(score, 0.8)
+        punct = sum(self.lookalike_punctuation.values())
+        if punct >= 3:
+            score = max(score, 0.9)
+        elif punct:
+            score = max(score, 0.6)
+        if self.stray_marks >= 3:
+            score = max(score, 0.9)
+        styled = len(self.styled_letter_words)
+        if styled >= 2:
+            score = max(score, 0.95)
+        elif styled:
+            score = max(score, 0.7)
         return score
 
     def as_evidence(self) -> dict:
@@ -80,6 +122,9 @@ class EvasionReport:
             "tag_characters": self.tag_characters,
             "hidden_runs": self.hidden_runs[:10],
             "hidden_characters": self.hidden_characters,
+            "lookalike_punctuation": dict(self.lookalike_punctuation),
+            "stray_marks": self.stray_marks,
+            "styled_letter_words": self.styled_letter_words[:20],
         }
 
 
@@ -113,9 +158,40 @@ def _is_mixed(token: str) -> bool:
     return False
 
 
+def _is_cjk(ch: str) -> bool:
+    code = ord(ch)
+    return any(lo <= code <= hi for lo, hi in CJK_RANGES)
+
+
+def _styled_letter(ch: str) -> bool:
+    code = ord(ch)
+    return any(lo <= code <= hi for lo, hi in STYLED_RANGES)
+
+
+def _is_common_word(word: str) -> bool:
+    return any(zipf_frequency(word, lang) >= COMMON_WORD_ZIPF for lang in WORD_LANGS)
+
+
+def _stray_marks(text: str) -> int:
+    count = 0
+    for token in TOKEN_RE.findall(text):
+        decomposed = unicodedata.normalize("NFD", token)
+        odd = sum(1 for ch in decomposed if unicodedata.combining(ch) and ch not in COMMON_MARKS)
+        if not odd:
+            continue
+        bare = "".join(ch for ch in decomposed if not unicodedata.combining(ch)).strip(".,;:!?()[]\"«»").lower()
+        if bare.isalpha() and _is_common_word(unicodedata.normalize("NFC", bare)):
+            count += odd
+    return count
+
+
 def scan_text(text: str) -> EvasionReport:
     report = EvasionReport()
+    cjk = sum(1 for ch in text if _is_cjk(ch))
+    latin_text = cjk < CJK_TOLERANCE
     for ch in text:
+        if latin_text and ch in LOOKALIKE_PUNCT:
+            report.lookalike_punctuation[LOOKALIKE_PUNCT[ch]] += 1
         if ch in INVISIBLE:
             report.invisible[INVISIBLE[ch]] += 1
         elif ch in ODD_SPACES:
@@ -128,8 +204,14 @@ def scan_text(text: str) -> EvasionReport:
         report.invisible["zero-width no-break space"] -= 1
         if report.invisible["zero-width no-break space"] <= 0:
             del report.invisible["zero-width no-break space"]
+    if latin_text:
+        report.stray_marks = _stray_marks(text)
     cleaned = "".join(ch for ch in text if ch not in INVISIBLE)
     for token in TOKEN_RE.findall(cleaned):
+        letters = [c for c in token if c.isalpha()]
+        styled = sum(1 for c in letters if _styled_letter(c))
+        if latin_text and styled and styled < len(letters):
+            report.styled_letter_words.append(token.strip(".,;:!?()[]\"«»"))
         if _is_mixed(token):
             report.mixed_script_words.append(token.strip(".,;:!?«»\"()[]"))
     return report

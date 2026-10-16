@@ -4,6 +4,8 @@ import numpy as np
 DWT_DCT_SCALE = 36
 DWT_DCT_BLOCK = 4
 MIN_SIDE = 256
+DAMAGED_MATCH = 0.8
+DAMAGED_MIN_BITS = 46
 
 
 def _bits(value: int) -> list[int]:
@@ -60,6 +62,12 @@ def find_known_watermark(path: str) -> dict | None:
             continue
         decoded = _decode(per_block, length)
         match = sum(a == b for a, b in zip(decoded, mark["bits"])) / length
-        if match >= mark["min_match"] and (best is None or match > best["match"]):
-            best = {"name": mark["name"], "vendor": mark["vendor"], "match": round(match, 3), "bits": length}
+        if match >= mark["min_match"]:
+            state = "intact"
+        elif match >= DAMAGED_MATCH and length >= DAMAGED_MIN_BITS:
+            state = "damaged"
+        else:
+            continue
+        if best is None or match > best["match"]:
+            best = {"name": mark["name"], "vendor": mark["vendor"], "match": round(match, 3), "bits": length, "state": state}
     return best

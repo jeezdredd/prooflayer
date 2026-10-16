@@ -3,6 +3,7 @@ import logging
 from celery import current_app, shared_task
 from django.core.files.base import ContentFile
 
+from analyzers.content_credentials import has_remnants as c2pa_remnants
 from analyzers.content_credentials import summarize as summarize_c2pa
 from common.documents import DOCUMENT_MIMES, document_stats, read_text
 from plagiarism.models import PlagiarismReport
@@ -143,6 +144,9 @@ def process_submission(self, submission_id):
                 if manifest:
                     metadata["c2pa"] = str(manifest)[:20000]
                     metadata["c2pa_summary"] = summarize_c2pa(manifest)
+                    submission.metadata = metadata
+                elif c2pa_remnants(path):
+                    metadata["c2pa_remnants"] = True
                     submission.metadata = metadata
             except Exception:
                 logger.exception("c2pa manifest read failed for %s", submission.id)

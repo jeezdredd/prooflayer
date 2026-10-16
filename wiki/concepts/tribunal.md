@@ -68,6 +68,23 @@ need a new signal (another backbone or frequency-domain features), not more Open
 
 ## Changelog
 
+### 1.7.1 - 2026-10-16
+
+Attempts to hide AI traces are reported as such.
+
+- `text_evasion` 1.1.0: look-alike punctuation (one dot leader, fullwidth and Arabic/Armenian stops,
+  Lisu tone marks), stray combining marks on common en/ru/fr words (NFD, wordfreq zipf >= 4, so
+  Romanian, Vietnamese and transliterated names stay clean), letters from the mathematical,
+  fullwidth and circled blocks inside words. On 1955 human essays and 3155 Wikipedia paragraphs the
+  new checks fire 0 times.
+- `metadata` 1.8.0: a decoded watermark between 80% and 90% of bits (46+ bit marks only; real
+  photos peak at 72% across 2700 images) is a damaged watermark: votes fake 0.9, not proof. C2PA
+  credentials invalid after signing, or orphan C2PA segments without a readable manifest (PNG caBX,
+  JPEG APP11 JUMBF or XMP c2pa, WebP C2PA; structure-parsed, 0 hits on 2988 dataset files), are
+  listed under `evidence.evasion` without changing the vote.
+- Result page shows "Attempt to hide AI traces" for both images and texts. `openfake_test` votes
+  unchanged (0 of 245).
+
 ### 1.7.0 - 2026-10-16
 
 Provenance traces become proof.

@@ -1,5 +1,18 @@
 [
   {
+    "slug": "hidden-ai-trace-attempts",
+    "date": "2026-10-16",
+    "kind": "feature",
+    "title": {
+      "en": "We now say when someone tried to hide AI traces",
+      "ru": "Теперь мы сообщаем о попытке скрыть следы ИИ"
+    },
+    "body": {
+      "en": "AI humanizers and trace removers leave marks of their own. In texts we now also catch look-alike punctuation, stray accent marks on ordinary words and styled letters, on top of mixed alphabets, invisible characters and hidden DOCX text. In images we spot a damaged generator watermark and Content Credentials that were cut out or changed after signing. When we find any of this, the result says plainly: an attempt to hide AI traces. On thousands of real essays and articles these new checks never fired.",
+      "ru": "У «хуманайзеров» и чистильщиков меток есть свои следы. В текстах мы теперь ловим ещё и похожие знаки препинания, лишние диакритики на обычных словах и стилизованные буквы, в дополнение к смешанным алфавитам, невидимым символам и скрытому тексту в DOCX. На изображениях видим повреждённый водяной знак генератора и Content Credentials, вырезанные или изменённые после подписи. Если нашли что-то из этого, в результате прямо написано: была попытка скрыть следы ИИ. На тысячах настоящих сочинений и статей новые проверки ни разу не сработали."
+    }
+  },
+  {
     "slug": "new-prices",
     "date": "2026-10-16",
     "kind": "improvement",

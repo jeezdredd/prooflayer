@@ -8,7 +8,7 @@ essay and returns one verdict with the evidence behind it.
 
 [Website](https://prooflayer.cloud) · [Classroom](https://classroom.prooflayer.cloud) · [API reference](https://api.prooflayer.cloud/api/docs/) · [System status](https://prooflayer.cloud/status)
 
-![Tribunal](https://img.shields.io/badge/Tribunal-1.7.0-7c6af7)
+![Tribunal](https://img.shields.io/badge/Tribunal-1.7.1-7c6af7)
 ![Python](https://img.shields.io/badge/Python-3.12-3776ab)
 ![Django](https://img.shields.io/badge/Django-5.1-092e20)
 ![React](https://img.shields.io/badge/React-18-61dafb)
@@ -69,7 +69,7 @@ Measured changes are recorded in [`wiki/concepts/tribunal.md`](wiki/concepts/tri
 | `video_frame` | 2.0 | Frames across the whole clip, median verdict |
 | `audio_spectrogram` | 2.0 | Spectral features of synthetic voices |
 | `text_classifier` | 2.5 | multilingual-e5-small fine-tuned on human essays, pre-2022 Wikipedia, current model output and humanizer rewrites; per-language calibration, per-passage scores; can flag, never convict alone |
-| `text_evasion` | 2.0 | Homoglyphs, invisible characters, hidden / white / 1 pt DOCX text |
+| `text_evasion` | 2.0 | Humanizer tricks: homoglyphs, look-alike punctuation, stray accents on common words, styled / fullwidth letters, invisible characters, hidden / white / 1 pt DOCX text |
 
 Context members never vote; a flag sends the work to human review:
 `text_grade_fit` (vocabulary against the class year and the student's own level),
@@ -87,7 +87,8 @@ Same 245 images (100 real, 145 from 20 current generators) for every version, fu
 |---|---|---|---|---|---|
 | 1.3 to 1.6 | 0.998 | 108 / 145 | 6 | **0 / 100** | 1 |
 | 1.6.1 | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
-| **1.7.0** | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
+| 1.7.0 | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
+| **1.7.1** | 0.997 | 107 / 145 | 5 | **0 / 100** | **0** |
 
 The hard constraint for every release: no real photo may be called AI.
 

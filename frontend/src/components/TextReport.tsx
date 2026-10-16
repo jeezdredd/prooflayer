@@ -94,6 +94,9 @@ export default function TextReport({ submission }: { submission: Submission }) {
   const mixed = (ev.mixed_script_words as string[] | undefined) ?? [];
   const invisible = Object.entries((ev.invisible_characters as Record<string, number> | undefined) ?? {});
   const hidden = (ev.hidden_runs as { text: string; reasons: string[] }[] | undefined) ?? [];
+  const punct = Object.entries((ev.lookalike_punctuation as Record<string, number> | undefined) ?? {});
+  const marks = typeof ev.stray_marks === "number" ? ev.stray_marks : 0;
+  const styled = (ev.styled_letter_words as string[] | undefined) ?? [];
   const beyond = (gr.beyond_level_words as string[] | undefined) ?? [];
   const phrases = Object.keys(((st.phrasebook as Evidence | undefined)?.hits as Record<string, number> | undefined) ?? {});
   const drift = st.drift as { score: number; history_size: number } | undefined;
@@ -118,10 +121,13 @@ export default function TextReport({ submission }: { submission: Submission }) {
         )}
         {evasion && (
           evasion.verdict === "fake" || evasion.verdict === "suspicious" ? (
-            <Row tone="alert" title={t("The text was altered to slip past checkers")}>
+            <Row tone="alert" title={t("Attempt to hide AI traces: the text was altered to slip past checkers")}>
               {mixed.length > 0 && <>{t("Words mixing look-alike letters from another alphabet:")} <Chips items={mixed.slice(0, 12)} /></>}
               {invisible.length > 0 && <div className="mt-1">{t("Invisible characters:")} {invisible.map(([k, v]) => `${k} × ${v}`).join(", ")}</div>}
               {hidden.length > 0 && <div className="mt-1">{t("Hidden text in the document:")} {hidden.slice(0, 3).map((h) => `"${h.text}" (${h.reasons.map((r) => t(r)).join(", ")})`).join("; ")}</div>}
+              {punct.length > 0 && <div className="mt-1">{t("Look-alike punctuation from other alphabets:")} {punct.map(([k, v]) => `${t(k)} × ${v}`).join(", ")}</div>}
+              {marks >= 3 && <div className="mt-1">{t("Stray accent marks on ordinary words: {n}", { n: marks })}</div>}
+              {styled.length > 0 && <>{t("Words with styled or fullwidth letters:")} <Chips items={styled.slice(0, 12)} /></>}
             </Row>
           ) : (
             <Row tone="ok" title={t("No character tricks or hidden text")} />

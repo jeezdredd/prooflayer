@@ -6,7 +6,7 @@ from analyzers.registry import load_analyzer_class
 
 ENSEMBLE_NAME = "Tribunal"
 ENSEMBLE_SLUG = "tribunal"
-ENSEMBLE_VERSION = "1.7.0"
+ENSEMBLE_VERSION = "1.7.1"
 
 
 def ensemble_label() -> str:

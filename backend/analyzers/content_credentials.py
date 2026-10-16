@@ -13,13 +13,19 @@ AI_GENERATED_SOURCES = {"trainedAlgorithmicMedia"}
 AI_EDITED_SOURCES = {"compositeWithTrainedAlgorithmicMedia", "compositeSynthetic"}
 LIBRARY_GENERATORS = ("c2pa-rs", "c2pa-python", "c2pa-js", "c2pa-node", "c2patool")
 VALID_STATES = {"Valid", "Trusted"}
+REMNANT_SCAN_BYTES = 64 * 1024 * 1024
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+JPEG_APP1 = 0xE1
+JPEG_APP11 = 0xEB
+JPEG_SOS = 0xDA
 
 
 @lru_cache(maxsize=1)
 def _context() -> c2pa.Context:
     with open(TRUST_ANCHORS_PATH) as fh:
         anchors = fh.read()
-    return c2pa.Context(c2pa.Settings.from_dict({"trust": {"trust_anchors": anchors}, "verify": {"verify_trust": True}}))
+    settings = c2pa.Settings.from_dict({"trust": {"trust_anchors": anchors}, "verify": {"verify_trust": True}})
+    return c2pa.Context(settings)
 
 
 def read_manifest(path: str) -> str | None:
@@ -29,6 +35,61 @@ def read_manifest(path: str) -> str | None:
     except Exception as exc:
         logger.debug("no readable C2PA manifest in %s: %s", path, exc)
         return None
+
+
+def _png_remnants(data: bytes) -> bool:
+    pos = len(PNG_SIGNATURE)
+    while pos + 8 <= len(data):
+        length = int.from_bytes(data[pos:pos + 4], "big")
+        kind = data[pos + 4:pos + 8]
+        if kind == b"caBX":
+            return True
+        if kind == b"IEND":
+            return False
+        pos += 12 + length
+    return False
+
+
+def _jpeg_remnants(data: bytes) -> bool:
+    pos = 2
+    while pos + 4 <= len(data) and data[pos] == 0xFF:
+        marker = data[pos + 1]
+        if marker == JPEG_SOS:
+            return False
+        length = int.from_bytes(data[pos + 2:pos + 4], "big")
+        segment = data[pos + 4:pos + 2 + length]
+        if marker == JPEG_APP11 and (b"jumb" in segment or b"c2pa" in segment):
+            return True
+        if marker == JPEG_APP1 and segment.startswith(b"http://ns.adobe.com/xap/") and b"c2pa" in segment.lower():
+            return True
+        pos += 2 + length
+    return False
+
+
+def _webp_remnants(data: bytes) -> bool:
+    pos = 12
+    while pos + 8 <= len(data):
+        kind = data[pos:pos + 4]
+        size = int.from_bytes(data[pos + 4:pos + 8], "little")
+        if kind == b"C2PA":
+            return True
+        pos += 8 + size + (size & 1)
+    return False
+
+
+def has_remnants(path: str) -> bool:
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read(REMNANT_SCAN_BYTES)
+    except OSError:
+        return False
+    if data.startswith(PNG_SIGNATURE):
+        return _png_remnants(data)
+    if data.startswith(b"\xff\xd8"):
+        return _jpeg_remnants(data)
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return _webp_remnants(data)
+    return False
 
 
 def _short_source(value) -> str | None:

@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from analyzers.aggregator import aggregate
-from analyzers.content_credentials import summarize
+from analyzers.content_credentials import has_remnants, read_manifest, summarize
 from analyzers.implementations.metadata_analyzer import MetadataAnalyzer
 from analyzers.models import AnalysisResult
 from analyzers.watermarks import KNOWN_WATERMARKS, find_known_watermark
@@ -172,3 +172,54 @@ class TestProvenanceProofRule:
     def test_unproven_metadata_vote_does_not_override(self):
         _, verdict = self._bench(False)
         assert verdict != "fake"
+
+
+def _damaged_bits():
+    bits = list(_flux_bits())
+    for i in (3, 11, 19, 27, 35):
+        bits[i] = 1 - bits[i]
+    return bits
+
+
+def _jpeg_with_orphan_jumbf(tmp_path):
+    path = tmp_path / "plain.jpg"
+    cv2.imwrite(str(path), np.full((300, 300, 3), 120, np.uint8))
+    data = path.read_bytes()
+    payload = b"JP\x00\x01" + b"\x00\x00\x00\x10jumb" + b"\x00" * 24
+    segment = b"\xff\xeb" + (len(payload) + 2).to_bytes(2, "big") + payload
+    broken = tmp_path / "stripped.jpg"
+    broken.write_bytes(data[:2] + segment + data[2:])
+    return broken
+
+
+class TestTraceHiding:
+    def test_damaged_watermark_still_names_the_generator(self, photo, tmp_path):
+        path = tmp_path / "damaged.png"
+        cv2.imwrite(str(path), _embed(photo, _damaged_bits()))
+        found = find_known_watermark(str(path))
+        assert found["name"] == "FLUX.1" and found["state"] == "damaged"
+        out = MetadataAnalyzer().analyze(str(path), {"format": "PNG", "width": 512, "height": 512})
+        assert out.verdict == "fake"
+        assert out.evidence["provenance_proof"] is False
+        assert out.evidence["evasion"][0]["kind"] == "damaged_watermark"
+
+    def test_orphan_c2pa_segment_is_a_removed_credential(self, tmp_path):
+        path = _jpeg_with_orphan_jumbf(tmp_path)
+        assert read_manifest(str(path)) is None
+        assert has_remnants(str(path)) is True
+        out = MetadataAnalyzer().analyze(str(path), {"format": "JPEG", "width": 300, "height": 300, "c2pa_remnants": True})
+        assert {"kind": "credentials_removed"} in out.evidence["evasion"]
+        assert out.verdict != "fake"
+
+    def test_clean_files_have_no_remnants(self, photo, tmp_path):
+        for name in ("clean.png", "clean.jpg", "clean.webp"):
+            path = tmp_path / name
+            cv2.imwrite(str(path), photo)
+            assert has_remnants(str(path)) is False
+
+    def test_credentials_broken_after_signing(self):
+        manifest = _manifest("trainedAlgorithmicMedia", state="Invalid", problems=("assertion.dataHash.mismatch",))
+        out = MetadataAnalyzer().analyze("unused.png", {"format": "PNG", "c2pa_summary": summarize(manifest)})
+        assert out.evidence["evasion"] == [{"kind": "credentials_altered", "generator": "ChatGPT"}]
+        assert out.verdict == "fake"
+        assert out.evidence["provenance_proof"] is False

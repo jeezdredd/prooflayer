@@ -101,7 +101,7 @@ def camera_signature(metadata: dict) -> dict:
 
 class MetadataAnalyzer(BaseAnalyzer):
     name = "metadata"
-    version = "1.7.0"
+    version = "1.8.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -125,10 +125,14 @@ class MetadataAnalyzer(BaseAnalyzer):
             flags.append("c2pa_ai_edited")
 
         evidence["watermark"] = find_known_watermark(file_path)
-        if evidence["watermark"]:
+        intact_mark = bool(evidence["watermark"]) and evidence["watermark"]["state"] == "intact"
+        if intact_mark:
             flags.append("invisible_watermark")
+        elif evidence["watermark"]:
+            flags.append("damaged_watermark")
 
-        proof = bool(evidence["watermark"]) or (evidence["c2pa"]["ai_declared"] and evidence["c2pa"].get("trusted") is True)
+        evidence["evasion"] = self._evasion(evidence, metadata)
+        proof = intact_mark or (evidence["c2pa"]["ai_declared"] and evidence["c2pa"].get("trusted") is True)
         evidence["provenance_proof"] = proof
         evidence["ai_trace"] = self._ai_trace(evidence)
 
@@ -155,6 +159,9 @@ class MetadataAnalyzer(BaseAnalyzer):
             verdict = "fake"
         elif "c2pa_ai_declared" in flags:
             confidence = 0.95
+            verdict = "fake"
+        elif "damaged_watermark" in flags:
+            confidence = 0.9
             verdict = "fake"
         elif "ai_tool_signature" in flags or "generation_parameters" in flags:
             confidence = 0.9
@@ -258,7 +265,8 @@ class MetadataAnalyzer(BaseAnalyzer):
                 return result
             if summary.get("ai") == "edited":
                 result["ai_edited"] = True
-                result["marker"] = next((s for s in summary.get("source_types") or [] if s.lower() in AI_EDITED_MARKERS), None)
+                sources = summary.get("source_types") or []
+                result["marker"] = next((s for s in sources if s.lower() in AI_EDITED_MARKERS), None)
                 return result
 
         texts = [("xmp", metadata.get("xmp"))]
@@ -277,6 +285,22 @@ class MetadataAnalyzer(BaseAnalyzer):
                 return result
         return result
 
+    def _evasion(self, evidence: dict, metadata: dict) -> list[dict]:
+        found = []
+        mark = evidence["watermark"]
+        if mark and mark["state"] == "damaged":
+            found.append({
+                "kind": "damaged_watermark",
+                "generator": mark["name"],
+                "vendor": mark["vendor"],
+                "match": mark["match"],
+            })
+        if evidence["c2pa"].get("state") == "Invalid":
+            found.append({"kind": "credentials_altered", "generator": evidence["c2pa"].get("generator")})
+        if metadata.get("c2pa_remnants"):
+            found.append({"kind": "credentials_removed"})
+        return found
+
     def _ai_trace(self, evidence: dict) -> list[dict]:
         trace = []
         c2pa = evidence["c2pa"]
@@ -289,12 +313,18 @@ class MetadataAnalyzer(BaseAnalyzer):
                 "trusted": c2pa.get("trusted"),
                 "state": c2pa.get("state"),
             })
-        if evidence["watermark"]:
-            trace.append({"kind": "watermark", "ai": "generated", "generator": evidence["watermark"]["name"], "signed_by": evidence["watermark"]["vendor"], "match": evidence["watermark"]["match"]})
+        mark = evidence["watermark"]
+        if mark:
+            trace.append({
+                "kind": "watermark", "ai": "generated", "generator": mark["name"], "signed_by": mark["vendor"],
+                "match": mark["match"], "damaged": mark["state"] == "damaged",
+            })
         if evidence["ai_tool"]["detected"]:
-            trace.append({"kind": "software_tag", "ai": "generated", "generator": evidence["ai_tool"]["tool"], "field": evidence["ai_tool"]["field"]})
+            tool = evidence["ai_tool"]
+            trace.append({"kind": "software_tag", "ai": "generated", "generator": tool["tool"], "field": tool["field"]})
         if evidence["generation_params"]["detected"]:
-            trace.append({"kind": "generation_params", "ai": "generated", "field": evidence["generation_params"]["field"]})
+            field = evidence["generation_params"]["field"]
+            trace.append({"kind": "generation_params", "ai": "generated", "field": field})
         return trace
 
     def _check_gps_plausibility(self, metadata: dict) -> dict:

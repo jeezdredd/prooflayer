@@ -68,7 +68,7 @@ def sample_submission_context(lang: str, kind: str, image: Path | None) -> dict:
     score = 87 if kind == "image" else 64
     details = [
         [(c["file"], "IMG_4232.jpg" if kind == "image" else "essay-history.docx", False), (c["type"], "Изображение · JPEG" if lang == "ru" and kind == "image" else "Image · JPEG" if kind == "image" else ("Документ · DOCX" if lang == "ru" else "Document · DOCX"), False), (c["size"], "2.4 MB" if kind == "image" else "38 KB", False)],
-        [(c["uploaded"], "14.10.2026 18:02 UTC" if lang == "ru" else "Oct 14, 2026 18:02 UTC", False), (c["tribunal"], "Tribunal 1.7.0", False), (c["fingerprint"], "7a3f2c91e04b5d18…b91d4e07", True)],
+        [(c["uploaded"], "14.10.2026 18:02 UTC" if lang == "ru" else "Oct 14, 2026 18:02 UTC", False), (c["tribunal"], "Tribunal 1.7.1", False), (c["fingerprint"], "7a3f2c91e04b5d18…b91d4e07", True)],
     ]
     originality = None
     if kind == "text":

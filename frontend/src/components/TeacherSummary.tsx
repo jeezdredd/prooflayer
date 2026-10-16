@@ -99,8 +99,8 @@ function trickCheck(submission: Submission): Check | null {
       key: "tricks",
       title,
       status: "alert",
-      headline: t("Text was disguised to fool checkers"),
-      detail: t("Look-alike letters from another alphabet, invisible characters or hidden text. Details below."),
+      headline: t("Attempt to hide AI traces"),
+      detail: t("Look-alike letters or punctuation, stray accents, invisible characters or hidden text, the tricks AI humanizers use. Details below."),
     };
   }
   return { key: "tricks", title, status: "ok", headline: t("No disguised letters or hidden text") };

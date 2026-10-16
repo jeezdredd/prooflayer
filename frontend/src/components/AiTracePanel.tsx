@@ -11,6 +11,22 @@ interface AiTrace {
   state?: string | null;
   match?: number;
   field?: string;
+  damaged?: boolean;
+}
+
+interface Evasion {
+  kind: "damaged_watermark" | "credentials_altered" | "credentials_removed";
+  generator?: string | null;
+  vendor?: string;
+  match?: number;
+}
+
+function evasionText(e: Evasion) {
+  if (e.kind === "damaged_watermark") {
+    return t("The hidden watermark of {name} ({vendor}) was damaged: only {n}% of it survives", { name: e.generator ?? "", vendor: e.vendor ?? "", n: Math.round((e.match ?? 0) * 100) });
+  }
+  if (e.kind === "credentials_altered") return t("Content Credentials were changed after signing");
+  return t("Content Credentials were stripped from the file, fragments remain");
 }
 
 const SYNTHID_URL = "https://synthid.com";
@@ -36,6 +52,9 @@ function TraceLine({ trace }: { trace: AiTrace }) {
       </>
     );
   }
+  if (trace.kind === "watermark" && trace.damaged) {
+    return <div className="text-sm text-ink-100">{t("Traces of the {name} watermark ({vendor})", { name: trace.generator ?? "", vendor: trace.signed_by ?? "" })}</div>;
+  }
   if (trace.kind === "watermark") {
     return (
       <div className="text-sm text-ink-100">
@@ -58,6 +77,7 @@ export default function AiTracePanel({ submission }: { submission: Submission })
   if (!metadata) return null;
   const traces = (metadata.evidence?.ai_trace as AiTrace[] | undefined) ?? [];
   const proof = metadata.evidence?.provenance_proof === true;
+  const evasion = (metadata.evidence?.evasion as Evasion[] | undefined) ?? [];
 
   return (
     <div className="px-6 py-5 border-b border-ink-700">
@@ -65,6 +85,14 @@ export default function AiTracePanel({ submission }: { submission: Submission })
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("AI traces")}</div>
         {proof && <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-signal-blood">{t("proof of origin")}</div>}
       </div>
+      {evasion.length > 0 && (
+        <div className="mb-3 border-l-2 border-signal-blood pl-3">
+          <div className="text-sm text-signal-blood">{t("Attempt to hide AI traces")}</div>
+          <ul className="mt-1 space-y-0.5">
+            {evasion.map((e, i) => <li key={i} className="text-xs text-ink-300">{evasionText(e)}</li>)}
+          </ul>
+        </div>
+      )}
       {traces.length === 0 ? (
         <p className="text-sm text-ink-300">
           {t("No Content Credentials, IPTC AI label or known generator watermark in this file. Their absence proves nothing: most sites and messengers strip them.")}

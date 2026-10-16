@@ -73,6 +73,30 @@ class TestEvasion:
         assert report.invisible_total == 5
         assert report.strength() >= 0.9
 
+    def test_lookalike_punctuation(self):
+        report = scan_text("The essay ends here\u2024 Another sentence\uff0c with a comma\u2024 And one more\u2024")
+        assert sum(report.lookalike_punctuation.values()) == 4
+        assert report.strength() >= 0.9
+
+    def test_stray_diacritics_from_a_humanizer(self):
+        report = scan_text("The ma\u0323rket i\u0323s gro\u0323wing fast.")
+        assert report.stray_marks == 3
+        assert report.strength() >= 0.9
+
+    def test_styled_letters_inside_words(self):
+        report = scan_text("A w\U0001d428rd and an\uff4fther one.")
+        assert len(report.styled_letter_words) == 2
+        assert report.strength() >= 0.9
+
+    @pytest.mark.parametrize("text", [
+        "Ру\u0301сский язык и ударе\u0301ния в учебнике, ёлка и йод.",
+        "Cafe\u0301 cre\u0300me bru\u0302le\u0301e, nai\u0308ve garc\u0327on, c\u030ce\u0301ski.",
+        "The \ufb01rst e\ufb03cient \ufb02ow from a PDF.",
+        "中文文本，这是测试。很好！" * 5,
+    ])
+    def test_ordinary_diacritics_ligatures_and_cjk_are_clean(self, text):
+        assert scan_text(text).strength() == 0.0
+
     @pytest.mark.parametrize("text", [KID_RU, KID_EN, KID_FR, "IT-компания и Wi-Fi в школе 2024 года.", "﻿Текст с BOM в начале файла."])
     def test_clean_text_has_no_findings(self, text):
         assert scan_text(text).strength() == 0.0
