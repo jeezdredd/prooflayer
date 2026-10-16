@@ -25,7 +25,7 @@ PRIORITY_SOURCES = {"wiki-pre2022"}
 TEST_ONLY_MODES = {"attack:recursive"}
 HELDOUT_HUMANIZERS = {"humbot", "undetectable", "stealth-writer", "walter-writes", "gptinf", "notegpt"}
 HUMANIZER_MIN_WORDS = 80
-GENERATED_FILES = ("ai.jsonl", "adversarial.jsonl")
+GENERATED_FILES = ("ai.jsonl", "adversarial.jsonl", "academic_ai.jsonl")
 CHAT_TAIL = re.compile(
     r"^(would you like|do you want|let me know|i hope|hope this|notes?:|word count|\(word count|feel free|is there anything|"
     r"хотите|надеюсь|примечание|souhaitez|n.h[ée]site|j.esp[èe]re|remarque)",
@@ -81,6 +81,7 @@ class Command(BaseCommand):
         parser.add_argument("--eval", default="dataset/text_eval")
         parser.add_argument("--gen", default="dataset/text_gen")
         parser.add_argument("--humanizers", default="dataset/humanizers/all.jsonl")
+        parser.add_argument("--academic", default="dataset/text_academic/human.jsonl")
         parser.add_argument("--out", default="dataset/text_t4")
         parser.add_argument("--train-cap", type=int, default=2500, help="max texts per class per language in train")
         parser.add_argument("--calib-cap", type=int, default=400)
@@ -95,13 +96,14 @@ class Command(BaseCommand):
         self._extra(raw, pool)
         self._fresh(Path(opts["gen"]), pool)
         self._humanizers(Path(opts["humanizers"]), pool)
+        self._academic(Path(opts["academic"]), pool)
         pool["test"] += self._frozen_test(Path(opts["eval"]))
 
         seen, picked = set(), {s: [] for s in SPLITS}
         for split in SPLITS:
             rows = pool[split]
             rng.shuffle(rows)
-            rows.sort(key=lambda r: not is_fresh(r["mode"]) and r["source"] not in PRIORITY_SOURCES)
+            rows.sort(key=lambda r: not is_fresh(r["mode"]) and r["source"] not in PRIORITY_SOURCES and not r["source"].startswith("academic-"))
             cap = {"train": opts["train_cap"], "calib": opts["calib_cap"]}.get(split)
             taken = Counter()
             for r in rows:
@@ -171,7 +173,7 @@ class Command(BaseCommand):
 
     def _fresh(self, gen: Path, pool: dict):
         hints = {}
-        for name in ("seeds.jsonl", "wiki_seeds.jsonl"):
+        for name in ("seeds.jsonl", "wiki_seeds.jsonl", "academic_seeds.jsonl"):
             if (gen / name).exists():
                 hints |= {s["id"]: s["hint"] for s in map(json.loads, open(gen / name))}
         generated = [r for name in GENERATED_FILES if (gen / name).exists() for r in map(json.loads, open(gen / name))]
@@ -182,7 +184,8 @@ class Command(BaseCommand):
             text = strip_hint(strip_chat_wrapper(r["text"]), hints.get(r["seed_id"], ""))
             if len(text.split()) < 60 or (r["lang"] == "ru" and latin_share(text) > 0.3):
                 continue
-            source = "fresh-wiki" if r.get("genre") == "wiki" else "fresh"
+            genre = r.get("genre", "")
+            source = "fresh-wiki" if genre == "wiki" else "fresh-academic" if genre.startswith("academic") else "fresh"
             pool[r["split"]].append(row(r["id"], r["lang"], r["split"], 1, source, text, r["generator"], r["mode"]))
 
     def _humanizers(self, path: Path, pool: dict):
@@ -199,6 +202,12 @@ class Command(BaseCommand):
             home = humanizer_split(r["input"])
             rid = f'hum-src-{r["bench"]}-{i}'
             pool[home].append(row(rid, "en", home, 1, "frontier-2026", r["input"], "", "frontier"))
+
+    def _academic(self, path: Path, pool: dict):
+        if not path.exists():
+            return
+        for r in map(json.loads, open(path)):
+            pool[r["split"]].append(row(r["id"], r["lang"], r["split"], 0, r["source"], r["text"]))
 
     def _frozen_test(self, eval_dir: Path) -> list:
         rows = []

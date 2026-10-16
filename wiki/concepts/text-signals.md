@@ -162,6 +162,17 @@ Weaker than t4 on English character attacks (homoglyph 63 -> 42%) and some small
 groups; `text_evasion` still catches the character tricks. Shipped with `make ship-text
 TEXT_DIR=dataset/text_models/e5-small-t6`.
 
+## Russian sources and GOST references (2026-10-16)
+
+Live check on 26 real sources: English 12/12 found, Russian books without DOI 1/14 found, so every
+Russian essay with a real bibliography was flagged "cited sources that do not exist". Two causes:
+OpenAlex/Crossref barely cover Russian books, and `guess_title` only parsed English formats, so a GOST
+entry ("Ключевский В. О. Курс русской истории. М.: Мысль, 1987.") went to search as a whole string.
+Fix in `analyzers/text/citations.py`: `GOST_AUTHORS`/`GOST_TAIL` cut authors and the city/publisher tail;
+`check_bibliography` falls back to web search (`plagiarism.search`, title in quotes, 80% word cover);
+a Cyrillic entry found nowhere stays `unchecked`, never `missing`. After: Russian 13/14 found, 1
+unchecked, 0 missing; English unchanged. Fake English references are still caught.
+
 ## Personal baselines before any personal flag (2026-10-14)
 
 Signals that compare a student with themselves or the class never flag on one or two works:

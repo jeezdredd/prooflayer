@@ -75,6 +75,10 @@ rejected by the owner. Migration api 0013 rewrote stored roadmap and changelog R
 
 ## Changelog
 
+### 1.8.1 - 2026-10-16
+
+`text_citations` 1.1.0: GOST references parsed, web-search fallback, unfound Cyrillic books stay unchecked. Real Russian bibliographies no longer flagged (13/14 missing -> 0). See [[concepts/text-signals]].
+
 ### 1.8.0 - 2026-10-16
 
 `text_classifier` 1.1.0 runs model t6, trained with the output of 24 commercial humanizers and a

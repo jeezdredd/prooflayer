@@ -1,5 +1,18 @@
 [
   {
+    "slug": "russian-sources-checked-fairly",
+    "date": "2026-10-16",
+    "kind": "fix",
+    "title": {
+      "en": "Real Russian books are no longer reported as made-up sources",
+      "ru": "Реальные русские книги больше не считаются выдуманными источниками"
+    },
+    "body": {
+      "en": "The source check looked up books in OpenAlex and Crossref, which know few Russian-language books without a DOI, and it did not read Russian (GOST) reference formatting. A bibliography of real books such as Klyuchevsky or a school history textbook could be marked as invented. We now read GOST references, look titles up on the web as well, and a Russian book we cannot find anywhere is reported as unchecked rather than invented. On 26 real Russian and English sources the check now finds 25 and calls none invented.",
+      "ru": "Проверка источников искала книги в OpenAlex и Crossref, где мало русских книг без DOI, и не понимала оформление по ГОСТу. Список реальной литературы, например Ключевский или школьный учебник истории, мог быть помечен как выдуманный. Теперь мы читаем ссылки по ГОСТу, ищем названия и в интернете, а русскую книгу, которую не удалось найти нигде, отмечаем как непроверенную, а не как выдуманную. Из 26 реальных русских и английских источников проверка теперь находит 25 и ни один не называет выдуманным."
+    }
+  },
+  {
     "slug": "humanizer-proof-text",
     "date": "2026-10-16",
     "kind": "improvement",

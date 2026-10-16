@@ -18,10 +18,12 @@ from analyzers.text.citations import (
     check_isbn,
     check_url,
     extract,
+    guess_title,
     isbn_valid,
     title_matches,
 )
 from common.url_safety import UnsafeUrlError
+from plagiarism.search import Hit as SearchHit
 from content.tests.factories import SubmissionFactory
 
 from .factories import AnalysisResultFactory, AnalyzerConfigFactory
@@ -137,9 +139,33 @@ class TestChecks:
         assert ref.status == FOUND
         ref = Reference("bibliography", "Ivanova, A. (2021). Quantum gardening for teenagers. Moscow Press.")
         empty = [response(200, {"results": [{"title": "Unrelated work on soil"}]}), response(200, {"message": {"items": []}})]
-        with mock.patch.object(citations.requests, "get", side_effect=empty):
+        with mock.patch.object(citations.requests, "get", side_effect=empty), mock.patch.object(citations, "search", return_value=[]):
             check_bibliography(ref)
         assert ref.status == MISSING
+
+    @pytest.mark.parametrize("entry, title", [
+        ("Ключевский В. О. Курс русской истории. М.: Мысль, 1987.", "Курс русской истории"),
+        ("Арсентьев Н. М., Данилов А. А., Курукин И. В. История России. 8 класс. М.: Просвещение, 2016.", "История России. 8 класс"),
+        ("Тарле Е. В. Нашествие Наполеона на Россию. 1812 год. - М.: Воениздат, 1992.", "Нашествие Наполеона на Россию. 1812 год"),
+        ("Лотман Ю. М. Беседы о русской культуре // Искусство-СПБ, 1994.", "Беседы о русской культуре"),
+    ])
+    def test_gost_title(self, entry, title):
+        assert guess_title(entry) == title
+
+    def test_russian_book_found_on_the_web(self):
+        ref = Reference("bibliography", "Ключевский В. О. Курс русской истории. М.: Мысль, 1987.")
+        empty = [response(200, {"results": []}), response(200, {"message": {"items": []}})]
+        hit = SearchHit("https://example.org/klyuchevsky", "Курс русской истории - Ключевский В. О.", "")
+        with mock.patch.object(citations.requests, "get", side_effect=empty), mock.patch.object(citations, "search", return_value=[hit]):
+            check_bibliography(ref)
+        assert ref.status == FOUND
+
+    def test_unfound_russian_book_is_unchecked_not_missing(self):
+        ref = Reference("bibliography", "Петров А. Б. История села Малые Ключи. Тверь: Купол, 2003.")
+        empty = [response(200, {"results": []}), response(200, {"message": {"items": []}})]
+        with mock.patch.object(citations.requests, "get", side_effect=empty), mock.patch.object(citations, "search", return_value=[]):
+            check_bibliography(ref)
+        assert ref.status == UNCHECKED
 
     def test_title_match_needs_most_words(self):
         assert title_matches("Why We Sleep", "Walker. Why we sleep. 2017")

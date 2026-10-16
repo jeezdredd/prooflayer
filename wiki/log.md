@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-16] citations-ru | Real Russian books no longer flagged as invented
+
+- Source: live check on 26 real sources (scripts in session), analyzers/text/citations.py, tests
+- Pages updated: [[concepts/text-signals]]
+
 ## [2026-10-16] brand-landing | Tribunal stays Latin in Russian, real photos in the compare preview
 
 - Source: ru.json (12 strings), reports/copy.py, api 0013 (roadmap + changelog ru fields), Workspace ReviewPreview with /samples/compare-{original,edited}.webp

@@ -35,6 +35,29 @@ GENERATE = {
     ),
 }
 
+GENERATE_ACADEMIC = {
+    "academic-abstract": {
+        "en": (
+            "Write the abstract of a research paper on this topic: \"{hint}\". About {words} words, in the style of a "
+            "peer-reviewed journal. No title, no headings, no keywords line, only the abstract text."
+        ),
+        "ru": (
+            "Напиши аннотацию научной статьи на тему «{hint}» объёмом примерно {words} слов в стиле российского "
+            "рецензируемого журнала. Без заголовка, без ключевых слов, только текст аннотации."
+        ),
+    },
+    "academic-body": {
+        "en": (
+            "Write a passage of about {words} words from the main body of a research paper on this topic: \"{hint}\", "
+            "as it would appear in the middle of the paper (methods, results or discussion). No headings, no lists, "
+            "only the prose."
+        ),
+        "ru": (
+            "Напиши фрагмент основной части научной статьи на тему «{hint}» объёмом примерно {words} слов, как он "
+            "выглядел бы в середине статьи (методы, результаты или обсуждение). Без заголовков и списков, только текст."
+        ),
+    },
+}
 GENERATE_WIKI = {
     "en": (
         "Write a passage of about {words} words for the Wikipedia article \"{hint}\", in the neutral encyclopedic "
@@ -183,7 +206,7 @@ def jobs_for(args, rng: random.Random) -> list[dict]:
             if rid in done:
                 continue
             genre = seed.get("genre", "")
-            templates = GENERATE_WIKI if genre == "wiki" else GENERATE
+            templates = GENERATE_ACADEMIC[genre] if genre in GENERATE_ACADEMIC else GENERATE_WIKI if genre == "wiki" else GENERATE
             prompt = templates[seed["lang"]].format(words=seed["words"], hint=seed["hint"], grade=grade)
             budget = int(seed["words"] * TOKENS_PER_WORD[seed["lang"]] * 1.3) + 64
             jobs.append(

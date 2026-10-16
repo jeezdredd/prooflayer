@@ -120,8 +120,18 @@ TITLE_PATTERNS = [
 ]
 
 
+GOST_AUTHORS = re.compile(r"^(?:[А-ЯЁ][а-яё\-]+,?\s(?:[А-ЯЁ]\.\s?){1,3},?\s*)+")
+GOST_TAIL = re.compile(r"\s*(?://|\.\s*[–—-]\s|\.\s+[А-ЯЁ][А-Яа-яё]{0,6}\.?\s*:)")
+CYRILLIC = re.compile(r"[А-Яа-яЁё]")
+
+
 def guess_title(entry: str) -> str:
     body = re.sub(r"^\s*(?:\[\d+\]|\d+[.)])\s*", "", entry)
+    authors = GOST_AUTHORS.match(body)
+    if authors:
+        title = GOST_TAIL.split(body[authors.end():], maxsplit=1)[0].strip().rstrip(".")
+        if len(_tokens(title)) >= 2:
+            return title
     for pattern in TITLE_PATTERNS:
         match = pattern.search(body)
         if match and len(_tokens(match.group(1))) >= 2:
@@ -210,6 +220,15 @@ def check_bibliography(ref: Reference):
             if title and title_matches(title, ref.value):
                 ref.status, ref.detail = FOUND, title
                 return
+    title = guess_title(ref.value)
+    words = _tokens(title)
+    for hit in search(f'"{title[:200]}"', limit=5):
+        if _covered(words, f"{hit.title} {hit.snippet}"):
+            ref.status, ref.detail = FOUND, hit.url
+            return
+    if CYRILLIC.search(ref.value):
+        ref.detail = "not in OpenAlex, Crossref or web search, which cover few Russian-language books"
+        return
     if answered:
         ref.status, ref.detail = MISSING, "no matching work in OpenAlex or Crossref"
 
