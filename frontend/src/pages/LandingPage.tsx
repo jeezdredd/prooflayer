@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, useInView, animate } from "motion/react";
 import {
   BadgeCheck,
+  ImageIcon,
+  Mic,
   EyeOff,
   ScanLine, Eye, Film, AudioLines, Type, Sparkles,
   Brain, Fingerprint,
@@ -48,7 +50,7 @@ const TRIBUNAL_RULES = [
 
 const NUMBERS = [
   { k: "checks", v: "11", l: msg("Active analyzers"), small: false },
-  { k: "kinds", v: msg("Photo · video · voice · text"), l: msg("Checked in one place"), small: true },
+  { k: "kinds", v: "", l: msg("Photo, video, voice and text"), small: false },
   { k: "generators", v: "20+", l: msg("AI models we catch in text, photos, video and voice: ChatGPT, Gemini, Midjourney, Sora and more"), small: false },
   { k: "accuracy", v: msg("99.7%"), l: msg("Accuracy telling AI from real photos"), small: false },
 ];
@@ -228,9 +230,9 @@ export default function LandingPage() {
                 transition={{ duration: 0.7 }}
                 className="font-display text-[clamp(3rem,8vw,7.5rem)] leading-[0.92] tracking-[-0.025em] text-ink-50"
               >
-                {t("Is this image")}
+                {t("Made by a person,")}
                 <br />
-                <span className="italic text-iris">{t("telling the truth")}</span>
+                <span className="italic text-iris">{t("or by AI")}</span>
                 <span className="text-ink-50">?</span>
               </motion.h1>
 
@@ -287,7 +289,7 @@ export default function LandingPage() {
                       </span>
                       <span className="label-mono">{t("Sample Verdict")}</span>
                     </div>
-                    <span className="badge text-signal-blood">{t("SYNTHETIC")}</span>
+                    <span className="badge text-signal-blood">{t("Likely AI")}</span>
                   </div>
 
                   <div className="font-mono text-[10px] text-ink-500 mb-3 ticker">
@@ -350,7 +352,13 @@ export default function LandingPage() {
               whileHover={{ y: -3 }}
               className="group relative"
             >
-              <div className={`font-display ${n.small ? "text-4xl lg:text-5xl" : "text-6xl lg:text-7xl"} text-ink-50 leading-none ticker group-hover:text-iris transition-colors duration-500`}>{t(n.v).replace(/ · /g, "\u00a0· ")}</div>
+              {n.k === "kinds" ? (
+                <div className="flex items-center gap-3 lg:gap-4 h-[3.75rem] lg:h-[4.5rem] text-ink-50 group-hover:text-iris transition-colors duration-500" aria-label={t(n.l)}>
+                  {[ImageIcon, Film, Mic, Type].map((Icon, i) => <Icon key={i} className="w-8 h-8 lg:w-10 lg:h-10" strokeWidth={1.4} />)}
+                </div>
+              ) : (
+                <div className={`font-display ${n.small ? "text-4xl lg:text-5xl" : "text-6xl lg:text-7xl"} text-ink-50 leading-none ticker group-hover:text-iris transition-colors duration-500`}>{t(n.v)}</div>
+              )}
               <div className="label-mono mt-4">{t(n.l)}</div>
             </motion.div>
           ))}

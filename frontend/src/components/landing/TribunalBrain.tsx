@@ -65,7 +65,7 @@ const MEMBER_DIRS: V3[] = [
 ];
 
 const CASES = [
-  { id: "0507", file: "img_4232.png", verdict: msg("Synthetic"), score: "0.87", rgb: [1, 0.34, 0.45] as V3, tone: "text-signal-blood" },
+  { id: "0507", file: "img_4232.png", verdict: msg("Likely AI"), score: "0.87", rgb: [1, 0.34, 0.45] as V3, tone: "text-signal-blood" },
   { id: "0508", file: "DSC_1187.jpg", verdict: msg("Authentic"), score: "0.12", rgb: [0.29, 0.87, 0.5] as V3, tone: "text-signal-sage" },
   { id: "0509", file: "press_still.webp", verdict: msg("Needs review"), score: "split", rgb: [0.96, 0.69, 0.26] as V3, tone: "text-signal-amber" },
 ];
