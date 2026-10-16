@@ -133,7 +133,7 @@ ANALYZERS = [
         "analyzer_class": "analyzers.implementations.llm_image_analyzer.LLMImageAnalyzer",
         "weight": 1.5,
         "queue": "ml",
-        "timeout": 300,
+        "timeout": 180,
     },
     {
         "name": "ai_detector",

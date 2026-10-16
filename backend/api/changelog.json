@@ -1,5 +1,18 @@
 [
   {
+    "slug": "vision-judge-on-gpu",
+    "date": "2026-10-16",
+    "kind": "improvement",
+    "title": {
+      "en": "Vision judge runs on our GPU",
+      "ru": "Визуальная модель работает на нашей видеокарте"
+    },
+    "body": {
+      "en": "The vision model that looks for concrete defects in images now runs on our own graphics card instead of the processor: about 4 seconds an image instead of 20-35, so image checks finish much sooner. On our test set of 100 real photos it still called none of them AI. Nothing leaves our server.",
+      "ru": "Визуальная модель, которая ищет конкретные дефекты на изображениях, теперь работает на нашей видеокарте, а не на процессоре: около 4 секунд на изображение вместо 20-35, так что проверка картинок заканчивается заметно быстрее. На нашем тестовом наборе из 100 настоящих фотографий она по-прежнему ни одну не назвала ИИ. Данные не покидают наш сервер."
+    }
+  },
+  {
     "slug": "highlighted-passages",
     "date": "2026-10-15",
     "kind": "feature",

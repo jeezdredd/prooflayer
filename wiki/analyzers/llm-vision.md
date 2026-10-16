@@ -16,15 +16,24 @@ Multimodal LLM examines image and returns structured verdict + reasoning. Probes
 
 Reads `settings.OLLAMA_VISION_MODEL` (env-driven).
 
-**Prod (homelab ubuntu-dev, no GPU yet)**: `moondream` - 1.7GB, fastest CPU inference (~15-20s vs 60-80s for qwen2.5vl:3b).
-**Dev (mac)**: `qwen2.5vl:3b` - better quality, slower.
+**Prod (since 2026-10-16, v1.2.0)**: `qwen2.5vl:3b` on the RX 6700S through Vulkan
+(`ollama/ollama:0.40.3`, `OLLAMA_VULKAN=1`), `temperature 0`, request timeout 120 s, model name in
+evidence. Default in code and compose is `qwen2.5vl:3b`.
 
-| Model | Size | CPU latency | Notes |
-|-------|------|-------------|-------|
-| `moondream` | 1.7 GB | 15-20s | **active prod** - smallest, lossy but fast |
-| `qwen2.5vl:3b` | 3.2 GB | 60-80s | dev default, better reasoning |
-| `qwen2.5vl:7b` | 6.0 GB | OOMs 12GB / 3-5s GPU | wait for ROCm |
-| `llava:7b` | 4.7 GB | 90s+ | code default if env unset |
+Benchmark 2026-10-15, 245 held-out images (100 real, 145 AI), lid closed:
+
+| Setup | Failures | s/image | VRAM | Real -> AI | AI caught |
+|-------|----------|---------|------|-----------|-----------|
+| CPU `qwen2.5vl:3b` (Ollama 0.24) | - | 22-34 | - | - | - |
+| ROCm `qwen2.5vl:3b` | breaks after ~100 calls | 4.62 | 2.7 GiB | - | - |
+| Vulkan `qwen2.5vl:3b` | 0 | 3.80 | 2.6 GiB | 0/100 | 12/145 |
+| Vulkan `gemma4:e4b` | 0 | 1.81 | - | 0/100 | 0/145 |
+| Vulkan `qwen3-vl:4b` (think off) | ~20% bad JSON | 27 | - | - | - |
+| Vulkan `qwen3-vl:8b` | 50% | 58 | - | - | - |
+
+ROCm errors: "Unexpected empty grammar stack", "token repeat limit reached". The member is a cautious
+corroborator (catches few AI images, never accuses real photos); its value is the named defect.
+`qwen2.5vl:7b` on Vulkan not benchmarked yet. Thermal guard: deploy/README.md "GPU guard".
 
 Config: see [[infrastructure/env-vars]].
 

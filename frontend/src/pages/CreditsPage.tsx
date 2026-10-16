@@ -66,7 +66,7 @@ const INFRA: Tech[] = [
   { name: "Caddy", href: "https://caddyserver.com", note: msg("Web server and TLS"), icon: "caddy" },
   { name: "Cloudflare", href: "https://www.cloudflare.com", note: msg("DNS, tunnel and DDoS protection"), icon: "cloudflare" },
   { name: "Tailscale", href: "https://tailscale.com", note: msg("Private network for server access"), icon: "tailscale" },
-  { name: "AMD ROCm", href: "https://www.amd.com/en/products/software/rocm.html", note: msg("GPU for the language models"), icon: "amd" },
+  { name: "Vulkan", href: "https://www.vulkan.org", note: msg("Runs the language models on our AMD GPU"), icon: "amd" },
   { name: "Paddle", href: "https://www.paddle.com", note: msg("Payments and invoices"), icon: "paddle" },
   { name: "Resend", href: "https://resend.com", note: msg("Transactional email"), icon: "resend" },
   { name: "Apple iCloud Mail", href: "https://www.icloud.com/mail", note: msg("Support and legal mailboxes on our domain"), icon: "icloud" },

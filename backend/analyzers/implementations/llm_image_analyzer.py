@@ -86,14 +86,14 @@ If unsure, choose uncertain. Being wrong on a real photo is worse than being wro
 
 class LLMImageAnalyzer(BaseAnalyzer):
     name = "llm_vision"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
         ollama_url = getattr(settings, "OLLAMA_URL", "http://ollama:11434")
-        vision_model = getattr(settings, "OLLAMA_VISION_MODEL", "llava:7b")
+        vision_model = getattr(settings, "OLLAMA_VISION_MODEL", "qwen2.5vl:3b")
 
         try:
             image_b64 = _encode_image_for_vision(file_path)
@@ -109,8 +109,9 @@ class LLMImageAnalyzer(BaseAnalyzer):
                     "images": [image_b64],
                     "stream": False,
                     "format": "json",
+                    "options": {"temperature": 0},
                 },
-                timeout=300,
+                timeout=120,
             )
             response.raise_for_status()
             raw = response.json().get("response", "")
@@ -127,6 +128,7 @@ class LLMImageAnalyzer(BaseAnalyzer):
                 confidence=llm_confidence,
                 verdict=verdict,
                 evidence={
+                    "model": vision_model,
                     "llm_verdict": llm_verdict,
                     "reasoning": reasoning,
                     **({"note": NO_DEFECT_NOTE} if llm_verdict == "human_photo" else {}),

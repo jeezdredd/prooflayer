@@ -182,7 +182,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
-OLLAMA_VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "llava:7b")
+OLLAMA_VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:3b")
 TINEYE_API_KEY = os.environ.get("TINEYE_API_KEY", "")
 GOOGLE_VISION_KEY = os.environ.get("GOOGLE_VISION_KEY", "")
 GOOGLE_FACT_CHECK_KEY = os.environ.get("GOOGLE_FACT_CHECK_KEY", "")

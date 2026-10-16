@@ -65,7 +65,7 @@ Measured changes are recorded in [`wiki/concepts/tribunal.md`](wiki/concepts/tri
 | `ai_detector` | 1.0 | Two image classifiers behind a screenshot / diagram gate |
 | `metadata` | 1.5 | EXIF / XMP, generation parameters, C2PA Content Credentials |
 | `ela` | 0.75 | Error Level Analysis, manipulation channel only |
-| `llm_vision` | 1.5 | Vision model that must name a concrete defect, otherwise abstains |
+| `llm_vision` | 1.5 | Qwen2.5-VL 3B on our GPU (about 4 s per image); must name a concrete defect, otherwise abstains |
 | `video_frame` | 2.0 | Frames across the whole clip, median verdict |
 | `audio_spectrogram` | 2.0 | Spectral features of synthetic voices |
 | `text_classifier` | 2.5 | multilingual-e5-small fine-tuned on human essays, pre-2022 Wikipedia, current model output and humanizer rewrites; per-language calibration, per-passage scores; can flag, never convict alone |
@@ -171,7 +171,7 @@ flowchart TB
     R --> W[Celery workers<br/>default · ml · reports]
     W --> PG
     W --> S3
-    W --> OL[Ollama<br/>Qwen2.5-VL 7B · Qwen2.5 3B]
+    W --> OL[Ollama on GPU, Vulkan<br/>Qwen2.5-VL 3B · Qwen2.5 3B]
     W --> SX[SearXNG]
     API -. WebSocket .-> SPA
 ```
@@ -191,9 +191,9 @@ flowchart TB
 | Frontend | React 18, TypeScript 5, Vite 6, React Router 7, Tailwind CSS 3, TanStack Query 5, Zustand 5, Motion, Three.js |
 | Backend | Python 3.12, Django 5.1, Django REST Framework, SimpleJWT, Celery 5.4, Django Channels + Daphne, WeasyPrint, Unfold admin |
 | Data | PostgreSQL 16 + pgvector, Redis 7.4, MinIO |
-| ML | PyTorch, Transformers, Community Forensics ViT, CLIP ViT-B/32, multilingual-e5-small, Ollama (Qwen2.5-VL 7B, Qwen2.5 3B), spaCy, librosa, OpenCV |
+| ML | PyTorch, Transformers, Community Forensics ViT, CLIP ViT-B/32, multilingual-e5-small, Ollama (Qwen2.5-VL 3B, Qwen2.5 3B), spaCy, librosa, OpenCV |
 | Search and text | SearXNG, Trafilatura, pypdf, python-docx, wordfreq |
-| Infrastructure | Docker Compose, Caddy, Cloudflare, Tailscale, AMD ROCm, Paddle, Resend, Sentry |
+| Infrastructure | Docker Compose, Caddy, Cloudflare, Tailscale, Vulkan on AMD RX 6700S, Paddle, Resend, Sentry |
 
 The full list with links is on the [Stack page](https://prooflayer.cloud/stack).
 
@@ -229,7 +229,7 @@ The first start pulls the Ollama models; wait for `ollama_init` to finish before
 | `AWS_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | | MinIO / S3 storage |
 | `OLLAMA_URL` | `http://ollama:11434` | Language model server |
 | `OLLAMA_MODEL` | `qwen2.5:3b` | Fact-check and assignment shadow |
-| `OLLAMA_VISION_MODEL` | `qwen2.5vl:7b` (compose) | Vision member |
+| `OLLAMA_VISION_MODEL` | `qwen2.5vl:3b` | Vision member, about 4 s per image on the GPU |
 | `SEARXNG_URL`, `PLAGIARISM_SEARCH_PROVIDERS` | `searxng,brave,ddg` | Web search for originality |
 | `RETRAIN_MIN_NEW_SAMPLES` | `50` | New examples needed before a weekly retrain |
 | `RESEND_API_KEY` | | Transactional email |

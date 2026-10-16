@@ -4,7 +4,7 @@
 #  - Backend runs gunicorn, not Django dev server
 #  - settings.prod
 #  - Frontend served as built static via nginx (Dockerfile target=prod)
-#  - Ollama uses ROCm image (RX 6700S GPU)
+#  - Ollama runs on the RX 6700S through Vulkan (pinned image, see deploy/README.md)
 #  - Restart policy unless-stopped
 #  - Caddy sits outside compose on host, reverse-proxies to 127.0.0.1:<host_port>
 
@@ -68,7 +68,7 @@ services:
       - PLAGIARISM_SEARCH_PROVIDERS=${PLAGIARISM_SEARCH_PROVIDERS:-searxng,brave,ddg}
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
-      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:7b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}
       - HF_TOKEN=${HF_TOKEN:-}
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
@@ -124,7 +124,7 @@ services:
       - PLAGIARISM_SEARCH_PROVIDERS=${PLAGIARISM_SEARCH_PROVIDERS:-searxng,brave,ddg}
       - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:3b}
-      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:7b}
+      - OLLAMA_VISION_MODEL=${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}
       - HF_TOKEN=${HF_TOKEN:-}
       - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
       - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
@@ -211,19 +211,18 @@ services:
       - SEARXNG_SECRET=${SEARXNG_SECRET:-change-me-searxng-secret}
 
   ollama:
-    image: ${OLLAMA_IMAGE:-ollama/ollama}
+    image: ollama/ollama:0.40.3
     restart: unless-stopped
     volumes:
       - ollama_data:/root/.ollama
     devices:
-      - /dev/kfd
       - /dev/dri
     environment:
       - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-1}
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
       - OLLAMA_CONTEXT_LENGTH=${OLLAMA_CONTEXT_LENGTH:-4096}
-      - HSA_OVERRIDE_GFX_VERSION=${HSA_OVERRIDE_GFX_VERSION:-10.3.0}
-      - ROCR_VISIBLE_DEVICES=${OLLAMA_ROCR_DEVICES:-0}
+      - OLLAMA_VULKAN=1
+      - GGML_VK_VISIBLE_DEVICES=${OLLAMA_VK_DEVICES:-0}
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 15s
@@ -232,7 +231,7 @@ services:
       start_period: 30s
 
   ollama_init:
-    image: ${OLLAMA_IMAGE:-ollama/ollama}
+    image: ollama/ollama:0.40.3
     depends_on:
       ollama:
         condition: service_healthy
@@ -242,7 +241,7 @@ services:
     entrypoint:
       - /bin/sh
       - -c
-      - "ollama pull ${OLLAMA_MODEL:-qwen2.5:3b} && ollama pull ${OLLAMA_VISION_MODEL:-qwen2.5vl:7b}"
+      - "ollama pull ${OLLAMA_MODEL:-qwen2.5:3b} && ollama pull ${OLLAMA_VISION_MODEL:-qwen2.5vl:3b}"
     volumes:
       - ollama_data:/root/.ollama
 
