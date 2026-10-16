@@ -7,6 +7,12 @@ created: 2026-05-14
 
 Local LLM inference server. Hosts text + vision models. Called via HTTP from celery workers.
 
+**2026-10-16:** runs on the RX 6700S through **Vulkan**, image pinned to `ollama/ollama:0.40.3` (ROCm broke
+after ~100 calls). `ollama_init` pulls `qwen2.5:3b` (text) and `qwen2.5vl:7b` (vision judge, 6.3 s per
+image, 5.0 GiB). Both fit the 8 GiB card one at a time (`OLLAMA_MAX_LOADED_MODELS=1`). A GPU guard
+systemd unit sets the fan curve and pauses Ollama when the card runs hot. See [[analyzers/llm-vision]].
+The YAML below is the original CPU setup.
+
 ## Container
 
 ```yaml

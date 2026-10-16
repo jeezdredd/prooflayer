@@ -28,7 +28,6 @@ DELETE /api/v1/content/submissions/{id}/                 (if allowed)
 POST   /api/v1/content/submissions/{id}/override/        staff VerdictOverride
 GET    /api/v1/content/submissions/{id}/report.pdf       PDF export (reports app)
 GET    /api/v1/content/submissions/{id}/status/          AllowAny, returns {id, status, final_verdict, final_score}
-GET    /api/v1/content/widget/embed/{sha256}/            public widget JSON
 POST   /api/v1/content/analyze-url/                      {url} -> {submission_id}, anonymous quota enforced
 GET    /api/v1/content/feed/                             public feed
 GET    /api/v1/content/feed/{id}/                        public submission detail

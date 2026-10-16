@@ -72,6 +72,7 @@ Forensic content verification SaaS. Submit image/video/audio/text -> 10 analyzer
 - [[frontend/auth-flow]] - JWT in zustand + localStorage
 - [[frontend/shader-bg]] - paper-design MeshGradient w/ kickoff anim
 - [[frontend/sidebar-layout]] - 240px left nav
+- [[frontend/ui-motion]] - hero blur-in + scanner, pricing beam, upload scan + live analyzer checklist, searching orb, card style
 
 ## Infrastructure
 

@@ -24,7 +24,6 @@ created: 2026-05-14
 | `/factcheck` | `FactCheckPage` | Paste text -> spaCy NER + LLM -> Google Fact Check Tools lookup per claim |
 | `/community-fakes` | `CommunityFakesPage` | Shared known-fake list |
 | `/compare` | `ComparePage` | Pick two submissions -> side-by-side scores + analyzer breakdown |
-| `/embed` | `EmbedPage` | Generate `<script>` widget snippet with SHA-256, live preview |
 | `/review` | `ReviewQueuePage` | Staff only (`user.is_staff`). Override `needs_review` / `inconclusive` submissions |
 | `/status` | `StatusPage` | Live service health probes -> [[api/system-status]] |
 | `/results/:id` | `ResultPage` | Per-submission view: verdict + analyzer timeline + evidence + similar submissions + community votes |

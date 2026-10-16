@@ -134,6 +134,20 @@ objection. Refused with 403 `code: student_account`: uploads without a class, an
 fact-check, the public feed, crowd votes, toggle-public and re-analyze. The main app sends a student to
 the Classroom app (keeping `/results/<id>`), and the result page hides publish, re-run and voting.
 
+## Teacher uploads for a student (2026-10-16)
+
+`POST /content/submissions/` and `/content/batches/` take `student=<user id>` when the uploader
+supervises the class (owner or school admin). The submission belongs to the student, so history, style
+drift and roster counts work as if the student handed it in; `Submission.uploaded_by` (migration
+content 0019) records the teacher and the class list shows it. Use case: work handed in on paper or by
+email. Teacher view has a Check work button and a per-student shortcut.
+
+## Status pulse (2026-10-16)
+
+Classroom header shows eight service ticks and a one-line state; a click opens a card grouped for
+teachers (checking work, files and reports, sign-in and email) with the Tribunal version. Non-student
+accounts get a "← ProofLayer" link back to the main dashboard.
+
 ## Demo data (2026-10-14)
 
 `manage.py seed_demo [--reset] [--no-wait]` reads `classroom/demo/demo_data.json`: Лицей №12 (8А,

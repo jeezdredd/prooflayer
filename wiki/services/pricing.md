@@ -8,15 +8,17 @@ source: backend/billing/plans.py, backend/billing/views.py, frontend/src/pages/P
 
 One catalog, `billing/plans.py:PLANS`. `Subscription` flags and limits, the API-key rate,
 Classroom seat and school limits, the `/billing/plans/` endpoint and the pricing page all read it.
-Yearly = 10 x monthly (two months free).
+Yearly is about 17% off and is shown per month with the struck-through monthly-billing total (2026-10-16).
 
 | plan (tier value) | month | year | checks / mo | API / min / key | classroom | teachers |
 |---|---|---|---|---|---|---|
 | Free (`free`) | 0 | 0 | 50 | none | no | - |
-| Pro (`pro`) | $12 | $120 | 500 | 120 | no | - |
-| School (`education`) | $250 | $2 500 | 3 000 | 120 | 1 address | 30 |
-| University (`university`) | $500 | $5 000 | 15 000 | 300 | 10 addresses (faculties) | 250 |
+| Pro (`pro`) | $11.99 | $9.99 / mo | 500 | 120 | no | - |
+| School (`education`) | $249.99 | $207.99 / mo | 3 000 | 120 | 1 address | 30 |
+| University (`university`) | $499.99 | $415.99 / mo | 15 000 | 300 | 10 addresses (faculties) | 250 |
 | Enterprise (`enterprise`) | contact sales | - | 50 000 default | 600 | no | - |
+
+2026-10-16: charm prices (.99), cents in small superscript on the page. The embed widget is gone from every plan.
 
 2026-10-13: owner raised School to $250 and University to $500 (first draft was $49 / $149) and
 made Enterprise sales-led (`monthly_usd=None`, `self_serve=False`, page shows "Custom" and

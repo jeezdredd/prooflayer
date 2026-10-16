@@ -2,6 +2,52 @@
 
 Newest at top.
 
+## [2026-10-16] ui | Motion effects, live analyzer checklist, lighter card style
+
+- Source: f306ec3 (index.css, SearchingOrb, TaskSteps, UploadProgress, AnalyzerTimeline, Landing/Pricing/Upload/FactCheck pages), effects modelled on 21st.dev picks and built in-house
+- Pages created: [[frontend/ui-motion]]
+- Pages updated: [[hot]]
+
+## [2026-10-16] text-humanizers | Humanizer benchmark data, adversarial paraphrase attack, eval script
+
+- Source: f5a67cf (build_text_train `_humanizers` source, scripts/adversarial_paraphrase.py), scripts/eval_humanizers.py
+- Pages updated: [[concepts/text-signals]]
+
+## [2026-10-16] copy-landing | Plain-language landing and app copy, embed widget removed
+
+- Source: 3dc0890, 29596ea, 371a05f, d20d1f7, c0c2693, 7d2d0c8, e7586c3, 2c7d861, b2d0559 (roadmap October refresh, api migrations 0009-0011)
+- Pages updated: [[api/endpoints]], [[frontend/routes]], [[services/auth-email]], [[services/pricing]]
+
+## [2026-10-16] pricing | Charm prices, yearly shown per month
+
+- Source: 0e0fc69 (billing/plans.py, PricingPage)
+- Pages updated: [[services/pricing]]
+
+## [2026-10-16] classroom | Teacher uploads for a student, status pulse
+
+- Source: c50a380 (Submission.uploaded_by, content 0019, `student=` on submissions/batches), 5ba2733 (StatusPulse)
+- Pages updated: [[services/classroom]]
+
+## [2026-10-16] tribunal-1.7 | AI traces: Content Credentials, generator watermarks, trace hiding
+
+- Source: 10d3b6b (content_credentials, watermarks, metadata 1.7.0, provenance_proof rule), f31de63 (text_evasion 1.1.0, metadata 1.8.0)
+- Pages updated: [[concepts/tribunal]], [[concepts/text-signals]]
+
+## [2026-10-16] cache | Verdict cache keyed on Tribunal revision
+
+- Source: a59770c (Submission.tribunal_revision), 44dbb32 (eval JSON keeps member evidence)
+- Pages updated: [[concepts/submission-pipeline]]
+
+## [2026-10-16] vision-gpu | Vision judge on the GPU via Vulkan, qwen2.5vl:7b
+
+- Source: 9d087af, 94702fa, a3dc725 (compose.prod.yml, llm_vision 1.3.0, GPU guard unit)
+- Pages updated: [[analyzers/llm-vision]], [[services/ollama]]
+
+## [2026-10-15] reports-text | PDF reports redesign, highlighted passages, Russian roadmap, CI
+
+- Source: c6bb29c, c6e25e1, 9a0890f, 8b64b4d, b6fcb7b
+- Pages updated: none at the time (backfilled here)
+
 ## [2026-10-14] tribunal-1.6 | Attack-robust text classifier v4, classroom signals, student accounts
 
 - Source: train_text_classifier v4, noise eval v3 vs v4, classroom radar/shadow, student access rules

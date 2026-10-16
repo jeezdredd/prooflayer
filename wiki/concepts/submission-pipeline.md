@@ -80,3 +80,11 @@ Optional follow-ups (not blocking pipeline):
 - Worker SIGKILL during HF model load -> [[fixes/oom-sigkill]]
 - Frame analyzer all-inconclusive -> photo_check false-negative on AI video, fixed by [[concepts/skip-photo-check]]
 - Organika HF model unable to load -> dropped, see [[fixes/organika-broken]]
+
+## Verdict cache and Tribunal revision (2026-10-16)
+
+A re-upload of a file checked in the last 14 days clones the earlier member votes instead of re-running
+the bench. Before the fix it cloned them even after a detector changed (the vision model kept voting
+authentic on a ChatGPT image). `Submission.tribunal_revision` hashes the roster together with every
+member's code `version`; the cache only matches on the same revision and copies the stamp to the clone.
+Bumping any analyzer's `version` therefore invalidates the cache for new uploads.

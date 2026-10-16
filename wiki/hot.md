@@ -4,6 +4,10 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-16 (b): **UI motion + lighter cards** - hero word blur-in and scanner over "or by AI", beam on the Popular pricing card, image scan and a live analyzer checklist (real `expected_analyzers`) during upload, shimmer on loading labels, a dotted "searching" orb on originality and fact-check. Gold card trim, outlined badges and boxed timeline markers removed. See [[frontend/ui-motion]].
+
+- 2026-10-16 (a): **Tribunal 1.7, GPU vision, Classroom, pricing, copy** - Ollama on the RX 6700S via Vulkan with qwen2.5vl:7b; verdict cache keyed on `tribunal_revision`; AI traces from C2PA and SDXL/FLUX/SD watermarks plus trace-hiding reports (`text_evasion` 1.1.0, metadata 1.8.0); teachers upload work for a student (`uploaded_by`); prices 11.99 / 249.99 / 499.99; embed widget removed; landing asks "Made by a person, or by AI?". Humanizer data and an adversarial paraphrase attack feed the next text model (t5b/t6). See [[log]].
+
 - 2026-10-13 (k): **Age-based access, terms gate, objections** - not an 18+ service; optional self-declared 18+ decides access to sensitive public material and publishing; one-click terms gate for everyone on a new `TERMS_VERSION`; art. 19-1 objections with 3-business-day answers; school opt-in for web search. Prod worker root cause: spaCy model 3.7.1 downgraded numpy under SciPy, fixed in Dockerfile with a build-time ML check. See [[concepts/privacy-and-data]].
 
 - 2026-10-13 (j): **Privacy and legal pages** - retention job (personal files 90 days), self-service account and school deletion, opt-in training corpus separate from uploads (retrainer unaffected by deletions), repository = class work only, class work never public, deletion blocked while a paid subscription runs. Terms / Privacy / Refund rewritten and a Data Processing page for schools added, every claim checked against code by reviewer agents. Also: worker crash-loop fix (guarded transformers import), aggregator no longer says authentic on metadata alone, landing claims fixed (no "4s", no "free beta", not "open source"). See [[concepts/privacy-and-data]].

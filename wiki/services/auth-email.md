@@ -76,12 +76,12 @@ Gated endpoints (require `is_verified=True`, return 403 otherwise):
 - `POST /api/v1/crowdsource/vote/` - `VoteCreateView`
 - `POST /api/v1/reports/` - `ReportCreateView`
 
-Read endpoints (`/auth/me`, list/retrieve submissions, status, embed widget) stay on `IsAuthenticated` / `AllowAny`.
+Read endpoints (`/auth/me`, list/retrieve submissions, status) stay on `IsAuthenticated` / `AllowAny`.
 
 Frontend `ProtectedRoute requireVerified`: wraps gated routes in `App.tsx`. Unverified user sees [[VerifyGate]] panel instead of `<Navigate>` redirect. Verified users hit page as normal.
 
 Wrapped: `/upload`, `/compare`, `/review`, `/factcheck`.
-Open to authed-but-unverified: `/dashboard`, `/community-fakes`, `/embed`, `/results/:id`, `/status`.
+Open to authed-but-unverified: `/dashboard`, `/community-fakes`, `/results/:id`, `/status`.
 
 ## Cookie-based refresh token (security)
 
