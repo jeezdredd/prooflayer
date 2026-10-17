@@ -81,7 +81,7 @@ class TestSkeletons:
 
 class TestLevelJumps:
     def _row(self, day, **fields):
-        return {"submission_id": f"w{day}", "student": "kid", "created_at": timezone.now() + timedelta(days=day), **fields}
+        return {"submission_id": f"w{day}", "student": "kid", "filename": f"w{day}.txt", "created_at": timezone.now() + timedelta(days=day), **fields}
 
     def test_readability_and_ai_jump(self):
         rows = [
@@ -92,7 +92,8 @@ class TestLevelJumps:
         ]
         jumps = level_jumps({1: rows})
         assert len(jumps) == 1 and jumps[0]["submission_id"] == "w3"
-        assert len(jumps[0]["reasons"]) == 2
+        assert jumps[0]["reasons"] == [{"kind": "readability", "now": "senior", "before": "middle"}, {"kind": "ai"}]
+        assert jumps[0]["filename"] == "w3.txt"
 
     def test_needs_three_earlier_works(self):
         rows = [self._row(0, readability_grade=5), self._row(1, readability_grade=5), self._row(2, readability_grade=11)]

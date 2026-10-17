@@ -1,5 +1,18 @@
 [
   {
+    "slug": "class-page-plain-language",
+    "date": "2026-10-17",
+    "kind": "improvement",
+    "title": {
+      "en": "The class page explains itself",
+      "ru": "Страница класса объясняет сама себя"
+    },
+    "body": {
+      "en": "Teachers without a technical background asked what the class radar meant: lists of names with a percentage, and a \"grade 20\" reading level. The radar now shows groups of similar works with the work name, the student and the date, says in plain words what matched and why it matters, and describes a sudden jump in level as \"reads like university writing, earlier work read like grades 5-9\". Every work in the class list now carries short labels naming what its checks found: chatbot text, hidden text in the file, disguised letters, copied share, an AI answer to the assignment, vocabulary above age, a damaged AI watermark. Answered objections stay visible next to open ones. Similar-work detection also became stricter, so two essays on the same topic no longer count as one source.",
+      "ru": "Учителя без технического образования спрашивали, что значит радар класса: списки имён с процентом и «уровень 20 класса». Теперь радар показывает группы похожих работ с названием работы, учеником и датой, простыми словами объясняет, что совпало и почему это важно, а резкий скачок уровня описывает как «читается как текст уровня вуза, прежние работы были уровня 5–9 класса». У каждой работы в списке класса появились короткие метки, что нашли проверки: текст чат-бота, скрытый текст в файле, замаскированные буквы, доля списанного, повтор ИИ-ответа на задание, слова не по возрасту, повреждённый водяной знак ИИ. Отвеченные возражения остаются видны рядом с открытыми. Поиск похожих работ стал строже: два сочинения на одну тему больше не считаются одним источником."
+    }
+  },
+  {
     "slug": "originality-wikipedia",
     "date": "2026-10-16",
     "kind": "fix",

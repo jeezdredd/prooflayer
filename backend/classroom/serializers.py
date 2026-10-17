@@ -4,6 +4,39 @@ from .access import can_supervise
 from .models import Classroom, Membership, ShadowSet
 from .shadow import MAX_TARGET
 
+FLAGGED = {"fake", "likely_fake", "suspicious"}
+FLAG_ORDER = ["ai_text", "ai_trace", "trace_hidden", "ai_image", "hidden_text", "tricks", "shadow", "copy", "sources", "age", "style"]
+TEXT_FLAGS = {
+    "text_classifier": "ai_text",
+    "text_grade_fit": "age",
+    "text_style": "style",
+    "text_citations": "sources",
+    "text_shadow": "shadow",
+}
+
+
+def submission_flags(obj) -> list[str]:
+    flags = []
+    is_image = obj.mime_type.startswith("image/")
+    for result in obj.analysis_results.all():
+        name = result.analyzer.name
+        evidence = result.evidence if isinstance(result.evidence, dict) else {}
+        if name == "text_evasion" and result.verdict in FLAGGED:
+            flags.append("hidden_text" if evidence.get("hidden_characters") else "tricks")
+        elif name in TEXT_FLAGS and result.verdict in FLAGGED:
+            flags.append(TEXT_FLAGS[name])
+        elif name == "metadata":
+            if evidence.get("evasion"):
+                flags.append("trace_hidden")
+            elif evidence.get("ai_trace"):
+                flags.append("ai_trace")
+    report = getattr(obj, "plagiarism_report", None)
+    if report is not None and report.status == "done" and report.originality is not None and report.originality < 85:
+        flags.append("copy")
+    if is_image and obj.final_verdict in FLAGGED and "ai_trace" not in flags and "trace_hidden" not in flags:
+        flags.append("ai_image")
+    return sorted(flags, key=FLAG_ORDER.index)
+
 
 class ClassroomSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
@@ -67,6 +100,10 @@ class ClassSubmissionSerializer(serializers.Serializer):
     uploaded_by = serializers.CharField(source="uploaded_by.username", default=None)
     words = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
+    flags = serializers.SerializerMethodField()
+
+    def get_flags(self, obj):
+        return submission_flags(obj) if obj.status == "completed" else []
 
     def get_originality(self, obj):
         report = getattr(obj, "plagiarism_report", None)

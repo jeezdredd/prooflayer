@@ -8,10 +8,10 @@ from analyzers.models import AnalysisResult
 from content.models import Submission
 from plagiarism.models import SentenceVector
 
-ALIGN_SIMILARITY = 0.88
+ALIGN_SIMILARITY = 0.92
 MIN_SENTENCES = 4
-MIN_SHARE = 0.35
-STRONG_SHARE = 0.5
+MIN_SHARE = 0.6
+STRONG_SHARE = 0.7
 MIN_IN_ORDER = 0.6
 OUTLIER_Z = 2.5
 MIN_PAIRS_FOR_STATS = 6
@@ -22,6 +22,7 @@ AI_JUMP_BASE = 0.3
 MIN_HISTORY = 3
 MIN_CLASS_WORKS = 5
 MIN_CLASS_STUDENTS = 4
+READABILITY_BANDS = ((4, "primary"), (9, "middle"), (11, "senior"))
 
 
 @dataclass
@@ -30,6 +31,15 @@ class Doc:
     student_id: int
     student: str
     vectors: np.ndarray
+    filename: str = ""
+    created_at: str = ""
+
+
+def readability_band(grade: float) -> str:
+    for top, band in READABILITY_BANDS:
+        if grade <= top:
+            return band
+    return "university"
 
 
 def alignment(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:
@@ -62,8 +72,8 @@ def shared_skeletons(docs: list[Doc]) -> list[dict]:
     for a, b, share, in_order in scored:
         if share >= bar and in_order >= MIN_IN_ORDER:
             pairs.append({
-                "a": {"submission_id": a.submission_id, "student": a.student},
-                "b": {"submission_id": b.submission_id, "student": b.student},
+                "a": {"submission_id": a.submission_id, "student": a.student, "filename": a.filename, "created_at": a.created_at},
+                "b": {"submission_id": b.submission_id, "student": b.student, "filename": b.filename, "created_at": b.created_at},
                 "aligned_share": round(share, 3),
                 "in_order": round(in_order, 3),
             })
@@ -101,16 +111,17 @@ def level_jumps(history: dict[int, list[dict]]) -> list[dict]:
             reasons = []
             grades = [r["readability_grade"] for r in prior if r.get("readability_grade") is not None]
             if row.get("readability_grade") is not None and grades and row["readability_grade"] - median(grades) >= READABILITY_JUMP:
-                reasons.append(f"reads at grade {row['readability_grade']:.0f}, earlier work at about {median(grades):.0f}")
+                reasons.append({"kind": "readability", "now": readability_band(row["readability_grade"]), "before": readability_band(median(grades))})
             probs = [r["ai_probability"] for r in prior if r.get("ai_probability") is not None]
             if row.get("ai_probability") is not None and probs and row["ai_probability"] >= AI_JUMP_HIGH and median(probs) <= AI_JUMP_BASE:
-                reasons.append("machine-writing score jumped from this student's usual range")
+                reasons.append({"kind": "ai"})
             if row.get("style_flag"):
-                reasons.append("style differs sharply from this student's earlier work")
+                reasons.append({"kind": "style"})
             if reasons:
                 jumps.append({
                     "submission_id": row["submission_id"],
                     "student": row["student"],
+                    "filename": row["filename"],
                     "created_at": row["created_at"].isoformat(),
                     "reasons": reasons,
                 })
@@ -130,7 +141,7 @@ def _docs(submissions: list[Submission]) -> list[Doc]:
     for s in submissions:
         vectors = by_submission.get(s.id, [])
         if len(vectors) >= MIN_SENTENCES:
-            docs.append(Doc(str(s.id), s.user_id, s.user.username, np.vstack(vectors)))
+            docs.append(Doc(str(s.id), s.user_id, s.user.username, np.vstack(vectors), s.original_filename, s.created_at.isoformat()))
     return docs
 
 
@@ -153,6 +164,7 @@ def _history(submissions: list[Submission]) -> dict[int, list[dict]]:
             history[s.user_id].append({
                 "submission_id": str(s.id),
                 "student": s.user.username,
+                "filename": s.original_filename,
                 "created_at": s.created_at,
                 **evidence[s.id],
             })

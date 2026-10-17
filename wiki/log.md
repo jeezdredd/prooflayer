@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-17] class-page-plain | Class page in plain language; 9Б demo class filled; radar stricter
+
+- Source: owner review of the demo as a non-technical teacher (radar "grade 20", nameless cluster lists, 9Б empty), local alignment measurements on demo essays, t7 scores on the 9Б texts
+- Pages updated: [[services/classroom]], [[hot]]
+
 ## [2026-10-17] originality-web | Web search was blocked; Wikipedia full-text search added
 
 - Source: prod SearXNG unresponsive_engines, local repro on the demo Wikipedia paste, plagiarism/search.py

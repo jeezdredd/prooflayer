@@ -8,6 +8,8 @@ from django.urls import reverse
 from PIL import Image
 from rest_framework.test import APIClient
 
+from analyzers.models import AnalysisResult
+from analyzers.tests.factories import AnalysisResultFactory, AnalyzerConfigFactory
 from billing.models import Subscription, get_or_create_subscription, uploads_this_month
 from billing.plans import PLANS
 from classroom.models import JOIN_CODE_LENGTH, Classroom, Membership
@@ -184,6 +186,23 @@ class TestVisibility:
         assert client.get(reverse("submission-detail", kwargs={"id": private_sub.id})).status_code == 404
         listed = client.get(reverse("classroom-submissions", kwargs={"id": classroom.id})).data
         assert [row["id"] for row in listed] == [str(class_sub.id)]
+
+    def test_class_list_names_the_checks_that_fired(self):
+        teacher, classroom, student = _class_with_student()
+        sub = SubmissionFactory(user=student, classroom=classroom, status=Submission.Status.COMPLETED, final_verdict="suspicious", mime_type="text/plain")
+        AnalysisResultFactory(
+            submission=sub, analyzer=AnalyzerConfigFactory(name="text_evasion"), verdict=AnalysisResult.Verdict.FAKE, confidence=0.9,
+            evidence={"hidden_characters": 120},
+        )
+        AnalysisResultFactory(
+            submission=sub, analyzer=AnalyzerConfigFactory(name="text_classifier"), verdict=AnalysisResult.Verdict.SUSPICIOUS, confidence=0.8,
+            evidence={"ai_probability": 0.81},
+        )
+        AnalysisResultFactory(
+            submission=sub, analyzer=AnalyzerConfigFactory(name="text_style"), verdict=AnalysisResult.Verdict.AUTHENTIC, confidence=0.5, evidence={},
+        )
+        rows = _client(teacher).get(reverse("classroom-submissions", kwargs={"id": classroom.id})).data
+        assert rows[0]["flags"] == ["ai_text", "hidden_text"]
 
     def test_teacher_dashboard_list_excludes_student_work(self):
         teacher, classroom, student = _class_with_student()

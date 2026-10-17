@@ -381,11 +381,14 @@ export interface ClassSubmission {
   uploaded_by: string | null;
   words: number | null;
   originality: number | null;
+  flags: string[];
 }
 
 export interface RadarRef {
   submission_id: string;
   student: string;
+  filename: string;
+  created_at: string;
 }
 
 export interface ShadowSet {
@@ -410,7 +413,13 @@ export interface ClassRadar {
   jump_history_needed: number;
   shared_skeletons: { a: RadarRef; b: RadarRef; aligned_share: number; in_order: number }[];
   clusters: string[][];
-  level_jumps: { submission_id: string; student: string; created_at: string; reasons: string[] }[];
+  level_jumps: {
+    submission_id: string;
+    student: string;
+    filename: string;
+    created_at: string;
+    reasons: ({ kind: "readability"; now: string; before: string } | { kind: "ai" } | { kind: "style" })[];
+  }[];
 }
 
 export interface ClassStats {

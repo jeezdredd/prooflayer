@@ -3,12 +3,40 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download, FileCheck, RefreshCw, UserMinus, Archive } from "lucide-react";
 import { classrooms, objections } from "../api/endpoints";
-import type { ClassSubmission, VerdictObjection } from "../types";
+import type { ClassSubmission, RadarRef, VerdictObjection } from "../types";
 import { toast } from "../components/ui/Toast";
 import { levelOptions } from "../classroom/shared";
 import { locale, msg, t, tn } from "../i18n";
 import { VERDICT_DISCLAIMER } from "../legal";
 import { PLAIN_VERDICT, STATUS_TEXT } from "../components/TeacherSummary";
+
+const FLAG_TEXT: Record<string, string> = {
+  ai_text: msg("chatbot text"),
+  ai_trace: msg("AI generator trace"),
+  trace_hidden: msg("AI trace damaged"),
+  ai_image: msg("looks AI-generated"),
+  hidden_text: msg("hidden text in file"),
+  tricks: msg("disguised letters"),
+  shadow: msg("follows an AI answer"),
+  copy: msg("copied {n}%"),
+  sources: msg("invented sources"),
+  age: msg("vocabulary above age"),
+  style: msg("unlike own earlier work"),
+};
+const STRONG_FLAGS = new Set(["ai_text", "ai_trace", "trace_hidden", "ai_image", "hidden_text", "tricks", "shadow", "sources"]);
+const BAND_TEXT: Record<string, string> = {
+  primary: msg("primary school"),
+  middle: msg("grades 5-9"),
+  senior: msg("grades 10-11"),
+  university: msg("university"),
+};
+const DECISION_TEXT: Record<string, string> = { upheld: msg("verdict upheld"), changed: msg("verdict changed") };
+
+function flagChip(flag: string, originality: number | null) {
+  const text = flag === "copy" ? t(FLAG_TEXT.copy, { n: 100 - Math.round(originality ?? 100) }) : t(FLAG_TEXT[flag] ?? flag);
+  const tone = STRONG_FLAGS.has(flag) ? "border-signal-blood/50 text-signal-blood" : "border-signal-amber/50 text-signal-amber";
+  return <span key={flag} className={`inline-block border px-1.5 py-0.5 text-[10px] leading-tight ${tone}`}>{text}</span>;
+}
 
 const BTN = "flex items-center gap-1.5 border border-[var(--line-strong)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300 hover:text-signal-amber";
 
@@ -16,6 +44,12 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
   if (rows.length === 0) return <p className="text-sm text-ink-500 py-4">{t("Nothing submitted yet.")}</p>;
   return (
     <div className="divide-y divide-[var(--line-strong)]">
+      <div className="hidden md:grid md:grid-cols-12 gap-3 pb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-600">
+        {showStudent && <span className="md:col-span-2">{t("Student")}</span>}
+        <span className={showStudent ? "md:col-span-5" : "md:col-span-7"}>{t("Work and what the checks found")}</span>
+        <span className="md:col-span-2">{t("Size")}</span>
+        <span className="md:col-span-3">{t("Result")}</span>
+      </div>
       {rows.map((s) => (
         <Link key={s.id} to={`/results/${s.id}`} state={{ supervising: showStudent }}
           className="grid grid-cols-[1fr_auto] md:grid-cols-12 gap-3 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
@@ -25,21 +59,30 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
               {s.uploaded_by && <span className="block font-mono text-[10px] text-ink-600 truncate">{t("uploaded by {name}", { name: s.uploaded_by })}</span>}
             </span>
           )}
-          <span className={`${showStudent ? "md:col-span-5" : "md:col-span-7"} text-ink-50 truncate`}>{s.original_filename}</span>
+          <span className={`${showStudent ? "md:col-span-5" : "md:col-span-7"} min-w-0`}>
+            <span className="block text-ink-50 truncate">{s.original_filename}</span>
+            {s.status === "completed" && (
+              <span className="flex flex-wrap gap-1 mt-1">
+                {s.flags.length > 0
+                  ? s.flags.map((f) => flagChip(f, s.originality))
+                  : <span className="text-[10px] text-signal-sage">{t("no check raised a concern")}</span>}
+              </span>
+            )}
+          </span>
           <span className="md:col-span-2 font-mono text-[11px] text-ink-500 hidden md:block">
             {s.words != null ? tn(s.words, "{n} word", "{n} words") : t(s.mime_type.split("/")[0])}
             {s.originality != null && <span className={s.originality < 60 ? "text-signal-blood" : s.originality < 85 ? "text-signal-amber" : "text-signal-sage"}> · {t("{n}% original", { n: Math.round(s.originality) })}</span>}
           </span>
-          <span className="md:col-span-2 flex flex-col">
+          <span className="md:col-span-3 flex flex-col">
             <span className={`text-sm leading-snug ${PLAIN_VERDICT[s.final_verdict] ? STATUS_TEXT[PLAIN_VERDICT[s.final_verdict].status] : "text-ink-400"}`}>
               {s.status === "completed" ? (PLAIN_VERDICT[s.final_verdict] ? t(PLAIN_VERDICT[s.final_verdict].teacher) : "-") : t(s.status)}
             </span>
             {s.status === "completed" && s.final_verdict && (
-              <span className="text-[10px] leading-snug text-ink-600 mt-0.5">{t(VERDICT_DISCLAIMER)}</span>
+              <span className="text-[10px] leading-snug text-ink-600 mt-0.5">
+                {s.final_score != null && <span className="font-mono text-ink-500">{t("risk {n}%", { n: Math.round(s.final_score * 100) })} · </span>}
+                {t(VERDICT_DISCLAIMER)}
+              </span>
             )}
-          </span>
-          <span className="md:col-span-1 font-mono text-[11px] text-ink-400 text-right hidden md:block">
-            {s.final_score != null ? t("risk {n}%", { n: Math.round(s.final_score * 100) }) : ""}
           </span>
         </Link>
       ))}
@@ -54,12 +97,17 @@ const SHADOW_STATUS: Record<string, string> = {
   failed: msg("failed"),
 };
 
-const GRADE_JUMP = /^reads at grade (\d+), earlier work at about (\d+)$/;
+type JumpReason = { kind: "readability"; now: string; before: string } | { kind: "ai" } | { kind: "style" };
 
-function jumpReason(reason: string): string {
-  const m = GRADE_JUMP.exec(reason);
-  if (m) return t("reads at grade {now}, earlier work at about {before}", { now: m[1], before: m[2] });
-  return t(reason);
+function jumpReason(reason: JumpReason): { label: string; text: string } {
+  if (reason.kind === "readability") {
+    const text = reason.now === reason.before
+      ? t("sentences and words are much longer than in this student's earlier work")
+      : t("reads like {now} writing, earlier work read like {before}", { now: t(BAND_TEXT[reason.now]), before: t(BAND_TEXT[reason.before]) });
+    return { label: t("Text complexity"), text };
+  }
+  if (reason.kind === "ai") return { label: t("Chatbot text"), text: t("the classifier sees machine writing, this student's earlier work was ordinary") };
+  return { label: t("Style"), text: t("differs sharply from this student's earlier work") };
 }
 
 function ShadowPanel({ classId }: { classId: string }) {
@@ -129,56 +177,95 @@ function ShadowPanel({ classId }: { classId: string }) {
 function RadarPanel({ classId }: { classId: string }) {
   const { data: radar } = useQuery({ queryKey: ["classroom-radar", classId], queryFn: () => classrooms.radar(classId).then((r) => r.data) });
   if (!radar) return null;
-  const quiet = radar.skeleton_data.enough && radar.shared_skeletons.length === 0 && radar.level_jumps.length === 0;
-  const names = new Map<string, string>();
+  const refs = new Map<string, RadarRef>();
   radar.shared_skeletons.forEach((p) => {
-    names.set(p.a.submission_id, p.a.student);
-    names.set(p.b.submission_id, p.b.student);
+    refs.set(p.a.submission_id, p.a);
+    refs.set(p.b.submission_id, p.b);
   });
+  const date = (iso: string) => new Date(iso).toLocaleDateString(locale());
   return (
-    <section className="mb-8 border border-[var(--line-strong)] p-4">
-      <div className="flex items-baseline justify-between gap-3 mb-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{tn(radar.days, "Class radar · last {n} day", "Class radar · last {n} days")}</div>
-        <div className="font-mono text-[10px] text-ink-600">{tn(radar.submissions, "{n} work compared", "{n} works compared")}</div>
-      </div>
-      {quiet ? (
-        <p className="text-sm text-ink-400">{t("No shared skeletons and no sudden jumps. Patterns appear once a few works are in.")}</p>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-6 mt-2">
-          <div>
-            <div className="text-sm text-ink-100 mb-1">{t("Works built on the same skeleton")}</div>
-            <p className="text-xs text-ink-500 mb-2">{t("Most sentences have a close match in the other work, in the same order. Often one shared prompt or source.")}</p>
-            {!radar.skeleton_data.enough && (
-              <p className="text-xs text-ink-400">
-                {t("Not enough data yet: {works} of {needWorks} works from {students} of {needStudents} students. A class baseline is needed before any pair can stand out.", { works: radar.skeleton_data.works, needWorks: radar.skeleton_data.need_works, students: radar.skeleton_data.students, needStudents: radar.skeleton_data.need_students })}
-              </p>
-            )}
-            {radar.skeleton_data.enough && radar.clusters.length === 0 && <p className="text-xs text-ink-600">{t("None.")}</p>}
-            {radar.clusters.map((group) => (
-              <div key={group.join()} className="py-1.5 border-b border-[var(--line)] last:border-0 flex flex-wrap gap-x-3 gap-y-1">
-                {group.map((sid) => (
-                  <Link key={sid} to={`/results/${sid}`} state={{ supervising: true }} className="text-signal-amber hover:underline text-sm">{names.get(sid) ?? sid.slice(0, 8)}</Link>
-                ))}
-                <span className="font-mono text-[11px] text-ink-500">
-                  {Math.round(100 * Math.max(...radar.shared_skeletons.filter((p) => group.includes(p.a.submission_id)).map((p) => p.aligned_share)))}% {t("aligned")}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <div className="text-sm text-ink-100 mb-1">{t("Sudden jumps")}</div>
-            <p className="text-xs text-ink-500 mb-2">{t("A work far from the same student's earlier ones. Judged only after {n} earlier works, so a strong student is compared with their own level, not the class.", { n: radar.jump_history_needed })}</p>
-            {radar.level_jumps.length === 0 && <p className="text-xs text-ink-600">{t("None.")}</p>}
-            {radar.level_jumps.slice(0, 8).map((j) => (
-              <Link key={j.submission_id} to={`/results/${j.submission_id}`} state={{ supervising: true }} className="block py-1.5 border-b border-[var(--line)] last:border-0 hover:bg-ink-800/40">
-                <span className="text-sm text-ink-100">{j.student}</span>
-                <span className="font-mono text-[10px] text-ink-600 ml-2">{new Date(j.created_at).toLocaleDateString(locale())}</span>
-                <div className="text-xs text-signal-amber">{j.reasons.map(jumpReason).join("; ")}</div>
-              </Link>
-            ))}
-          </div>
+    <section className="mb-8 border border-[var(--line-strong)]">
+      <div className="px-4 py-3 border-b border-[var(--line-strong)]">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{tn(radar.days, "Class radar · last {n} day", "Class radar · last {n} days")}</div>
+          <div className="font-mono text-[10px] text-ink-600">{tn(radar.submissions, "{n} work compared", "{n} works compared")}</div>
         </div>
-      )}
+        <p className="text-sm text-ink-300 mt-1 max-w-3xl">{t("Two automatic observations across all work in this class. They are reasons to talk to a student, never proof.")}</p>
+      </div>
+      <div className="grid md:grid-cols-2 md:divide-x divide-y md:divide-y-0 divide-[var(--line-strong)]">
+        <div className="p-4">
+          <h3 className="text-base text-ink-50">{t("Similar works")}</h3>
+          <p className="text-xs text-ink-400 mt-1 mb-3">{t("Every work is compared with every other one sentence by sentence. When almost every sentence of one work has a near copy in another, in the same order, the two most likely share a source: one chatbot request, one article or one outline.")}</p>
+          {!radar.skeleton_data.enough && (
+            <p className="text-sm text-ink-400">
+              {t("Nothing to compare yet: at least {needWorks} works from {needStudents} students are needed. Now: {works} works from {students} students.", { works: radar.skeleton_data.works, needWorks: radar.skeleton_data.need_works, students: radar.skeleton_data.students, needStudents: radar.skeleton_data.need_students })}
+            </p>
+          )}
+          {radar.skeleton_data.enough && radar.clusters.length === 0 && <p className="text-sm text-signal-sage">{t("No similar works.")}</p>}
+          {radar.clusters.map((group, i) => {
+            const pairs = radar.shared_skeletons.filter((p) => group.includes(p.a.submission_id) && group.includes(p.b.submission_id));
+            return (
+              <div key={group.join()} className="border border-signal-amber/40 mb-3">
+                <div className="px-3 py-2 bg-signal-amber/5 text-xs text-signal-amber">
+                  {t("Group {i} · {n} works, most likely one source", { i: i + 1, n: group.length })}
+                </div>
+                <ul className="px-3 py-2 space-y-1">
+                  {group.map((sid) => {
+                    const ref = refs.get(sid);
+                    return (
+                      <li key={sid} className="text-sm">
+                        <Link to={`/results/${sid}`} state={{ supervising: true }} className="text-ink-50 hover:text-signal-amber hover:underline">{ref?.student ?? sid.slice(0, 8)}</Link>
+                        {ref?.filename && <span className="text-ink-400"> · {ref.filename}</span>}
+                        {ref?.created_at && <span className="font-mono text-[10px] text-ink-600 ml-2">{date(ref.created_at)}</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="px-3 py-2 border-t border-[var(--line)] text-xs text-ink-400 space-y-0.5">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-600">{t("What matched")}</div>
+                  {pairs.map((p) => (
+                    <div key={p.a.submission_id + p.b.submission_id}>
+                      {t("{a} and {b}: {share}% of sentences match, {order}", {
+                        a: p.a.student,
+                        b: p.b.student,
+                        share: Math.round(100 * p.aligned_share),
+                        order: p.in_order >= 0.9 ? t("same order") : t("mostly the same order"),
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          {radar.clusters.length > 0 && <p className="text-[11px] text-ink-600">{t("100% means every sentence of one work has a near copy in the other.")}</p>}
+        </div>
+        <div className="p-4">
+          <h3 className="text-base text-ink-50">{t("Sudden jump in level")}</h3>
+          <p className="text-xs text-ink-400 mt-1 mb-3">{t("Each new work is compared with the same student's earlier work (at least {n} pieces). A work lands here when it is suddenly written far above how this student wrote before, or when the classifier sees chatbot text where earlier work was ordinary. A strong student is compared with their own level, not with the class.", { n: radar.jump_history_needed })}</p>
+          {radar.level_jumps.length === 0 && <p className="text-sm text-signal-sage">{t("No jumps.")}</p>}
+          {radar.level_jumps.slice(0, 8).map((j) => (
+            <Link key={j.submission_id} to={`/results/${j.submission_id}`} state={{ supervising: true }} className="block border-l-2 border-signal-amber pl-3 py-2 mb-3 hover:bg-ink-800/40">
+              <div className="text-sm">
+                <span className="text-ink-50">{j.student}</span>
+                <span className="text-ink-400"> · {j.filename}</span>
+                <span className="font-mono text-[10px] text-ink-600 ml-2">{date(j.created_at)}</span>
+              </div>
+              <ul className="mt-1 space-y-0.5">
+                {j.reasons.map((r, k) => {
+                  const line = jumpReason(r);
+                  return (
+                    <li key={k} className="text-xs">
+                      <span className="text-ink-500">{line.label}: </span>
+                      <span className="text-signal-amber">{line.text}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Link>
+          ))}
+          {radar.level_jumps.length > 0 && <p className="text-[11px] text-ink-600">{t("Open the work and ask the student to explain a passage in their own words.")}</p>}
+        </div>
+      </div>
     </section>
   );
 }
@@ -189,36 +276,42 @@ function ObjectionRows({ classId }: { classId: string }) {
     queryFn: () => classrooms.submissions(classId).then((r) => r.data),
     refetchInterval: 60000,
   });
-  const { data: open = [] } = useQuery({
-    queryKey: ["objections", "open"],
-    queryFn: () => objections.list({ status: "open", page_size: 200 }).then((r) => r.data.results),
+  const { data: listed = [] } = useQuery({
+    queryKey: ["objections", "all"],
+    queryFn: () => objections.list({ page_size: 200 }).then((r) => r.data.results),
     refetchInterval: 60000,
   });
   const ids = new Set(all.map((s) => s.id));
-  const rows: VerdictObjection[] = open.filter((o) => ids.has(o.submission_id));
+  const rows: VerdictObjection[] = listed.filter((o) => ids.has(o.submission_id));
+  const open = rows.filter((o) => o.status === "open");
+  const answered = rows.filter((o) => o.status !== "open");
 
   return (
     <section className="mb-8">
-      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">
-        {t("Objections")} {rows.length > 0 && <span className="text-signal-amber">· {t("{n} open", { n: rows.length })}</span>}
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">
+        {t("Objections")} {open.length > 0 && <span className="text-signal-amber">· {t("{n} open", { n: open.length })}</span>}
       </div>
+      <p className="text-xs text-ink-400 mb-2 max-w-3xl">{t("A student can object to a verdict from the work page. The teacher answers within {n} business days: keeps the verdict or changes it.", { n: 3 })}</p>
       {rows.length === 0 ? (
-        <p className="text-sm text-ink-500">{t("No open objections.")}</p>
+        <p className="text-sm text-ink-500">{t("No objections in this class.")}</p>
       ) : (
         <div className="divide-y divide-[var(--line-strong)]">
-          {rows.map((o) => (
+          {[...open, ...answered].map((o) => (
             <Link key={o.id} to={`/results/${o.submission_id}`} state={{ supervising: true }}
               className="grid grid-cols-[1fr_auto] md:grid-cols-12 gap-3 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
               <span className="md:col-span-2 text-ink-300 truncate">{o.student}</span>
               <span className="md:col-span-6 min-w-0">
                 <span className="block text-ink-50 truncate">{o.submission_title}</span>
-                <span className="block text-xs text-ink-500 truncate">{o.reason}</span>
+                <span className="block text-xs text-ink-500 truncate">{t("Student: {reason}", { reason: o.reason })}</span>
+                {o.response && <span className="block text-xs text-ink-400 truncate">{t("Teacher: {response}", { response: o.response })}</span>}
               </span>
               <span className="md:col-span-4 flex items-center justify-end gap-2 font-mono text-[11px] text-ink-400">
-                {o.overdue && (
+                {o.status === "open" && o.overdue && (
                   <span className="border border-signal-blood/60 text-signal-blood px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em]">{t("Overdue")}</span>
                 )}
-                <span>{t("answer by {date}", { date: new Date(o.due_at).toLocaleDateString(locale()) })}</span>
+                {o.status === "open"
+                  ? <span className="text-signal-amber">{t("waiting for your answer by {date}", { date: new Date(o.due_at).toLocaleDateString(locale()) })}</span>
+                  : <span className="text-ink-500">{t(DECISION_TEXT[o.decision] ?? "answered")}{o.responded_at ? ` · ${new Date(o.responded_at).toLocaleDateString(locale())}` : ""}</span>}
               </span>
             </Link>
           ))}
@@ -284,7 +377,7 @@ function TeacherView({ id }: { id: string }) {
 
   if (!cls) return <p className="text-ink-500">{t("Loading…")}</p>;
 
-  const filterButtons: [string, string][] = [["flagged", t("Flagged")], ["", t("All")]];
+  const filterButtons: [string, string][] = [["flagged", t("Only flagged")], ["", t("All works")]];
 
   return (
     <div>
@@ -319,21 +412,22 @@ function TeacherView({ id }: { id: string }) {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--line-strong)] mb-8">
           {[
-            [t("Students"), String(stats.students)],
-            [t("Submissions"), String(stats.total)],
-            [t("Flagged"), String(stats.flagged)],
-            [t("Flagged share"), `${Math.round(stats.flagged_share * 100)}%`],
-          ].map(([label, value]) => (
+            [t("Students"), String(stats.students), t("in this class")],
+            [t("Submissions"), String(stats.total), t("checked in this class")],
+            [t("Flagged"), String(stats.flagged), t("works where at least one check asks for attention")],
+            [t("Flagged share"), `${Math.round(stats.flagged_share * 100)}%`, t("of all checked works")],
+          ].map(([label, value, note]) => (
             <div key={label} className="bg-ink-950 p-4">
               <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{label}</div>
               <div className="font-display text-3xl text-ink-50 mt-1 tabular-nums">{value}</div>
+              <div className="text-[11px] text-ink-600 mt-1">{note}</div>
             </div>
           ))}
         </div>
       )}
 
-      <p className="text-xs text-ink-500 mb-6 max-w-2xl">
-        {t("Text verdicts come from the Tribunal's text classifier plus bypass, source and style checks. Treat a flag as a reason to talk to the student, not as proof.")}
+      <p className="text-sm text-ink-400 mb-6 max-w-3xl">
+        {t("Every work goes through several checks: chatbot text, disguised letters and hidden text, copying from other work and the web, vocabulary for the student's age, the student's own style, cited sources and AI answers to the assignment. Each work below lists what its checks found. A flag is a reason to talk to the student, not proof.")}
       </p>
 
       <RadarPanel classId={id} />
@@ -343,7 +437,8 @@ function TeacherView({ id }: { id: string }) {
 
       <div className="grid lg:grid-cols-12 gap-8">
         <section className="lg:col-span-4">
-          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-2">{t("Students")}</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-1">{t("Students")}</div>
+          <p className="text-xs text-ink-500 mb-2">{t("Click a name to see only that student's work. Numbers: works handed in and works with a flag.")}</p>
           {roster.length === 0 ? (
             <p className="text-sm text-ink-500">{t("Share the join code with your students.")}</p>
           ) : (
@@ -375,7 +470,11 @@ function TeacherView({ id }: { id: string }) {
                 </button>
               );
             })}
-            {filter.student != null && <span className="text-ink-400">{t("one student")}</span>}
+            {filter.student != null && (
+              <button type="button" onClick={() => setFilter({ verdict: "flagged" })} className="px-2 py-1 border border-signal-amber/60 text-signal-amber">
+                {t("one student · show all")}
+              </button>
+            )}
           </div>
           <SubmissionRows rows={rows} showStudent />
         </section>

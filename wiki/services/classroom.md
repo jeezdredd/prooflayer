@@ -183,3 +183,25 @@ New cases, each checked locally against model t7 and the real analyzers before s
 - PSY 201: Jordan (3 reflections + a real gptinf humanizer output from the held-out set, caught p=0.86);
   Alex, Sam and Priya get two more reflections each so style and grade baselines (3 works) apply; Sam's
   report is a PDF.
+
+
+## Class page for non-technical teachers (2026-10-17)
+
+The owner read the 8А page as a teacher and could not follow it: the radar listed usernames with "81% совпадение" and
+called a text "grade 20". Changes:
+- `classroom/radar.py`: pair refs carry `filename` and `created_at`; jump reasons are dicts `{"kind": "readability", "now": band, "before": band}`,
+  `{"kind": "ai"}`, `{"kind": "style"}` where `readability_band` maps the Oborneva/FK grade to primary (<=4), middle (<=9), senior (<=11), university.
+  The frontend phrases them ("читается как текст уровня вуза, прежние работы были уровня 5–9 класса").
+- Alignment thresholds measured on the demo essays: at 0.88 every pair of essays on the same assignment aligned at 0.75-0.8 with in-order 1.0
+  (chronological topics), so the honest student landed in a cluster. At 0.92 only true copies (1.0) and the humanized AI essay (0.68) remain.
+  `ALIGN_SIMILARITY` 0.92, `MIN_SHARE` 0.6, `STRONG_SHARE` 0.7.
+- `ClassSubmissionSerializer.flags`: short keys for what fired, computed from prefetched `analysis_results` and the plagiarism report, ordered
+  ai_text, ai_trace, trace_hidden, ai_image, hidden_text, tricks, shadow, copy, sources, age, style. The list shows them as chips.
+- The class page lists open and answered objections, explains each section in one sentence, labels the stats tiles and list columns.
+- Org page copy no longer promises Google/Bing/Yandex; it says Wikipedia, open academic catalogues and open web search.
+
+Demo 9Б · Литература (teacher demo_orlov) mirrors every feature of 8А: shadow set "Нужно ли читать книги в эпоху интернета?",
+Arina and Vera on the AI answer (skeleton pair, Arina objects "писали по одному плану"), Lev's humanizer-style Onegin essay with an
+answered objection, Timofey's Pechorin with fullwidth punctuation and an overdue objection plus a teacher-uploaded DOCX with hidden
+white text, Polina's honest PDF with real GOST references, her Wikipedia paste and an "excursion photo" with the SDXL watermark,
+a batch of scanned "Гроза" answers and an unsigned sheet checked by the teacher. Honest short reflections stay under `MIN_TOKENS`.
