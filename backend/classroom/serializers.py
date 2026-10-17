@@ -15,6 +15,20 @@ TEXT_FLAGS = {
 }
 
 
+NOTES = {
+    "text too short for a verdict": "too_short",
+    "language not calibrated": "language",
+}
+
+
+def submission_note(obj) -> str | None:
+    for result in obj.analysis_results.all():
+        if result.analyzer.name == "text_classifier":
+            evidence = result.evidence if isinstance(result.evidence, dict) else {}
+            return NOTES.get(evidence.get("reason"))
+    return None
+
+
 def submission_flags(obj) -> list[str]:
     flags = []
     is_image = obj.mime_type.startswith("image/")
@@ -101,9 +115,13 @@ class ClassSubmissionSerializer(serializers.Serializer):
     words = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
     flags = serializers.SerializerMethodField()
+    note = serializers.SerializerMethodField()
 
     def get_flags(self, obj):
         return submission_flags(obj) if obj.status == "completed" else []
+
+    def get_note(self, obj):
+        return submission_note(obj) if obj.status == "completed" else None
 
     def get_originality(self, obj):
         report = getattr(obj, "plagiarism_report", None)

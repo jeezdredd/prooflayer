@@ -8,7 +8,7 @@ import { toast } from "../components/ui/Toast";
 import { levelOptions } from "../classroom/shared";
 import { locale, msg, t, tn } from "../i18n";
 import { VERDICT_DISCLAIMER } from "../legal";
-import { PLAIN_VERDICT, STATUS_TEXT } from "../components/TeacherSummary";
+import { BAND_TEXT, STATUS_TEXT, plainOutcome } from "../components/TeacherSummary";
 
 const FLAG_TEXT: Record<string, string> = {
   ai_text: msg("chatbot text"),
@@ -24,12 +24,6 @@ const FLAG_TEXT: Record<string, string> = {
   style: msg("unlike own earlier work"),
 };
 const STRONG_FLAGS = new Set(["ai_text", "ai_trace", "trace_hidden", "ai_image", "hidden_text", "tricks", "shadow", "sources"]);
-const BAND_TEXT: Record<string, string> = {
-  primary: msg("primary school"),
-  middle: msg("grades 5-9"),
-  senior: msg("grades 10-11"),
-  university: msg("university"),
-};
 const DECISION_TEXT: Record<string, string> = { upheld: msg("verdict upheld"), changed: msg("verdict changed") };
 
 function flagChip(flag: string, originality: number | null) {
@@ -74,15 +68,18 @@ function SubmissionRows({ rows, showStudent }: { rows: ClassSubmission[]; showSt
             {s.originality != null && <span className={s.originality < 60 ? "text-signal-blood" : s.originality < 85 ? "text-signal-amber" : "text-signal-sage"}> · {t("{n}% original", { n: Math.round(s.originality) })}</span>}
           </span>
           <span className="md:col-span-3 flex flex-col">
-            <span className={`text-sm leading-snug ${PLAIN_VERDICT[s.final_verdict] ? STATUS_TEXT[PLAIN_VERDICT[s.final_verdict].status] : "text-ink-400"}`}>
-              {s.status === "completed" ? (PLAIN_VERDICT[s.final_verdict] ? t(PLAIN_VERDICT[s.final_verdict].teacher) : "-") : t(s.status)}
-            </span>
-            {s.status === "completed" && s.final_verdict && (
-              <span className="text-[10px] leading-snug text-ink-600 mt-0.5">
-                {s.final_score != null && <span className="font-mono text-ink-500">{t("risk {n}%", { n: Math.round(s.final_score * 100) })} · </span>}
-                {t(VERDICT_DISCLAIMER)}
-              </span>
-            )}
+            {s.status === "completed" ? (() => {
+              const outcome = plainOutcome(s.final_verdict, s.originality, s.note, !showStudent);
+              return (
+                <>
+                  <span className={`text-sm leading-snug ${STATUS_TEXT[outcome.status]}`}>{t(outcome.text)}</span>
+                  <span className="text-[10px] leading-snug text-ink-600 mt-0.5">
+                    {outcome.showRisk && s.final_score != null && <span className="font-mono text-ink-500">{t("risk {n}%", { n: Math.round(s.final_score * 100) })} · </span>}
+                    {t(VERDICT_DISCLAIMER)}
+                  </span>
+                </>
+              );
+            })() : <span className="text-sm text-ink-400">{t(s.status)}</span>}
           </span>
         </Link>
       ))}

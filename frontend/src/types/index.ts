@@ -382,6 +382,7 @@ export interface ClassSubmission {
   words: number | null;
   originality: number | null;
   flags: string[];
+  note: string | null;
 }
 
 export interface RadarRef {

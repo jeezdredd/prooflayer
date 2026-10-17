@@ -5,6 +5,7 @@ from statistics import mean, median, pstdev
 import numpy as np
 
 from analyzers.models import AnalysisResult
+from analyzers.text.grade import readability_band
 from content.models import Submission
 from plagiarism.models import SentenceVector
 
@@ -22,7 +23,6 @@ AI_JUMP_BASE = 0.3
 MIN_HISTORY = 3
 MIN_CLASS_WORKS = 5
 MIN_CLASS_STUDENTS = 4
-READABILITY_BANDS = ((4, "primary"), (9, "middle"), (11, "senior"))
 
 
 @dataclass
@@ -33,13 +33,6 @@ class Doc:
     vectors: np.ndarray
     filename: str = ""
     created_at: str = ""
-
-
-def readability_band(grade: float) -> str:
-    for top, band in READABILITY_BANDS:
-        if grade <= top:
-            return band
-    return "university"
 
 
 def alignment(a: np.ndarray, b: np.ndarray) -> tuple[float, float]:

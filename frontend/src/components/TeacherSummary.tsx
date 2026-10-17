@@ -81,12 +81,13 @@ function copyCheck(submission: Submission): Check | null {
   const matched = 100 - Math.round(report.originality);
   if (report.matches.length === 0) return { key: "copy", title, status: "ok", headline: t("No copied passages found"), detail: scope };
   const status: CheckStatus = report.originality >= 85 ? "ok" : report.originality >= 60 ? "look" : "alert";
+  const top = report.matches[0];
   return {
     key: "copy",
     title,
     status,
     headline: t("{n}% matches other work", { n: matched }),
-    detail: `${tn(report.matches.length, "Found in {n} source.", "Found in {n} sources.")} ${t("Quotes with references are fine; open each match below to judge it.")}`,
+    detail: `${t("Main source: {source}.", { source: sourceName(top) })} ${tn(report.matches.length, "Found in {n} source.", "Found in {n} sources.")} ${t("The copied passages are shown below under Originality. Quotes with references are fine.")}`,
   };
 }
 
@@ -108,6 +109,48 @@ function trickCheck(submission: Submission): Check | null {
 
 export function levelName(level: number): string {
   return level <= 11 ? t("grade {n}", { n: level }) : t("university year {n}", { n: level - 11 });
+}
+
+export const BAND_TEXT: Record<string, string> = {
+  primary: msg("primary school"),
+  middle: msg("grades 5-9"),
+  senior: msg("grades 10-11"),
+  university: msg("university"),
+};
+
+export function readabilityBand(grade: number): string {
+  if (grade <= 4) return "primary";
+  if (grade <= 9) return "middle";
+  if (grade <= 11) return "senior";
+  return "university";
+}
+
+export function readabilitySentence(grade: number, level: number | null): string {
+  const band = readabilityBand(grade);
+  if (level == null) return t("Sentences and words are as complex as in {band} texts.", { band: t(BAND_TEXT[band]) });
+  const expected = readabilityBand(Math.min(level, 12));
+  if (band === expected) return t("Sentence and word length are usual for {level}.", { level: levelName(level) });
+  return t("Sentences and words are as complex as in {band} texts; {level} usually writes at the {expected} level.", {
+    band: t(BAND_TEXT[band]),
+    level: levelName(level),
+    expected: t(BAND_TEXT[expected]),
+  });
+}
+
+function sourceName(match: { source: string; url?: string; title?: string; author?: string; submission_id?: string }): string {
+  if (match.source === "web") {
+    if (match.url) {
+      try {
+        const host = new URL(match.url).hostname.replace(/^www\./, "");
+        return match.title ? `${match.title} (${host})` : host;
+      } catch {
+        return match.title || match.url;
+      }
+    }
+    return match.title || t("a web page");
+  }
+  if (match.submission_id && match.author) return t("work by {name}", { name: match.author });
+  return t("another student's work on ProofLayer");
 }
 
 function ageCheck(submission: Submission): Check | null {
@@ -237,8 +280,31 @@ export const PLAIN_VERDICT: Record<string, { teacher: string; student: string; s
   suspicious: { teacher: msg("Worth a conversation with the student"), student: msg("Your teacher may ask you about this work"), status: "look" },
   likely_fake: { teacher: msg("Strong signs the student did not write this"), student: msg("Your teacher will want to talk about this work"), status: "alert" },
   fake: { teacher: msg("Strong signs the student did not write this"), student: msg("Your teacher will want to talk about this work"), status: "alert" },
-  inconclusive: { teacher: msg("No clear answer"), student: msg("No clear answer yet"), status: "wait" },
+  inconclusive: { teacher: msg("No clear signs of AI, but no firm answer either"), student: msg("No clear answer yet"), status: "wait" },
 };
+
+const RANK: Record<CheckStatus, number> = { off: 0, wait: 1, ok: 2, look: 3, alert: 4 };
+
+export function plainOutcome(verdict: string, originality: number | null, note: string | null, student: boolean): { text: string; status: CheckStatus; showRisk: boolean } {
+  const base = PLAIN_VERDICT[verdict] ?? PLAIN_VERDICT.inconclusive;
+  let text = student ? base.student : base.teacher;
+  let status = base.status;
+  let showRisk = verdict !== "inconclusive" && verdict !== "";
+  if ((verdict === "inconclusive" || verdict === "") && note === "too_short") {
+    text = student ? msg("Too short to check for AI writing") : msg("Too short to check for AI writing (needs about 90 words)");
+    status = "wait";
+  }
+  if (originality != null && originality < 60 && RANK[status] < RANK.alert) {
+    text = msg("Most of the text was found in other sources");
+    status = "alert";
+    showRisk = false;
+  } else if (originality != null && originality < 85 && RANK[status] < RANK.look) {
+    text = student ? msg("Part of the text matches other sources") : msg("Part of the text matches other sources; worth a look");
+    status = "look";
+    showRisk = false;
+  }
+  return { text, status, showRisk };
+}
 
 export const STATUS_TEXT: Record<CheckStatus, string> = Object.fromEntries(
   Object.entries(STATUS_STYLE).map(([k, v]) => [k, v.text]),
@@ -268,7 +334,10 @@ function lowerFirst(s: string): string {
 export default function TeacherSummary({ submission, student }: { submission: Submission; student: boolean }) {
   if (submission.status !== "completed" || !isTextSubmission(submission)) return null;
   const checks = textChecks(submission);
-  const plain = PLAIN_VERDICT[submission.final_verdict] ?? PLAIN_VERDICT.inconclusive;
+  const classifierEvidence = evidence(byName(submission, "text_classifier"));
+  const note = classifierEvidence.reason === "text too short for a verdict" ? "too_short" : null;
+  const report = submission.originality;
+  const plain = plainOutcome(submission.final_verdict, report?.status === "done" ? report.originality ?? null : null, note, student);
   const tone = STATUS_STYLE[plain.status];
   const raised = checks.filter((c) => c.status === "alert" || c.status === "look");
   const waiting = checks.filter((c) => c.status === "wait");
@@ -280,7 +349,7 @@ export default function TeacherSummary({ submission, student }: { submission: Su
     <section className="px-4 sm:px-6 py-5 border-b border-ink-700">
       <div className={clsx("border-l-4 pl-4 py-1", tone.bar)}>
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("In short")}</div>
-        <h3 className={clsx("font-display text-2xl sm:text-3xl leading-tight mt-1", tone.text)}>{t(student ? plain.student : plain.teacher)}</h3>
+        <h3 className={clsx("font-display text-2xl sm:text-3xl leading-tight mt-1", tone.text)}>{t(plain.text)}</h3>
         <p className="text-sm text-ink-300 mt-2 leading-relaxed">
           {raised.length > 0 ? t("Raised by: {reasons}.", { reasons: raised.map((c) => lowerFirst(c.headline)).join("; ") }) : t("No check raised a concern.")}
           {waiting.length > 0 && ` ${waitingNote}`}

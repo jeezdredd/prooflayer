@@ -131,6 +131,22 @@ class TestGradeFit:
         assert fit.mismatch >= 0.6
         assert "декомпозиция" in fit.rare_words
 
+    def test_ordinary_words_in_rare_forms_are_not_beyond_level(self):
+        text = (
+            "Запоминание новых слов даётся мне легко, если повторять их каждый день понемногу. "
+            "Гармоничное расписание помогает избежать перегруженности перед контрольными работами. "
+            "Мама говорит, что важно отвечать аргументированно и спокойно, без спешки и лишних слов. "
+            "Ещё я заметила, что лучше учить вечером, а утром быстро проверять себя по карточкам. "
+            "Так получается запомнить больше и не уставать, даже когда уроков очень много."
+        )
+        fit = assess(text, detect_language(text), 8)
+        assert not {"запоминание", "гармоничное", "перегруженности", "аргументированно"} & set(fit.rare_words)
+
+    def test_look_alike_letters_do_not_count_as_rare_words(self):
+        fit = assess(ACADEMIC_RU.replace("о", "o"), detect_language(ACADEMIC_RU), 8)
+        assert all("o" not in w for w in fit.rare_words)
+        assert fit.as_evidence()["readability_band"] == "university"
+
     def test_same_text_is_fine_for_a_university_student(self):
         assert assess(ACADEMIC_RU, detect_language(ACADEMIC_RU), 13).mismatch < 0.6
 

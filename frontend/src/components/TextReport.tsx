@@ -1,6 +1,6 @@
 import type { AnalysisResult, Submission } from "../types";
 import { currentLang, msg, t } from "../i18n";
-import { levelName } from "./TeacherSummary";
+import { levelName, readabilitySentence } from "./TeacherSummary";
 
 type Evidence = Record<string, unknown>;
 
@@ -138,7 +138,7 @@ export default function TextReport({ submission }: { submission: Submission }) {
           grade.verdict === "suspicious" ? (
             <Row tone="alert" title={t("Language well above {level}", { level })}>
               {beyond.length > 0 && <>{t("Words unusual at this age:")} <Chips items={beyond.slice(0, 14)} /></>}
-              {gr.readability_grade != null && <div className="mt-1">{t("Readability is about grade {n}.", { n: String(gr.readability_grade) })}</div>}
+              {typeof gr.readability_grade === "number" && <div className="mt-1">{readabilitySentence(gr.readability_grade, typeof gr.level === "number" ? gr.level : null)}</div>}
             </Row>
           ) : gradeBaseline ? (
             <Row tone="muted" title={gradeBaseline.have < gradeBaseline.need ? t("Above {level}, not enough data to judge yet", { level }) : t("Above {level}, as usual for this student", { level })}>

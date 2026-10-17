@@ -87,7 +87,7 @@ class TextEvasionAnalyzer(BaseAnalyzer):
 
 class TextGradeFitAnalyzer(BaseAnalyzer):
     name = "text_grade_fit"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]

@@ -22,8 +22,13 @@ MIN_SENTENCE_WORDS = 8
 MAX_SENTENCES = 250
 CANDIDATES = 200
 TOP_SOURCES = 15
-SIMILAR = 0.92
-COUNTED_SIMILAR = 0.95
+PARAPHRASE_SIMILAR = 0.95
+TRANSLATION_SIMILAR = 0.92
+BIBLIOGRAPHY_RE = re.compile(
+    r"^[ \t]*(?:список(?:[ \t]+\w+){0,2}[ \t]+(?:литературы|источников)|литература|библиография|использованные источники"
+    r"|references|bibliography|works cited|reference list|bibliographie|références)[ \t]*:?[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def sentence_spans(text: str) -> list[tuple[int, int, str]]:
@@ -38,6 +43,17 @@ def sentence_spans(text: str) -> list[tuple[int, int, str]]:
         if len(out) >= MAX_SENTENCES:
             break
     return out
+
+
+def body_end(text: str) -> int:
+    for match in BIBLIOGRAPHY_RE.finditer(text):
+        if match.start() >= len(text) * 0.4:
+            return match.start()
+    return len(text)
+
+
+def within(spans, end: int) -> list[tuple[int, int]]:
+    return [(s, min(e, end)) for s, e in spans if s < end]
 
 
 def sentence_language(sentence: str, default: str) -> str:
@@ -107,21 +123,19 @@ def internal_semantic(submission, language: str, sents, vectors) -> list[dict]:
         if not nearest:
             continue
         similarity = 1 - float(nearest["distance"])
-        if similarity < SIMILAR:
+        translated = bool(nearest["language"]) and nearest["language"] != own_language
+        if similarity < (TRANSLATION_SIMILAR if translated else PARAPHRASE_SIMILAR):
             continue
         key = str(nearest["submission_id"])
         entry = by_source.setdefault(key, {
             "source": "internal",
-            "kind": "translation" if nearest["language"] and nearest["language"] != own_language else "paraphrase",
+            "kind": "translation" if translated else "paraphrase",
             "submission_id": key,
             "submitted_at": nearest["submission__created_at"].isoformat(),
             "spans": [],
-            "counted_spans": [],
             "similarity": 0.0,
         })
         entry["spans"].append((start, end))
-        if similarity >= COUNTED_SIMILAR:
-            entry["counted_spans"].append((start, end))
         entry["similarity"] = round(max(entry["similarity"], similarity), 3)
     return list(by_source.values())
 
@@ -142,6 +156,7 @@ def run_check(submission) -> PlagiarismReport:
     report.save(update_fields=["status", "error", "updated_at"])
     try:
         text = _read(submission)
+        end = body_end(text)
         lang = detect_language(text)
         language = lang.code if lang else ""
         tokens = tokenize(text)
@@ -159,19 +174,24 @@ def run_check(submission) -> PlagiarismReport:
         matches += [m for m in internal_semantic(submission, language, sents, vectors) if m["submission_id"] not in exact_sources]
         web_queries = 0
         if web_search_allowed(submission):
-            web, web_queries = web_matches(text)
+            web, web_queries = web_matches(text[:end])
             matches += web
 
         counted = []
+        kept = []
         for m in matches:
-            counted += m.get("counted_spans", m["spans"]) if m["kind"] != "exact" else m["spans"]
+            m["spans"] = within(m["spans"], end)
+            if not m["spans"]:
+                continue
+            counted += m["spans"]
             m["matched_chars"] = span_chars(m["spans"])
+            kept.append(m)
+        matches = kept
         total = max(1, text_chars(tokens))
         matched = min(total, span_chars(counted))
         matches.sort(key=lambda m: -m["matched_chars"])
         for m in matches:
             m["spans"] = merge_spans(m["spans"])
-            m.pop("counted_spans", None)
 
         report.matches = matches
         report.total_chars = total

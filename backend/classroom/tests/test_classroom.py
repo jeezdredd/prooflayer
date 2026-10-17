@@ -15,6 +15,7 @@ from billing.plans import PLANS
 from classroom.models import JOIN_CODE_LENGTH, Classroom, Membership
 from common.documents import DOCX_MIME, document_stats, extract_text
 from content.models import Submission
+from plagiarism.models import PlagiarismReport
 from content.tests.factories import SubmissionFactory
 from users.tests.factories import UserFactory
 
@@ -203,6 +204,25 @@ class TestVisibility:
         )
         rows = _client(teacher).get(reverse("classroom-submissions", kwargs={"id": classroom.id})).data
         assert rows[0]["flags"] == ["ai_text", "hidden_text"]
+
+    def test_short_text_is_explained_and_copied_work_counts_as_flagged(self):
+        teacher, classroom, student = _class_with_student()
+        short = SubmissionFactory(user=student, classroom=classroom, status=Submission.Status.COMPLETED, final_verdict="inconclusive", mime_type="text/plain")
+        AnalysisResultFactory(
+            submission=short, analyzer=AnalyzerConfigFactory(name="text_classifier"), verdict=AnalysisResult.Verdict.INCONCLUSIVE, confidence=0.0,
+            evidence={"reason": "text too short for a verdict"},
+        )
+        copied = SubmissionFactory(user=student, classroom=classroom, status=Submission.Status.COMPLETED, final_verdict="authentic", mime_type="text/plain")
+        PlagiarismReport.objects.create(submission=copied, status=PlagiarismReport.Status.DONE, originality=4.0)
+        client = _client(teacher)
+        rows = {r["id"]: r for r in client.get(reverse("classroom-submissions", kwargs={"id": classroom.id})).data}
+        assert rows[str(short.id)]["note"] == "too_short"
+        assert rows[str(copied.id)]["flags"] == ["copy"]
+        flagged = client.get(reverse("classroom-submissions", kwargs={"id": classroom.id}), {"verdict": "flagged"}).data
+        assert [r["id"] for r in flagged] == [str(copied.id)]
+        assert client.get(reverse("classroom-stats", kwargs={"id": classroom.id})).data["flagged"] == 1
+        roster = client.get(reverse("classroom-roster", kwargs={"id": classroom.id})).data
+        assert roster[0]["total"] == 2 and roster[0]["flagged"] == 1
 
     def test_teacher_dashboard_list_excludes_student_work(self):
         teacher, classroom, student = _class_with_student()

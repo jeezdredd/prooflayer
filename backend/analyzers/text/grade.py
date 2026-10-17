@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from wordfreq import zipf_frequency
 
 from .language import Language, sentences, syllables, words
+from .normalize import normalize_for_model
 
 UNIVERSITY_BASE = 11
 
@@ -14,7 +15,19 @@ RARE_ZIPF_BY_LEVEL = [
     (99, 2.1),
 ]
 RARE_SHARE_ALERT = {"school": 0.07, "university": 0.12}
+RU_RARE_SHARE_ALERT = {"school": 0.04, "university": 0.07}
+STRESS_MARKS = str.maketrans("", "", "\u0300\u0301")
 MIN_CONTENT_WORDS = 35
+RU_PLAIN_RARE_ZIPF = 2.3
+RU_BOOKISH_ROOTS = (
+    "изац", "ифик", "ифиц", "парадигм", "детермин", "ретроспект", "социо", "трансформ", "интерпрет",
+    "концепт", "идентичн", "легитим", "имманент", "дискурс", "рефлекс", "экзистенц", "когнитив",
+    "метакогнит", "онтолог", "эпистем", "гносеолог", "квинтэссенц", "амбивалент", "коннотац", "имплицит",
+    "эксплицит", "релевант", "превалир", "нивелир", "апеллир", "перманент", "синерг", "методолог",
+    "оптимизир", "структурир", "интеграц", "верифи", "валидн", "компетенц", "автономн",
+    "функциональн", "аналитическ", "системн", "фундаментальн", "целесообразн", "перспективн",
+)
+READABILITY_BANDS = ((4, "primary"), (9, "middle"), (11, "senior"))
 
 
 def level_label(level: int | None) -> str:
@@ -23,6 +36,21 @@ def level_label(level: int | None) -> str:
     if level <= UNIVERSITY_BASE:
         return f"school year {level}"
     return f"university year {level - UNIVERSITY_BASE}"
+
+
+def readability_band(grade: float) -> str:
+    for top, band in READABILITY_BANDS:
+        if grade <= top:
+            return band
+    return "university"
+
+
+def is_beyond_level(word: str, zipf: float, threshold: float, lang_code: str) -> bool:
+    if not 0 < zipf < threshold:
+        return False
+    if lang_code != "ru":
+        return True
+    return zipf < RU_PLAIN_RARE_ZIPF or any(root in word for root in RU_BOOKISH_ROOTS)
 
 
 def rare_threshold(level: int) -> float:
@@ -66,6 +94,7 @@ class GradeFit:
             "level_label": level_label(self.level),
             "language": self.language,
             "readability_grade": self.readability_grade,
+            "readability_band": None if self.readability_grade is None else readability_band(self.readability_grade),
             "rare_zipf_threshold": self.rare_threshold,
             "rare_word_share": round(self.rare_share, 4),
             "beyond_level_words": self.rare_words[:25],
@@ -88,6 +117,7 @@ def _content_words(text: str, lang: Language) -> list[str]:
 
 
 def assess(text: str, lang: Language, level: int) -> GradeFit | None:
+    text = normalize_for_model(text).translate(STRESS_MARKS)
     content = _content_words(text, lang)
     if len(content) < MIN_CONTENT_WORDS:
         return None
@@ -99,14 +129,15 @@ def assess(text: str, lang: Language, level: int) -> GradeFit | None:
         if zipf is None:
             zipf = zipf_frequency(word.replace("ё", "е"), lang.code)
             seen[word] = zipf
-        if 0 < zipf < threshold:
+        if is_beyond_level(word, zipf, threshold, lang.code):
             rare_hits += 1
     rare_share = rare_hits / len(content)
-    rare_words = sorted({w for w, z in seen.items() if 0 < z < threshold}, key=lambda w: seen[w])
+    rare_words = sorted({w for w, z in seen.items() if is_beyond_level(w, z, threshold, lang.code)}, key=lambda w: seen[w])
     grade = readability_grade(text, lang)
 
     band = "school" if level <= UNIVERSITY_BASE else "university"
-    share_excess = max(0.0, rare_share - RARE_SHARE_ALERT[band]) / RARE_SHARE_ALERT[band]
+    alert = (RU_RARE_SHARE_ALERT if lang.code == "ru" else RARE_SHARE_ALERT)[band]
+    share_excess = max(0.0, rare_share - alert) / alert
     expected_grade = min(level, 16)
     grade_excess = 0.0 if grade is None else max(0.0, grade - (expected_grade + 4)) / 4
     mismatch = min(1.0, 0.6 * min(share_excess, 1.5) / 1.5 + 0.4 * min(grade_excess, 1.0))

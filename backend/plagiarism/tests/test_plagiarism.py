@@ -104,6 +104,29 @@ class TestRunCheck:
         assert "translation" in kinds
         assert report.originality < 100
 
+    def test_shared_bibliography_is_not_counted_as_copying(self, _embed):
+        books = (
+            "\n\nСписок литературы\n"
+            "Лотман Ю. М. Беседы о русской культуре: Быт и традиции русского дворянства (XVIII – начало XIX века). СПб.: Искусство-СПБ, 1994.\n"
+            "Бочаров С. Г. Роман Л. Толстого «Война и мир». М.: Художественная литература, 1978."
+        )
+        run_check(_text_submission(UserFactory(), ESSAY + books))
+        report = run_check(_text_submission(UserFactory(), OWN + books))
+        assert report.matches == []
+        assert report.originality == 100.0
+
+    @patch("plagiarism.service.embed")
+    def test_same_topic_sentences_below_the_paraphrase_bar_are_not_listed(self, embed, _embed):
+        base = _vector("topic")
+        near = [x + 0.36 * y for x, y in zip(base, _vector("other"))]
+        norm = sum(x * x for x in near) ** 0.5
+        near = [x / norm for x in near]
+        embed.side_effect = lambda sentences: [base for _ in sentences]
+        run_check(_text_submission(UserFactory(), ESSAY))
+        embed.side_effect = lambda sentences: [near for _ in sentences]
+        report = run_check(_text_submission(UserFactory(), OWN))
+        assert report.matches == []
+
     @override_settings(PLAGIARISM_WEB_ENABLED=True)
     @patch("plagiarism.web.fetch_text", return_value="Some page. " + ESSAY + " Footer.")
     @patch("plagiarism.web.search", return_value=[Hit("https://example.org/essay", "Essay site", "")])

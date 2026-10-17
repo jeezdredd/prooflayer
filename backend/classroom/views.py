@@ -27,6 +27,14 @@ from .tasks import build_shadow_set
 from .serializers import ClassroomSerializer, ClassSubmissionSerializer, MemberSerializer, ShadowSetSerializer
 
 FLAGGED_VERDICTS = ("fake", "likely_fake", "suspicious", "needs_review")
+COPY_ATTENTION = 85
+
+
+def attention_q(prefix: str = "") -> Q:
+    return Q(**{f"{prefix}final_verdict__in": FLAGGED_VERDICTS}) | Q(**{
+        f"{prefix}plagiarism_report__status": "done",
+        f"{prefix}plagiarism_report__originality__lt": COPY_ATTENTION,
+    })
 TIMELINE_DAYS = 30
 RADAR_DAYS = 60
 RADAR_MAX_DAYS = 365
@@ -94,10 +102,11 @@ class ClassroomViewSet(
             Membership.objects.filter(classroom=classroom)
             .select_related("user")
             .annotate(
-                total=Count("user__submissions", filter=Q(user__submissions__classroom=classroom)),
+                total=Count("user__submissions", filter=Q(user__submissions__classroom=classroom), distinct=True),
                 flagged=Count(
                     "user__submissions",
-                    filter=Q(user__submissions__classroom=classroom, user__submissions__final_verdict__in=FLAGGED_VERDICTS),
+                    filter=Q(user__submissions__classroom=classroom) & attention_q("user__submissions__"),
+                    distinct=True,
                 ),
                 last_submission_at=Max("user__submissions__created_at", filter=Q(user__submissions__classroom=classroom)),
             )
@@ -128,7 +137,7 @@ class ClassroomViewSet(
         if params.get("student"):
             qs = qs.filter(user_id=params["student"])
         if params.get("verdict") == "flagged":
-            qs = qs.filter(final_verdict__in=FLAGGED_VERDICTS)
+            qs = qs.filter(attention_q())
         elif params.get("verdict"):
             qs = qs.filter(final_verdict=params["verdict"])
         return qs
@@ -145,7 +154,7 @@ class ClassroomViewSet(
         qs = Submission.objects.filter(classroom=classroom)
         total = qs.count()
         completed = qs.filter(status=Submission.Status.COMPLETED)
-        flagged = completed.filter(final_verdict__in=FLAGGED_VERDICTS).count()
+        flagged = completed.filter(attention_q()).count()
         by_verdict = dict(completed.exclude(final_verdict="").values_list("final_verdict").annotate(c=Count("id")))
         since = timezone.now() - timedelta(days=TIMELINE_DAYS)
         timeline = [
@@ -153,7 +162,7 @@ class ClassroomViewSet(
             for row in qs.filter(created_at__gte=since)
             .annotate(day=TruncDate("created_at"))
             .values("day")
-            .annotate(total=Count("id"), flagged=Count("id", filter=Q(final_verdict__in=FLAGGED_VERDICTS)))
+            .annotate(total=Count("id"), flagged=Count("id", filter=attention_q()))
             .order_by("day")
         ]
         return Response({
