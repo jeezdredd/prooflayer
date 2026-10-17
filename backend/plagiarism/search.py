@@ -47,6 +47,26 @@ def _brave(query: str, limit: int) -> list[Hit]:
 
 
 PROVIDERS = {"searxng": _searxng, "ddg": _ddg, "brave": _brave}
+WIKIPEDIA_LANGS = ("ru", "en", "fr")
+USER_AGENT = "ProofLayer-Originality/1.0 (https://prooflayer.cloud)"
+
+
+def wikipedia(query: str, lang: str, limit: int = 2) -> list[Hit]:
+    if not getattr(settings, "PLAGIARISM_WIKIPEDIA", True) or lang not in WIKIPEDIA_LANGS:
+        return []
+    try:
+        resp = requests.get(
+            f"https://{lang}.wikipedia.org/w/api.php",
+            params={"action": "query", "list": "search", "srsearch": query, "srlimit": limit, "format": "json", "utf8": 1},
+            headers={"User-Agent": USER_AGENT},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        rows = resp.json().get("query", {}).get("search", [])
+    except Exception as exc:
+        logger.warning("wikipedia search failed: %s", exc)
+        return []
+    return [Hit(f"https://{lang}.wikipedia.org/wiki/{r['title'].replace(' ', '_')}", r["title"], "") for r in rows if r.get("title")]
 
 
 def provider_chain() -> list[str]:

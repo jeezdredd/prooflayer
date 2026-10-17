@@ -114,6 +114,18 @@ class TestRunCheck:
         assert report.originality < 10
         assert report.web_searched
 
+    @override_settings(PLAGIARISM_WEB_ENABLED=True, PLAGIARISM_WIKIPEDIA=True)
+    @patch("plagiarism.web.fetch_text", return_value="Article intro. " + ESSAY + " See also.")
+    @patch("plagiarism.web.search", return_value=[])
+    @patch("plagiarism.search.requests.get")
+    def test_wikipedia_is_searched_even_when_web_search_finds_nothing(self, get, _search, _fetch, _embed):
+        get.return_value.json.return_value = {"query": {"search": [{"title": "Sleep and memory"}]}}
+        get.return_value.raise_for_status.return_value = None
+        report = run_check(_text_submission(UserFactory(), ESSAY, personal=True))
+        web = [m for m in report.matches if m["source"] == "web"]
+        assert web and web[0]["url"].endswith(".wikipedia.org/wiki/Sleep_and_memory")
+        assert get.call_args.kwargs["params"]["srsearch"].startswith('"')
+
 
 def _org_class(web_search_enabled):
     owner = UserFactory()

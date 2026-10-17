@@ -1,5 +1,18 @@
 [
   {
+    "slug": "originality-wikipedia",
+    "date": "2026-10-16",
+    "kind": "fix",
+    "title": {
+      "en": "Text copied from Wikipedia is found again",
+      "ru": "Текст, скопированный из Википедии, снова находится"
+    },
+    "body": {
+      "en": "The web part of the originality check relies on search engines, and most of them now block automated queries from servers, so copied passages could go unnoticed. The check now also searches Wikipedia in Russian, English and French directly, the most common source of copied school work, and our search engine queries more providers. A pasted Wikipedia passage is matched again.",
+      "ru": "Веб-часть проверки оригинальности опирается на поисковики, а большинство из них теперь блокирует автоматические запросы с серверов, поэтому скопированные фрагменты могли остаться незамеченными. Теперь проверка ещё и напрямую ищет по русской, английской и французской Википедии, самому частому источнику списывания в школьных работах, а наш поисковик опрашивает больше сервисов. Вставленный абзац из Википедии снова находится."
+    }
+  },
+  {
     "slug": "style-same-kind-of-text",
     "date": "2026-10-16",
     "kind": "fix",

@@ -4,10 +4,10 @@ from urllib.parse import urlparse
 import trafilatura
 from django.conf import settings
 
-from analyzers.text.language import sentences
+from analyzers.text.language import detect_language, sentences
 from common.url_safety import UnsafeUrlError, safe_get
 
-from .search import search
+from .search import search, wikipedia
 from .shingles import covered_spans, shingle_hashes, tokenize
 
 logger = logging.getLogger(__name__)
@@ -58,9 +58,11 @@ def fetch_text(url: str) -> str:
 
 def web_matches(text: str) -> tuple[list[dict], int]:
     queries = distinctive_sentences(text, getattr(settings, "PLAGIARISM_WEB_QUERIES", 8))
+    lang = detect_language(text)
     urls: dict[str, str] = {}
     for sentence in queries:
-        for hit in search(query_for(sentence), limit=4):
+        query = query_for(sentence)
+        for hit in search(query, limit=4) + wikipedia(query, lang.code if lang else ""):
             host = urlparse(hit.url).hostname or ""
             if host and hit.url not in urls:
                 urls[hit.url] = hit.title

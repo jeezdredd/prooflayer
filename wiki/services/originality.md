@@ -45,3 +45,18 @@ paid option.
 UI: `OriginalityPanel` on the result page (percentage, sources with share, kind, excerpts);
 originality column in the class list and CSV. Result page keeps polling while the report is
 pending/running.
+
+## Web search reality check (2026-10-17)
+
+Demo seed showed a verbatim ru.wikipedia paste scoring 100% original. The prod SearXNG answered but every
+engine was suspended for the server's IP: google "access denied", brave and google cse "too many requests",
+duckduckgo timeout, yandex "parsing error"; bing gave nothing for quoted Russian sentences. So the web part
+of the originality check found nothing for anyone. Fixes:
+- `plagiarism.search.wikipedia()`: MediaWiki full-text search (`list=search`, quoted sentence) on ru/en/fr
+  Wikipedia, called for every distinctive sentence in addition to the general search (setting
+  `PLAGIARISM_WIKIPEDIA`, off in tests). Live: the paste is found, 835 of 1049 characters matched.
+- SearXNG: mojeek, qwant and startpage engines added; image pulled fresh (yandex parsing errors come
+  from stale engine code).
+- Reliable whole-web search still needs a key: `BRAVE_SEARCH_API_KEY` (free tier) is already supported
+  in the provider chain.
+

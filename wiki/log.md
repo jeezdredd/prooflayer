@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-17] originality-web | Web search was blocked; Wikipedia full-text search added
+
+- Source: prod SearXNG unresponsive_engines, local repro on the demo Wikipedia paste, plagiarism/search.py
+- Pages updated: [[services/originality]]
+
 ## [2026-10-17] demo-all | Every Classroom feature in the demo; style compared within the same kind of text
 
 - Source: prod demo seed review (Anna and Sam false flags), text_style 1.1.0, seed_demo (teachers, archived, batches, teacher checks, overdue objections)

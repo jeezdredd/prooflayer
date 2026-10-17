@@ -25,3 +25,9 @@ engines:
     disabled: false
   - name: brave
     disabled: false
+  - name: mojeek
+    disabled: false
+  - name: qwant
+    disabled: false
+  - name: startpage
+    disabled: false
