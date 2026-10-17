@@ -158,6 +158,17 @@ essay). Works are backdated and analysed one by one through the real pipeline so
 see earlier work. Only `@demo.prooflayer.cloud` emails are accepted; passwords are printed once.
 Run it in the `celery_worker` container (it needs the e5 model for the shadow answers).
 
+**2026-10-17, every Classroom feature on show** (63 works). Seed also takes `teachers` (extra school
+teachers as `OrgMember` TEACHER), class `teacher` (owner username), `archived`, `teacher_checks` (works
+uploaded by the teacher with no student), work `batch` (one `Batch` per class + name) and objection
+`days_ago` (backdates `created_at` and `due_at`, so an open one shows as overdue). Cases: Dmitry shows
+style drift + grade fit + classifier on one essay; Ivan's open objection is overdue; batch
+"Контрольная 8А · сканы" (3 works); an unsigned sheet checked by the teacher; second teacher Orlov with
+9Б · Литература (Polina pastes two paragraphs of ru.wikipedia "Наташа Ростова" for the web originality
+check, Timofey's AI essay uses fullwidth commas and a one-dot leader, Arina is honest); archived class
+8А · 2024/25. Anna's three early works were rewritten: the earlier versions (written by Claude) were
+caught as AI by t4, t6 and t7.
+
 **2026-10-17 extension** (45 works). Works may carry `asset` (a file in `classroom/demo/assets/`, MIME from
 the extension: pdf, docx, png, jpg), `uploaded_by_teacher` (sets `Submission.uploaded_by` to the class
 teacher) and `objection` (`reason`, optional `response` + `decision` -> answered by the teacher, else open).

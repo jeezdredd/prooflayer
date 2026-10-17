@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 
 from billing.models import Subscription, get_or_create_subscription
 from classroom.access import is_student_only
-from classroom.models import Classroom, Membership, Organization, ShadowSet
+from classroom.models import Classroom, Membership, Organization, OrgMember, ShadowSet
 from content.models import Submission, VerdictObjection
 from users.models import User
 from users.tests.factories import UserFactory
@@ -193,6 +193,29 @@ class TestSeedDemo:
         assert answered.status == VerdictObjection.Status.ANSWERED and answered.responded_by == teacher
         assert answered.decision == VerdictObjection.Decision.UPHELD
         assert VerdictObjection.objects.get(submission=essay).status == VerdictObjection.Status.OPEN
+
+    def test_school_staff_archive_batches_and_unlinked_checks(self, _delay, _vectors, tmp_path):
+        data = json.loads(json.dumps(DEMO))
+        org = data["organizations"][0]
+        org["teachers"] = [{"email": "t2@demo.prooflayer.cloud", "username": "demo_t2"}]
+        works = org["classes"][0]["students"][0]["works"]
+        works[0].update({"batch": "Test sheet", "uploaded_by_teacher": True, "objection": {"reason": "Mine.", "days_ago": 6}})
+        org["classes"][0]["teacher_checks"] = [{"filename": "sheet.txt", "days_ago": 1, "text": "No name on it."}]
+        org["classes"].append({"name": "9B", "level": 9, "teacher": "demo_t2", "students": []})
+        org["classes"].append({"name": "Old 8A", "archived": True, "students": []})
+        call_command("seed_demo", "--data", self._data(tmp_path, data), "--no-wait", stdout=io.StringIO())
+        owner = User.objects.get(email="t@demo.prooflayer.cloud")
+        colleague = User.objects.get(email="t2@demo.prooflayer.cloud")
+        school = Organization.objects.get(slug="demo-school-test")
+        assert OrgMember.objects.get(organization=school, user=colleague).role == OrgMember.Role.TEACHER
+        assert Classroom.objects.get(name="9B").owner == colleague
+        assert Classroom.objects.get(name="Old 8A").archived and not Classroom.objects.get(name="8A").archived
+        batched = Submission.objects.get(original_filename="b.txt")
+        assert batched.batch.name == "Test sheet" and batched.batch.user == owner
+        sheet = Submission.objects.get(original_filename="sheet.txt")
+        assert sheet.user == owner and sheet.uploaded_by is None and sheet.classroom.name == "8A"
+        overdue = VerdictObjection.objects.get(submission=batched)
+        assert overdue.status == VerdictObjection.Status.OPEN and overdue.overdue
 
     def test_shipped_demo_data_assets_exist(self, _delay, _vectors):
         data = json.loads(SHIPPED_DEMO.read_text(encoding="utf-8"))

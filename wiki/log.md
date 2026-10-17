@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-17] demo-all | Every Classroom feature in the demo; style compared within the same kind of text
+
+- Source: prod demo seed review (Anna and Sam false flags), text_style 1.1.0, seed_demo (teachers, archived, batches, teacher checks, overdue objections)
+- Pages updated: [[concepts/text-signals]], [[services/classroom]]
+
 ## [2026-10-17] demo | Demo shows humanizers, hidden DOCX text, teacher uploads, objections, AI traces
 
 - Source: classroom/demo/demo_data.json, seed_demo (asset, uploaded_by_teacher, objection), scripts/build_demo_assets.py, local checks with t7

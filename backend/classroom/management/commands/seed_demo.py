@@ -10,9 +10,9 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from billing.models import Subscription, get_or_create_subscription
-from classroom.models import Classroom, Membership, Organization, ShadowAnswer, ShadowSet
+from classroom.models import Classroom, Membership, Organization, OrgMember, ShadowAnswer, ShadowSet
 from classroom.shadow import sentence_vectors
-from content.models import Submission, VerdictObjection
+from content.models import OBJECTION_ANSWER_BUSINESS_DAYS, Batch, Submission, VerdictObjection, add_business_days
 from content.tasks import process_submission
 from users.models import User
 
@@ -52,12 +52,22 @@ class Command(BaseCommand):
             raise CommandError("demo users already exist, run with --reset to recreate them")
         passwords = {}
         works = []
+        self.batches = {}
         for org_data in data["organizations"]:
-            teacher, password = self._user(org_data["teacher"], teacher=True)
-            passwords[teacher.email] = password
-            org = Organization.create_for(teacher, org_data["name"], org_data["slug"])
+            owner, password = self._user(org_data["teacher"], teacher=True)
+            passwords[owner.email] = password
+            org = Organization.create_for(owner, org_data["name"], org_data["slug"])
+            staff = {owner.username: owner}
+            for spec in org_data.get("teachers", []):
+                colleague, password = self._user(spec)
+                passwords[colleague.email] = password
+                OrgMember.objects.create(organization=org, user=colleague, role=OrgMember.Role.TEACHER)
+                staff[colleague.username] = colleague
             for class_data in org_data["classes"]:
+                teacher = staff[class_data.get("teacher", owner.username)]
                 classroom = Classroom.create_for(teacher, class_data["name"], organization=org, level=class_data.get("level"))
+                if class_data.get("archived"):
+                    Classroom.objects.filter(pk=classroom.pk).update(archived=True)
                 if class_data.get("shadow"):
                     self._shadow(classroom, teacher, class_data["shadow"])
                 for student_data in class_data["students"]:
@@ -65,6 +75,7 @@ class Command(BaseCommand):
                     passwords[student.email] = password
                     Membership.objects.create(classroom=classroom, user=student)
                     works += [(work["days_ago"], student, classroom, teacher, work) for work in student_data["works"]]
+                works += [(work["days_ago"], teacher, classroom, teacher, work) for work in class_data.get("teacher_checks", [])]
         works.sort(key=lambda w: -w[0])
         for days_ago, student, classroom, teacher, work in works:
             submission = self._submit(student, classroom, work, days_ago, teacher)
@@ -136,11 +147,20 @@ class Command(BaseCommand):
             file_size=len(body),
             classroom=classroom,
             uploaded_by=teacher if work.get("uploaded_by_teacher") else None,
+            batch=self._batch(teacher, classroom, work.get("batch")),
         )
         Submission.objects.filter(pk=submission.pk).update(created_at=timezone.now() - timedelta(days=days_ago))
         process_submission.delay(str(submission.id))
         self.stdout.write(f"queued {student.username}: {name}")
         return submission
+
+    def _batch(self, teacher: User, classroom: Classroom, name: str | None) -> Batch | None:
+        if not name:
+            return None
+        key = (classroom.pk, name)
+        if key not in self.batches:
+            self.batches[key] = Batch.objects.create(user=teacher, name=name, classroom=classroom)
+        return self.batches[key]
 
     def _object(self, submission: Submission, student: User, teacher: User, spec: dict):
         objection = VerdictObjection(submission=submission, author=student, reason=spec["reason"])
@@ -151,6 +171,10 @@ class Command(BaseCommand):
             objection.responded_by = teacher
             objection.responded_at = timezone.now()
         objection.save()
+        if spec.get("days_ago"):
+            filed = timezone.now() - timedelta(days=spec["days_ago"])
+            due = add_business_days(timezone.localtime(filed), OBJECTION_ANSWER_BUSINESS_DAYS)
+            VerdictObjection.objects.filter(pk=objection.pk).update(created_at=filed, due_at=due)
 
     def _wait(self, submission: Submission, timeout: int):
         deadline = time.monotonic() + timeout

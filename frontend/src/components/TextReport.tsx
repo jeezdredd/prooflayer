@@ -102,6 +102,7 @@ export default function TextReport({ submission }: { submission: Submission }) {
   const drift = st.drift as { score: number; history_size: number } | undefined;
   const gradeBaseline = gr.baseline as { have: number; need: number } | undefined;
   const styleBaseline = st.baseline as { have: number; need: number } | undefined;
+  const styleKind = st.group === "personal" ? t("personal writing") : st.group === "expository" ? t("essays and reports") : "";
   const ci = (citations?.evidence ?? {}) as Evidence;
   const refs = (ci.references as Reference[] | undefined) ?? [];
   const missing = refs.filter((r) => r.status === "missing");
@@ -159,7 +160,9 @@ export default function TextReport({ submission }: { submission: Submission }) {
           ) : drift ? (
             <Row tone="ok" title={t("Consistent with this student's earlier work")}>{t("Compared with {n} earlier submissions.", { n: drift.history_size })}</Row>
           ) : (
-            <Row tone="muted" title={t("Not enough data yet for a style comparison: {have} of {need} earlier works", { have: styleBaseline?.have ?? 0, need: styleBaseline?.need ?? 3 })} />
+            <Row tone="muted" title={t("Not enough data yet for a style comparison: {have} of {need} earlier works", { have: styleBaseline?.have ?? 0, need: styleBaseline?.need ?? 3 })}>
+              {styleKind && t("Style is only compared with the same kind of text; this one is counted with the student's {kind}.", { kind: styleKind })}
+            </Row>
           )
         )}
         {citations && refs.length === 0 && ci.genre === "report" && (

@@ -1,5 +1,18 @@
 [
   {
+    "slug": "style-same-kind-of-text",
+    "date": "2026-10-16",
+    "kind": "fix",
+    "title": {
+      "en": "Style is compared only with the same kind of text",
+      "ru": "Стиль сравнивается только с текстами того же типа"
+    },
+    "body": {
+      "en": "The style check compared a new piece with everything a student had handed in before. A student who wrote three casual reflections and then a formal lab report looked like a different writer and the report went to human review. Style is now compared only within personal writing (stories, descriptions, letters) or within essays, analyses and reports, and the result says which group was used. Vocabulary that does not fit the student's age and the AI text check still cover the case where a simple writer suddenly hands in a polished essay.",
+      "ru": "Проверка стиля сравнивала новую работу со всем, что ученик сдавал раньше. Студент, написавший три разговорные рефлексии, а потом формальный отчёт по лабораторной, выглядел как другой автор, и отчёт уходил на проверку человеку. Теперь стиль сравнивается только внутри личных работ (рассказы, описания, письма) или внутри рассуждений, анализа и докладов, и в результате видно, с какой группой сравнивали. Случай, когда ученик с простым языком вдруг сдаёт гладкое сочинение, по-прежнему ловят проверка слов не по возрасту и проверка текста на ИИ."
+    }
+  },
+  {
     "slug": "academic-russian-text",
     "date": "2026-10-16",
     "kind": "improvement",

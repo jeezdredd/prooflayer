@@ -20,6 +20,11 @@ TEXT_LIMIT = 200_000
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 STYLE_HISTORY = 8
 CONTEXT_FLAG = 0.6
+STYLE_GROUPS = {
+    "narrative": "personal", "description": "personal", "letter": "personal", "retelling": "personal",
+    "argument": "expository", "analysis": "expository", "report": "expository", "other": "expository",
+}
+STYLE_GROUP_LABELS = {"personal": "personal writing", "expository": "essays and reports", "poem": "poems"}
 BASELINE_WORKS = 3
 PERSONAL_JUMP = 0.3
 
@@ -128,14 +133,14 @@ class TextGradeFitAnalyzer(BaseAnalyzer):
 
 class TextStyleAnalyzer(BaseAnalyzer):
     name = "text_style"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
 
-    def _history(self, submission, language: str) -> list[dict]:
+    def _history(self, submission, language: str, group: str) -> list[dict]:
         profiles = [e.get("profile") for e in student_evidence(self.name, submission) if e.get("profile")]
-        return [p for p in profiles if p.get("language") == language][:STYLE_HISTORY]
+        return [p for p in profiles if p.get("language") == language and p.get("group") == group][:STYLE_HISTORY]
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
         try:
@@ -149,15 +154,23 @@ class TextStyleAnalyzer(BaseAnalyzer):
         evidence = {"language": lang.code, "phrasebook": phrasebook(text, lang), "context_signal": True}
         if profile is None:
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={**evidence, "reason": "text too short"})
+        genre = detect_genre(text, lang).key
+        group = STYLE_GROUPS.get(genre, genre)
+        profile["group"] = group
         evidence["profile"] = profile
+        evidence["group"] = group
         try:
-            history = self._history(_submission(metadata), lang.code)
+            history = self._history(_submission(metadata), lang.code, group)
         except Exception as exc:
             logger.warning("style history lookup failed: %s", exc)
             history = []
         evidence["baseline"] = baseline_note(len(history))
         if len(history) < BASELINE_WORKS:
-            evidence["finding"] = f"not enough earlier work from this student to compare ({len(history)} of {BASELINE_WORKS})"
+            label = STYLE_GROUP_LABELS.get(group, group)
+            evidence["finding"] = (
+                f"not enough earlier {label} from this student to compare ({len(history)} of {BASELINE_WORKS}); "
+                "style is only compared with the same kind of text"
+            )
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
         result = drift(profile, history)
         evidence["drift"] = result

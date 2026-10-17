@@ -162,6 +162,19 @@ Weaker than t4 on English character attacks (homoglyph 63 -> 42%) and some small
 groups; `text_evasion` still catches the character tricks. Shipped with `make ship-text
 TEXT_DIR=dataset/text_models/e5-small-t6`.
 
+## Style compared within the same kind of text (2026-10-16, `text_style` 1.1.0, Tribunal 1.9.1)
+
+Demo run showed a false flag: Sam's formal report vs three casual reflections drifted 0.80 (threshold 0.6)
+-> needs_review, while AI essays vs kid narratives drifted only 0.07-0.59 (cross-genre drift caught
+nothing useful). `TextStyleAnalyzer` now maps `detect_genre` to a group (`STYLE_GROUPS`: narrative,
+description, letter, retelling -> personal; argument, analysis, report, other -> expository; poem) and
+compares only with earlier profiles of the same language and group (`profile["group"]`; old profiles
+without a group are ignored). Fewer than 3 -> inconclusive with "style is only compared with the same
+kind of text"; the UI names the group. The simple-writer-hands-in-polished-essay case is left to
+`text_grade_fit` and `text_classifier` (Dmitry in the demo: style 0.80 within his own argument essays,
+grade fit 0.76 vs his usual 0.0, classifier p=0.89). Genre detection on short kid essays is noisy
+(some arguments read as narratives), so the group split is coarse on purpose.
+
 ## Academic register, model t7 (2026-10-17, Tribunal 1.9.0, `text_classifier` 1.2.0)
 
 Frozen human sets in `dataset/text_eval_academic/` (pre-2022): arXiv and PubMed abstracts + body chunks

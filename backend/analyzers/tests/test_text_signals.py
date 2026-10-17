@@ -32,6 +32,15 @@ ACADEMIC_RU = (
     "неопределённости. В заключение следует подчеркнуть, что интеграция декомпозиции в образовательный процесс "
     "представляется целесообразной и перспективной стратегией развития метакогнитивных компетенций обучающихся."
 )
+ADULT_NARRATIVE_RU = (
+    "Прошлым летом, когда я гостил у бабушки в деревне, мне довелось впервые в жизни отправиться на утреннюю рыбалку, "
+    "и это событие, признаться, произвело на меня неизгладимое впечатление. Мы вышли задолго до рассвета, когда над рекой ещё "
+    "стелился густой, почти осязаемый туман, а прибрежные ивы казались причудливыми силуэтами, словно сошедшими со страниц старинной "
+    "сказки. Бабушка, обладающая удивительным терпением и поистине энциклопедическими познаниями о повадках речной рыбы, "
+    "методично объясняла мне тонкости выбора наживки, особенности течения и закономерности поведения щуки в утренние часы. "
+    "Спустя несколько часов напряжённого ожидания мне всё-таки удалось вытащить небольшую, но весьма упитанную щуку, и в тот "
+    "момент я испытал непередаваемое чувство гордости, смешанное с благодарностью за этот неспешный, наполненный смыслом день."
+)
 KID_EN = (
     "Last summer I went to my grandma house in the village. It was really fun. Me and my brother went to the "
     "river every day and we caught fish. One time we caught a big one and grandma cooked it for dinner. My "
@@ -205,11 +214,25 @@ class TestTextAnalyzers:
         lang = detect_language(KID_RU)
         for variant in (KID_RU, KID_RU.replace("бабушке", "дедушке"), KID_RU.replace("щуку", "окуня")):
             earlier = self._class_submission(user=student)
-            AnalysisResultFactory(submission=earlier, analyzer=config, verdict="inconclusive", evidence={"profile": features(variant, lang)})
+            AnalysisResultFactory(submission=earlier, analyzer=config, verdict="inconclusive", evidence={"profile": {**features(variant, lang), "group": "personal"}})
         current = self._class_submission(user=student)
-        out = TextStyleAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(current.id), "mime_type": "text/plain"})
+        out = TextStyleAnalyzer().analyze(_text_file(tmp_path, ADULT_NARRATIVE_RU), {"submission_id": str(current.id), "mime_type": "text/plain"})
+        assert out.evidence["group"] == "personal"
         assert out.evidence["drift"]["history_size"] == 3
         assert out.verdict == "suspicious"
+
+    def test_style_never_compares_different_kinds_of_text(self, tmp_path):
+        student = UserFactory()
+        config = AnalyzerConfigFactory(name="text_style")
+        lang = detect_language(KID_RU)
+        for _ in range(3):
+            earlier = self._class_submission(user=student)
+            AnalysisResultFactory(submission=earlier, analyzer=config, evidence={"profile": {**features(KID_RU, lang), "group": "personal"}})
+        current = self._class_submission(user=student)
+        out = TextStyleAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(current.id), "mime_type": "text/plain"})
+        assert out.evidence["group"] == "expository"
+        assert out.verdict == "inconclusive" and "drift" not in out.evidence
+        assert "same kind of text" in out.evidence["finding"]
 
     def test_style_never_compares_with_other_students(self, tmp_path):
         config = AnalyzerConfigFactory(name="text_style")
