@@ -157,3 +157,18 @@ and Northbridge University (PSY 201, en: invented references, a real APA list wi
 essay). Works are backdated and analysed one by one through the real pipeline so personal baselines
 see earlier work. Only `@demo.prooflayer.cloud` emails are accepted; passwords are printed once.
 Run it in the `celery_worker` container (it needs the e5 model for the shadow answers).
+
+**2026-10-17 extension** (45 works). Works may carry `asset` (a file in `classroom/demo/assets/`, MIME from
+the extension: pdf, docx, png, jpg), `uploaded_by_teacher` (sets `Submission.uploaded_by` to the class
+teacher) and `objection` (`reason`, optional `response` + `decision` -> answered by the teacher, else open).
+`scripts/build_demo_assets.py` rebuilds the PDF/DOCX files from the texts in the JSON (fpdf2, python-docx).
+New cases, each checked locally against model t7 and the real analyzers before shipping:
+- 8A: Kirill (3 own works + AI essay run through a humanizer-style rewrite, caught p=0.88, open objection);
+  Sofia (3 own works + AI report DOCX "sent by email", uploaded by the teacher, with hidden white 1 pt text
+  asking an AI grader to rate it human: `text_evasion` 0.97 -> fake); Dmitry's AI essay gets an answered
+  objection (upheld after an oral talk); Anna's essay is a PDF with a real GOST bibliography (both books
+  found); Olga hands in an "excursion photo" that is an AI image carrying a genuine Stable Diffusion XL
+  watermark embedded with `invisible-watermark` (decoder: 48/48 bits, intact -> provenance proof).
+- PSY 201: Jordan (3 reflections + a real gptinf humanizer output from the held-out set, caught p=0.86);
+  Alex, Sam and Priya get two more reflections each so style and grade baselines (3 works) apply; Sam's
+  report is a PDF.

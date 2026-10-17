@@ -1,5 +1,6 @@
 import io
 import json
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -13,7 +14,7 @@ from rest_framework.test import APIClient
 from billing.models import Subscription, get_or_create_subscription
 from classroom.access import is_student_only
 from classroom.models import Classroom, Membership, Organization, ShadowSet
-from content.models import Submission
+from content.models import Submission, VerdictObjection
 from users.models import User
 from users.tests.factories import UserFactory
 
@@ -105,6 +106,7 @@ class TestStudentRestrictions:
         assert response.status_code == 201
 
 
+SHIPPED_DEMO = Path(__file__).resolve().parents[1] / "demo" / "demo_data.json"
 DEMO = {
     "organizations": [
         {
@@ -171,6 +173,31 @@ class TestSeedDemo:
             call_command("seed_demo", "--data", self._data(tmp_path), "--orgs", "missing", "--no-wait", stdout=io.StringIO())
         call_command("seed_demo", "--data", self._data(tmp_path), "--orgs", "demo-school-test", "--no-wait", stdout=io.StringIO())
         assert Organization.objects.filter(slug="demo-school-test").exists()
+
+    def test_files_teacher_uploads_and_objections(self, _delay, _vectors, tmp_path):
+        data = json.loads(json.dumps(DEMO))
+        data["organizations"][0]["classes"][0]["students"][0]["works"] = [
+            {"filename": "report.pdf", "days_ago": 3, "asset": "report.pdf", "uploaded_by_teacher": True,
+             "objection": {"reason": "I wrote it myself.", "response": "We talked it through.", "decision": "upheld"}},
+            {"filename": "essay.txt", "days_ago": 1, "text": "An essay.", "objection": {"reason": "This is my own work."}},
+        ]
+        (tmp_path / "assets").mkdir()
+        (tmp_path / "assets" / "report.pdf").write_bytes(b"%PDF-1.4 demo")
+        call_command("seed_demo", "--data", self._data(tmp_path, data), "--no-wait", stdout=io.StringIO())
+        teacher = User.objects.get(email="t@demo.prooflayer.cloud")
+        report = Submission.objects.get(original_filename="report.pdf")
+        essay = Submission.objects.get(original_filename="essay.txt")
+        assert report.mime_type == "application/pdf" and report.uploaded_by == teacher
+        assert essay.mime_type == "text/plain" and essay.uploaded_by is None
+        answered = VerdictObjection.objects.get(submission=report)
+        assert answered.status == VerdictObjection.Status.ANSWERED and answered.responded_by == teacher
+        assert answered.decision == VerdictObjection.Decision.UPHELD
+        assert VerdictObjection.objects.get(submission=essay).status == VerdictObjection.Status.OPEN
+
+    def test_shipped_demo_data_assets_exist(self, _delay, _vectors):
+        data = json.loads(SHIPPED_DEMO.read_text(encoding="utf-8"))
+        assets = [w["asset"] for o in data["organizations"] for c in o["classes"] for s in c["students"] for w in s["works"] if w.get("asset")]
+        assert assets and all((SHIPPED_DEMO.parent / "assets" / a).is_file() for a in assets)
 
     def test_only_demo_domain_emails(self, _delay, _vectors, tmp_path):
         data = json.loads(json.dumps(DEMO))

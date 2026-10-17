@@ -12,7 +12,7 @@ from django.utils import timezone
 from billing.models import Subscription, get_or_create_subscription
 from classroom.models import Classroom, Membership, Organization, ShadowAnswer, ShadowSet
 from classroom.shadow import sentence_vectors
-from content.models import Submission
+from content.models import Submission, VerdictObjection
 from content.tasks import process_submission
 from users.models import User
 
@@ -20,6 +20,12 @@ DATA = Path(__file__).resolve().parents[2] / "demo" / "demo_data.json"
 DEMO_DOMAIN = "demo.prooflayer.cloud"
 POLL_SECONDS = 3
 DONE = {Submission.Status.COMPLETED, Submission.Status.FAILED}
+ASSET_MIME = {
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+}
 
 
 class Command(BaseCommand):
@@ -33,7 +39,9 @@ class Command(BaseCommand):
         parser.add_argument("--orgs", nargs="*", default=[], help="only these organization slugs")
 
     def handle(self, *args, **opts):
-        data = json.loads(Path(opts["data"]).read_text(encoding="utf-8"))
+        data_path = Path(opts["data"])
+        data = json.loads(data_path.read_text(encoding="utf-8"))
+        self.assets = data_path.parent / "assets"
         if opts["orgs"]:
             data["organizations"] = [o for o in data["organizations"] if o["slug"] in opts["orgs"]]
             if not data["organizations"]:
@@ -56,12 +64,14 @@ class Command(BaseCommand):
                     student, password = self._user(student_data)
                     passwords[student.email] = password
                     Membership.objects.create(classroom=classroom, user=student)
-                    works += [(work["days_ago"], student, classroom, work) for work in student_data["works"]]
+                    works += [(work["days_ago"], student, classroom, teacher, work) for work in student_data["works"]]
         works.sort(key=lambda w: -w[0])
-        for days_ago, student, classroom, work in works:
-            submission = self._submit(student, classroom, work, days_ago)
+        for days_ago, student, classroom, teacher, work in works:
+            submission = self._submit(student, classroom, work, days_ago, teacher)
             if not opts["no_wait"]:
                 self._wait(submission, opts["timeout"])
+            if work.get("objection"):
+                self._object(submission, student, teacher, work["objection"])
         self.stdout.write("\nDemo accounts (shown once):")
         for email, password in passwords.items():
             self.stdout.write(f"  {email}  {password}")
@@ -109,21 +119,38 @@ class Command(BaseCommand):
             ShadowAnswer.objects.create(shadow_set=shadow, text=answer["text"], variant=answer["variant"], vectors=sentence_vectors(answer["text"]))
         ShadowSet.objects.filter(pk=shadow.pk).update(created_at=timezone.now() - timedelta(days=spec.get("days_ago", 30)))
 
-    def _submit(self, student: User, classroom: Classroom, work: dict, days_ago: int) -> Submission:
-        body = work["text"].encode("utf-8")
+    def _submit(self, student: User, classroom: Classroom, work: dict, days_ago: int, teacher: User) -> Submission:
         name = work["filename"]
+        asset = work.get("asset")
+        if asset:
+            body = (self.assets / asset).read_bytes()
+            mime = ASSET_MIME[Path(asset).suffix.lower()]
+        else:
+            body = work["text"].encode("utf-8")
+            mime = "text/plain"
         submission = Submission.objects.create(
             user=student,
             file=ContentFile(body, name=name),
             original_filename=name,
-            mime_type="text/plain",
+            mime_type=mime,
             file_size=len(body),
             classroom=classroom,
+            uploaded_by=teacher if work.get("uploaded_by_teacher") else None,
         )
         Submission.objects.filter(pk=submission.pk).update(created_at=timezone.now() - timedelta(days=days_ago))
         process_submission.delay(str(submission.id))
         self.stdout.write(f"queued {student.username}: {name}")
         return submission
+
+    def _object(self, submission: Submission, student: User, teacher: User, spec: dict):
+        objection = VerdictObjection(submission=submission, author=student, reason=spec["reason"])
+        if spec.get("response"):
+            objection.status = VerdictObjection.Status.ANSWERED
+            objection.decision = spec.get("decision", VerdictObjection.Decision.UPHELD)
+            objection.response = spec["response"]
+            objection.responded_by = teacher
+            objection.responded_at = timezone.now()
+        objection.save()
 
     def _wait(self, submission: Submission, timeout: int):
         deadline = time.monotonic() + timeout
