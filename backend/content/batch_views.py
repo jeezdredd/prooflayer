@@ -110,6 +110,8 @@ class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.Retrie
 
     def get_queryset(self):
         user = self.request.user
+        if self.action == "list":
+            return Batch.objects.filter(user=user)
         return (
             Batch.objects.filter(Q(user=user) | supervised_q(user, prefix="classroom__"))
             .select_related("classroom__organization")

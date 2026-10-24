@@ -205,3 +205,37 @@ Arina and Vera on the AI answer (skeleton pair, Arina objects "писали по
 answered objection, Timofey's Pechorin with fullwidth punctuation and an overdue objection plus a teacher-uploaded DOCX with hidden
 white text, Polina's honest PDF with real GOST references, her Wikipedia paste and an "excursion photo" with the SDXL watermark,
 a batch of scanned "Гроза" answers and an unsigned sheet checked by the teacher. Honest short reflections stay under `MIN_TOKENS`.
+
+## Class pages that act on what they show (2026-10-24)
+
+The owner reviewed the demo again as a teacher: logins instead of names, counters that disagreed with the row chips,
+"Вердикт изменён" that changed nothing, a radar percentage without sentences, English CSV headers. Changes:
+- One attention rule, `classroom/attention.py` `attention_q()`: a completed work needs attention when its verdict is
+  fake/likely_fake/suspicious/needs_review, or when any chip signal fires (flagged text check or `text_evasion`, a
+  metadata AI trace, originality < 85), minus works a teacher cleared. The "Только с сигналом" filter, stats tiles,
+  timeline, roster, batch summary, hub and school counts all use it. New chip `ai_media` for flagged audio and video.
+  A row whose chips fire under an ok verdict reads "Есть на что посмотреть".
+- Names: every person on class pages, the radar, objections, mails and school teachers goes through
+  `common.names.display_name`. Class join, teacher join and school creation ask for "Имя и фамилия" when the account
+  has none (`common.names.save_name`). A teacher's own upload with no student is `unattributed` ("Без ученика
+  (проверка учителя)") and does not count as a student in the radar.
+- Objections: decision `changed` clears the work (`content.objections.apply_decision`): `final_verdict` becomes
+  `authentic`, the old verdict stays in `VerdictObjection.original_verdict` (migration content 0020) and a
+  `VerdictOverride` is logged. Cleared work drops out of every count and chip list, and the CSV says so. The student
+  gets an `objection_answer` mail; both objection mails link to `CLASSROOM_URL/results/<id>` for class work.
+  Class rows carry `objection {status, decision, overdue, due_at, responded_at}` and `cleared`.
+- Radar: each similar pair returns `k of n` matched sentences and up to 3 quoted sentence pairs (SentenceVector
+  start/end into TextFingerprint text). Jumps no longer use readability bands: the vocabulary reason follows the
+  `text_grade_fit` verdict (which already compares with the student's own history), the AI jump needs 3 earlier
+  scored works. The header shows handed in vs compared sentence by sentence.
+- CSV (`classroom/export.py`): for Excel, BOM, `;` and Russian headers when the viewer reads Russian, plain verdict
+  and chip texts (same wording as the class page), matches %, objection status, no ids. Class batch CSVs use it too.
+- Class batches: batch detail returns class rows with names and a flagged count, supervisors open students' class
+  batches, the class page lists "Пакеты работ". SubmitPage no longer promises scans and names a batch by default.
+- AI answers: plain heading and plurals, failures stored as codes (`llm_failed`, `no_answers`), copy says only
+  work handed in after the answers is compared, each set lists the works that followed it.
+- Confirmations before removing a student or teacher, issuing new codes, archiving and leaving a class.
+- Demo: Anna's "Древняя_Русь_быт" (false 32% copy match with Kirill) has an answered `changed` objection; batches are
+  "из электронного журнала"; Timofey's Pechorin carries 4 stray U+030D marks (`stray_marks` 4, t7 margin 5.62 -> 5.49);
+  Jordan's humanized essay has 2 words with styled letters (`styled_letter_words`, NFKC leaves the model input as is).
+  Still missing: a translation case and a TTS audio answer.

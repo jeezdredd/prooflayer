@@ -391,11 +391,13 @@ function TeacherView({ id }: { id: string }) {
   });
 
   const setLevel = useMutation({
-    mutationFn: (level: number | null) => classrooms.update(id, { level }),
-    onSuccess: (_, level) => {
+    mutationFn: ({ level }: { level: number | null; previous: number | null }) => classrooms.update(id, { level }),
+    onSuccess: (_, { level, previous }) => {
       queryClient.invalidateQueries({ queryKey: ["classroom", id] });
+      const handedIn = !!stats && stats.total > 0;
       if (level == null) toast.success(t("Year of study removed. New work is not compared with the students' age."));
-      else if (stats && stats.total > 0) toast.success(t("Saved: {level}. Work handed in earlier was checked without it.", { level: levelLabel(level) }));
+      else if (handedIn && previous != null) toast.success(t("Saved: {level}. Work handed in earlier was checked for {old}.", { level: levelLabel(level), old: levelLabel(previous) }));
+      else if (handedIn) toast.success(t("Saved: {level}. Work handed in earlier was checked without it.", { level: levelLabel(level) }));
       else toast.success(t("Saved: {level}.", { level: levelLabel(level) }));
     },
   });
@@ -450,7 +452,7 @@ function TeacherView({ id }: { id: string }) {
             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("Year of study:")}</span>
             <select
               value={cls.level ?? ""}
-              onChange={(e) => setLevel.mutate(e.target.value === "" ? null : Number(e.target.value))}
+              onChange={(e) => setLevel.mutate({ level: e.target.value === "" ? null : Number(e.target.value), previous: cls.level ?? null })}
               className="bg-ink-950 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-300 focus:text-signal-amber outline-none"
             >
               <option value="">{t("Year not set")}</option>

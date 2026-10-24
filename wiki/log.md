@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-24] class-pages-act | Class pages show names, agree with their chips, and objections clear work
+
+- Source: owner demo review as a teacher (audit theme t4-class-pages), classroom/attention.py, classroom/export.py, content/objections.py apply_decision, radar examples
+- Pages updated: [[services/classroom]], [[hot]]
+
 ## [2026-10-17] class-page-plain | Class page in plain language; 9Б demo class filled; radar stricter
 
 - Source: owner review of the demo as a non-technical teacher (radar "grade 20", nameless cluster lists, 9Б empty), local alignment measurements on demo essays, t7 scores on the 9Б texts

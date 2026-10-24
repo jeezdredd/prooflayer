@@ -238,6 +238,21 @@ class TestCsvExport:
         assert "Без ученика (проверка учителя)" in by_name
         assert str(work.id) not in body
 
+    def test_table_uses_the_class_page_wording_and_rounding(self):
+        teacher, classroom, student = _class()
+        work = _done(classroom, student, verdict="inconclusive", original_filename="Сочинение.txt")
+        PlagiarismReport.objects.create(submission=work, status=PlagiarismReport.Status.DONE, originality=68.5)
+        VerdictObjection.objects.create(
+            submission=_done(classroom, student, verdict="authentic", original_filename="Эссе.txt"), author=student,
+            reason="Я писала сама, правда.", status="answered", decision="changed", response="Поговорили, работа своя.",
+        )
+        response = _client(teacher).get(reverse("classroom-export-csv", kwargs={"id": classroom.id}), {"lang": "ru"})
+        rows = {r[1]: r for r in csv.reader(io.StringIO(response.content.decode("utf-8")[1:]), delimiter=";")}
+        assert rows["Сочинение.txt"][3] == "Часть текста совпадает с другими источниками, стоит посмотреть"
+        assert rows["Сочинение.txt"][4] == "совпадения 31%" and rows["Сочинение.txt"][5] == "31"
+        assert rows["Эссе.txt"][3] == "Учитель снял подозрение после возражения"
+        assert rows["Эссе.txt"][6] == "подозрение снято"
+
     def test_english_table_by_default_for_english_accounts(self):
         teacher, classroom, student = _class()
         _done(classroom, student)
@@ -271,6 +286,13 @@ class TestClassBatches:
         assert _client(teacher).get(reverse("batch-detail", kwargs={"id": batch.id})).status_code == 200
         assert _client(UserFactory(is_verified=True)).get(reverse("batch-detail", kwargs={"id": batch.id})).status_code == 404
         assert _client(student).get(reverse("classroom-batches", kwargs={"id": classroom.id})).status_code == 403
+
+    def test_own_batch_list_stays_own(self):
+        teacher, classroom, student = _class()
+        own = Batch.objects.create(user=teacher, name="Моя загрузка", classroom=classroom)
+        Batch.objects.create(user=student, name="", classroom=classroom)
+        listed = _client(teacher).get(reverse("batch-list")).data["results"]
+        assert [b["id"] for b in listed] == [str(own.id)]
 
     def test_class_batch_csv_is_the_plain_table(self):
         teacher, _, _, batch = self._batch()

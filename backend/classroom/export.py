@@ -1,5 +1,6 @@
 import csv
 import io
+import math
 
 from django.utils import timezone
 
@@ -20,6 +21,7 @@ def csv_safe(value) -> str:
     text = "" if value is None else str(value)
     return "'" + text if text.startswith(FORMULA_PREFIXES) else text
 
+
 COPY = {
     "en": {
         "delimiter": ",",
@@ -35,9 +37,9 @@ COPY = {
             "fake": "Strong signs the student did not write this",
             "inconclusive": "No clear signs of AI, but no firm answer either",
         },
-        "too_short": "Too short to check for AI writing",
+        "too_short": "Too short to check for AI writing (needs about 90 words)",
         "copy_alert": "Most of the text was found in other sources",
-        "copy_look": "Part of the text matches other sources",
+        "copy_look": "Part of the text matches other sources; worth a look",
         "flags_look": "Worth a look: see what the checks found",
         "cleared": "Teacher cleared the work after an objection",
         "status": {"pending": "Waiting for the check", "processing": "Being checked", "failed": "Check failed"},
@@ -58,7 +60,7 @@ COPY = {
         "objection_open": "waiting for an answer by {date}",
         "objection_overdue": "answer overdue since {date}",
         "objection_upheld": "verdict upheld",
-        "objection_changed": "verdict changed: own work",
+        "objection_changed": "suspicion cleared",
     },
     "ru": {
         "delimiter": ";",
@@ -72,11 +74,11 @@ COPY = {
             "suspicious": "Стоит поговорить с учеником",
             "likely_fake": "Серьёзные признаки, что работу писал не ученик",
             "fake": "Серьёзные признаки, что работу писал не ученик",
-            "inconclusive": "Явных признаков ИИ нет, но и твёрдого ответа тоже",
+            "inconclusive": "Явных признаков ИИ нет, но и уверенного вывода тоже",
         },
-        "too_short": "Слишком короткий текст, чтобы проверить на ИИ",
+        "too_short": "Текст слишком короткий для проверки на ИИ (нужно хотя бы около 90 слов)",
         "copy_alert": "Большая часть текста найдена в других источниках",
-        "copy_look": "Часть текста совпадает с другими источниками",
+        "copy_look": "Часть текста совпадает с другими источниками, стоит посмотреть",
         "flags_look": "Есть на что посмотреть: см. что нашли проверки",
         "cleared": "Учитель снял подозрение после возражения",
         "status": {"pending": "Ждёт проверки", "processing": "Проверяется", "failed": "Проверка не удалась"},
@@ -84,20 +86,20 @@ COPY = {
             "ai_text": "текст чат-бота",
             "ai_trace": "след ИИ-генератора",
             "trace_hidden": "след ИИ повреждён",
-            "ai_image": "похоже на картинку нейросети",
+            "ai_image": "похоже на ИИ-картинку",
             "ai_media": "похоже на сгенерированный звук или видео",
             "hidden_text": "скрытый текст в файле",
             "tricks": "замаскированные буквы",
             "shadow": "повторяет ИИ-ответ",
             "copy": "совпадения {n}%",
             "sources": "выдуманные источники",
-            "age": "лексика не по возрасту",
-            "style": "не похоже на прежние работы",
+            "age": "слова не по возрасту",
+            "style": "не похоже на свои прежние работы",
         },
         "objection_open": "ждёт ответа до {date}",
         "objection_overdue": "ответ просрочен, срок был {date}",
         "objection_upheld": "вердикт оставлен",
-        "objection_changed": "вердикт изменён: работа самостоятельная",
+        "objection_changed": "подозрение снято",
     },
 }
 
@@ -132,6 +134,10 @@ def _result(submission, flags, copy) -> str:
     return copy["verdicts"][verdict]
 
 
+def matched_share(originality: float) -> int:
+    return 100 - math.floor(originality + 0.5)
+
+
 def _originality_value(submission):
     report = getattr(submission, "plagiarism_report", None)
     if report is None or report.status != "done" or report.originality is None:
@@ -158,7 +164,7 @@ def class_table(submissions, lang: str, unattributed) -> str:
     for s in submissions:
         flags = submission_flags(s) if s.status == "completed" else []
         originality = _originality_value(s)
-        matches = "" if originality is None else str(round(100 - originality))
+        matches = "" if originality is None else str(matched_share(originality))
         flag_text = ", ".join(copy["flags"][f].format(n=matches) for f in flags if f in copy["flags"])
         student = copy["no_student"] if unattributed(s) else display_name(s.user)
         writer.writerow([
