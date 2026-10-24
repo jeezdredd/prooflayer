@@ -190,6 +190,9 @@ class TestChecks:
         ("[1] M. P. Walker and R. Stickgold, \"Sleep, memory, and plasticity,\" 2006.", "Walker"),
         ("1. Walker MP, Stickgold R. Sleep, memory, and plasticity. 2006;57:139-66.", "Walker"),
         ("Sleep and memory. 2006.", None),
+        ("Walker, Matthew. Why We Sleep. Scribner, 2017.", "Walker"),
+        ("Psychology, Worth Publishers, 2014.", None),
+        ("Chemistry AQA Revision Guide. CGP, 2019.", None),
     ])
     def test_first_author(self, entry, surname):
         assert first_author(entry) == surname

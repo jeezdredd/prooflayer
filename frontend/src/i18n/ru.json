@@ -1623,7 +1623,7 @@
     "one student · show all": "один ученик · показать всех",
     "Sends up to 8 short sentences from each work to servers outside Kazakhstan: Wikipedia in Russian, English and French, open academic catalogues and open web search. Finds copied encyclopedia and article passages. On by default; turn it off to keep the check inside ProofLayer.": "Отправляет до 8 коротких предложений из каждой работы на серверы за пределами Казахстана: Википедия на русском, английском и французском, открытые научные каталоги и открытый веб-поиск. Находит фрагменты, списанные из энциклопедий и статей. Включено по умолчанию; выключите, чтобы проверка шла только внутри ProofLayer.",
     "Web page · {host}": "Страница в интернете · {host}",
-    "Work by {name}": "Работа ученика {name}",
+    "Work by {name}": "Автор: {name}",
     "Another student's work on ProofLayer": "Работа другого ученика в ProofLayer",
     "handed in {date}": "сдана {date}",
     "from a class you do not teach, so its author and text are hidden": "из класса, который вы не ведёте, поэтому автор и текст скрыты",
@@ -1637,7 +1637,7 @@
     "Sentence and word length are usual for {level}.": "Длина предложений и слов обычная для {level}.",
     "Sentences and words are as complex as in {band} texts; {level} usually writes at the {expected} level.": "Предложения и слова сложные, как в текстах уровня {band}, а для {level} обычен уровень {expected}.",
     "a web page": "страница в интернете",
-    "work by {name}": "работа ученика {name}",
+    "work by {name}": "работа другого ученика ({name})",
     "another student's work on ProofLayer": "работа другого ученика в ProofLayer",
     "Too short to check for AI writing": "Текст слишком короткий для проверки на ИИ",
     "Too short to check for AI writing (needs about 90 words)": "Текст слишком короткий для проверки на ИИ (нужно хотя бы около 90 слов)",
@@ -1653,6 +1653,8 @@
     "Reworded and translated passages count too.": "Перефразированные и переведённые фрагменты тоже учитываются.",
     "This check did not run": "Проверка не сработала",
     "Press «Re-analyze» at the top of the page to run it again.": "Нажмите «Проверить заново» вверху страницы.",
+    "Upload the work again later to repeat the check.": "Чтобы повторить проверку, загрузите работу ещё раз позже.",
+    "Your earlier work was simpler.": "Ваши прежние работы были проще.",
     "Too short to judge (needs about 90 words)": "Текст слишком короткий для оценки (нужно около 90 слов)",
     "This check cannot read texts in this language yet": "Эта проверка пока не умеет читать тексты на этом языке",
     "No text found in the file": "В файле не найден текст",
@@ -1796,7 +1798,9 @@
     "Rare words for {level}: {words}.": "Редкие для {level} слова: {words}.",
     "Rare words for this age: {words}.": "Редкие для этого возраста слова: {words}.",
     "{found} of {total} sources found, the rest are not in open catalogues": "Найдено источников: {found} из {total}, остальных нет в открытых каталогах",
-    "Quotes with references are fine.": "Цитаты со ссылками допустимы."
+    "Quotes with references are fine.": "Цитаты со ссылками допустимы.",
+    "Less than 1% of the text matches other sources": "С другими источниками совпадает меньше 1% текста",
+    "Less than 1% of the text matches the sources below.": "С источниками ниже совпадает меньше 1% текста."
   },
   "plural": {
     "All {n} sources exist": [

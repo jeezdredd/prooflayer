@@ -90,7 +90,8 @@ DIALOGUE_CUE = {"ru": "диалог", "en": "dialogue", "fr": "dialogue"}
 HEADINGS_CUE = {"ru": "заголовки", "en": "headings", "fr": "titres"}
 BIBLIOGRAPHY_CUE = {"ru": "список литературы", "en": "reference list", "fr": "bibliographie"}
 NUMBERS_CUE = {"ru": "много дат и чисел", "en": "many dates and figures", "fr": "beaucoup de dates et de chiffres"}
-MANY_NUMBERS = 1.0
+MANY_NUMBERS = 2.0
+MIN_NUMBERS = 3
 FIRST_PERSON_RATE = 1.0
 
 
@@ -154,6 +155,12 @@ def _is_poem(text: str) -> bool:
     return median(lengths) <= 8 and sum(n <= 10 for n in lengths) / len(lengths) >= 0.8
 
 
+def _without(text: str, entries: list[str]) -> str:
+    for entry in entries:
+        text = text.replace(entry, " ")
+    return text
+
+
 def _headings(text: str, lang: str) -> list[str]:
     lines = [ln.strip().rstrip(":") for ln in text.splitlines() if ln.strip()]
     return [ln for ln in lines if len(ln.split()) <= 5 and any(ln.lower().startswith(c) for c in CUES["section"][lang])]
@@ -196,7 +203,9 @@ def detect_genre(text: str, lang: Language) -> Genre:
             cues.append(f"{HEADINGS_CUE[code]}: {', '.join(headings[:3])}")
         if bibliography:
             cues.append(BIBLIOGRAPHY_CUE[code])
-        if numbers >= MANY_NUMBERS:
+        body = _without(text, bibliography)
+        body_numbers = len(NUMBER.findall(body))
+        if body_numbers >= MIN_NUMBERS and _rate(body_numbers, n) >= MANY_NUMBERS:
             cues.append(NUMBERS_CUE[code])
     if best == "narrative":
         if dialogue:

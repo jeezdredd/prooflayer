@@ -125,10 +125,10 @@ GOST_TAIL = re.compile(r"\s*(?://|\.\s*[–—-]\s|\.\s+[А-ЯЁ][А-Яа-яё]{
 CYRILLIC = re.compile(r"[А-Яа-яЁё]")
 NUMBERING = re.compile(r"^\s*(?:\[\d+\]|\d+[.)])\s*")
 AUTHOR_PATTERNS = (
-    re.compile(r"^([A-ZА-ЯЁ][\w'\-]+),"),
+    re.compile(r"^([A-ZА-ЯЁ][\w'\-]+),\s*(?:[A-ZА-ЯЁ]\.|[A-ZА-ЯЁ][a-zа-яё]+[.,])"),
     re.compile(r"^([A-ZА-ЯЁ][\w'\-]+)\s+(?:[A-ZА-ЯЁ]\.\s?){1,3}"),
     re.compile(r"^(?:[A-Z]\.\s?){1,3}\s*([A-Z][\w'\-]+)"),
-    re.compile(r"^([A-Z][\w'\-]+)\s+[A-Z]{1,3}\b"),
+    re.compile(r"^([A-Z][\w'\-]+)\s+[A-Z]{1,3}[,.]"),
 )
 PAGE_OPENS = "page opens"
 PAGE_NOT_FOUND = "page not found"

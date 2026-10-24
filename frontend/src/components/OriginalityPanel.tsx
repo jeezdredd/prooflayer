@@ -114,7 +114,9 @@ export default function OriginalityPanel({ submission, student = false }: { subm
         <>
           {report.originality != null && report.matches.length > 0 && (
             <p className="text-sm text-ink-200 mb-1">
-              {t("{own}% of the text was not found anywhere; {copied}% matches the sources below.", { own: Math.round(report.originality), copied: 100 - Math.round(report.originality) })}
+              {100 - Math.round(report.originality) < 1
+                ? t("Less than 1% of the text matches the sources below.")
+                : t("{own}% of the text was not found anywhere; {copied}% matches the sources below.", { own: Math.round(report.originality), copied: 100 - Math.round(report.originality) })}
             </p>
           )}
           <p className="text-xs text-ink-500 mb-3">
@@ -128,7 +130,7 @@ export default function OriginalityPanel({ submission, student = false }: { subm
               {report.matches.slice(0, 12).map((m, i) => (
                 <div key={i} className="border border-[var(--line-strong)]">
                   <div className="grid grid-cols-[auto_1fr] gap-3 items-start px-3 py-2.5 border-b border-[var(--line)]">
-                    <span className="font-display text-xl tabular-nums text-signal-amber w-14">{Math.round(m.share)}%</span>
+                    <span className="font-display text-xl tabular-nums text-signal-amber w-14">{Math.round(m.share) < 1 ? "<1" : Math.round(m.share)}%</span>
                     <span className="min-w-0">
                       <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mb-0.5">{t("Source")} · {t(KIND_LABEL[m.kind])}</span>
                       <SourceTitle match={m} student={student} />

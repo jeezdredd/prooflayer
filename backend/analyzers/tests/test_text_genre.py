@@ -91,6 +91,19 @@ class TestDetectGenre:
         assert cues[0].startswith("headings: Introduction, Methods")
         assert "reference list" in cues and "many dates and figures" in cues
 
+    def test_years_in_the_reference_list_are_not_many_dates(self):
+        text = (
+            "История нужна, чтобы понимать, откуда мы пришли и почему живём именно так. "
+            "Когда мы читаем о прошлом, мы видим ошибки людей и учимся их не повторять. "
+            "Мне интересно узнавать, как жили мои прадеды и что они чувствовали.\n"
+            "Список литературы\n"
+            "Ключевский В. О. Курс русской истории. М.: Мысль, 1987.\n"
+            "Карамзин Н. М. История государства Российского. М.: Наука, 1989."
+        )
+        genre = detect_genre(text, detect_language(text))
+        assert genre.key == "report"
+        assert "список литературы" in genre.cues and "много дат и чисел" not in genre.cues
+
     def test_cues_show_the_whole_word(self):
         text = SAMPLES["analysis"]
         cues = detect_genre(text, detect_language(text)).cues

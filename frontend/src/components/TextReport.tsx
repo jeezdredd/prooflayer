@@ -21,14 +21,25 @@ function Row({ tone, title, children }: { tone: "alert" | "ok" | "muted"; title:
   );
 }
 
-function Chips({ items, mark }: { items: string[]; mark?: (ch: string) => string | null }) {
+type Marker = (cluster: string, word: string) => string | null;
+
+function clusters(word: string): string[] {
+  const out: string[] = [];
+  for (const ch of word) {
+    if (out.length > 0 && /\p{M}/u.test(ch)) out[out.length - 1] += ch;
+    else out.push(ch);
+  }
+  return out;
+}
+
+function Chips({ items, mark }: { items: string[]; mark?: Marker }) {
   return (
     <span className="flex flex-wrap gap-1.5 mt-1.5">
       {items.map((w) => (
         <span key={w} className="font-mono text-[11px] px-1.5 py-0.5 border border-[var(--line-strong)] text-ink-200">
-          {mark ? [...w].map((ch, i) => {
-            const why = mark(ch);
-            return why ? <mark key={i} title={why} className="bg-signal-amber/30 text-ink-50 rounded-sm">{ch}</mark> : ch;
+          {mark ? clusters(w).map((c, i) => {
+            const why = mark(c, w);
+            return why ? <mark key={i} title={why} className="bg-signal-amber/30 text-ink-50 rounded-sm">{c}</mark> : c;
           }) : w}
         </span>
       ))}
@@ -65,6 +76,7 @@ const LATIN = /[a-z\u00c0-\u024f]/i;
 const GREEK = /[\u0370-\u03ff]/;
 const SHOWN_MARK = "\u00b7";
 const LOOKALIKE_PUNCT = "\u2024\ufe52\uff0e\u0589\u06d4\ua4f8\ua4f9\ufe50\uff0c\u060c\uff1a\uff1b\uff01\uff1f";
+const COMMON_MARKS = "\u0300\u0301\u0302\u0303\u0304\u0306\u0307\u0308\u030a\u030b\u030c\u0327\u0328";
 
 const KIND_LABEL: Record<string, string> = {
   doi: "DOI",
@@ -92,26 +104,16 @@ function majorScript(word: string): string | null {
   return ranked[0]?.[0] ?? null;
 }
 
-function foreignLetters(word: string): (ch: string) => string | null {
-  const major = majorScript(word);
-  return (ch) => {
-    const s = script(ch);
-    if (!s || s === major) return null;
-    return s === "latin" ? t("Latin letter") : s === "greek" ? t("Greek letter") : t("Russian letter");
-  };
-}
+const markForeign: Marker = (cluster, word) => {
+  const s = script(cluster);
+  if (!s || s === majorScript(word)) return null;
+  return s === "latin" ? t("Latin letter") : s === "greek" ? t("Greek letter") : t("Russian letter");
+};
 
-function MixedChips({ items }: { items: string[] }) {
-  return (
-    <span className="flex flex-wrap gap-1.5 mt-1.5">
-      {items.map((w) => <Chips key={w} items={[w]} mark={foreignLetters(w)} />)}
-    </span>
-  );
-}
-
-const markHidden = (ch: string) => (ch === SHOWN_MARK ? t("hidden character here") : null);
-const markPunct = (ch: string) => (LOOKALIKE_PUNCT.includes(ch) ? t("punctuation mark from another alphabet") : null);
-const markAccent = (ch: string) => ((/\p{M}/u.test(ch) || ch.normalize("NFD") !== ch) && !/[ёйЁЙ]/.test(ch) ? t("stray mark") : null);
+const markHidden: Marker = (cluster) => (cluster === SHOWN_MARK ? t("hidden character here") : null);
+const markPunct: Marker = (cluster) => (LOOKALIKE_PUNCT.includes(cluster) ? t("punctuation mark from another alphabet") : null);
+const markAccent: Marker = (cluster) =>
+  [...cluster.normalize("NFD")].some((ch) => /\p{M}/u.test(ch) && !COMMON_MARKS.includes(ch)) ? t("stray mark") : null;
 
 function RefList({ items }: { items: Reference[] }) {
   return (
@@ -216,7 +218,7 @@ export default function TextReport({ submission, student = false }: { submission
                   {mostlyCyrillic
                     ? tn(mixedCount, "In {n} word Russian letters were replaced with look-alike Latin ones, for example:", "In {n} words Russian letters were replaced with look-alike Latin ones, for example:")
                     : tn(mixedCount, "In {n} word letters were replaced with look-alike ones from another alphabet, for example:", "In {n} words letters were replaced with look-alike ones from another alphabet, for example:")}
-                  <MixedChips items={mixed.slice(0, 12)} />
+                  <Chips items={mixed.slice(0, 12)} mark={markForeign} />
                 </div>
               )}
               {invisible.length > 0 && (

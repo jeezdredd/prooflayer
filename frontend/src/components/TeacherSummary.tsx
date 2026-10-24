@@ -59,13 +59,14 @@ export function isTextSubmission(submission: Submission): boolean {
   return TEXT_ANALYZERS.some((name) => byName(submission, name));
 }
 
-function broken(key: string, title: string, student: boolean): Check {
+function broken(key: string, title: string, student: boolean, submission: Submission): Check {
+  const stale = !!submission.ensemble && !submission.ensemble.is_current;
   return {
     key,
     title,
     status: "off",
     headline: t("This check did not run"),
-    detail: student ? undefined : t("Press «Re-analyze» at the top of the page to run it again."),
+    detail: student ? undefined : stale ? t("Press «Re-analyze» at the top of the page to run it again.") : t("Upload the work again later to repeat the check."),
   };
 }
 
@@ -73,7 +74,7 @@ function aiCheck(submission: Submission, student: boolean): Check | null {
   const result = byName(submission, "text_classifier");
   if (!result) return null;
   const title = t("AI writing");
-  if (result.verdict === "error") return broken("ai", title, student);
+  if (result.verdict === "error") return broken("ai", title, student, submission);
   const ev = evidence(result);
   const p = num(ev.ai_probability);
   if (p === null) {
@@ -100,13 +101,16 @@ function aiCheck(submission: Submission, student: boolean): Check | null {
       detail: t("Scored {n} out of 100 towards machine writing, above the flag line that only about 1 in 100 texts written by people cross.", { n: score }) + unevenNote,
     };
   }
-  if (FLAGGED.has(result.verdict) || p >= AI_LOOK || uneven) {
+  const leaning = FLAGGED.has(result.verdict) || p >= AI_LOOK;
+  if (leaning || uneven) {
     return {
       key: "ai",
       title,
       status: "look",
       headline: uneven ? t("Parts may be machine-written") : t("Some machine-like writing"),
-      detail: t("Scored {n} out of 100 towards machine writing. That is more than most texts written by people, but below the line where we raise a flag.", { n: score }) + unevenNote,
+      detail: (leaning
+        ? t("Scored {n} out of 100 towards machine writing. That is more than most texts written by people, but below the line where we raise a flag.", { n: score })
+        : t("Scored {n} out of 100 towards machine writing.", { n: score })) + unevenNote,
     };
   }
   return { key: "ai", title, status: "ok", headline: t("Reads like a person's writing"), detail: t("Scored {n} out of 100 towards machine writing.", { n: score }) };
@@ -162,6 +166,7 @@ function copyCheck(submission: Submission): Check | null {
   const scope = webScope(report);
   const matched = 100 - Math.round(report.originality);
   if (report.matches.length === 0) return { key: "copy", title, status: "ok", headline: t("No copied passages found"), detail: scope };
+  if (matched < 1) return { key: "copy", title, status: "ok", headline: t("Less than 1% of the text matches other sources"), detail: scope };
   const status: CheckStatus = report.originality >= 85 ? "ok" : report.originality >= 60 ? "look" : "alert";
   const top = report.matches[0];
   return {
@@ -198,7 +203,7 @@ function trickCheck(submission: Submission, student: boolean): Check | null {
   const result = byName(submission, "text_evasion");
   if (!result) return null;
   const title = t("Hidden tricks");
-  if (result.verdict === "error") return broken("tricks", title, student);
+  if (result.verdict === "error") return broken("tricks", title, student, submission);
   if (result.verdict === "fake" || result.verdict === "suspicious") {
     const ev = evidence(result);
     const parts = trickParts(ev);
@@ -267,7 +272,7 @@ function ageCheck(submission: Submission, student: boolean): Check | null {
   const result = byName(submission, "text_grade_fit");
   if (!result) return null;
   const title = t("Age fit");
-  if (result.verdict === "error") return broken("age", title, student);
+  if (result.verdict === "error") return broken("age", title, student, submission);
   const ev = evidence(result);
   const levelNum = num(ev.level);
   const level = levelNum !== null ? levelName(levelNum) : null;
@@ -287,7 +292,7 @@ function ageCheck(submission: Submission, student: boolean): Check | null {
       title,
       status: "look",
       headline: level ? t("Vocabulary well above {level}", { level }) : t("Vocabulary well above the student's age"),
-      detail: `${rare} ${t("The student's earlier work was simpler.")}`.trim(),
+      detail: `${rare} ${student ? t("Your earlier work was simpler.") : t("The student's earlier work was simpler.")}`.trim(),
     };
   }
   if (baseline && baseline.have < baseline.need) {
@@ -359,7 +364,7 @@ function styleCheck(submission: Submission, student: boolean): Check | null {
   const result = byName(submission, "text_style");
   if (!result) return null;
   const title = t("Own style");
-  if (result.verdict === "error") return broken("style", title, student);
+  if (result.verdict === "error") return broken("style", title, student, submission);
   const ev = evidence(result);
   if (ev.reason === "text too short") return { key: "style", title, status: "off", headline: t("Too short to compare style (needs {n} words or more)", { n: num(ev.min_words) ?? 60 }) };
   if (ev.reason === "language not supported") return { key: "style", title, status: "off", headline: t("This check cannot read texts in this language yet") };
@@ -411,7 +416,7 @@ function sourceCheck(submission: Submission, student: boolean): Check | null {
   const result = byName(submission, "text_citations");
   if (!result) return null;
   const title = t("Sources");
-  if (result.verdict === "error") return broken("sources", title, student);
+  if (result.verdict === "error") return broken("sources", title, student, submission);
   const ev = evidence(result);
   const { sources, quotes } = splitRefs(ev);
   const missing = sources.filter((r) => r.status === "missing").length;
@@ -590,10 +595,11 @@ function SummaryBlock({ status, headline, children }: { status: CheckStatus; hea
 
 type MediaKind = "image" | "audio" | "video";
 
-function mediaKind(submission: Submission): MediaKind {
+function mediaKind(submission: Submission): MediaKind | null {
+  if (submission.mime_type?.startsWith("image/")) return "image";
   if (submission.mime_type?.startsWith("audio/")) return "audio";
   if (submission.mime_type?.startsWith("video/")) return "video";
-  return "image";
+  return null;
 }
 
 const MEDIA_MADE: Record<MediaKind, string> = {
@@ -623,13 +629,13 @@ function generatorName(meta: Evidence): string | null {
 }
 
 export function mediaOutcome(submission: Submission, student: boolean): { text: string; status: CheckStatus; detail?: string } | null {
-  if (!submission.analysis_results?.length) return null;
   const kind = mediaKind(submission);
+  if (!kind || !submission.analysis_results?.length) return null;
   const meta = evidence(byName(submission, "metadata"));
   const verdict = submission.final_verdict;
   const votes = MEDIA_DETECTORS.map((name) => byName(submission, name)).filter((r): r is AnalysisResult => !!r && VOTED.has(r.verdict));
   const flagged = votes.filter((r) => FLAGGED.has(r.verdict)).length;
-  const tally = votes.length > 0 ? t("Checks that think so: {n} of {m}.", { n: flagged, m: votes.length }) : undefined;
+  const tally = flagged > 0 ? t("Checks that think so: {n} of {m}.", { n: flagged, m: votes.length }) : undefined;
   if (meta.provenance_proof === true) {
     const generator = generatorName(meta);
     return {
@@ -647,18 +653,19 @@ export function mediaOutcome(submission: Submission, student: boolean): { text: 
   if (verdict === "fake" || verdict === "likely_fake") return { text: t(MEDIA_LIKELY[kind]), status: "alert", detail: tally };
   if (verdict === "suspicious" || verdict === "needs_review") return { text: t("Worth a closer look"), status: "look", detail: tally };
   if (verdict === "authentic" || verdict === "authentic_edited") return { text: t("No signs of an AI generator found"), status: "ok" };
-  return { text: t("No clear answer"), status: "wait", detail: votes.length > 0 ? t("The checks disagree: {n} of {m} see signs of an AI generator.", { n: flagged, m: votes.length }) : undefined };
+  return { text: t("No clear answer"), status: "wait", detail: flagged > 0 && flagged < votes.length ? t("The checks disagree: {n} of {m} see signs of an AI generator.", { n: flagged, m: votes.length }) : undefined };
 }
 
 function MediaSummary({ submission, student }: { submission: Submission; student: boolean }) {
+  const kind = mediaKind(submission);
   const outcome = mediaOutcome(submission, student);
-  if (!outcome) return null;
+  if (!kind || !outcome) return null;
   const raised = outcome.status === "alert" || outcome.status === "look";
   return (
     <section className="px-4 sm:px-6 py-5 border-b border-ink-700">
       <SummaryBlock status={outcome.status} headline={outcome.text}>
         {outcome.detail && <p className="text-sm text-ink-300 mt-2 leading-relaxed">{outcome.detail}</p>}
-        {!student && raised && <p className="text-sm text-ink-100 mt-2 leading-relaxed">{t(MEDIA_NEXT[mediaKind(submission)])}</p>}
+        {!student && raised && <p className="text-sm text-ink-100 mt-2 leading-relaxed">{t(MEDIA_NEXT[kind])}</p>}
       </SummaryBlock>
     </section>
   );
@@ -680,7 +687,9 @@ export default function TeacherSummary({ submission, student }: { submission: Su
     <section className="px-4 sm:px-6 py-5 border-b border-ink-700">
       <SummaryBlock status={outcome.status} headline={t(outcome.text)}>
         <p className="text-sm text-ink-300 mt-2 leading-relaxed">
-          {raised.length > 0 ? t("Raised by: {reasons}.", { reasons: raised.map((c) => lowerFirst(c.headline)).join("; ") }) : t("No check raised a concern.")}
+          {raised.length > 0
+            ? t("Raised by: {reasons}.", { reasons: raised.map((c) => lowerFirst(c.headline)).join("; ") })
+            : RANK[outcome.status] < RANK.look && t("No check raised a concern.")}
           {waiting.length > 0 && ` ${waitingNote}`}
           {copyRunning && ` ${t("Comparison with other work is still running.")}`}
         </p>
