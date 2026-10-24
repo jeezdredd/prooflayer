@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-24: **Tribunal 1.10.0, teacher UI audit merged** - four fix branches (result page, text checks, originality, class pages) from 104 confirmed findings. No grade number reaches the UI (Russian bands plain / textbook / adult); rare words by whole-word frequency; originality counts whole words, masks class-wide wording and prompt text, shows the source passage next to each copied one, and reports `web_status`; one `MediaSummary` for picture/audio/video. Every honest demo work now reads 100% original. Needs deploy + `seed_demo --reset`. See [[concepts/text-signals]], [[services/originality]].
+
 - 2026-10-24: **Class pages act on what they show** - one attention rule (`classroom/attention.py`) behind the filter, tiles, roster, hub and school counts; people shown by name (`common.names.display_name`), teacher sheets marked "Без ученика"; objection decision `changed` sets the work to authentic and keeps `original_verdict`, the student gets an answer mail; radar quotes matching sentences and follows the age check instead of readability bands; Russian CSV for Excel; class batches listed and readable. See [[services/classroom]].
 
 - 2026-10-24: **Resend wiring** - `deploy/compose.prod.yml` never passed `RESEND_API_KEY` to `backend`/`celery_worker`, so prod stayed on SMTP. Fixed; switching needs the domain verified in Resend and the key in `/srv/prooflayer/shared/.env`. See [[infrastructure/env-vars]].

@@ -137,6 +137,29 @@ Two more **context members** (`aggregator.CONTEXT_ANALYZERS`, never in the vote)
   crops of both classes. v3 measured: lowercase dropped en AI recall 96% -> 71%, stripped punctuation
   96% -> 46% (ru 98% -> 69%); human flags did not rise.
 
+## Plain teacher wording, whole-word rare words (2026-10-24, Tribunal 1.10.0)
+
+Teachers read "сложность примерно как для 20 класса" and ordinary words listed as rare.
+
+- `grade.lexeme_zipf`: Russian word frequency is the best of the whole word and its stems plus every common
+  noun, adjective and verb ending (`RU_ENDINGS`, stem of 4+ letters), so oblique forms of school words
+  (дружелюбием, фотосинтезом, олимпиадами) are no longer rare. Bookish roots and a plain threshold per
+  level decide what is "beyond the level". Look-alike Latin letters and stress marks are normalised first.
+- Readability: Russian texts get `RU_READABILITY_BANDS` (plain under 10, textbook under 15, adult above),
+  other languages the school bands; the evidence keeps `words_per_sentence` and `syllables_per_word` and a
+  median "usual" over 3+ earlier works. No grade number appears in any UI string.
+- `text_style`: drift lists now/earlier values for 6 plain features (words per sentence, letters per word,
+  commas, semicolons, dashes, rare-word share); `baseline_note` says how many earlier works fit and why.
+- `text_genre`: "many dates and figures" counts numbers outside the reference list, needs at least 3 and
+  2 per 100 words (two publication years no longer make an essay a report).
+- `text_citations`: first-author patterns need an initial or a first name, so a title such as
+  "Psychology, Worth Publishers" is not read as a surname.
+- `text_evasion`: up to 10 examples per kind; chips keep a letter with its combining marks.
+- `text_shadow`: answer sets created after the work was handed in are not compared.
+
+Versions: grade_fit, style, citations, genre, evasion, classifier and shadow bumped, so older results show
+as made by an earlier version.
+
 ## Humanizer-robust classifier t6 (2026-10-16, Tribunal 1.8.0, `text_classifier` 1.1.0)
 
 Training set `dataset/text_t6` (18 163 rows, e5-small, 2 epochs, max-len 384) adds two sources to t4:

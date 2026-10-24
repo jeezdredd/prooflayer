@@ -2,6 +2,16 @@
 
 Newest at top.
 
+## [2026-10-24] teacher-ui-audit | Result page, text checks and originality speak plainly (Tribunal 1.10.0)
+
+- Source: owner review of the demo as a non-technical teacher ("20 класс", false rare words, copy sources not visible), 104 confirmed audit findings in four themes (result page, text checks, originality, class pages), demo seed-order simulation with the real e5-small model
+- Result page: class work gets a plain header (student, class, date, file type in Russian units), no risk %, no hash; voting, report and publish buttons hidden for class work; rights come from `viewer_role`, `can_object`, `can_publish`; one `MediaSummary` for pictures, audio and video (watermark proof names the generator, tallies only when a check flagged); class PDF uses the school plan and plain file types
+- Text checks: rare words judged by whole-word frequency (`grade.lexeme_zipf`), look-alike letters normalised first; Russian readability shown as plain / textbook / adult text, never a grade number; style drift shown as now/earlier numbers; genre "many dates" counts numbers outside the reference list (3 or more); citation first author needs initials or a first name; shadow answers created after hand-in are skipped
+- Originality: copied runs need 8+ words, links and DOIs dropped, wording shared by many classmates and the assignment prompt masked; percentages count whole-word letters, sources under 60 letters or 0.6% dropped; each excerpt carries the source passage (`source_excerpts`); reworded sentences fold into the exact match of the same source; `web_status` ok / failed / short / off (migration 0003); bibliography excluded
+- Demo simulation: every honest demo work comes out 100% original; only Vera from Arina, Olga from Ivan and the two hidden-text DOCX still match
+- Deploy needs `seed_demo --reset` so stored demo evidence is rebuilt with the new analyzer versions
+- Pages updated: [[concepts/text-signals]], [[services/originality]], [[hot]]
+
 ## [2026-10-24] class-pages-act | Class pages show names, agree with their chips, and objections clear work
 
 - Source: owner demo review as a teacher (audit theme t4-class-pages), classroom/attention.py, classroom/export.py, content/objections.py apply_decision, radar examples

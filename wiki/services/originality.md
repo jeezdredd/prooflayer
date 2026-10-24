@@ -60,3 +60,23 @@ of the originality check found nothing for anyone. Fixes:
 - Reliable whole-web search still needs a key: `BRAVE_SEARCH_API_KEY` (free tier) is already supported
   in the provider chain.
 
+## Honest percentages and visible sources (2026-10-24, Tribunal 1.10.0)
+
+The demo audit found honest work at 68-94% "original" (shared plans, stock phrases, DOIs) and copy
+percentages that did not add up. Fixes in `plagiarism.service` and `plagiarism.shingles`:
+- Copied runs need 8+ words; URL, `www` and DOI tokens are removed before shingling.
+- Wording shared by at least max(3, 30%) of classmates in runs of 30 words or fewer is masked, and so is
+  the shadow-set prompt (`COMMON_AUTHORS`, `COMMON_SHARE`, `COMMON_MAX_WORDS`).
+- Bibliography after a heading at 40%+ of the text is excluded from matching.
+- The share counts letters of whole words; sources under 60 letters (`MIN_SOURCE_CHARS`) or 0.6% are
+  dropped, so a match list never sits next to 100% and a share is clamped to 100 - originality.
+- Reworded or translated sentences (`PARAPHRASE_SIMILAR` 0.95, `TRANSLATION_SIMILAR` 0.92) fold into the
+  exact match of the same source; `kinds` lists both.
+- Every excerpt carries `source_excerpts` (the source passage, first and last shingle placed separately);
+  hidden sources give `hidden`, `hidden_reason` (`student_view` / `other_class`), no author or id.
+- `web_status` (`ok` / `failed` / `short` / `off`, migration 0003) with answered-query count and engines;
+  the UI names the scope from it ("web search did not answer this time").
+
+Seed-order simulation of all 80 demo works with the real e5 model: every honest work 100%; left are
+Vera from Arina (75.6%), Olga from Ivan (exact plus reworded) and the two hidden-text DOCX (7%).
+

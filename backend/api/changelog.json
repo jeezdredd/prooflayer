@@ -1,5 +1,31 @@
 [
   {
+    "slug": "teacher-results-plain",
+    "date": "2026-10-24",
+    "kind": "improvement",
+    "title": {
+      "en": "Results a teacher can read without a manual",
+      "ru": "Результат проверки понятен без инструкции"
+    },
+    "body": {
+      "en": "A teacher reviewed the demo and found a \"grade 20\" reading level, ordinary words listed as rare, and copied passages without the source they came from. The result page for class work now shows the student, the class, the date and the file in plain words, without a risk percentage or technical codes. Text difficulty is described as a simple school text, a textbook or an academic article. Rare words are judged by the whole word, so ordinary words in unusual forms are no longer listed. Every copied passage now sits next to the passage it matches in the source, and the page says whether the web search answered. Pictures, recordings and videos get their own short summary; when the file carries an AI generator's mark, the generator is named. Tribunal is now version 1.10.0.",
+      "ru": "Учитель посмотрел демо и нашёл «сложность как для 20 класса», обычные слова в списке редких и списанные фрагменты без источника. Теперь страница работы ученика показывает ученика, класс, дату и файл простыми словами, без процента риска и технических кодов. Сложность текста описана как простой школьный текст, учебник или научная статья. Редкие слова оцениваются по слову целиком, поэтому обычные слова в непривычной форме больше не попадают в список. Каждый списанный фрагмент стоит рядом с совпавшим местом в источнике, а страница говорит, сработал ли поиск в интернете. У картинок, записей и видео своя короткая сводка; если в файле есть метка нейросети, названа сама нейросеть. Tribunal обновлён до версии 1.10.0."
+    }
+  },
+  {
+    "slug": "originality-honest-share",
+    "date": "2026-10-24",
+    "kind": "fix",
+    "title": {
+      "en": "Copy check counts only real copying",
+      "ru": "Проверка на списывание считает только настоящее списывание"
+    },
+    "body": {
+      "en": "Honest essays in a class sometimes read 70-90% original because classmates share a plan, stock phrases, the assignment wording or the same links. Copied passages now need at least eight words in a row, phrases used by many classmates and the assignment text are ignored, links and the reference list are not compared, and the percentage counts whole words. Reworded sentences from the same source are shown together with the copied ones. On the demo classes every honest work now reads 100% original.",
+      "ru": "Честные сочинения в классе иногда получали 70-90% оригинальности, потому что у одноклассников общий план, расхожие фразы, текст задания или одни и те же ссылки. Теперь списанный фрагмент должен быть не короче восьми слов подряд, фразы, которые пишут многие в классе, и текст задания не учитываются, ссылки и список литературы не сравниваются, а процент считается по целым словам. Пересказанные предложения из того же источника показаны вместе со списанными. В демо-классах все честные работы теперь получают 100% оригинальности."
+    }
+  },
+  {
     "slug": "class-page-plain-language",
     "date": "2026-10-17",
     "kind": "improvement",
