@@ -201,6 +201,7 @@ class VerdictObjection(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN, db_index=True)
     decision = models.CharField(max_length=10, choices=Decision.choices, blank=True, default="")
     response = models.TextField(blank=True)
+    original_verdict = models.CharField(max_length=30, blank=True, default="")
     responded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

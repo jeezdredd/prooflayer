@@ -176,7 +176,7 @@ export default function ObjectionPanel({ submission, supervising }: { submission
   if (submission.status !== "completed") return null;
   const objection = submission.objection ?? null;
   if (!objection && supervising) return null;
-  const isAuthor = !!objection && objection.student === user?.username;
+  const isAuthor = !!objection && objection.author_id === user?.id;
 
   return (
     <section className="case-card p-6 mt-4">

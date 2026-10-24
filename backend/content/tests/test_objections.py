@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from classroom.models import Classroom, Membership, Organization, OrgMember
-from content.models import VerdictObjection, add_business_days
+from content.models import VerdictObjection, VerdictOverride, add_business_days
 from content.objections import latest_objection_payload
 from content.tests.factories import SubmissionFactory
 from users.tests.factories import UserFactory
@@ -259,4 +259,55 @@ class TestInClassFlag:
         response = _client(author).get(reverse("submission-detail", kwargs={"id": work.id}))
         assert response.status_code == 200
         assert response.data["in_class"] is False
+
+
+@pytest.mark.django_db
+class TestDecisionChangesTheWork:
+    def test_changed_clears_the_work_and_keeps_the_old_verdict(self):
+        _owner, teacher, classroom, student = _school_class()
+        work = _work(student, classroom)
+        objection_id = _object(student, work).data["id"]
+        response = _respond(teacher, objection_id, decision="changed")
+        assert response.status_code == 200
+        assert response.data["original_verdict"] == "fake"
+        work.refresh_from_db()
+        assert work.final_verdict == "authentic"
+        override = VerdictOverride.objects.get(submission=work)
+        assert (override.previous_verdict, override.new_verdict, override.reviewer) == ("fake", "authentic", teacher)
+        assert override.reason == ANSWER
+
+    def test_upheld_keeps_the_verdict(self):
+        _owner, teacher, classroom, student = _school_class()
+        work = _work(student, classroom)
+        _respond(teacher, _object(student, work).data["id"], decision="upheld")
+        work.refresh_from_db()
+        assert work.final_verdict == "fake"
+        assert not VerdictOverride.objects.filter(submission=work).exists()
+
+    def test_objection_shows_the_student_by_name(self):
+        _owner, teacher, classroom, student = _school_class()
+        student.first_name, student.last_name = "Анна", "Ковалёва"
+        student.save(update_fields=["first_name", "last_name"])
+        data = _object(student, _work(student, classroom)).data
+        assert data["student"] == "Анна Ковалёва" and data["author_id"] == student.id
+
+    def test_both_sides_get_mail_with_the_right_link(self, settings, django_capture_on_commit_callbacks):
+        settings.CLASSROOM_URL = "https://classroom.example"
+        settings.FRONTEND_URL = "https://main.example"
+        _owner, teacher, classroom, student = _school_class()
+        work = _work(student, classroom)
+        with django_capture_on_commit_callbacks(execute=True):
+            objection_id = _object(student, work).data["id"]
+        assert f"https://classroom.example/results/{work.id}" in mail.outbox[-1].body
+        with django_capture_on_commit_callbacks(execute=True):
+            _respond(teacher, objection_id, decision="changed")
+        assert mail.outbox[-1].to == [student.email]
+        assert f"https://classroom.example/results/{work.id}" in mail.outbox[-1].body
+        author = UserFactory(is_verified=True)
+        personal = _work(author)
+        staff = UserFactory(is_verified=True, is_staff=True)
+        with django_capture_on_commit_callbacks(execute=True):
+            _respond(staff, _object(author, personal).data["id"])
+        assert mail.outbox[-1].to == [author.email]
+        assert f"https://main.example/results/{personal.id}" in mail.outbox[-1].body
 

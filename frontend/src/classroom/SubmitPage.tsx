@@ -6,7 +6,7 @@ import UploadForm from "../components/UploadForm";
 import { batches, classrooms, content } from "../api/endpoints";
 import { toast } from "../components/ui/Toast";
 import { classPath, INPUT } from "./shared";
-import { t, tn } from "../i18n";
+import { locale, t, tn } from "../i18n";
 
 function failureText(err: unknown, fallback: string): string {
   const res = (err as { response?: { status?: number; data?: { detail?: string; files?: string[]; file?: string[] } } })?.response;
@@ -21,6 +21,7 @@ export default function SubmitPage() {
   const [params] = useSearchParams();
   const [progress, setProgress] = useState<number | null>(null);
   const [student, setStudent] = useState<number | null>(Number(params.get("student")) || null);
+  const [batchName, setBatchName] = useState("");
   const { data: cls } = useQuery({ queryKey: ["classroom", id], queryFn: () => classrooms.detail(id).then((r) => r.data) });
   const teacher = cls?.role === "teacher";
   const { data: roster = [] } = useQuery({
@@ -28,11 +29,12 @@ export default function SubmitPage() {
     queryFn: () => classrooms.roster(id).then((r) => r.data),
     enabled: teacher,
   });
-  const studentName = roster.find((m) => m.user_id === student)?.username;
+  const studentName = roster.find((m) => m.user_id === student)?.name;
 
   const done = () => {
     queryClient.invalidateQueries({ queryKey: ["classroom-subs", id] });
     queryClient.invalidateQueries({ queryKey: ["classroom-roster", id] });
+    queryClient.invalidateQueries({ queryKey: ["classroom-batches", id] });
     setProgress(null);
   };
 
@@ -52,7 +54,8 @@ export default function SubmitPage() {
   const sendMany = async (files: File[]) => {
     setProgress(0);
     try {
-      const res = await batches.create(files, "", id, teacher ? student : null);
+      const name = batchName.trim() || t("Upload of {date}", { date: new Date().toLocaleDateString(locale()) });
+      const res = await batches.create(files, name, id, teacher ? student : null);
       const skipped = res.data.skipped.length;
       toast.success(tn(res.data.summary.total, "{n} file handed in", "{n} files handed in") + (skipped ? t(", {n} skipped", { n: skipped }) : ""));
       navigate(`/batches/${res.data.id}`);
@@ -74,9 +77,12 @@ export default function SubmitPage() {
         <>
           <h1 className="font-display text-4xl text-ink-50 mt-4">{t("Check work")}</h1>
           <p className="text-ink-400 mt-2 mb-6">
-            {t("Upload any work yourself: a scanned page, an email attachment, an essay from another platform. Pick the student so it joins their history and the style comparison with their earlier work.")}
+            {t("Upload any work yourself: a DOCX or PDF file with text, an email attachment, an essay from another platform. Pick the student so it joins their history and the style comparison with their earlier work.")}
           </p>
-          <label className="block mb-8 max-w-md">
+          <p className="text-xs text-ink-500 -mt-4 mb-6 max-w-2xl">
+            {t("A photo or scan of a handwritten page is not read as text yet: it is checked like a picture. Type the text or upload a PDF with selectable text.")}
+          </p>
+          <label className="block mb-6 max-w-md">
             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("Whose work is this?")}</span>
             <select
               value={student ?? ""}
@@ -84,7 +90,7 @@ export default function SubmitPage() {
               className={`${INPUT} w-full mt-2 bg-ink-950`}
             >
               <option value="">{t("No student, just check it")}</option>
-              {roster.map((m) => <option key={m.user_id} value={m.user_id}>{m.username}</option>)}
+              {roster.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
             </select>
             <span className="block text-xs text-ink-500 mt-2">
               {studentName
@@ -96,11 +102,22 @@ export default function SubmitPage() {
       ) : (
         <>
           <h1 className="font-display text-4xl text-ink-50 mt-4">{t("Hand in work")}</h1>
-          <p className="text-ink-400 mt-2 mb-8">
+          <p className="text-ink-400 mt-2 mb-6">
             {t("Essays as PDF, DOCX or plain text; images, audio and video too. {teacher} sees what you hand in here and the verdict on it.", { teacher: cls.owner_name })}
           </p>
         </>
       )}
+      <label className="block mb-8 max-w-md">
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("Name for several files (optional)")}</span>
+        <input
+          value={batchName}
+          onChange={(e) => setBatchName(e.target.value)}
+          maxLength={120}
+          placeholder={t("For example, Test 8A, 12.10")}
+          className={`${INPUT} w-full mt-2`}
+        />
+        <span className="block text-xs text-ink-500 mt-2">{t("Used when you upload several files at once, so the set is easy to find later.")}</span>
+      </label>
       <UploadForm onFileSelect={sendOne} onBatchSelect={sendMany} disabled={progress !== null} />
       {progress !== null && (
         <div className="mt-4 h-px bg-[var(--line-strong)] relative overflow-hidden">

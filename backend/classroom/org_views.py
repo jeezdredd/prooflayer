@@ -10,9 +10,11 @@ from rest_framework.views import APIView
 
 from billing.models import get_or_create_subscription
 from billing.permissions import tier_allows
+from common.names import display_name, own_name, save_name
 from content.models import Batch, Submission
 from users.permissions import IsVerifiedUser
 
+from .attention import class_attention
 from .models import RESERVED_SLUGS, SLUG_PATTERN, Classroom, Membership, Organization, OrgMember
 from .serializers import ClassroomSerializer
 
@@ -47,6 +49,8 @@ def _owner_plan(owner):
 def org_payload(org: Organization, user) -> dict:
     role = _role(org, user)
     data = {"name": org.name, "slug": org.slug, "role": role}
+    if user and user.is_authenticated:
+        data["my_name"] = own_name(user)
     if role == OrgMember.Role.ADMIN:
         data["teacher_code"] = org.teacher_code
         data["plan_active"] = tier_allows(org.owner, "can_classroom")
@@ -106,7 +110,9 @@ class OrganizationListView(APIView):
         name = (request.data.get("name") or "").strip()[:120]
         if not name:
             raise ValidationError({"name": ["Required."]})
-        org = Organization.create_for(request.user, name, validate_slug(request.data.get("slug")))
+        slug = validate_slug(request.data.get("slug"))
+        save_name(request.user, request.data.get("my_name"))
+        org = Organization.create_for(request.user, name, slug)
         return Response(org_payload(org, request.user), status=status.HTTP_201_CREATED)
 
 
@@ -151,6 +157,7 @@ class OrganizationJoinTeacherView(APIView):
                 raise PermissionDenied(
                     f"All {plan.teacher_seats} teacher seats on this school's {plan.name} plan are taken. Ask the admin to free one or upgrade."
                 )
+        save_name(request.user, request.data.get("name"))
         _, created = OrgMember.objects.get_or_create(organization=org, user=request.user, defaults={"role": OrgMember.Role.TEACHER})
         return Response(org_payload(org, request.user), status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
@@ -189,8 +196,8 @@ class OrganizationTeachersView(APIView):
             classes=Count("user__owned_classrooms", filter=Q(user__owned_classrooms__organization=org)),
         )
         return Response([
-            {"user_id": m.user_id, "username": m.user.username, "email": m.user.email, "role": m.role,
-             "classes": m.classes, "joined_at": m.joined_at}
+            {"user_id": m.user_id, "username": m.user.username, "name": display_name(m.user), "email": m.user.email,
+             "role": m.role, "classes": m.classes, "joined_at": m.joined_at}
             for m in members
         ])
 
@@ -220,8 +227,9 @@ class OrganizationClassesView(APIView):
             qs = qs.filter(memberships__user=request.user)
         else:
             raise NotFound("No such organization.")
-        qs = qs.annotate(student_count=Count("memberships", distinct=True)).distinct()
-        return Response(ClassroomSerializer(qs, many=True, context={"request": request}).data)
+        classes = list(qs.annotate(student_count=Count("memberships", distinct=True)).distinct())
+        context = {"request": request, "attention": class_attention(c.pk for c in classes)}
+        return Response(ClassroomSerializer(classes, many=True, context=context).data)
 
     def post(self, request, slug):
         org = _org(slug)
@@ -242,6 +250,18 @@ class ClassroomHubView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    def _with_attention(self, payload: dict, org: Organization, user) -> dict:
+        if payload["role"] not in (OrgMember.Role.ADMIN, OrgMember.Role.TEACHER):
+            return payload
+        classes = Classroom.objects.filter(organization=org, archived=False)
+        if payload["role"] == OrgMember.Role.TEACHER:
+            classes = classes.filter(owner=user)
+        totals = {"needs_attention": 0, "open_objections": 0, "overdue_objections": 0}
+        for counts in class_attention(classes.values_list("pk", flat=True)).values():
+            for key in totals:
+                totals[key] += counts[key]
+        return {**payload, "attention": totals}
+
     def get(self, request):
         user = request.user
         orgs = Organization.objects.filter(members__user=user).select_related("owner").distinct()
@@ -251,14 +271,15 @@ class ClassroomHubView(APIView):
             .annotate(student_count=Count("memberships", distinct=True))
             .distinct()
         )
-        personal = (
+        personal = list(
             Classroom.objects.filter(owner=user, organization__isnull=True)
             .select_related("owner")
             .annotate(student_count=Count("memberships", distinct=True))
         )
-        ctx = {"request": request}
+        ctx = {"request": request, "attention": class_attention(c.pk for c in personal)}
         return Response({
-            "organizations": [org_payload(o, user) for o in orgs],
+            "my_name": own_name(user),
+            "organizations": [self._with_attention(org_payload(o, user), o, user) for o in orgs],
             "enrolled": ClassroomSerializer(enrolled, many=True, context=ctx).data,
             "personal_classes": ClassroomSerializer(personal, many=True, context=ctx).data,
             "can_create_organization": tier_allows(user, "can_classroom"),

@@ -1,12 +1,23 @@
 import csv
 import io
 
+from django.db.models import Q
 from django.http import HttpResponse
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from classroom.access import classroom_for_upload, deny_student_only, quota_owner, upload_author
+from classroom.access import (
+    can_supervise,
+    classroom_for_upload,
+    deny_student_only,
+    quota_owner,
+    supervised_q,
+    upload_author,
+)
+from classroom.attention import attention_q
+from classroom.export import class_table, csv_safe, pick_lang
+from classroom.serializers import ClassSubmissionSerializer, class_context, is_unattributed
 from users.models import ApiKey
 from users.permissions import IsVerifiedUser
 
@@ -14,17 +25,12 @@ from .intake import QuotaExceeded, check_quota, collect_uploads, create_submissi
 from .models import Batch
 from .throttles import BatchRateThrottle
 
-FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+__all__ = ["BatchViewSet", "csv_safe"]
+
 CSV_COLUMNS = (
     "submission_id", "original_filename", "status", "final_verdict", "final_score",
     "tribunal_version", "mime_type", "sha256", "created_at",
 )
-
-
-def csv_safe(value) -> str:
-    """Neutralise spreadsheet formula injection: filenames are user-controlled."""
-    text = "" if value is None else str(value)
-    return "'" + text if text.startswith(FORMULA_PREFIXES) else text
 
 
 class BatchItemSerializer(serializers.Serializer):
@@ -40,20 +46,41 @@ class BatchItemSerializer(serializers.Serializer):
 class BatchSerializer(serializers.ModelSerializer):
     items = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
+    classroom = serializers.SerializerMethodField()
 
     class Meta:
         model = Batch
-        fields = ("id", "name", "created_at", "skipped", "summary", "items")
+        fields = ("id", "name", "created_at", "skipped", "summary", "items", "classroom")
 
     def _subs(self, obj):
         cache = getattr(obj, "_prefetched_subs", None)
         if cache is None:
-            cache = list(obj.submissions.order_by("original_filename"))
+            queryset = obj.submissions.order_by("original_filename")
+            if obj.classroom_id:
+                queryset = queryset.select_related("user", "uploaded_by", "plagiarism_report").prefetch_related(
+                    "analysis_results__analyzer", "objections",
+                )
+            cache = list(queryset)
             obj._prefetched_subs = cache
         return cache
 
     def get_items(self, obj):
+        if obj.classroom_id:
+            return ClassSubmissionSerializer(self._subs(obj), many=True, context=class_context(obj.classroom)).data
         return BatchItemSerializer(self._subs(obj), many=True).data
+
+    def get_classroom(self, obj):
+        if not obj.classroom_id:
+            return None
+        classroom = obj.classroom
+        request = self.context.get("request")
+        supervising = bool(request) and can_supervise(classroom, request.user)
+        return {
+            "id": str(classroom.id),
+            "name": classroom.name,
+            "organization_slug": classroom.organization.slug if classroom.organization_id else None,
+            "role": "teacher" if supervising else "student",
+        }
 
     def get_summary(self, obj):
         subs = self._subs(obj)
@@ -63,7 +90,10 @@ class BatchSerializer(serializers.ModelSerializer):
             if s.final_verdict:
                 by_verdict[s.final_verdict] = by_verdict.get(s.final_verdict, 0) + 1
         done = by_status.get("completed", 0) + by_status.get("failed", 0)
-        return {"total": len(subs), "done": done, "by_status": by_status, "by_verdict": by_verdict}
+        summary = {"total": len(subs), "done": done, "by_status": by_status, "by_verdict": by_verdict}
+        if obj.classroom_id:
+            summary["flagged"] = obj.submissions.filter(attention_q()).count()
+        return summary
 
 
 class BatchListSerializer(serializers.ModelSerializer):
@@ -79,7 +109,12 @@ class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.Retrie
     permission_classes = [IsVerifiedUser]
 
     def get_queryset(self):
-        return Batch.objects.filter(user=self.request.user)
+        user = self.request.user
+        return (
+            Batch.objects.filter(Q(user=user) | supervised_q(user, prefix="classroom__"))
+            .select_related("classroom__organization")
+            .distinct()
+        )
 
     def get_serializer_class(self):
         return BatchListSerializer if self.action == "list" else BatchSerializer
@@ -119,11 +154,18 @@ class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.Retrie
             create_submission(
                 author, upload, mime_type, batch=batch, api_key=api_key, classroom=classroom, uploaded_by=uploaded_by,
             )
-        return Response(BatchSerializer(batch).data, status=status.HTTP_201_CREATED)
+        return Response(BatchSerializer(batch, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"], url_path="export.csv")
     def export_csv(self, request, id=None):
         batch = self.get_object()
+        if batch.classroom_id and can_supervise(batch.classroom, request.user):
+            context = class_context(batch.classroom)
+            rows = BatchSerializer(context={"request": request})._subs(batch)
+            body = class_table(rows, pick_lang(request), lambda s: is_unattributed(s, context))
+            response = HttpResponse(body, content_type="text/csv; charset=utf-8")
+            response["Content-Disposition"] = f'attachment; filename="prooflayer_batch_{batch.id}.csv"'
+            return response
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(CSV_COLUMNS)

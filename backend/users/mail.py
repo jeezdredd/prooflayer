@@ -124,7 +124,7 @@ COPY = {
             "heading": "Ученик просит",
             "accent_word": "пересмотра",
             "paragraphs": [
-                "{student} не согласен с автоматическим вердиктом по работе «{title}».",
+                "{student} просит пересмотреть вердикт по работе «{title}».",
                 "Вердикты ProofLayer вероятностные. Посмотрите работу сами и ответьте на возражение до срока.",
             ],
             "quote_label": "Причина",
@@ -132,6 +132,48 @@ COPY = {
             "cta": "Открыть результат",
             "footnote": "Окончательное решение принимает человек, а не модель. Ваш ответ увидит ученик.",
             "reason": "Вы получили это письмо, потому что работа сдана в класс, который вы ведёте в ProofLayer.",
+        },
+    },
+    "objection_answer": {
+        "en": {
+            "subject": "Your objection has an answer: {title}",
+            "preheader": "{outcome}",
+            "badge": "Objection",
+            "heading": "Your objection has",
+            "accent_word": "an answer",
+            "paragraphs": [
+                "Your objection to the verdict on “{title}” has an answer.",
+                "{outcome}",
+            ],
+            "outcomes": {
+                "changed": "The verdict was changed: the work counts as your own.",
+                "upheld": "The verdict stays as it was. Read the answer below. If you still disagree, talk to your teacher.",
+            },
+            "quote_label": "The answer",
+            "labels": {"teacher": "Teacher", "class": "Class", "answered": "Answered"},
+            "cta": "Open the work",
+            "footnote": "A person, not the model, made this decision.",
+            "reason": "You get this email because you objected to a verdict on ProofLayer.",
+        },
+        "ru": {
+            "subject": "Ответ на возражение: {title}",
+            "preheader": "{outcome}",
+            "badge": "Возражение",
+            "heading": "На возражение",
+            "accent_word": "ответили",
+            "paragraphs": [
+                "Пришёл ответ на ваше возражение по работе «{title}».",
+                "{outcome}",
+            ],
+            "outcomes": {
+                "changed": "Вердикт изменён: работа признана самостоятельной.",
+                "upheld": "Вердикт оставлен без изменений. Прочитайте ответ ниже. Если всё ещё не согласны, поговорите с учителем.",
+            },
+            "quote_label": "Ответ",
+            "labels": {"teacher": "Учитель", "class": "Класс", "answered": "Ответ дан"},
+            "cta": "Открыть работу",
+            "footnote": "Решение принял человек, а не модель.",
+            "reason": "Вы получили это письмо, потому что оспорили вердикт в ProofLayer.",
         },
     },
     "update": {
@@ -254,6 +296,24 @@ def objection_context(*, lang: str, student: str, title: str, classroom: str, re
         details.append((labels["class"], classroom))
     details.append((labels["due"], due))
     context.update(tone="amber", quote=reason, details=details, cta_url=link)
+    return context
+
+
+def objection_answer_context(
+    *, lang: str, teacher: str, title: str, classroom: str, changed: bool, response: str, answered: str, link: str,
+) -> dict:
+    lang = lang if lang in LANGS else "en"
+    outcome = COPY["objection_answer"][lang]["outcomes"]["changed" if changed else "upheld"]
+    context = build("objection_answer", lang, {"title": title, "outcome": outcome})
+    context.pop("outcomes")
+    labels = context.pop("labels")
+    details = []
+    if teacher:
+        details.append((labels["teacher"], teacher))
+    if classroom:
+        details.append((labels["class"], classroom))
+    details.append((labels["answered"], answered))
+    context.update(tone="sage" if changed else "amber", quote=response, details=details, cta_url=link)
     return context
 
 

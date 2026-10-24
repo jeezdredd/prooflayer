@@ -11,9 +11,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from classroom.access import can_supervise, supervised_q, visible_submissions_q
-from users.tasks import send_objection_notice
+from common.names import display_name
+from users.tasks import send_objection_answer, send_objection_notice
 
-from .models import Submission, VerdictObjection
+from .models import Submission, VerdictObjection, VerdictOverride
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,14 @@ REASON_MIN_LENGTH = 10
 REASON_MAX_LENGTH = 2000
 RESPONSE_MIN_LENGTH = 10
 RESPONSE_MAX_LENGTH = 2000
+CLEARED_VERDICT = "authentic"
 
 
 class ObjectionSerializer(serializers.ModelSerializer):
     submission_id = serializers.UUIDField(read_only=True)
     submission_title = serializers.CharField(source="submission.original_filename", read_only=True)
-    student = serializers.CharField(source="author.username", read_only=True)
+    student = serializers.SerializerMethodField()
+    author_id = serializers.IntegerField(read_only=True)
     classroom = serializers.SerializerMethodField()
     overdue = serializers.BooleanField(read_only=True)
 
@@ -37,17 +40,22 @@ class ObjectionSerializer(serializers.ModelSerializer):
             "submission_id",
             "submission_title",
             "student",
+            "author_id",
             "classroom",
             "reason",
             "status",
             "decision",
             "response",
+            "original_verdict",
             "created_at",
             "due_at",
             "responded_at",
             "overdue",
         )
         read_only_fields = fields
+
+    def get_student(self, obj):
+        return display_name(obj.author)
 
     def get_classroom(self, obj):
         classroom = obj.submission.classroom
@@ -92,11 +100,36 @@ def latest_objection_payload(submission: Submission, user):
     return ObjectionSerializer(objection).data if objection else None
 
 
+def apply_decision(objection: VerdictObjection, reviewer) -> None:
+    if objection.decision != VerdictObjection.Decision.CHANGED:
+        return
+    submission = objection.submission
+    objection.original_verdict = submission.final_verdict
+    if submission.final_verdict == CLEARED_VERDICT:
+        return
+    VerdictOverride.objects.create(
+        submission=submission,
+        reviewer=reviewer,
+        previous_verdict=submission.final_verdict,
+        new_verdict=CLEARED_VERDICT,
+        reason=objection.response,
+    )
+    submission.final_verdict = CLEARED_VERDICT
+    submission.save(update_fields=["final_verdict", "updated_at"])
+
+
 def _notify(objection: VerdictObjection):
     try:
         send_objection_notice.delay(str(objection.id))
     except Exception:
         logger.exception("objection notice failed objection=%s", objection.id)
+
+
+def _notify_answer(objection: VerdictObjection):
+    try:
+        send_objection_answer.delay(str(objection.id))
+    except Exception:
+        logger.exception("objection answer notice failed objection=%s", objection.id)
 
 
 class SubmissionObjectionView(APIView):
@@ -174,5 +207,9 @@ class ObjectionRespondView(APIView):
             objection.response = serializer.validated_data["response"]
             objection.responded_by = request.user
             objection.responded_at = timezone.now()
-            objection.save(update_fields=["status", "decision", "response", "responded_by", "responded_at"])
+            apply_decision(objection, request.user)
+            objection.save(
+                update_fields=["status", "decision", "response", "original_verdict", "responded_by", "responded_at"],
+            )
+            transaction.on_commit(lambda: _notify_answer(objection))
         return Response(ObjectionSerializer(objection).data)

@@ -1,5 +1,3 @@
-import csv
-import io
 from datetime import timedelta
 
 from django.db import transaction
@@ -14,38 +12,64 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from analyzers.models import AnalysisResult
 from billing.permissions import tier_feature
-from content.batch_views import csv_safe
-from content.models import Submission
+from common.names import display_name, save_name
+from content.models import Batch, Submission
 from users.permissions import IsVerifiedUser
 
 from .access import can_supervise, supervised_q
+from .attention import FLAGGED, attention_q, class_attention
+from .export import class_table, pick_lang
 from .models import Classroom, Membership, ShadowSet
 from .radar import class_radar
+from .serializers import (
+    ClassroomSerializer,
+    ClassSubmissionSerializer,
+    MemberSerializer,
+    ShadowSetSerializer,
+    class_context,
+    is_unattributed,
+)
 from .shadow import DAILY_SETS, prompt_language, sets_today
 from .tasks import build_shadow_set
-from .serializers import ClassroomSerializer, ClassSubmissionSerializer, MemberSerializer, ShadowSetSerializer
 
-FLAGGED_VERDICTS = ("fake", "likely_fake", "suspicious", "needs_review")
-COPY_ATTENTION = 85
-
-
-def attention_q(prefix: str = "") -> Q:
-    return Q(**{f"{prefix}final_verdict__in": FLAGGED_VERDICTS}) | Q(**{
-        f"{prefix}plagiarism_report__status": "done",
-        f"{prefix}plagiarism_report__originality__lt": COPY_ATTENTION,
-    })
 TIMELINE_DAYS = 30
 RADAR_DAYS = 60
 RADAR_MAX_DAYS = 365
 CanCreateClassroom = tier_feature("can_classroom", "Classroom")
 
 
-def _originality(submission) -> str:
-    report = getattr(submission, "plagiarism_report", None)
-    if report is None or report.originality is None:
-        return ""
-    return f"{report.originality:.1f}"
+def class_rows(queryset):
+    return (
+        queryset.select_related("user", "uploaded_by", "plagiarism_report")
+        .prefetch_related("analysis_results__analyzer", "objections")
+    )
+
+
+def shadow_reach(classroom, sets) -> dict:
+    results = list(
+        AnalysisResult.objects.filter(
+            analyzer__name="text_shadow", submission__classroom=classroom, evidence__has_key="share",
+        ).select_related("submission__user")
+    )
+    reach = {}
+    for shadow in sets:
+        compared = 0
+        matched = []
+        for result in results:
+            if result.submission.created_at < shadow.created_at:
+                continue
+            compared += 1
+            evidence = result.evidence if isinstance(result.evidence, dict) else {}
+            if result.verdict in FLAGGED and evidence.get("shadow_set") == str(shadow.id):
+                matched.append({
+                    "submission_id": str(result.submission_id),
+                    "student": display_name(result.submission.user),
+                    "filename": result.submission.original_filename,
+                })
+        reach[shadow.id] = {"compared": compared, "matched": matched}
+    return reach
 
 
 class ClassroomViewSet(
@@ -73,6 +97,11 @@ class ClassroomViewSet(
             .distinct()
         )
 
+    def list(self, request, *args, **kwargs):
+        classes = list(self.get_queryset())
+        context = {**self.get_serializer_context(), "attention": class_attention(c.pk for c in classes)}
+        return Response(ClassroomSerializer(classes, many=True, context=context).data)
+
     def _owned(self):
         classroom = self.get_object()
         if not can_supervise(classroom, self.request.user):
@@ -98,19 +127,15 @@ class ClassroomViewSet(
     @action(detail=True, methods=["get"])
     def roster(self, request, id=None):
         classroom = self._owned()
-        members = (
-            Membership.objects.filter(classroom=classroom)
-            .select_related("user")
-            .annotate(
-                total=Count("user__submissions", filter=Q(user__submissions__classroom=classroom), distinct=True),
-                flagged=Count(
-                    "user__submissions",
-                    filter=Q(user__submissions__classroom=classroom) & attention_q("user__submissions__"),
-                    distinct=True,
-                ),
-                last_submission_at=Max("user__submissions__created_at", filter=Q(user__submissions__classroom=classroom)),
-            )
-        )
+        members = list(Membership.objects.filter(classroom=classroom).select_related("user"))
+        works = Submission.objects.filter(classroom=classroom).order_by()
+        totals = dict(works.values_list("user_id").annotate(n=Count("id")))
+        flagged = dict(works.filter(attention_q()).values_list("user_id").annotate(n=Count("id")))
+        latest = dict(works.values_list("user_id").annotate(at=Max("created_at")))
+        for member in members:
+            member.total = totals.get(member.user_id, 0)
+            member.flagged = flagged.get(member.user_id, 0)
+            member.last_submission_at = latest.get(member.user_id)
         return Response(MemberSerializer(members, many=True).data)
 
     @action(detail=True, methods=["delete"], url_path=r"members/(?P<user_id>\d+)")
@@ -130,7 +155,7 @@ class ClassroomViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _class_submissions(self, classroom):
-        qs = Submission.objects.filter(classroom=classroom).select_related("user", "uploaded_by", "plagiarism_report").prefetch_related("analysis_results__analyzer")
+        qs = class_rows(Submission.objects.filter(classroom=classroom))
         if not can_supervise(classroom, self.request.user):
             return qs.filter(user=self.request.user)
         params = self.request.query_params
@@ -146,7 +171,7 @@ class ClassroomViewSet(
     def submissions(self, request, id=None):
         classroom = self.get_object()
         qs = self._class_submissions(classroom).order_by("-created_at")[:500]
-        return Response(ClassSubmissionSerializer(qs, many=True).data)
+        return Response(ClassSubmissionSerializer(qs, many=True, context=class_context(classroom)).data)
 
     @action(detail=True, methods=["get"])
     def stats(self, request, id=None):
@@ -154,8 +179,10 @@ class ClassroomViewSet(
         qs = Submission.objects.filter(classroom=classroom)
         total = qs.count()
         completed = qs.filter(status=Submission.Status.COMPLETED)
-        flagged = completed.filter(attention_q()).count()
-        by_verdict = dict(completed.exclude(final_verdict="").values_list("final_verdict").annotate(c=Count("id")))
+        flagged = qs.filter(attention_q()).count()
+        by_verdict = dict(
+            completed.exclude(final_verdict="").order_by().values_list("final_verdict").annotate(c=Count("id"))
+        )
         since = timezone.now() - timedelta(days=TIMELINE_DAYS)
         timeline = [
             {"date": row["day"].isoformat(), "total": row["total"], "flagged": row["flagged"]}
@@ -165,15 +192,39 @@ class ClassroomViewSet(
             .annotate(total=Count("id"), flagged=Count("id", filter=attention_q()))
             .order_by("day")
         ]
+        done = completed.count()
         return Response({
             "students": Membership.objects.filter(classroom=classroom).count(),
             "total": total,
-            "completed": completed.count(),
+            "completed": done,
             "flagged": flagged,
-            "flagged_share": round(flagged / completed.count(), 4) if completed.exists() else 0.0,
+            "flagged_share": round(flagged / done, 4) if done else 0.0,
             "by_verdict": by_verdict,
             "timeline": timeline,
         })
+
+    @action(detail=True, methods=["get"])
+    def batches(self, request, id=None):
+        classroom = self._owned()
+        rows = list(
+            Batch.objects.filter(classroom=classroom)
+            .annotate(total=Count("submissions"))
+            .order_by("-created_at")[:50]
+        )
+        flagged = dict(
+            Submission.objects.filter(batch__in=rows).filter(attention_q())
+            .order_by().values_list("batch_id").annotate(n=Count("id"))
+        )
+        return Response([
+            {
+                "id": str(b.id),
+                "name": b.name,
+                "created_at": b.created_at,
+                "total": b.total,
+                "flagged": flagged.get(b.id, 0),
+            }
+            for b in rows
+        ])
 
     @action(detail=True, methods=["get"])
     def radar(self, request, id=None):
@@ -188,8 +239,9 @@ class ClassroomViewSet(
     def shadows(self, request, id=None):
         classroom = self._owned()
         if request.method == "GET":
-            sets = ShadowSet.objects.filter(classroom=classroom).annotate(answer_count=Count("answers"))[:50]
-            return Response(ShadowSetSerializer(sets, many=True).data)
+            sets = list(ShadowSet.objects.filter(classroom=classroom).annotate(answer_count=Count("answers"))[:50])
+            reach = shadow_reach(classroom, sets)
+            return Response([{**ShadowSetSerializer(s).data, **reach[s.id]} for s in sets])
         if sets_today(classroom) >= DAILY_SETS:
             return Response({"detail": f"Up to {DAILY_SETS} shadow sets per class per day."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         serializer = ShadowSetSerializer(data=request.data)
@@ -220,18 +272,12 @@ class ClassroomViewSet(
     @action(detail=True, methods=["get"], url_path="export.csv")
     def export_csv(self, request, id=None):
         classroom = self._owned()
-        buf = io.StringIO()
-        writer = csv.writer(buf)
-        writer.writerow(("student", "email", "submission_id", "original_filename", "status", "final_verdict", "final_score", "tribunal_version", "words", "originality", "created_at"))
-        for s in Submission.objects.filter(classroom=classroom).select_related("user", "plagiarism_report").order_by("user__username", "-created_at"):
-            words = ((s.metadata or {}).get("document") or {}).get("words")
-            writer.writerow([
-                csv_safe(s.user.username), csv_safe(s.user.email), csv_safe(s.id), csv_safe(s.original_filename),
-                csv_safe(s.status), csv_safe(s.final_verdict),
-                "" if s.final_score is None else f"{s.final_score:.4f}", csv_safe(s.tribunal_version),
-                "" if words is None else words, _originality(s), s.created_at.isoformat(),
-            ])
-        response = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8")
+        context = class_context(classroom)
+        rows = class_rows(Submission.objects.filter(classroom=classroom)).order_by(
+            "user__last_name", "user__first_name", "user__username", "-created_at",
+        )
+        body = class_table(rows, pick_lang(request), lambda s: is_unattributed(s, context))
+        response = HttpResponse(body, content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="prooflayer_class_{classroom.id}.csv"'
         return response
 
@@ -246,6 +292,7 @@ class JoinClassroomView(APIView):
             return Response({"detail": "No active classroom with that code."}, status=status.HTTP_404_NOT_FOUND)
         if classroom.owner_id == request.user.id:
             return Response({"detail": "You teach this classroom."}, status=status.HTTP_400_BAD_REQUEST)
+        save_name(request.user, request.data.get("name"))
         _, created = Membership.objects.get_or_create(classroom=classroom, user=request.user)
         data = ClassroomSerializer(classroom, context={"request": request}).data
         return Response(data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
