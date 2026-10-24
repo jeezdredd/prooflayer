@@ -8,9 +8,9 @@ from analyzers.text.citations import check_citations
 from analyzers.text.evasion import scan_docx, scan_text
 from analyzers.text.genre import detect_genre
 from analyzers.text.grade import assess, level_label
-from analyzers.text.language import detect_language
-from classroom.shadow import active_answers, best_match
-from analyzers.text.style import drift, features, phrasebook
+from analyzers.text.language import detect_language, words
+from classroom.shadow import active_answers, assignment_prompts, best_match
+from analyzers.text.style import MIN_WORDS, drift, features, phrasebook
 from common.documents import DOCUMENT_MIMES, read_text
 from content.models import Submission
 
@@ -27,6 +27,9 @@ STYLE_GROUPS = {
 STYLE_GROUP_LABELS = {"personal": "personal writing", "expository": "essays and reports", "poem": "poems"}
 BASELINE_WORKS = 3
 PERSONAL_JUMP = 0.3
+MOSTLY_FITS_WORDS = 2
+SOURCES_EXPECTED_WORDS = 150
+READABILITY_KEYS = ("words_per_sentence", "syllables_per_word")
 
 
 def _read(file_path: str, metadata: dict) -> str:
@@ -57,13 +60,26 @@ def student_evidence(name: str, submission, limit: int = STYLE_HISTORY * 2) -> l
     return [e for e in rows if isinstance(e, dict)]
 
 
-def baseline_note(have: int) -> dict:
-    return {"have": have, "need": BASELINE_WORKS}
+def baseline_note(have: int, total: int | None = None, too_short: int = 0, other_kind: int = 0) -> dict:
+    note = {"have": have, "need": BASELINE_WORKS}
+    if total is not None:
+        note.update(total=total, too_short=too_short, other_kind=other_kind)
+    return note
+
+
+def usual_readability(history: list[dict], language: str) -> dict | None:
+    rows = [
+        e for e in history
+        if e.get("language") == language and all(isinstance(e.get(k), (int, float)) for k in READABILITY_KEYS)
+    ]
+    if len(rows) < BASELINE_WORKS:
+        return None
+    return {**{k: round(median(e[k] for e in rows), 1) for k in READABILITY_KEYS}, "works": len(rows)}
 
 
 class TextEvasionAnalyzer(BaseAnalyzer):
     name = "text_evasion"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
@@ -87,7 +103,7 @@ class TextEvasionAnalyzer(BaseAnalyzer):
 
 class TextGradeFitAnalyzer(BaseAnalyzer):
     name = "text_grade_fit"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
@@ -106,14 +122,21 @@ class TextGradeFitAnalyzer(BaseAnalyzer):
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "language not supported"})
         fit = assess(text, lang, level)
         if fit is None:
-            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "text too short", "level_label": level_label(level)})
+            return AnalysisOutput(
+                confidence=0.0, verdict="inconclusive", evidence={"reason": "text too short", "level": level, "level_label": level_label(level)}
+            )
         evidence = {**fit.as_evidence(), "context_signal": True}
+        earlier = student_evidence(self.name, submission)
+        usual = usual_readability(earlier, lang.code)
+        if usual:
+            evidence["usual"] = usual
         if fit.mismatch >= CONTEXT_FLAG:
             history = [
-                e["mismatch"] for e in student_evidence(self.name, submission)
+                e["mismatch"] for e in earlier
                 if e.get("language") == lang.code and isinstance(e.get("mismatch"), (int, float))
             ]
-            evidence["baseline"] = baseline_note(len(history))
+            too_short = sum(1 for e in earlier if e.get("reason") == "text too short")
+            evidence["baseline"] = baseline_note(len(history), len(earlier), too_short, len(earlier) - len(history) - too_short)
             if len(history) < BASELINE_WORKS:
                 evidence["finding"] = (
                     f"above {level_label(level)}, but there is not enough earlier work from this student "
@@ -127,20 +150,29 @@ class TextGradeFitAnalyzer(BaseAnalyzer):
                 return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
             evidence["finding"] = f"vocabulary and sentence complexity well above {level_label(level)} and above this student's usual level"
             return AnalysisOutput(confidence=fit.mismatch, verdict="suspicious", evidence=evidence)
+        if len(fit.rare_words) >= MOSTLY_FITS_WORDS:
+            evidence["bookish_count"] = len(fit.rare_words)
+            evidence["finding"] = f"mostly fits {level_label(level)}, with a few bookish words"
+            return AnalysisOutput(confidence=1 - fit.mismatch, verdict="inconclusive", evidence=evidence)
         evidence["finding"] = f"fits {level_label(level)}"
         return AnalysisOutput(confidence=1 - fit.mismatch, verdict="inconclusive", evidence=evidence)
 
 
 class TextStyleAnalyzer(BaseAnalyzer):
     name = "text_style"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
 
-    def _history(self, submission, language: str, group: str) -> list[dict]:
-        profiles = [e.get("profile") for e in student_evidence(self.name, submission) if e.get("profile")]
-        return [p for p in profiles if p.get("language") == language and p.get("group") == group][:STYLE_HISTORY]
+    def _history(self, submission, language: str, group: str) -> tuple[list[dict], dict]:
+        earlier = student_evidence(self.name, submission)
+        profiles = [e.get("profile") for e in earlier if e.get("profile")]
+        same = [p for p in profiles if p.get("language") == language and p.get("group") == group]
+        note = baseline_note(
+            min(len(same), STYLE_HISTORY), len(earlier), len(earlier) - len(profiles), len(profiles) - len(same)
+        )
+        return same[:STYLE_HISTORY], note
 
     def analyze(self, file_path: str, metadata: dict) -> AnalysisOutput:
         try:
@@ -150,21 +182,29 @@ class TextStyleAnalyzer(BaseAnalyzer):
         lang = detect_language(text)
         if lang is None:
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "language not supported"})
+        submission = _submission(metadata)
+        try:
+            prompts = tuple(assignment_prompts(getattr(submission, "classroom", None)))
+        except Exception as exc:
+            logger.warning("assignment prompt lookup failed: %s", exc)
+            prompts = ()
         profile = features(text, lang)
-        evidence = {"language": lang.code, "phrasebook": phrasebook(text, lang), "context_signal": True}
+        evidence = {"language": lang.code, "phrasebook": phrasebook(text, lang, prompts), "context_signal": True}
         if profile is None:
-            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={**evidence, "reason": "text too short"})
+            return AnalysisOutput(
+                confidence=0.0, verdict="inconclusive", evidence={**evidence, "reason": "text too short", "min_words": MIN_WORDS}
+            )
         genre = detect_genre(text, lang).key
         group = STYLE_GROUPS.get(genre, genre)
         profile["group"] = group
         evidence["profile"] = profile
         evidence["group"] = group
         try:
-            history = self._history(_submission(metadata), lang.code, group)
+            history, note = self._history(submission, lang.code, group)
         except Exception as exc:
             logger.warning("style history lookup failed: %s", exc)
-            history = []
-        evidence["baseline"] = baseline_note(len(history))
+            history, note = [], baseline_note(0)
+        evidence["baseline"] = note
         if len(history) < BASELINE_WORKS:
             label = STYLE_GROUP_LABELS.get(group, group)
             evidence["finding"] = (
@@ -183,7 +223,7 @@ class TextStyleAnalyzer(BaseAnalyzer):
 
 class TextCitationsAnalyzer(BaseAnalyzer):
     name = "text_citations"
-    version = "1.1.0"
+    version = "1.2.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
@@ -200,7 +240,8 @@ class TextCitationsAnalyzer(BaseAnalyzer):
         if genre:
             evidence["genre"] = genre.key
         if not report.references:
-            expected = genre is not None and genre.expects_sources
+            expected = genre is not None and genre.expects_sources and len(words(text)) >= SOURCES_EXPECTED_WORDS
+            evidence["sources_expected"] = expected
             evidence["finding"] = f"a {genre.label} with no sources at all" if expected else "no references, links or quotes to check"
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
         if report.flagged:
@@ -212,7 +253,7 @@ class TextCitationsAnalyzer(BaseAnalyzer):
 
 class TextGenreAnalyzer(BaseAnalyzer):
     name = "text_genre"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
@@ -232,7 +273,7 @@ class TextGenreAnalyzer(BaseAnalyzer):
 
 class TextShadowAnalyzer(BaseAnalyzer):
     name = "text_shadow"
-    version = "1.0.0"
+    version = "1.1.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
@@ -242,9 +283,11 @@ class TextShadowAnalyzer(BaseAnalyzer):
         classroom = getattr(submission, "classroom", None)
         if classroom is None:
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "not a class submission"})
-        answers = active_answers(classroom)
+        answers = active_answers(classroom, submission.created_at)
         if not answers:
-            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": "no AI answers generated for this class yet"})
+            later = bool(active_answers(classroom))
+            reason = "AI answers were created after this work was handed in" if later else "no AI answers generated for this class yet"
+            return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence={"reason": reason})
         try:
             text = _read(file_path, metadata)
             match = best_match(text, answers)

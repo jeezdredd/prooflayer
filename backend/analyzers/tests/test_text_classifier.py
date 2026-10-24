@@ -226,6 +226,15 @@ class TestAnalyzer:
     def test_leaning_score_is_suspicious(self, tmp_path):
         assert _run(tmp_path, 1.5).verdict == "suspicious"
 
+    def test_leaning_score_stays_below_the_flag_line(self, tmp_path):
+        out = _run(tmp_path, 1.5)
+        assert out.evidence["over_flag_line"] is False
+        assert out.evidence["classifier_score"] < out.evidence["threshold"]
+
+    @pytest.mark.parametrize("score", [2.0, 2.5, 4.0])
+    def test_scores_from_the_flag_line_up_are_over_it(self, tmp_path, score):
+        assert _run(tmp_path, score).evidence["over_flag_line"] is True
+
     def test_short_text_gives_no_probability(self, tmp_path):
         out = _run(tmp_path, 9.0, tokens=60)
         assert out.verdict == "inconclusive"

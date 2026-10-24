@@ -110,13 +110,22 @@ def sets_today(classroom) -> int:
     return ShadowSet.objects.filter(classroom=classroom, created_at__gte=timezone.now() - timedelta(days=1)).count()
 
 
-def active_answers(classroom) -> list[ShadowAnswer]:
+def _active_sets(classroom):
     since = timezone.now() - timedelta(days=SHADOW_DAYS)
-    return list(
-        ShadowAnswer.objects.filter(
-            shadow_set__classroom=classroom, shadow_set__status=ShadowSet.Status.DONE, shadow_set__created_at__gte=since
-        ).select_related("shadow_set")
-    )
+    return ShadowSet.objects.filter(classroom=classroom, status=ShadowSet.Status.DONE, created_at__gte=since)
+
+
+def active_answers(classroom, handed_in=None) -> list[ShadowAnswer]:
+    answers = ShadowAnswer.objects.filter(shadow_set__in=_active_sets(classroom))
+    if handed_in is not None:
+        answers = answers.filter(shadow_set__created_at__lte=handed_in)
+    return list(answers.select_related("shadow_set"))
+
+
+def assignment_prompts(classroom) -> list[str]:
+    if classroom is None:
+        return []
+    return [p for p in _active_sets(classroom).values_list("prompt", flat=True) if p]
 
 
 def compare(sentences: list[str], vectors: np.ndarray, answer: ShadowAnswer) -> dict:
@@ -150,5 +159,6 @@ def best_match(text: str, answers: list[ShadowAnswer]) -> dict | None:
         if best is None or (result["share"], result["in_order"]) > (best["share"], best["in_order"]):
             best = {**result, "shadow_set": str(answer.shadow_set_id), "prompt": answer.shadow_set.prompt[:300], "variant": answer.variant}
     best["answers_compared"] = len(answers)
+    best["answers_for_prompt"] = sum(1 for a in answers if str(a.shadow_set_id) == best["shadow_set"])
     best["flagged"] = best["share"] >= FLAG_SHARE and best["in_order"] >= FLAG_IN_ORDER
     return best

@@ -123,6 +123,16 @@ TITLE_PATTERNS = [
 GOST_AUTHORS = re.compile(r"^(?:[А-ЯЁ][а-яё\-]+,?\s(?:[А-ЯЁ]\.\s?){1,3},?\s*)+")
 GOST_TAIL = re.compile(r"\s*(?://|\.\s*[–—-]\s|\.\s+[А-ЯЁ][А-Яа-яё]{0,6}\.?\s*:)")
 CYRILLIC = re.compile(r"[А-Яа-яЁё]")
+NUMBERING = re.compile(r"^\s*(?:\[\d+\]|\d+[.)])\s*")
+AUTHOR_PATTERNS = (
+    re.compile(r"^([A-ZА-ЯЁ][\w'\-]+),\s*(?:[A-ZА-ЯЁ]\.|[A-ZА-ЯЁ][a-zа-яё]+[.,])"),
+    re.compile(r"^([A-ZА-ЯЁ][\w'\-]+)\s+(?:[A-ZА-ЯЁ]\.\s?){1,3}"),
+    re.compile(r"^(?:[A-Z]\.\s?){1,3}\s*([A-Z][\w'\-]+)"),
+    re.compile(r"^([A-Z][\w'\-]+)\s+[A-Z]{1,3}[,.]"),
+)
+PAGE_OPENS = "page opens"
+PAGE_NOT_FOUND = "page not found"
+NOT_COVERED = "not covered by open catalogues"
 
 
 def guess_title(entry: str) -> str:
@@ -194,11 +204,38 @@ def check_url(ref: Reference):
         return
     try:
         if resp.status_code < 400:
-            ref.status, ref.detail = FOUND, f"HTTP {resp.status_code}"
+            ref.status, ref.detail = FOUND, PAGE_OPENS
         elif resp.status_code in (404, 410):
-            ref.status, ref.detail = MISSING, f"page not found (HTTP {resp.status_code})"
+            ref.status, ref.detail = MISSING, PAGE_NOT_FOUND
     finally:
         resp.close()
+
+
+def first_author(entry: str) -> str | None:
+    body = NUMBERING.sub("", entry).strip()
+    for pattern in AUTHOR_PATTERNS:
+        match = pattern.match(body)
+        if match:
+            return match.group(1)
+    return None
+
+
+def author_matches(entry: str, authors: list[str]) -> bool:
+    surname = first_author(entry)
+    names = " ".join(a for a in authors if a)
+    if not surname or not names:
+        return True
+    if CYRILLIC.search(surname) and not CYRILLIC.search(names):
+        return True
+    return surname.lower() in names.lower()
+
+
+def _openalex_authors(work: dict) -> list[str]:
+    return [(a.get("author") or {}).get("display_name") or "" for a in work.get("authorships") or []]
+
+
+def _crossref_authors(item: dict) -> list[str]:
+    return [" ".join(filter(None, (a.get("given"), a.get("family"), a.get("name")))) for a in item.get("author") or []]
 
 
 def check_bibliography(ref: Reference):
@@ -209,7 +246,7 @@ def check_bibliography(ref: Reference):
         answered = True
         for work in openalex.json().get("results", []):
             title = work.get("title") or work.get("display_name") or ""
-            if title and title_matches(title, ref.value):
+            if title and title_matches(title, ref.value) and author_matches(ref.value, _openalex_authors(work)):
                 ref.status, ref.detail = FOUND, title
                 return
     crossref = _get("https://api.crossref.org/works", **{"query.bibliographic": query, "rows": 3})
@@ -217,7 +254,7 @@ def check_bibliography(ref: Reference):
         answered = True
         for item in crossref.json().get("message", {}).get("items", []):
             title = " ".join(item.get("title") or [])
-            if title and title_matches(title, ref.value):
+            if title and title_matches(title, ref.value) and author_matches(ref.value, _crossref_authors(item)):
                 ref.status, ref.detail = FOUND, title
                 return
     title = guess_title(ref.value)
@@ -227,7 +264,7 @@ def check_bibliography(ref: Reference):
             ref.status, ref.detail = FOUND, hit.url
             return
     if CYRILLIC.search(ref.value):
-        ref.detail = "not in OpenAlex, Crossref or web search, which cover few Russian-language books"
+        ref.detail = NOT_COVERED
         return
     if answered:
         ref.status, ref.detail = MISSING, "no matching work in OpenAlex or Crossref"

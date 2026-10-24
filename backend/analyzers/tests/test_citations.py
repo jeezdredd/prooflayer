@@ -10,6 +10,7 @@ from analyzers.text.citation_style import check_format, detect_style, entry_issu
 from analyzers.text.citations import (
     FOUND,
     MISSING,
+    NOT_COVERED,
     UNCHECKED,
     CitationReport,
     Reference,
@@ -18,6 +19,7 @@ from analyzers.text.citations import (
     check_isbn,
     check_url,
     extract,
+    first_author,
     guess_title,
     isbn_valid,
     title_matches,
@@ -166,6 +168,44 @@ class TestChecks:
         with mock.patch.object(citations.requests, "get", side_effect=empty), mock.patch.object(citations, "search", return_value=[]):
             check_bibliography(ref)
         assert ref.status == UNCHECKED
+        assert ref.detail == NOT_COVERED
+
+    def test_same_title_by_another_author_is_not_a_match(self):
+        entry = "Walker, M. (2017). Why We Sleep: Unlocking the Power of Sleep and Dreams. Scribner."
+        ref = Reference("bibliography", entry)
+        other = {"title": "Why We Sleep: Unlocking the Power of Sleep and Dreams", "authorships": [{"author": {"display_name": "Jane Doe"}}]}
+        replies = [response(200, {"results": [other]}), response(200, {"message": {"items": []}})]
+        with mock.patch.object(citations.requests, "get", side_effect=replies), mock.patch.object(citations, "search", return_value=[]):
+            check_bibliography(ref)
+        assert ref.status == MISSING
+        ref = Reference("bibliography", entry)
+        right = {**other, "authorships": [{"author": {"display_name": "Matthew Walker"}}]}
+        with mock.patch.object(citations.requests, "get", return_value=response(200, {"results": [right]})):
+            check_bibliography(ref)
+        assert ref.status == FOUND
+
+    @pytest.mark.parametrize("entry, surname", [
+        ("Walker, M. (2017). Why We Sleep. Scribner.", "Walker"),
+        ("Ключевский В. О. Курс русской истории. М.: Мысль, 1987.", "Ключевский"),
+        ("[1] M. P. Walker and R. Stickgold, \"Sleep, memory, and plasticity,\" 2006.", "Walker"),
+        ("1. Walker MP, Stickgold R. Sleep, memory, and plasticity. 2006;57:139-66.", "Walker"),
+        ("Sleep and memory. 2006.", None),
+        ("Walker, Matthew. Why We Sleep. Scribner, 2017.", "Walker"),
+        ("Psychology, Worth Publishers, 2014.", None),
+        ("Chemistry AQA Revision Guide. CGP, 2019.", None),
+    ])
+    def test_first_author(self, entry, surname):
+        assert first_author(entry) == surname
+
+    def test_working_link_detail_is_plain(self):
+        ref = Reference("url", "https://example.org/ok")
+        with mock.patch.object(citations, "safe_get", return_value=response(200)):
+            check_url(ref)
+        assert (ref.status, ref.detail) == (FOUND, "page opens")
+        ref = Reference("url", "https://example.org/gone")
+        with mock.patch.object(citations, "safe_get", return_value=response(404)):
+            check_url(ref)
+        assert (ref.status, ref.detail) == (MISSING, "page not found")
 
     def test_title_match_needs_most_words(self):
         assert title_matches("Why We Sleep", "Walker. Why we sleep. 2017")
@@ -260,6 +300,19 @@ class TestAnalyzer:
     def test_nothing_to_check(self, tmp_path):
         out = self._run(tmp_path, "plain essay", [])
         assert out.verdict == "inconclusive" and out.confidence == 0.0
+
+    def test_short_answer_with_a_date_does_not_need_sources(self, tmp_path):
+        text = "Война 1812 года началась летом. Наполеон дошёл до Москвы, но армия Кутузова его остановила и прогнала."
+        out = self._run(tmp_path, text, [])
+        assert out.evidence["sources_expected"] is False
+        assert out.evidence["finding"] == "no references, links or quotes to check"
+
+    def test_long_report_without_sources_is_noted(self, tmp_path):
+        body = " ".join(["В 1990 году урожай вырос на 12%, а в 2020 году упал на 9% из-за засухи и жары."] * 12)
+        text = f"Введение\n{body}\nЗаключение\nНужны новые сорта."
+        out = self._run(tmp_path, text, [])
+        assert out.evidence["genre"] == "report"
+        assert out.evidence["sources_expected"] is True
 
     def test_flag_sends_to_review_but_never_convicts(self):
         sub = SubmissionFactory()

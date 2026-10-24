@@ -1,16 +1,19 @@
+from datetime import timedelta
 from unittest import mock
 
 import numpy as np
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from analyzers.implementations.text_signals import TextShadowAnalyzer
 from billing.models import Subscription, get_or_create_subscription
 from classroom import shadow as shadow_module
 from classroom.models import Classroom, Membership, ShadowAnswer, ShadowSet
-from classroom.shadow import DAILY_SETS, best_match, build, prompt_language, variants
+from classroom.shadow import DAILY_SETS, assignment_prompts, best_match, build, prompt_language, variants
 from classroom.tasks import build_shadow_set
+from content.models import Submission
 from content.tests.factories import SubmissionFactory
 from users.tests.factories import UserFactory
 
@@ -124,6 +127,32 @@ class TestShadowAnalyzer:
         _, classroom, student = _class()
         assert self._run(tmp_path, SubmissionFactory(user=student, classroom=classroom)).evidence["reason"].startswith("no AI answers")
         assert self._run(tmp_path, SubmissionFactory(user=student)).evidence["reason"] == "not a class submission"
+
+    def test_answers_made_after_the_work_was_handed_in_are_not_used(self, tmp_path):
+        _, classroom, student = _class()
+        work = SubmissionFactory(user=student, classroom=classroom, mime_type="text/plain")
+        Submission.objects.filter(pk=work.pk).update(created_at=timezone.now() - timedelta(days=10))
+        _done_set(classroom)
+        out = self._run(tmp_path, work)
+        assert out.verdict == "inconclusive"
+        assert out.evidence["reason"] == "AI answers were created after this work was handed in"
+
+    def test_evidence_names_the_assignment(self, tmp_path):
+        _, classroom, student = _class()
+        _done_set(classroom)
+        out = self._run(tmp_path, SubmissionFactory(user=student, classroom=classroom, mime_type="text/plain"), OTHER)
+        assert out.evidence["prompt"] == "Is reading still important today?"
+        assert out.evidence["answers_compared"] == 1 and out.evidence["answers_for_prompt"] == 1
+
+
+@pytest.mark.django_db
+class TestAssignmentPrompts:
+    def test_lists_prompts_of_finished_sets(self):
+        _, classroom, _ = _class()
+        _done_set(classroom)
+        ShadowSet.objects.create(classroom=classroom, prompt="Still building", language="en")
+        assert assignment_prompts(classroom) == ["Is reading still important today?"]
+        assert assignment_prompts(None) == []
 
 
 @pytest.mark.django_db

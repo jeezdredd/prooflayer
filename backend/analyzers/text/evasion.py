@@ -57,6 +57,12 @@ COMMON_MARKS = {
 }
 
 TOKEN_RE = re.compile(r"\S+")
+PLAIN_SPACE = " \n\r\t"
+SHOWN_MARK = "\u00b7"
+EXAMPLE_REACH = 20
+MAX_EXAMPLES = 10
+EXAMPLE_KINDS = ("invisible", "odd_space", "tag", "stray_mark", "punct")
+TRIM = ".,;:!?()[]\"«»"
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 WHITE = {"FFFFFF", "FEFEFE", "FDFDFD", "FCFCFC"}
 TINY_HALF_POINTS = 4
@@ -73,6 +79,7 @@ class EvasionReport:
     lookalike_punctuation: Counter = field(default_factory=Counter)
     stray_marks: int = 0
     styled_letter_words: list[str] = field(default_factory=list)
+    examples: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def invisible_total(self) -> int:
@@ -125,7 +132,13 @@ class EvasionReport:
             "lookalike_punctuation": dict(self.lookalike_punctuation),
             "stray_marks": self.stray_marks,
             "styled_letter_words": self.styled_letter_words[:20],
+            **{f"{kind}_words": self.examples.get(kind, []) for kind in EXAMPLE_KINDS},
         }
+
+    def add_example(self, kind: str, example: str):
+        found = self.examples.setdefault(kind, [])
+        if example and example not in found and len(found) < MAX_EXAMPLES:
+            found.append(example)
 
 
 def _script(ch: str) -> str | None:
@@ -172,32 +185,50 @@ def _is_common_word(word: str) -> bool:
     return any(zipf_frequency(word, lang) >= COMMON_WORD_ZIPF for lang in WORD_LANGS)
 
 
-def _stray_marks(text: str) -> int:
+def _stray_marks(text: str, report: EvasionReport) -> int:
     count = 0
     for token in TOKEN_RE.findall(text):
         decomposed = unicodedata.normalize("NFD", token)
         odd = sum(1 for ch in decomposed if unicodedata.combining(ch) and ch not in COMMON_MARKS)
         if not odd:
             continue
-        bare = "".join(ch for ch in decomposed if not unicodedata.combining(ch)).strip(".,;:!?()[]\"«»").lower()
+        bare = "".join(ch for ch in decomposed if not unicodedata.combining(ch)).strip(TRIM).lower()
         if bare.isalpha() and _is_common_word(unicodedata.normalize("NFC", bare)):
             count += odd
+            report.add_example("stray_mark", token.strip(TRIM))
     return count
+
+
+def _example(text: str, index: int, show: str) -> str:
+    start = index
+    while start > 0 and index - start < EXAMPLE_REACH and text[start - 1] not in PLAIN_SPACE:
+        start -= 1
+    end = index + 1
+    while end < len(text) and end - index < EXAMPLE_REACH and text[end] not in PLAIN_SPACE:
+        end += 1
+    left = "".join(ch for ch in text[start:index] if ch not in INVISIBLE)
+    right = "".join(ch for ch in text[index + 1:end] if ch not in INVISIBLE)
+    return f"{left}{show}{right}".strip(TRIM)
 
 
 def scan_text(text: str) -> EvasionReport:
     report = EvasionReport()
     cjk = sum(1 for ch in text if _is_cjk(ch))
     latin_text = cjk < CJK_TOLERANCE
-    for ch in text:
+    for i, ch in enumerate(text):
         if latin_text and ch in LOOKALIKE_PUNCT:
             report.lookalike_punctuation[LOOKALIKE_PUNCT[ch]] += 1
+            report.add_example("punct", _example(text, i, ch))
         if ch in INVISIBLE:
             report.invisible[INVISIBLE[ch]] += 1
+            if i > 0:
+                report.add_example("invisible", _example(text, i, SHOWN_MARK))
         elif ch in ODD_SPACES:
             report.odd_spaces += 1
+            report.add_example("odd_space", _example(text, i, SHOWN_MARK))
         elif 0xE0000 <= ord(ch) <= 0xE007F:
             report.tag_characters += 1
+            report.add_example("tag", _example(text, i, SHOWN_MARK))
         elif ch.isalpha():
             report.letters += 1
     if text.startswith("﻿"):
@@ -205,7 +236,7 @@ def scan_text(text: str) -> EvasionReport:
         if report.invisible["zero-width no-break space"] <= 0:
             del report.invisible["zero-width no-break space"]
     if latin_text:
-        report.stray_marks = _stray_marks(text)
+        report.stray_marks = _stray_marks(text, report)
     cleaned = "".join(ch for ch in text if ch not in INVISIBLE)
     for token in TOKEN_RE.findall(cleaned):
         letters = [c for c in token if c.isalpha()]

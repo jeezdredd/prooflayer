@@ -50,13 +50,16 @@ export interface OriginalityMatch {
   share: number;
   spans: [number, number][];
   excerpts: string[];
+  source_excerpts?: string[];
   similarity: number | null;
   url?: string;
-  title?: string;
+  title?: string | null;
   submission_id?: string;
   author?: string;
   classroom?: string | null;
   submitted_at?: string;
+  hidden?: boolean;
+  hidden_reason?: "student_view" | "other_class";
 }
 
 export interface OriginalityReport {
@@ -65,6 +68,7 @@ export interface OriginalityReport {
   matched_chars: number;
   total_chars: number;
   web_searched: boolean;
+  web_status?: "ok" | "failed" | "off" | "short";
   checked_at: string;
   matches: OriginalityMatch[];
 }
