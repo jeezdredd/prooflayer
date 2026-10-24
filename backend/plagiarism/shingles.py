@@ -109,7 +109,9 @@ def positions(hashes: list[int]) -> dict[int, list[int]]:
     return where
 
 
-def align(run: tuple[int, int], hashes: list[int], where: dict[int, list[int]], size: int, k: int = SHINGLE) -> tuple[int, int] | None:
+def align(
+    run: tuple[int, int], hashes: list[int], where: dict[int, list[int]], size: int, k: int = SHINGLE,
+) -> tuple[int, int] | None:
     votes: Counter = Counter()
     for i in range(max(0, run[0] - k + 1), min(run[1], len(hashes))):
         for p in where.get(hashes[i], ()):

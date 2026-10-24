@@ -40,15 +40,11 @@ def _share(matched: int, report) -> float:
 
 
 def _hidden_reason(submission, user) -> str:
-    if (
-        user is not None
-        and getattr(user, "is_authenticated", False)
-        and submission.user_id == user.id
-        and submission.classroom is not None
-        and not can_supervise(submission.classroom, user)
-    ):
-        return "student_view"
-    return "other_class"
+    if user is None or not getattr(user, "is_authenticated", False) or submission.user_id != user.id:
+        return "other_class"
+    if submission.classroom is not None and can_supervise(submission.classroom, user):
+        return "other_class"
+    return "student_view"
 
 
 def report_payload(submission, user) -> dict | None:
@@ -62,6 +58,7 @@ def report_payload(submission, user) -> dict | None:
         "total_chars": report.total_chars,
         "web_searched": report.web_searched,
         "web_status": report.web_status or ("ok" if report.web_searched else "off"),
+        "web_engines": report.web_engines or [],
         "web_queries": report.web_queries,
         "checked_at": report.updated_at.isoformat(),
         "matches": [],
@@ -79,7 +76,8 @@ def report_payload(submission, user) -> dict | None:
         visible = {str(s.id): s for s in qs}
     texts = {}
     if visible:
-        texts = {str(k): v for k, v in TextFingerprint.objects.filter(submission_id__in=list(visible)).values_list("submission_id", "text")}
+        rows = TextFingerprint.objects.filter(submission_id__in=list(visible)).values_list("submission_id", "text")
+        texts = {str(k): v for k, v in rows}
     hidden_reason = None
     for match in report.matches:
         matched = match.get("matched_chars", 0)

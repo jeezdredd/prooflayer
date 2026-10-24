@@ -1,4 +1,5 @@
 import logging
+import math
 import re
 
 from django.conf import settings
@@ -24,7 +25,7 @@ from .shingles import (
     tokens_in,
     winnow,
 )
-from .web import web_matches
+from .web import WebResult, web_matches
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ PARAPHRASE_SIMILAR = 0.95
 TRANSLATION_SIMILAR = 0.92
 STRONG_SIMILAR = 0.98
 COMMON_AUTHORS = 3
+COMMON_SHARE = 0.3
 COMMON_MAX_WORDS = 30
 MIN_SOURCE_CHARS = 60
 MIN_SHARE = 0.6
@@ -107,19 +109,17 @@ def common_mask(submission, tokens, hashes) -> list[bool]:
     prompts: set[int] = set()
     for prompt in ShadowSet.objects.filter(classroom_id=submission.classroom_id).values_list("prompt", flat=True):
         prompts.update(shingle_hashes(tokenize(prompt)))
+    classmates = TextFingerprint.objects.filter(
+        in_repository=True, submission__classroom_id=submission.classroom_id,
+    ).exclude(submission__user_id=submission.user_id)
+    needed = max(COMMON_AUTHORS, math.ceil(COMMON_SHARE * classmates.values("submission__user_id").distinct().count()))
     own = set(hashes)
     authors: dict[int, set] = {}
-    rows = (
-        TextFingerprint.objects.filter(
-            in_repository=True, submission__classroom_id=submission.classroom_id, fingerprints__overlap=winnow(hashes),
-        )
-        .exclude(submission__user_id=submission.user_id)
-        .values_list("submission__user_id", "text")[:CANDIDATES]
-    )
-    for user_id, text in rows:
+    rows = classmates.filter(fingerprints__overlap=winnow(hashes)).values_list("submission__user_id", "text")
+    for user_id, text in rows[:CANDIDATES]:
         for h in own.intersection(shingle_hashes(tokenize(text))):
             authors.setdefault(h, set()).add(user_id)
-    shared = {h for h, users in authors.items() if len(users) >= COMMON_AUTHORS}
+    shared = {h for h, users in authors.items() if len(users) >= needed}
     runs = [r for r in matched_runs(tokens, hashes, shared, min_len=SHINGLE) if r[1] - r[0] <= COMMON_MAX_WORDS]
     runs += matched_runs(tokens, hashes, prompts, min_len=SHINGLE)
     for a, b in runs:
@@ -198,8 +198,6 @@ def internal_semantic(submission, language: str, sents, vectors, skipped: list[b
         })
     matches = []
     for key, hits in found.items():
-        if not reused(hits):
-            continue
         kinds = sorted({h["kind"] for h in hits}, key=KINDS.index)
         matches.append({
             "source": "internal",
@@ -210,6 +208,7 @@ def internal_semantic(submission, language: str, sents, vectors, skipped: list[b
             "spans": [h["own"] for h in hits],
             "pairs": [{"own": h["own"], "src": h["src"], "kind": h["kind"]} for h in hits],
             "similarity": max(h["similarity"] for h in hits),
+            "reused": reused(hits),
         })
     return matches
 
@@ -218,11 +217,14 @@ def overlap(span, spans) -> int:
     return sum(max(0, min(span[1], e) - max(span[0], s)) for s, e in spans)
 
 
-def merge_sources(exact: list[dict], semantic: list[dict]) -> list[dict]:
+def merge_sources(exact: list[dict], semantic: list[dict], tokens) -> list[dict]:
     by_source = {m["submission_id"]: m for m in exact}
     merged = list(exact)
     for m in semantic:
         target = by_source.get(m["submission_id"])
+        backed = target is not None and covered_token_chars(tokens, target["spans"]) >= MIN_SOURCE_CHARS
+        if not (m.pop("reused") or backed):
+            continue
         if target is None:
             merged.append(m)
             continue
@@ -287,11 +289,12 @@ def run_check(submission) -> PlagiarismReport:
         matches = merge_sources(
             internal_exact(submission, tokens, hashes, skip),
             internal_semantic(submission, language, sents, vectors, skipped),
+            tokens,
         )
-        web_status, web_queries = PlagiarismReport.WebStatus.OFF, 0
+        web = WebResult(PlagiarismReport.WebStatus.OFF)
         if web_search_allowed(submission):
-            web, web_status, web_queries = web_matches(text[:end], tokens, hashes, skip)
-            matches += web
+            web = web_matches(text[:end], tokens, hashes, skip)
+            matches += web.matches
 
         total = max(1, text_chars([t for t in tokens if t.start < end]))
         matches, matched = counted(matches, tokens, total)
@@ -300,9 +303,10 @@ def run_check(submission) -> PlagiarismReport:
         report.total_chars = total
         report.matched_chars = matched
         report.originality = round(100 * (1 - matched / total), 1)
-        report.web_status = web_status
-        report.web_searched = web_status == PlagiarismReport.WebStatus.OK
-        report.web_queries = web_queries
+        report.web_status = web.status
+        report.web_searched = web.status == PlagiarismReport.WebStatus.OK
+        report.web_queries = web.queries
+        report.web_engines = web.engines
         report.status = PlagiarismReport.Status.DONE
     except Exception as exc:
         logger.exception("plagiarism check failed for %s", submission.id)

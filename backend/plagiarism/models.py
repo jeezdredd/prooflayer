@@ -66,6 +66,7 @@ class PlagiarismReport(models.Model):
     web_searched = models.BooleanField(default=False)
     web_queries = models.PositiveSmallIntegerField(default=0)
     web_status = models.CharField(max_length=8, choices=WebStatus.choices, blank=True)
+    web_engines = models.JSONField(default=list, blank=True)
     error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

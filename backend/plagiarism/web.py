@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 import trafilatura
@@ -7,6 +8,7 @@ from django.conf import settings
 from analyzers.text.language import detect_language, sentences
 from common.url_safety import UnsafeUrlError, safe_get
 
+from .models import PlagiarismReport
 from .search import lookup, wikipedia_lookup
 from .shingles import Token, copied_pairs, tokenize
 
@@ -57,17 +59,30 @@ def fetch_text(url: str) -> str:
     return trafilatura.extract(body.decode(resp.encoding or "utf-8", errors="replace")) or ""
 
 
-def web_matches(text: str, tokens: list[Token], hashes: list[int], skip: list[bool]) -> tuple[list[dict], str, int]:
+@dataclass
+class WebResult:
+    status: str
+    matches: list[dict] = field(default_factory=list)
+    queries: int = 0
+    engines: list[str] = field(default_factory=list)
+
+
+def web_matches(text: str, tokens: list[Token], hashes: list[int], skip: list[bool]) -> WebResult:
     queries = distinctive_sentences(text, getattr(settings, "PLAGIARISM_WEB_QUERIES", 8))
     if not queries:
-        return [], "short", 0
+        return WebResult(PlagiarismReport.WebStatus.SHORT)
     lang = detect_language(text)
     urls: dict[str, str] = {}
     answered = 0
+    engines: set[str] = set()
     for sentence in queries:
         query = query_for(sentence)
         hits, searched = lookup(query, limit=4)
         wiki, wiki_searched = wikipedia_lookup(query, lang.code if lang else "")
+        if searched:
+            engines.add("web")
+        if wiki_searched:
+            engines.add("wikipedia")
         if searched or wiki_searched:
             answered += 1
         for hit in hits + wiki:
@@ -75,7 +90,7 @@ def web_matches(text: str, tokens: list[Token], hashes: list[int], skip: list[bo
             if host and hit.url not in urls:
                 urls[hit.url] = hit.title
     if not answered:
-        return [], "failed", 0
+        return WebResult(PlagiarismReport.WebStatus.FAILED)
     matches = []
     fetched = 0
     for url, title in list(urls.items())[: getattr(settings, "PLAGIARISM_WEB_PAGES", 12)]:
@@ -98,5 +113,5 @@ def web_matches(text: str, tokens: list[Token], hashes: list[int], skip: list[bo
                 ],
             })
     if urls and not fetched:
-        return [], "failed", 0
-    return matches, "ok", answered
+        return WebResult(PlagiarismReport.WebStatus.FAILED)
+    return WebResult(PlagiarismReport.WebStatus.OK, matches, answered, sorted(engines))
