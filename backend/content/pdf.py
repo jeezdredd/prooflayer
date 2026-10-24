@@ -30,6 +30,7 @@ AI_LOOK = 0.45
 SPREAD_ALERT = 0.5
 MIN_CORROBORATING_FAKE = 2
 FLAGGED = {"fake", "likely_fake", "suspicious"}
+AI_VERDICTS = ("fake", "likely_fake")
 TEXT_ANALYZERS = ("text_classifier", "text_evasion", "text_grade_fit", "text_style", "text_citations", "text_shadow")
 CONTEXT_ANALYZERS = ("text_evasion", "text_grade_fit", "text_style", "text_citations", "text_shadow", "text_genre", "ela")
 IMAGE_DETECTORS = (
@@ -349,7 +350,7 @@ def _local_date(value, lang: str) -> str:
     return local.strftime("%d.%m.%Y") if lang == "ru" else local.strftime("%b %d, %Y")
 
 
-def _where_line(row: dict, lang: str, in_class: bool) -> str | None:
+def _where_line(row: dict, lang: str, student: bool) -> str | None:
     w = COPY[lang]["where"]
     match = row.get("match")
     if not match:
@@ -361,15 +362,15 @@ def _where_line(row: dict, lang: str, in_class: bool) -> str | None:
         parts = [p for p in (first, match.get("classroom")) if p]
         if match.get("submitted_at"):
             parts.append(_local_date(datetime.fromisoformat(match["submitted_at"]), lang))
-        key = "yours_class" if scope == "yours" and in_class else scope
+        key = "yours_class" if scope == "yours" and student else scope
         return w[key].format(what=what, who=", ".join(parts))
     return w[scope].format(what=what)
 
 
-def _provenance(submission, user, lang: str) -> list[dict]:
+def _provenance(submission, user, lang: str, student: bool) -> list[dict]:
     rows = []
     for row in provenance_rows(submission, user):
-        line = _where_line(row, lang, submission.classroom_id is not None)
+        line = _where_line(row, lang, student)
         if line is not None:
             rows.append({"title": line, "url": "", "similarity": None})
         else:
@@ -405,11 +406,14 @@ def build_report_context(submission, user=None) -> dict:
         excerpt = text[:EXCERPT_CHARS].rstrip() + ("…" if len(text) > EXCERPT_CHARS else "")
 
     checks = _text_checks(by_name, payload, lang, audience == "student") if is_text else []
+    proof = _proof_generator(metadata) if verdict in AI_VERDICTS else None
     status = ""
     if in_class:
         originality = payload.get("originality") if payload and payload.get("status") == "done" else None
         too_short = _evidence(by_name, "text_classifier").get("reason") == "text too short for a verdict"
         headline, status = _plain_outcome(verdict, originality, too_short, audience, c)
+        if is_image and audience == "teacher" and status == "alert":
+            headline = c["proof_headline"] if proof else c["plain"]["image_alert"]
         tone = tone_set(STATUS_TONE[status])
     else:
         headline = c["headline"].get(verdict, verdict.replace("_", " ").capitalize())
@@ -420,7 +424,6 @@ def build_report_context(submission, user=None) -> dict:
         meaning = c["raised_by"].format(reasons="; ".join(_lower_first(ch["headline"]) for ch in raised)) if raised else c["no_concerns"]
     else:
         meaning = _meaning(verdict, results, metadata, lang)
-    proof = _proof_generator(metadata)
     fake_votes, total_votes = _detector_votes(results)
     detector_line = c["detector_count"].format(fake=fake_votes, total=total_votes) if is_image and total_votes and not proof else ""
     next_step = ""
@@ -466,7 +469,7 @@ def build_report_context(submission, user=None) -> dict:
         "members": [] if is_text and in_class else _members(results, lang, image=is_image),
         "passages": _passages(results),
         "originality": _originality(payload, lang),
-        "provenance": _provenance(submission, user, lang) if is_image else [],
+        "provenance": _provenance(submission, user, lang, audience == "student") if is_image else [],
         "claims": _claims(getattr(submission, "factcheck_result", None), lang),
         "details": details,
         "technical": technical,

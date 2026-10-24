@@ -73,8 +73,8 @@
     "Your objection was accepted on {date}: the work counts as your own.": "Ваше возражение принято {date}: работа засчитана как ваша.",
     "Your objection was reviewed on {date} and the verdict was kept.": "Ваше возражение рассмотрено {date}, вердикт оставлен.",
     "Read the answer": "Прочитать ответ",
-    "The verdict was changed after the student's objection on {date}: the work counts as the student's own.": "Вердикт изменён после возражения ученика {date}: работа засчитана как самостоятельная.",
-    "The verdict was kept after the student's objection on {date}.": "После возражения ученика вердикт оставлен {date}.",
+    "The verdict was changed after the student's objection on {date}: the work counts as the student's own.": "Вердикт изменён {date} после возражения ученика: работа засчитана как самостоятельная.",
+    "The verdict was kept after the student's objection on {date}.": "Вердикт оставлен {date} после возражения ученика.",
     "The same picture": "Такую же картинку",
     "An almost identical picture": "Почти такую же картинку",
     "A picture with similar content": "Похожую по содержанию картинку",
@@ -1736,7 +1736,11 @@
     "Most of the text was found in other sources": "Большая часть текста найдена в других источниках",
     "Part of the text matches other sources": "Часть текста совпадает с другими источниками",
     "Part of the text matches other sources; worth a look": "Часть текста совпадает с другими источниками, стоит посмотреть",
-    "No clear signs of AI, but no firm answer either": "Явных признаков ИИ нет, но и уверенного вывода тоже"
+    "No clear signs of AI, but no firm answer either": "Явных признаков ИИ нет, но и уверенного вывода тоже",
+    "The verdict was changed after the author's objection on {date}.": "Вердикт изменён {date} после возражения автора.",
+    "The verdict was kept after the author's objection on {date}.": "Вердикт оставлен {date} после возражения автора.",
+    "Strong signs the picture was made by AI": "Серьёзные признаки, что картинку сделала нейросеть",
+    "This work was checked before the last update of Tribunal. Press \"Re-analyze\" and the old result will be replaced with the new one.": "Работу проверили до последнего обновления Tribunal. Нажмите «Проверить заново», прежний результат заменится новым."
   },
   "plural": {
     "All {n} sources exist": [

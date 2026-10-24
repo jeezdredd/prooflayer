@@ -1,6 +1,20 @@
 import { IS_CLASSROOM_APP } from "../appMode";
-import { locale } from "../i18n";
+import { currentLang, locale } from "../i18n";
 import type { Submission } from "../types";
+
+const ELA_FORMATS = ["JPEG", "MPO"];
+
+export function elaWorksOn(evidence: Record<string, unknown> | undefined): boolean {
+  const format = evidence?.source_format;
+  return typeof format === "string" && ELA_FORMATS.includes(format);
+}
+
+export function readableReasoning(evidence: Record<string, unknown> | undefined): string | null {
+  const reasoning = evidence?.reasoning;
+  if (typeof reasoning !== "string" || !reasoning.trim()) return null;
+  if (currentLang() === "ru" && !/[а-яё]/i.test(reasoning)) return null;
+  return reasoning.trim();
+}
 
 export function isStudentView(submission: Submission): boolean {
   return submission.viewer_role === "author" && !!submission.in_class && !!submission.can_object;

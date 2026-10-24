@@ -4,6 +4,7 @@ from analyzers.tests.factories import AnalysisResultFactory, AnalyzerConfigFacto
 from classroom.models import Classroom, Membership
 from content.pdf import _originality, build_report_context
 from content.tests.factories import SubmissionFactory
+from provenance.models import ProvenanceResult
 from factcheck.pdf import build_factcheck_context
 from reports.copy import field_name, kind_name, tone_set
 from reports.render import HTML, render_html, render_pdf
@@ -76,6 +77,35 @@ class TestClassReport:
         assert context["next_step"].startswith("Что делать: обсудите с учеником")
         assert context["show_traces"] is True
         assert "FLUX.1" in context["traces"][0]
+        assert context["headline"] == "Создано нейросетью: это доказывает метка в файле"
+
+    def test_picture_headline_does_not_talk_about_writing(self):
+        teacher, student, work = _class_work(verdict="likely_fake", mime="image/jpeg")
+        _vote(work, "custom_detector", "fake", 0.9)
+        _vote(work, "community_forensics", "fake", 0.9)
+        assert build_report_context(work, teacher)["headline"] == "Серьёзные признаки, что картинку сделала нейросеть"
+        assert build_report_context(work, student)["headline"] == "Учитель захочет обсудить эту работу"
+
+    def test_teacher_own_earlier_picture_is_not_called_handed_in(self):
+        teacher, student, work = _class_work(verdict="suspicious", mime="image/png")
+        earlier = SubmissionFactory(user=teacher, original_filename="sample.png")
+        ProvenanceResult.objects.create(
+            submission=work,
+            source_type=ProvenanceResult.SourceType.PHASH_MATCH,
+            similarity_score=1.0,
+            raw_data={"submission_id": str(earlier.id), "distance": 0},
+        )
+        line = build_report_context(work, teacher)["provenance"][0]["title"]
+        assert line.startswith("Такую же картинку вы уже проверяли: sample.png")
+        mine = SubmissionFactory(user=student, classroom=work.classroom, original_filename="draft.png")
+        ProvenanceResult.objects.create(
+            submission=work,
+            source_type=ProvenanceResult.SourceType.PHASH_MATCH,
+            similarity_score=1.0,
+            raw_data={"submission_id": str(mine.id), "distance": 0},
+        )
+        lines = [p["title"] for p in build_report_context(work, student)["provenance"]]
+        assert any(line.startswith("Такую же картинку вы уже сдавали: draft.png, 9Б") for line in lines)
 
     def test_single_detector_is_not_called_agreement(self):
         user = UserFactory(language="ru")
@@ -182,7 +212,11 @@ def test_factcheck_context_localizes_and_collects_sources():
 
 
 def test_kind_and_tone_helpers():
-    assert kind_name("image/jpeg", "en") == "Image · JPEG"
+    assert kind_name("image/jpeg", "en") == "Picture · JPEG"
+    assert kind_name("image/png", "ru") == "Картинка · PNG"
+    assert kind_name("text/plain", "ru") == "Текст"
+    assert kind_name("video/quicktime", "ru") == "Видео · MOV"
+    assert kind_name("audio/x-wav", "en") == "Audio · WAV"
     assert kind_name("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "ru") == "Документ · DOCX"
     assert tone_set("blood")["tone_line"] == "rgba(255,87,115,0.4)"
 

@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { useEffect, useState } from "react";
 import type { AnalysisResult, ExpectedAnalyzer, Submission } from "../types";
 import { msg, t } from "../i18n";
+import { elaWorksOn, readableReasoning } from "./resultView";
 
 export const ANALYZER_LABELS: Record<string, string> = {
   metadata: msg("Labels in the file"),
@@ -31,8 +32,6 @@ const VOTE_WORDS: Record<string, string> = {
   inconclusive: msg("not sure"),
   error: msg("did not run"),
 };
-
-const ELA_FORMATS = ["JPEG"];
 
 const ANALYZER_CODE: Record<string, string> = {
   metadata: "META",
@@ -189,15 +188,11 @@ function StateMarker({ state, verdict }: { state: Step["state"]; verdict: string
   return <div className="w-7 h-7 flex items-center justify-center">{dot}</div>;
 }
 
-function elaFormatOk(evidence: Record<string, unknown>): boolean {
-  return typeof evidence.source_format === "string" && ELA_FORMATS.includes(evidence.source_format);
-}
-
 function voteWord(step: Step, image: boolean): string {
   const result = step.result;
   if (!result) return "";
   if (step.name === "ela" && result.verdict !== "error") {
-    if (!elaFormatOk(result.evidence ?? {})) return t("not for this format");
+    if (!elaWorksOn(result.evidence ?? {})) return t("not for this format");
     return result.evidence?.manipulation_suspected === true ? t("may be edited") : t("no signs of editing");
   }
   if (result.verdict === "authentic") return image ? t("for a photo") : t("for a person");
@@ -210,13 +205,12 @@ function evidenceLines(step: Step): string[] {
   const ev = (step.result.evidence ?? {}) as Record<string, unknown>;
   const lines: string[] = [];
   if (step.name === "ela") {
-    if (!elaFormatOk(ev)) lines.push(t("This check only works on JPEG photos, so it does not show editing in this file."));
+    if (!elaWorksOn(ev)) lines.push(t("This check only works on JPEG photos, so it does not show editing in this file."));
     else if (ev.manipulation_suspected === true) lines.push(t("Some areas compress differently from the rest: they may have been pasted in. They are brighter on the map."));
     else lines.push(t("No signs of pasted-in pieces were found."));
   }
-  if (step.name === "llm_vision" && typeof ev.reasoning === "string" && ev.reasoning) {
-    lines.push(t("What the model noticed: \"{reasoning}\"", { reasoning: ev.reasoning }));
-  }
+  const reasoning = step.name === "llm_vision" ? readableReasoning(ev) : null;
+  if (reasoning) lines.push(t("What the model noticed: \"{reasoning}\"", { reasoning }));
   if (step.name === "metadata") {
     const camera = ev.camera as { has_camera_signature?: boolean; make?: string; model?: string } | undefined;
     if (camera?.has_camera_signature) lines.push(t("Camera recorded in the file: {name}", { name: [camera.make, camera.model].filter(Boolean).join(" ") }));
@@ -238,11 +232,10 @@ function AnalyzerRow({ step, isLast, index, done, image, showRaw }: { step: Step
   const expectedSecs = ANALYZER_ETA_SECS[step.name] || 15;
   const lines = evidenceLines(step);
   const evidence = step.result?.evidence ?? {};
-  const heatmap = typeof evidence.heatmap_url === "string" && elaFormatOk(evidence) ? evidence.heatmap_url : null;
+  const heatmap = typeof evidence.heatmap_url === "string" && elaWorksOn(evidence) ? evidence.heatmap_url : null;
 
   return (
     <div className={clsx("relative flex gap-4 animate-fade-in-up", !isLast && "pb-5")}>
-      {/* Vertical thread */}
       {!isLast && (
         <div className="absolute left-[14px] top-7 bottom-0 w-px bg-gradient-to-b from-ink-700 via-ink-700 to-transparent" />
       )}
@@ -299,7 +292,6 @@ function AnalyzerRow({ step, isLast, index, done, image, showRaw }: { step: Step
             </div>
           </div>
 
-          {/* Per-analyzer progress */}
           {step.state === "running" && (
             <div className="mt-3 ml-0">
               <div className="relative h-px bg-ink-800 overflow-hidden">
@@ -461,7 +453,6 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers, showRaw
         </div>
       )}
 
-      {/* Status message */}
       {isProcessing && (
         <div className="mb-6 px-3 py-2 border-l-2 border-signal-amber bg-signal-amber/5">
           {(() => {
@@ -496,7 +487,6 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers, showRaw
         </div>
       )}
 
-      {/* All skipped = worker never ran */}
       {!isProcessing && doneCount === 0 && skippedCount === totalCount && totalCount > 0 && (
         <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-blood/60 bg-signal-blood/5">
           <span className="mt-0.5 text-signal-blood text-[13px]">!</span>
@@ -506,7 +496,6 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers, showRaw
         </div>
       )}
 
-      {/* Partial incomplete warning */}
       {hasIncompleteResults && !(doneCount === 0 && skippedCount === totalCount) && (
         <div className="mb-6 flex items-start gap-3 px-3 py-2.5 border-l-2 border-signal-amber/60 bg-signal-amber/5">
           <span className="mt-0.5 text-signal-amber text-[13px]">⚠</span>
@@ -516,7 +505,6 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers, showRaw
         </div>
       )}
 
-      {/* Steps */}
       <div className="space-y-1">
         {steps.map((step, i) => (
           <AnalyzerRow key={step.name} step={step} isLast={i === steps.length - 1} index={i} done={!isProcessing} image={image} showRaw={showRaw} />

@@ -208,14 +208,14 @@ function kindText(mime: string | undefined) {
 function VersionNote({ submission }: { submission: Submission }) {
   const ensemble = submission.ensemble;
   if (!ensemble || ensemble.is_current) return null;
-  return (
-    <p className="text-xs text-signal-amber/90 leading-snug mt-2 max-w-md">
-      {t("This work was checked by an earlier version of Tribunal ({version}). Version {current} is out: press \"Re-analyze\" and the old result will be replaced with the new one.", {
-        version: ensemble.version,
-        current: ensemble.current_version,
-      })}
-    </p>
-  );
+  const text =
+    ensemble.version === ensemble.current_version
+      ? t("This work was checked before the last update of Tribunal. Press \"Re-analyze\" and the old result will be replaced with the new one.")
+      : t("This work was checked by an earlier version of Tribunal ({version}). Version {current} is out: press \"Re-analyze\" and the old result will be replaced with the new one.", {
+          version: ensemble.version,
+          current: ensemble.current_version,
+        });
+  return <p className="text-xs text-signal-amber/90 leading-snug mt-2 max-w-md">{text}</p>;
 }
 
 function ClassHeader({ submission, student, isProcessing }: { submission: Submission; student: boolean; isProcessing: boolean }) {

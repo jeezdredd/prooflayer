@@ -57,7 +57,7 @@ ANALYZERS = {
 }
 
 KIND = {
-    "image": ("Image", "Изображение"),
+    "image": ("Picture", "Картинка"),
     "video": ("Video", "Видео"),
     "audio": ("Audio", "Аудио"),
     "text": ("Text", "Текст"),
@@ -140,7 +140,9 @@ COPY = {
             "too_short": {"teacher": "Too short to check for AI writing (needs about 90 words)", "student": "Too short to check for AI writing"},
             "copy_most": {"teacher": "Most of the text was found in other sources", "student": "Most of the text was found in other sources"},
             "copy_part": {"teacher": "Part of the text matches other sources; worth a look", "student": "Part of the text matches other sources"},
+            "image_alert": "Strong signs the picture was made by AI",
         },
+        "proof_headline": "Made by AI: the invisible mark in the file proves it",
         "meaning": {
             "authentic": "The detectors found no reliable sign of AI generation or manipulation. That lowers the chance of AI involvement but cannot rule it out.",
             "authentic_edited": "The content looks camera-made or human-written, with signs of ordinary editing such as cropping, filters or recompression.",
@@ -324,7 +326,9 @@ COPY = {
                 "teacher": "Часть текста совпадает с другими источниками, стоит посмотреть",
                 "student": "Часть текста совпадает с другими источниками",
             },
+            "image_alert": "Серьёзные признаки, что картинку сделала нейросеть",
         },
+        "proof_headline": "Создано нейросетью: это доказывает метка в файле",
         "meaning": {
             "authentic": "Детекторы не нашли надёжных признаков нейросети или монтажа. Это снижает вероятность, что работала нейросеть, но не исключает её полностью.",
             "authentic_edited": "Похоже на снимок с камеры или текст человека, с признаками обычной обработки: обрезка, фильтры, пересжатие.",
@@ -439,6 +443,25 @@ FIELD_KIND = {
     "creator": "author",
 }
 
+FORMAT_NAMES = {
+    "plain": "",
+    "jpeg": "JPEG",
+    "png": "PNG",
+    "webp": "WEBP",
+    "mp4": "MP4",
+    "quicktime": "MOV",
+    "x-msvideo": "AVI",
+    "x-matroska": "MKV",
+    "webm": "WEBM",
+    "mpeg": "MP3",
+    "wav": "WAV",
+    "x-wav": "WAV",
+    "ogg": "OGG",
+    "flac": "FLAC",
+    "pdf": "PDF",
+    "vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+}
+
 FC_TONE = {"mostly_accurate": "sage", "mixed": "amber", "misleading": "blood", "no_claims": "ink"}
 FC_ASSESSMENT_TONE = {"likely_true": "sage", "likely_false": "blood", "uncertain": "amber"}
 
@@ -461,13 +484,13 @@ def field_name(field: str | None, lang: str) -> str:
 
 
 def kind_name(mime: str, lang: str) -> str:
-    major = (mime or "").split("/")[0]
+    major, _, minor = (mime or "").partition("/")
     names = KIND.get(major)
-    label = (names[1] if lang == "ru" else names[0]) if names else (mime or "-")
-    minor = (mime or "").split("/")[-1].split(".")[-1].split("+")[0].upper()
-    if major == "application" and minor in ("PDF", "DOCUMENT"):
-        return f"{label} · {'DOCX' if minor == 'DOCUMENT' else 'PDF'}"
-    return f"{label} · {minor}" if minor and minor != major.upper() else label
+    if not names:
+        return mime or "-"
+    label = names[1] if lang == "ru" else names[0]
+    fmt = FORMAT_NAMES.get(minor, minor.removeprefix("x-").split("+")[0].upper())
+    return f"{label} · {fmt}" if fmt else label
 
 
 def tone_set(name: str) -> dict:

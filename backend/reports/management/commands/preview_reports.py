@@ -67,7 +67,7 @@ def sample_submission_context(lang: str, kind: str, image: Path | None) -> dict:
     votes = SAMPLE_VOTES if kind == "image" else SAMPLE_TEXT_VOTES
     details = [
         [(c["student"], "Ольга Смирнова" if lang == "ru" else "Olga Smirnova"), (c["classroom"], "9Б" if lang == "ru" else "9B"), (c["handed_in"], "14.10.2026" if lang == "ru" else "Oct 14, 2026")],
-        [(c["file"], "IMG_4232.jpg" if kind == "image" else "essay-history.docx"), (c["type"], "Изображение · JPEG" if lang == "ru" and kind == "image" else "Image · JPEG" if kind == "image" else ("Документ · DOCX" if lang == "ru" else "Document · DOCX")), (c["size"], "2.4 MB" if kind == "image" else "38 KB")],
+        [(c["file"], "IMG_4232.jpg" if kind == "image" else "essay-history.docx"), (c["type"], "Картинка · JPEG" if lang == "ru" and kind == "image" else "Picture · JPEG" if kind == "image" else ("Документ · DOCX" if lang == "ru" else "Document · DOCX")), (c["size"], "2.4 MB" if kind == "image" else "38 KB")],
     ]
     originality = None
     if kind == "text":

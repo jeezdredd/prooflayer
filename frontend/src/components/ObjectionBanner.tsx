@@ -51,10 +51,15 @@ function bannerFor(submission: Submission, isStaff: boolean): { text: string; ac
       tone: changed ? "sage" : "ink",
     };
   }
-  return {
-    text: changed
+  const text = inClass
+    ? changed
       ? t("The verdict was changed after the student's objection on {date}: the work counts as the student's own.", { date })
-      : t("The verdict was kept after the student's objection on {date}.", { date }),
+      : t("The verdict was kept after the student's objection on {date}.", { date })
+    : changed
+      ? t("The verdict was changed after the author's objection on {date}.", { date })
+      : t("The verdict was kept after the author's objection on {date}.", { date });
+  return {
+    text,
     action: t("Read the answer"),
     tone: changed ? "sage" : "ink",
   };

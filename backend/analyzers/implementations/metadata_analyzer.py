@@ -99,7 +99,7 @@ def xmp_values(xmp: str, field: str) -> list[str]:
 
 
 def prompt_text(value: str) -> str:
-    prompt = re.split(r"\n\s*negative prompt:", value, maxsplit=1, flags=re.IGNORECASE)[0]
+    prompt = re.split(r"\n\s*(?:negative prompt|steps):", value, maxsplit=1, flags=re.IGNORECASE)[0]
     return prompt.strip()[:RAW_VALUE_CHARS]
 
 

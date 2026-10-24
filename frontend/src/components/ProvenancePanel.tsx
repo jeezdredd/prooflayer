@@ -19,10 +19,10 @@ const WHERE: Record<ProvenanceMatch["scope"] | "yours_class", string> = {
   elsewhere: msg("{what} was already checked on ProofLayer"),
 };
 
-function matchLine(row: ProvenanceResult, match: ProvenanceMatch, classView: boolean): string {
+function matchLine(row: ProvenanceResult, match: ProvenanceMatch, student: boolean): string {
   const first = match.scope === "yours" ? row.title : match.author;
   const who = [first, match.classroom, longDate(match.submitted_at)].filter(Boolean).join(", ");
-  const scope = match.scope === "yours" && classView ? "yours_class" : match.scope;
+  const scope = match.scope === "yours" && student ? "yours_class" : match.scope;
   return t(WHERE[scope], { what: t(WHAT[match.kind]), who });
 }
 
@@ -32,10 +32,10 @@ function emptyText(submission: Submission): string {
   return t("No similar pictures among your checks and the public feed.");
 }
 
-function InternalRow({ row, match, classView }: { row: ProvenanceResult; match: ProvenanceMatch; classView: boolean }) {
+function InternalRow({ row, match, student }: { row: ProvenanceResult; match: ProvenanceMatch; student: boolean }) {
   return (
     <div className="border-l-2 border-signal-amber/60 pl-3 py-1">
-      <p className="text-sm text-ink-100 leading-snug">{matchLine(row, match, classView)}</p>
+      <p className="text-sm text-ink-100 leading-snug">{matchLine(row, match, student)}</p>
       <div className="flex items-center gap-3 mt-1">
         {row.is_sensitive && (
           <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-amber border border-signal-amber/40 px-2 py-0.5">
@@ -73,6 +73,7 @@ function ExternalRow({ row }: { row: ProvenanceResult }) {
 export default function ProvenancePanel({ submission }: { submission: Submission }) {
   const { data: results, isLoading } = useProvenance(submission.id);
   const rows = (results ?? []).filter((r) => r.match || r.source_url);
+  const student = isStudentView(submission);
 
   return (
     <div className="case-card p-6 mt-4">
@@ -84,7 +85,7 @@ export default function ProvenancePanel({ submission }: { submission: Submission
       ) : (
         <div className="space-y-3">
           {rows.map((row) =>
-            row.match ? <InternalRow key={row.id} row={row} match={row.match} classView={isClassView(submission)} /> : <ExternalRow key={row.id} row={row} />,
+            row.match ? <InternalRow key={row.id} row={row} match={row.match} student={student} /> : <ExternalRow key={row.id} row={row} />,
           )}
         </div>
       )}

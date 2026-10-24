@@ -156,3 +156,8 @@ class TestToolSignatureEvidence:
         assert result.evidence["generation_params"]["text"] == "a red fox in the snow, highly detailed"
         trace = next(t for t in result.evidence["ai_trace"] if t["kind"] == "generation_params")
         assert trace["text"] == "a red fox in the snow, highly detailed"
+
+    def test_prompt_without_negative_part_drops_the_settings_line(self, tmp_path):
+        params = "a castle on a hill at dawn\nSteps: 25, Sampler: DPM++ 2M, CFG scale: 6, Seed: 42, Model hash: abc123"
+        result = self._analyze(tmp_path, png_text={"parameters": params})
+        assert result.evidence["generation_params"]["text"] == "a castle on a hill at dawn"

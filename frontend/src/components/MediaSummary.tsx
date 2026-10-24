@@ -2,7 +2,9 @@ import clsx from "clsx";
 import type { AnalysisResult, Submission } from "../types";
 import { t } from "../i18n";
 import { STATUS_TEXT, plainOutcome, type CheckStatus } from "./TeacherSummary";
-import { isImage } from "./resultView";
+import { elaWorksOn, isImage, readableReasoning } from "./resultView";
+
+const AI_VERDICTS = ["fake", "likely_fake"];
 
 const IMAGE_DETECTORS = ["community_forensics", "ai_detector", "clip_probe", "custom_detector", "npr_detector", "siglip_detector", "llm_vision"];
 
@@ -31,14 +33,22 @@ function detectorLine(submission: Submission): string | null {
 
 function visionLine(submission: Submission): string | null {
   const ev = byName(submission, "llm_vision")?.evidence;
-  if (!ev || ev.llm_verdict !== "ai_generated" || typeof ev.reasoning !== "string" || !ev.reasoning) return null;
-  return t("What the model noticed: \"{reasoning}\". This is a hint where to look, not proof.", { reasoning: ev.reasoning });
+  const reasoning = ev?.llm_verdict === "ai_generated" ? readableReasoning(ev) : null;
+  if (!reasoning) return null;
+  return t("What the model noticed: \"{reasoning}\". This is a hint where to look, not proof.", { reasoning });
 }
 
 function editLine(submission: Submission): string | null {
   const ev = byName(submission, "ela")?.evidence;
-  if (!ev || ev.source_format !== "JPEG" || ev.manipulation_suspected !== true) return null;
+  if (!ev || !elaWorksOn(ev) || ev.manipulation_suspected !== true) return null;
   return t("Some areas may have been pasted in from another picture.");
+}
+
+function headlineFor(outcome: { text: string; status: CheckStatus }, image: boolean, proof: boolean, student: boolean): string {
+  if (student || !image) return t(outcome.text);
+  if (proof) return t("Made by AI: the invisible mark in the file proves it.");
+  if (outcome.status === "alert") return t("Strong signs the picture was made by AI");
+  return t(outcome.text);
 }
 
 function nextStep(status: CheckStatus, proof: boolean): string {
@@ -52,19 +62,20 @@ function nextStep(status: CheckStatus, proof: boolean): string {
 
 export default function MediaSummary({ submission, student }: { submission: Submission; student: boolean }) {
   if (submission.status !== "completed") return null;
-  const proof = hasProvenanceProof(submission);
+  const image = isImage(submission);
+  const proof = hasProvenanceProof(submission) && AI_VERDICTS.includes(submission.final_verdict);
   const outcome = plainOutcome(submission.final_verdict, null, null, student);
-  const lines = isImage(submission)
-    ? [proof ? t("Made by AI: the invisible mark in the file proves it.") : detectorLine(submission), visionLine(submission), editLine(submission)].filter(
-        (line): line is string => !!line,
-      )
+  const headline = headlineFor(outcome, image, proof, student);
+  const proofLine = student ? t("Made by AI: the invisible mark in the file proves it.") : null;
+  const lines = image
+    ? [proof ? proofLine : detectorLine(submission), visionLine(submission), editLine(submission)].filter((line): line is string => !!line)
     : [];
 
   return (
     <section className="px-4 sm:px-6 py-5 border-b border-ink-700">
       <div className={clsx("border-l-4 pl-4 py-1", BAR[outcome.status])}>
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("In short")}</div>
-        <h3 className={clsx("font-display text-2xl sm:text-3xl leading-tight mt-1", STATUS_TEXT[outcome.status])}>{t(outcome.text)}</h3>
+        <h3 className={clsx("font-display text-2xl sm:text-3xl leading-tight mt-1", STATUS_TEXT[outcome.status])}>{headline}</h3>
         {lines.map((line) => (
           <p key={line} className="text-sm text-ink-200 mt-2 leading-relaxed">{line}</p>
         ))}
