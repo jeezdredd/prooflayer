@@ -92,3 +92,14 @@ const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 - [[infrastructure/docker-compose]]
 - [[services/ollama]]
+
+
+## Email (2026-10-24)
+
+`backend/config/settings/base.py` picks the mail backend in this order: `RESEND_API_KEY` (Resend HTTP API via
+django-anymail), then `EMAIL_HOST` (SMTP), else console. Until 2026-10-24 `deploy/compose.prod.yml` passed only the
+SMTP variables to `backend` and `celery_worker`, so a Resend key in `/srv/prooflayer/shared/.env` never reached the
+containers and prod kept sending over SMTP (`/api/v1/system/status/` -> `services.email.backend: smtp`). Both
+services now get `RESEND_API_KEY`. Switching: verify `prooflayer.cloud` in Resend (DKIM TXT `resend._domainkey`, SPF TXT
+and MX on the `send` subdomain, DNS only in Cloudflare), add a sending key restricted to that domain to the shared
+`.env`, redeploy; the status endpoint then reports `resend`.

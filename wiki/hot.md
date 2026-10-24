@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-24: **Resend wiring** - `deploy/compose.prod.yml` never passed `RESEND_API_KEY` to `backend`/`celery_worker`, so prod stayed on SMTP. Fixed; switching needs the domain verified in Resend and the key in `/srv/prooflayer/shared/.env`. See [[infrastructure/env-vars]].
+
 - 2026-10-17 (b): **Class page in plain language + 9Б demo** - radar rewritten for teachers: groups of similar works with work name, student and date, "what matched" lines, jump reasons as structured `{kind, now, before}` with readability bands (primary / grades 5-9 / 10-11 / university) instead of raw "grade 20"; `ALIGN_SIMILARITY` 0.88 -> 0.92 and `MIN_SHARE` 0.35 -> 0.6 because e5-small aligns same-topic essays at 0.75-0.8 (honest Anna sat in a cluster); class list rows carry `flags` (ai_text, hidden_text, tricks, shadow, copy, sources, age, style, ai_trace, trace_hidden, ai_image) from `classroom.serializers.submission_flags`; open and answered objections both listed. 9Б · Литература now has 5 students and 25 works with every feature (shadow set, skeleton pair Arina/Vera, humanized Lev essay, hidden-text DOCX, GOST PDF, SDXL photo, batch, teacher check, three objection states). Open: t7 scores three honest short poem essays (74-111 tokens) above the ru fpr1 threshold; only `MIN_TOKENS` 120 keeps them unflagged -> t8 on e5-base. See [[services/classroom]].
 
 - 2026-10-17: **Tribunal 1.9.0, text model t7** - trained on 3k human academic texts + 2.7k AI academic texts; Russian scientific abstracts flagged 40-49% -> 2.5-9%; Russian GOST references no longer called invented (1.8.1). Open: English encyclopedic/news false flags rose (wiki 12.6%, news 5.5%). See [[concepts/text-signals]].

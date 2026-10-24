@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-24] email-resend | Resend key now reaches the prod containers
+
+- Source: public /api/v1/system/status/ (email backend smtp), deploy/compose.prod.yml environment blocks, settings/base.py backend order
+- Pages updated: [[infrastructure/env-vars]]
+
 ## [2026-10-17] class-page-plain | Class page in plain language; 9Б demo class filled; radar stricter
 
 - Source: owner review of the demo as a non-technical teacher (radar "grade 20", nameless cluster lists, 9Б empty), local alignment measurements on demo essays, t7 scores on the 9Б texts
