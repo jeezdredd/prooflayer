@@ -15,10 +15,10 @@ class Hit:
     snippet: str
 
 
-def _searxng(query: str, limit: int) -> list[Hit]:
+def _searxng(query: str, limit: int) -> list[Hit] | None:
     base = getattr(settings, "SEARXNG_URL", "").rstrip("/")
     if not base:
-        return []
+        return None
     resp = requests.get(f"{base}/search", params={"q": query, "format": "json"}, timeout=15)
     resp.raise_for_status()
     rows = resp.json().get("results", [])[:limit]
@@ -31,10 +31,10 @@ def _ddg(query: str, limit: int) -> list[Hit]:
     return [Hit(r.get("href", ""), r.get("title", ""), r.get("body", "")) for r in rows if r.get("href")]
 
 
-def _brave(query: str, limit: int) -> list[Hit]:
+def _brave(query: str, limit: int) -> list[Hit] | None:
     key = getattr(settings, "BRAVE_SEARCH_API_KEY", "")
     if not key:
-        return []
+        return None
     resp = requests.get(
         "https://api.search.brave.com/res/v1/web/search",
         params={"q": query, "count": limit},
@@ -51,9 +51,9 @@ WIKIPEDIA_LANGS = ("ru", "en", "fr")
 USER_AGENT = "ProofLayer-Originality/1.0 (https://prooflayer.cloud)"
 
 
-def wikipedia(query: str, lang: str, limit: int = 2) -> list[Hit]:
+def wikipedia_lookup(query: str, lang: str, limit: int = 2) -> tuple[list[Hit], bool]:
     if not getattr(settings, "PLAGIARISM_WIKIPEDIA", True) or lang not in WIKIPEDIA_LANGS:
-        return []
+        return [], False
     try:
         resp = requests.get(
             f"https://{lang}.wikipedia.org/w/api.php",
@@ -65,8 +65,8 @@ def wikipedia(query: str, lang: str, limit: int = 2) -> list[Hit]:
         rows = resp.json().get("query", {}).get("search", [])
     except Exception as exc:
         logger.warning("wikipedia search failed: %s", exc)
-        return []
-    return [Hit(f"https://{lang}.wikipedia.org/wiki/{r['title'].replace(' ', '_')}", r["title"], "") for r in rows if r.get("title")]
+        return [], False
+    return [Hit(f"https://{lang}.wikipedia.org/wiki/{r['title'].replace(' ', '_')}", r["title"], "") for r in rows if r.get("title")], True
 
 
 def provider_chain() -> list[str]:
@@ -74,13 +74,21 @@ def provider_chain() -> list[str]:
     return [p for p in configured if p in PROVIDERS]
 
 
-def search(query: str, limit: int = 5) -> list[Hit]:
+def lookup(query: str, limit: int = 5) -> tuple[list[Hit], bool]:
+    answered = False
     for name in provider_chain():
         try:
             hits = PROVIDERS[name](query, limit)
         except Exception as exc:
             logger.warning("plagiarism search via %s failed: %s", name, exc)
             continue
+        if hits is None:
+            continue
+        answered = True
         if hits:
-            return hits
-    return []
+            return hits, True
+    return [], answered
+
+
+def search(query: str, limit: int = 5) -> list[Hit]:
+    return lookup(query, limit)[0]

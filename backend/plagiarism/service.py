@@ -1,4 +1,5 @@
 import logging
+import math
 import re
 
 from django.conf import settings
@@ -6,13 +7,25 @@ from django.db import transaction
 from pgvector.django import CosineDistance
 
 from analyzers.text.language import CYRILLIC_RE, LATIN_RE, detect_language
+from classroom.models import ShadowSet
 from common.documents import read_text
 from content.storage_utils import local_file
 
 from .embeddings import EmbeddingsUnavailable, embed
 from .models import PlagiarismReport, SentenceVector, TextFingerprint
-from .shingles import covered_spans, merge_spans, shingle_hashes, span_chars, text_chars, tokenize, winnow
-from .web import web_matches
+from .shingles import (
+    SHINGLE,
+    copied_pairs,
+    covered_token_chars,
+    matched_runs,
+    merge_spans,
+    shingle_hashes,
+    text_chars,
+    tokenize,
+    tokens_in,
+    winnow,
+)
+from .web import WebResult, web_matches
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +37,14 @@ CANDIDATES = 200
 TOP_SOURCES = 15
 PARAPHRASE_SIMILAR = 0.95
 TRANSLATION_SIMILAR = 0.92
+STRONG_SIMILAR = 0.98
+COMMON_AUTHORS = 3
+COMMON_SHARE = 0.3
+COMMON_MAX_WORDS = 30
+MIN_SOURCE_CHARS = 60
+MIN_SHARE = 0.6
+MAX_PAIRS = 20
+KINDS = ("exact", "paraphrase", "translation")
 BIBLIOGRAPHY_RE = re.compile(
     r"^[ \t]*(?:список(?:[ \t]+\w+){0,2}[ \t]+(?:литературы|источников)|литература|библиография|использованные источники"
     r"|references|bibliography|works cited|reference list|bibliographie|références)[ \t]*:?[ \t]*$",
@@ -50,10 +71,6 @@ def body_end(text: str) -> int:
         if match.start() >= len(text) * 0.4:
             return match.start()
     return len(text)
-
-
-def within(spans, end: int) -> list[tuple[int, int]]:
-    return [(s, min(e, end)) for s, e in spans if s < end]
 
 
 def sentence_language(sentence: str, default: str) -> str:
@@ -85,7 +102,38 @@ def index(submission, text: str, language: str, hashes: list[int], sents: list[t
         ])
 
 
-def internal_exact(submission, tokens, hashes) -> list[dict]:
+def common_mask(submission, tokens, hashes) -> list[bool]:
+    common = [False] * len(tokens)
+    if submission.classroom_id is None or not hashes:
+        return common
+    prompts: set[int] = set()
+    for prompt in ShadowSet.objects.filter(classroom_id=submission.classroom_id).values_list("prompt", flat=True):
+        prompts.update(shingle_hashes(tokenize(prompt)))
+    classmates = TextFingerprint.objects.filter(
+        in_repository=True, submission__classroom_id=submission.classroom_id,
+    ).exclude(submission__user_id=submission.user_id)
+    needed = max(COMMON_AUTHORS, math.ceil(COMMON_SHARE * classmates.values("submission__user_id").distinct().count()))
+    own = set(hashes)
+    authors: dict[int, set] = {}
+    rows = classmates.filter(fingerprints__overlap=winnow(hashes)).values_list("submission__user_id", "text")
+    for user_id, text in rows[:CANDIDATES]:
+        for h in own.intersection(shingle_hashes(tokenize(text))):
+            authors.setdefault(h, set()).add(user_id)
+    shared = {h for h, users in authors.items() if len(users) >= needed}
+    runs = [r for r in matched_runs(tokens, hashes, shared, min_len=SHINGLE) if r[1] - r[0] <= COMMON_MAX_WORDS]
+    runs += matched_runs(tokens, hashes, prompts, min_len=SHINGLE)
+    for a, b in runs:
+        for j in range(a, b):
+            common[j] = True
+    return common
+
+
+def mostly_skipped(starts: list[int], skip: list[bool], span: tuple[int, int]) -> bool:
+    inside = tokens_in(starts, span)
+    return not inside or 2 * sum(skip[j] for j in inside) >= len(inside)
+
+
+def internal_exact(submission, tokens, hashes, skip: list[bool]) -> list[dict]:
     fingerprints = set(winnow(hashes))
     if not fingerprints:
         return []
@@ -97,27 +145,39 @@ def internal_exact(submission, tokens, hashes) -> list[dict]:
     ranked = sorted(rows, key=lambda r: -len(fingerprints.intersection(r[1])))[:TOP_SOURCES]
     matches = []
     for source_id, _, source_text, created in ranked:
-        spans = covered_spans(tokens, hashes, set(shingle_hashes(tokenize(source_text))))
-        if spans:
+        pairs = copied_pairs(tokens, hashes, tokenize(source_text), skip)
+        if pairs:
             matches.append({
                 "source": "internal",
                 "kind": "exact",
+                "kinds": ["exact"],
                 "submission_id": str(source_id),
                 "submitted_at": created.isoformat(),
-                "spans": spans,
+                "spans": [own for own, _ in pairs],
+                "pairs": [{"own": own, "src": found, "kind": "exact"} for own, found in pairs],
             })
     return matches
 
 
-def internal_semantic(submission, language: str, sents, vectors) -> list[dict]:
-    by_source: dict[str, dict] = {}
-    for (start, end, sentence), vector in zip(sents, vectors):
+def reused(hits: list[dict]) -> bool:
+    if any(h["similarity"] >= STRONG_SIMILAR for h in hits):
+        return True
+    placed = {(h["index"], h["position"]) for h in hits}
+    return any((i + 1, p + 1) in placed for i, p in placed)
+
+
+def internal_semantic(submission, language: str, sents, vectors, skipped: list[bool]) -> list[dict]:
+    found: dict[str, list[dict]] = {}
+    created: dict[str, str] = {}
+    for i, ((start, end, sentence), vector) in enumerate(zip(sents, vectors)):
+        if skipped[i]:
+            continue
         own_language = sentence_language(sentence, language)
         nearest = (
             SentenceVector.objects.exclude(submission__user_id=submission.user_id)
             .annotate(distance=CosineDistance("embedding", vector))
             .order_by("distance")
-            .values("submission_id", "language", "distance", "submission__created_at")
+            .values("submission_id", "position", "start", "end", "language", "distance", "submission__created_at")
             .first()
         )
         if not nearest:
@@ -127,17 +187,71 @@ def internal_semantic(submission, language: str, sents, vectors) -> list[dict]:
         if similarity < (TRANSLATION_SIMILAR if translated else PARAPHRASE_SIMILAR):
             continue
         key = str(nearest["submission_id"])
-        entry = by_source.setdefault(key, {
-            "source": "internal",
+        created.setdefault(key, nearest["submission__created_at"].isoformat())
+        found.setdefault(key, []).append({
+            "index": i,
+            "position": nearest["position"],
+            "own": (start, end),
+            "src": (nearest["start"], nearest["end"]),
             "kind": "translation" if translated else "paraphrase",
-            "submission_id": key,
-            "submitted_at": nearest["submission__created_at"].isoformat(),
-            "spans": [],
-            "similarity": 0.0,
+            "similarity": round(similarity, 3),
         })
-        entry["spans"].append((start, end))
-        entry["similarity"] = round(max(entry["similarity"], similarity), 3)
-    return list(by_source.values())
+    matches = []
+    for key, hits in found.items():
+        kinds = sorted({h["kind"] for h in hits}, key=KINDS.index)
+        matches.append({
+            "source": "internal",
+            "kind": kinds[0],
+            "kinds": kinds,
+            "submission_id": key,
+            "submitted_at": created[key],
+            "spans": [h["own"] for h in hits],
+            "pairs": [{"own": h["own"], "src": h["src"], "kind": h["kind"]} for h in hits],
+            "similarity": max(h["similarity"] for h in hits),
+            "reused": reused(hits),
+        })
+    return matches
+
+
+def overlap(span, spans) -> int:
+    return sum(max(0, min(span[1], e) - max(span[0], s)) for s, e in spans)
+
+
+def merge_sources(exact: list[dict], semantic: list[dict], tokens) -> list[dict]:
+    by_source = {m["submission_id"]: m for m in exact}
+    merged = list(exact)
+    for m in semantic:
+        target = by_source.get(m["submission_id"])
+        backed = target is not None and covered_token_chars(tokens, target["spans"]) >= MIN_SOURCE_CHARS
+        if not (m.pop("reused") or backed):
+            continue
+        if target is None:
+            merged.append(m)
+            continue
+        covered = merge_spans(target["spans"])
+        added = [p for p in m["pairs"] if 2 * overlap(p["own"], covered) < p["own"][1] - p["own"][0]]
+        if not added:
+            continue
+        target["pairs"] += added
+        target["spans"] += [p["own"] for p in added]
+        target["kinds"] = sorted(set(target["kinds"]) | {p["kind"] for p in added}, key=KINDS.index)
+        target["similarity"] = m["similarity"]
+    return merged
+
+
+def counted(matches: list[dict], tokens, total: int) -> tuple[list[dict], int]:
+    kept = []
+    for m in matches:
+        m["matched_chars"] = covered_token_chars(tokens, m["spans"])
+        if m["matched_chars"] < MIN_SOURCE_CHARS or 100 * m["matched_chars"] / total < MIN_SHARE:
+            continue
+        m["spans"] = merge_spans(m["spans"])
+        longest = sorted(m["pairs"], key=lambda p: p["own"][0] - p["own"][1])[:MAX_PAIRS]
+        m["pairs"] = sorted(longest, key=lambda p: p["own"][0])
+        kept.append(m)
+    kept.sort(key=lambda m: -m["matched_chars"])
+    matched = covered_token_chars(tokens, [span for m in kept for span in m["spans"]])
+    return kept, min(total, matched)
 
 
 def web_search_allowed(submission) -> bool:
@@ -169,36 +283,30 @@ def run_check(submission) -> PlagiarismReport:
             vectors = []
         index(submission, text, language, hashes, sents, vectors)
 
-        matches = internal_exact(submission, tokens, hashes)
-        exact_sources = {m["submission_id"] for m in matches}
-        matches += [m for m in internal_semantic(submission, language, sents, vectors) if m["submission_id"] not in exact_sources]
-        web_queries = 0
+        skip = [flag or t.start >= end for flag, t in zip(common_mask(submission, tokens, hashes), tokens)]
+        starts = [t.start for t in tokens]
+        skipped = [s >= end or mostly_skipped(starts, skip, (s, e)) for s, e, _ in sents]
+        matches = merge_sources(
+            internal_exact(submission, tokens, hashes, skip),
+            internal_semantic(submission, language, sents, vectors, skipped),
+            tokens,
+        )
+        web = WebResult(PlagiarismReport.WebStatus.OFF)
         if web_search_allowed(submission):
-            web, web_queries = web_matches(text[:end])
-            matches += web
+            web = web_matches(text[:end], tokens, hashes, skip)
+            matches += web.matches
 
-        counted = []
-        kept = []
-        for m in matches:
-            m["spans"] = within(m["spans"], end)
-            if not m["spans"]:
-                continue
-            counted += m["spans"]
-            m["matched_chars"] = span_chars(m["spans"])
-            kept.append(m)
-        matches = kept
-        total = max(1, text_chars(tokens))
-        matched = min(total, span_chars(counted))
-        matches.sort(key=lambda m: -m["matched_chars"])
-        for m in matches:
-            m["spans"] = merge_spans(m["spans"])
+        total = max(1, text_chars([t for t in tokens if t.start < end]))
+        matches, matched = counted(matches, tokens, total)
 
         report.matches = matches
         report.total_chars = total
         report.matched_chars = matched
         report.originality = round(100 * (1 - matched / total), 1)
-        report.web_searched = web_queries > 0
-        report.web_queries = web_queries
+        report.web_status = web.status
+        report.web_searched = web.status == PlagiarismReport.WebStatus.OK
+        report.web_queries = web.queries
+        report.web_engines = web.engines
         report.status = PlagiarismReport.Status.DONE
     except Exception as exc:
         logger.exception("plagiarism check failed for %s", submission.id)

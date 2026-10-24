@@ -50,6 +50,12 @@ class PlagiarismReport(models.Model):
         DONE = "done", "Done"
         FAILED = "failed", "Failed"
 
+    class WebStatus(models.TextChoices):
+        OK = "ok", "Searched"
+        FAILED = "failed", "Search did not respond"
+        OFF = "off", "Search is off"
+        SHORT = "short", "Too short to search"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     submission = models.OneToOneField("content.Submission", on_delete=models.CASCADE, related_name="plagiarism_report")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
@@ -59,6 +65,8 @@ class PlagiarismReport(models.Model):
     matches = models.JSONField(default=list, blank=True)
     web_searched = models.BooleanField(default=False)
     web_queries = models.PositiveSmallIntegerField(default=0)
+    web_status = models.CharField(max_length=8, choices=WebStatus.choices, blank=True)
+    web_engines = models.JSONField(default=list, blank=True)
     error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
