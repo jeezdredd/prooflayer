@@ -43,7 +43,13 @@
         {
          "filename": "Древняя_Русь_быт.txt",
          "days_ago": 30,
-         "text": "Я бы в Древней Руси не выжила, это точно. Во-первых холодно, во-вторых печь по-чёрному, дым прямо в избе, у меня бы астма началась. На уроке показывали картинку избы и я сначала не поняла где они все спали, оказалось на печи и на лавках, все вместе. Брр. Зато мне понравилось что у них куча праздников была и вся деревня вместе гуляла. У нас в доме девять этажей и я половину соседей даже не знаю как зовут. Короче жить там я бы не хотела, но погостить на Масленицу было бы интересно."
+         "text": "Я бы в Древней Руси не выжила, это точно. Во-первых холодно, во-вторых печь по-чёрному, дым прямо в избе, у меня бы астма началась. На уроке показывали картинку избы и я сначала не поняла где они все спали, оказалось на печи и на лавках, все вместе. Брр. Зато мне понравилось что у них куча праздников была и вся деревня вместе гуляла. У нас в доме девять этажей и я половину соседей даже не знаю как зовут. Короче жить там я бы не хотела, но погостить на Масленицу было бы интересно.",
+         "objection": {
+          "reason": "Я писала сама. У нас с Кириллом одна тема, поэтому пара фраз совпала. Могу рассказать всё устно.",
+          "days_ago": 28,
+          "decision": "changed",
+          "response": "Поговорили устно: Анна свободно пересказала работу своими словами. Совпали только общие фразы про быт в избе. Сигнал снят."
+         }
         },
         {
          "filename": "1812_год.txt",
@@ -60,7 +66,7 @@
          "filename": "Контрольная_вопрос3.txt",
          "days_ago": 3,
          "text": "Вопрос 3. Главное значение Бородинской битвы в том, что русская армия не была разбита. Наполеон хотел одним сражением закончить войну, но у него не получилось, хотя он и занял потом Москву.",
-         "batch": "Контрольная 8А · сканы",
+         "batch": "Контрольная 8А · из электронного журнала",
          "uploaded_by_teacher": true
         }
        ]
@@ -143,7 +149,7 @@
          "filename": "Контрольная_вопрос3.txt",
          "days_ago": 3,
          "text": "Вопрос 3. Бородинская битва была в 1812 году. Наши не победили но и не проиграли, Кутузов сохранил армию. Это потом помогло выгнать французов.",
-         "batch": "Контрольная 8А · сканы",
+         "batch": "Контрольная 8А · из электронного журнала",
          "uploaded_by_teacher": true
         }
        ]
@@ -182,7 +188,7 @@
          "filename": "Контрольная_вопрос3.txt",
          "days_ago": 3,
          "text": "Вопрос 3. Бородино было очень большое сражение, погибло много людей. Наполеон не смог победить русскую армию до конца, поэтому война продолжилась и он проиграл.",
-         "batch": "Контрольная 8А · сканы",
+         "batch": "Контрольная 8А · из электронного журнала",
          "uploaded_by_teacher": true
         }
        ]
@@ -330,7 +336,7 @@
         {
          "filename": "Гроза_вопрос2.txt",
          "days_ago": 5,
-         "batch": "Сочинение по «Грозе» · сканы",
+         "batch": "Сочинение по «Грозе» · из электронного журнала",
          "uploaded_by_teacher": true,
          "text": "Вопрос 2. Варвара умеет врать и делать что хочет тайком, и ей нормально. Катерина так не может, она верующая и честная, для неё обман хуже греха. Когда она полюбила Бориса, она сама во всём призналась, хотя её никто не заставлял. Варвара на её месте просто промолчала бы."
         },
@@ -376,7 +382,7 @@
         {
          "filename": "Печорин.txt",
          "days_ago": 9,
-         "text": "Роман «Герой нашего времени» яв́ляется одним из ключевых произведений русской литературы XIX века. В центре повествования находится Григорий Печорин – сложная и противоречивая личность, олицетворяющая разочарованное поколение своей эпохи․\n\nЛермонтов мастерски раскрывает внутренний мир героя через особую композицию романа: события представлены не в хронологическом порядке， что позволяет читателю постепенно приблизиться к пониманию Печорина.\n\nПечорин обладает выдающимся умом и сильной волей， однако не находит применения своим способностям. Его поступки нередко причиняют страдания окружающим， что свидетельствует о глубоком внутреннем конфликте.\n\nТаким образом, Лермонтов создал образ, ко́торый по сей день остаётся актуальным и заставляет задуматься о смысле жизни， и предназначении человека.",
+         "text": "Роман «Герой нашего времени» яв́ляется одним из ключевых произведений русской литературы XIX века. В центре повествования находится Григорий Печорин – сложная и противоречивая личность, олицетворяющая разочарованное поколение своей эпохи․\n\nЛермонтов мастерски раскрывает внутренний мир героя через особую композицию романа: события представлены не в хронологическом порядке， что̍ позволяет читателю постепенно приблизиться к пониманию Печорина.\n\nПечорин обладает выдающимся умом и сильной волей， одна̍ко не находит применения своим способностям. Е̍го поступки нередко причиняют страдания окружающим， что свидетельствует о глубоком внутреннем конфликте.\n\nТаким образом, Лермонтов создал образ, ко́торый по сей день остаётся актуальным и заставляет задуматься о смы̍сле жизни， и предназначении человека.",
          "objection": {
           "reason": "Я писал сам, просто пользовался учебником и словарём. Знаки странные потому что печатал с телефона.",
           "days_ago": 7
@@ -385,7 +391,7 @@
         {
          "filename": "Гроза_вопрос2.txt",
          "days_ago": 5,
-         "batch": "Сочинение по «Грозе» · сканы",
+         "batch": "Сочинение по «Грозе» · из электронного журнала",
          "uploaded_by_teacher": true,
          "text": "Вопрос 2. Она не умеет притворяться. Варвара говорит делай что хочешь только чтобы шито-крыто было, а Катерине от вранья плохо, она даже грозы боится, думает что это наказание. Поэтому призналась мужу при всех и в конце бросилась в Волгу."
         },
@@ -455,7 +461,7 @@
         {
          "filename": "Гроза_вопрос2.txt",
          "days_ago": 5,
-         "batch": "Сочинение по «Грозе» · сканы",
+         "batch": "Сочинение по «Грозе» · из электронного журнала",
          "uploaded_by_teacher": true,
          "text": "Вопрос 2. Варвара приспособилась к дому Кабанихи, она врёт и ничего не боится. А для Катерины любовь к Борису это грех, и жить с этим тайком она не может. Она честнее Варвары, но в этом доме честным быть опасно, поэтому ей от этого только хуже."
         },
@@ -676,7 +682,7 @@
         {
          "filename": "essay_hybrid_learning.txt",
          "days_ago": 1,
-         "text": "It seems that there is no need to think of hybrid learning as the end of university lectures. Since ancient times, lectures have served a great purpose as experts managed to introduce complicated issues, structure knowledge, and stimulate students intellectually. The traditional model, where students had to listen passively in an overcrowded room, at a specific time, did not fully meet the requirements of modern learners. Hybrid learning would allow to retain the positive features of lectures and fix their shortcomings.\n\nBy hybrid learning, one means a combination of traditional teaching and online elements, like lectures, discussion forums, quizzes, and virtual office hours. Hybrid learning enables students to have much more freedom. Students may listen to the materials recorded if they find them difficult, learn at the right pace, and continue studying even if they are ill, busy, or unable to travel to the university due to some reasons. Moreover, hybrid learning allows making education available for students with disabilities and distant learners.\n\nSome people state that online elements make universities less social as they deprive students of valuable discussions, communication, and contacts. Such an opinion is quite right as students study not only from the lectures but also from discussions, debates, and informal communications with teachers and other students. However, hybrid learning does not imply that universities have to give up on all these aspects. On the contrary, hybrid learning provides universities with an opportunity to use class hours more efficiently since it is not necessary to repeat everything in person as it could be seen online. In class, teachers will be able to conduct debates, solve problems, conduct laboratory works, conduct case studies, and give feedback.\n\nTherefore, hybrid lectures should become an interaction of minds rather than one-sided performance. Teachers will continue to play their vital role"
+         "text": "It seems that there is no need to think of hybrid learning as the end of university lectures. Since ancient times, lectures have served a great purpose as experts managed to introduce complicated issues, structure 𝗸nowledge, and stimulate students intellectually. The traditional model, where students had to listen passively in an overcrowded room, at a specific time, did not fully meet the requirements of modern learners. Hybrid learning would allow to retain the positive features of lectures and fix their shortcomings.\n\nBy hybrid learning, one means a combination of traditional teaching and online elements, like lectures, discussion forums, quizzes, and virtual office hours. Hybrid learning enables students to have much more freedom. Students may listen to the materials recorded if they find them difficult, learn at the right 𝗽ace, and continue studying even if they are ill, busy, or unable to travel to the university due to some reasons. Moreover, hybrid learning allows making education available for students with disabilities and distant learners.\n\nSome people state that online elements make universities less social as they deprive students of valuable discussions, communication, and contacts. Such an opinion is quite right as students study not only from the lectures but also from discussions, debates, and informal communications with teachers and other students. However, hybrid learning does not imply that universities have to give up on all these aspects. On the contrary, hybrid learning provides universities with an opportunity to use class hours more efficiently since it is not necessary to repeat everything in person as it could be seen online. In class, teachers will be able to conduct debates, solve problems, conduct laboratory works, conduct case studies, and give feedback.\n\nTherefore, hybrid lectures should become an interaction of minds rather than one-sided performance. Teachers will continue to play their vital role"
         }
        ]
       }

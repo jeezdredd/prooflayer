@@ -224,6 +224,7 @@ else:
     EMAIL_MODE = "console"
 EMAIL_CONFIGURED = EMAIL_MODE != "console"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+CLASSROOM_URL = os.environ.get("CLASSROOM_URL", FRONTEND_URL).rstrip("/")
 PASSWORD_RESET_TIMEOUT = 60 * 60
 PUBLIC_API_URL = (os.environ.get("PUBLIC_API_URL") or os.environ.get("VITE_API_URL") or "http://localhost:8000/api/v1").rstrip("/")
 

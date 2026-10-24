@@ -7,16 +7,22 @@ import type { Organization } from "../types";
 import { useAuthStore } from "../stores/authStore";
 import { toast } from "../components/ui/Toast";
 import { ACTION, INPUT, MAIN_URL, SECTION_LABEL, classPath, errorText, levelLabel, levelOptions } from "./shared";
+import { AttentionLine, NameField } from "./ClassBits";
 import { t, tn } from "../i18n";
 
 function JoinForms({ org }: { org: Organization }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [classCode, setClassCode] = useState("");
+  const [name, setName] = useState("");
   const [teacherCode, setTeacherCode] = useState("");
+  const [teacherName, setTeacherName] = useState("");
+  const needsName = !org.my_name;
+  const teacherReady = teacherCode.trim().length === 8 && (!needsName || teacherName.trim().length > 1);
+  const classReady = classCode.trim().length === 8 && (!needsName || name.trim().length > 1);
 
   const joinClass = useMutation({
-    mutationFn: () => classrooms.join(classCode.trim()).then((r) => r.data),
+    mutationFn: () => classrooms.join(classCode.trim(), needsName ? name.trim() : undefined).then((r) => r.data),
     onSuccess: (c) => {
       queryClient.invalidateQueries({ queryKey: ["classroom-hub"] });
       navigate(classPath(c));
@@ -24,7 +30,7 @@ function JoinForms({ org }: { org: Organization }) {
     onError: (err) => toast.error(errorText(err, t("Could not join"))),
   });
   const joinTeacher = useMutation({
-    mutationFn: () => orgs.joinAsTeacher(org.slug, teacherCode.trim()).then((r) => r.data),
+    mutationFn: () => orgs.joinAsTeacher(org.slug, teacherCode.trim(), needsName ? teacherName.trim() : undefined).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["org", org.slug] });
       queryClient.invalidateQueries({ queryKey: ["classroom-hub"] });
@@ -35,18 +41,20 @@ function JoinForms({ org }: { org: Organization }) {
 
   return (
     <div className="grid md:grid-cols-2 gap-px bg-[var(--line-strong)] mt-8">
-      <form className="bg-ink-950 p-5" onSubmit={(e) => { e.preventDefault(); joinClass.mutate(); }}>
+      <form className="bg-ink-950 p-5" onSubmit={(e) => { e.preventDefault(); if (classReady) joinClass.mutate(); }}>
         <div className={SECTION_LABEL}>{t("Student · class code from your teacher")}</div>
+        {needsName && <NameField value={name} onChange={setName} />}
         <div className="flex gap-2">
           <input value={classCode} onChange={(e) => setClassCode(e.target.value.toUpperCase())} maxLength={8} placeholder={t("CLASS CODE")} className={`${INPUT} font-mono tracking-[0.2em]`} />
-          <button type="submit" disabled={classCode.trim().length < 8 || joinClass.isPending} className={ACTION}>{t("Join")}</button>
+          <button type="submit" disabled={!classReady || joinClass.isPending} className={ACTION}>{t("Join")}</button>
         </div>
       </form>
-      <form className="bg-ink-950 p-5" onSubmit={(e) => { e.preventDefault(); joinTeacher.mutate(); }}>
+      <form className="bg-ink-950 p-5" onSubmit={(e) => { e.preventDefault(); if (teacherReady) joinTeacher.mutate(); }}>
         <div className={SECTION_LABEL}>{t("Teacher · code from the school admin")}</div>
+        {needsName && <NameField value={teacherName} onChange={setTeacherName} teacher />}
         <div className="flex gap-2">
           <input value={teacherCode} onChange={(e) => setTeacherCode(e.target.value.toUpperCase())} maxLength={8} placeholder={t("TEACHER CODE")} className={`${INPUT} font-mono tracking-[0.2em]`} />
-          <button type="submit" disabled={teacherCode.trim().length < 8 || joinTeacher.isPending} className={ACTION}>{t("Join")}</button>
+          <button type="submit" disabled={!teacherReady || joinTeacher.isPending} className={ACTION}>{t("Join")}</button>
         </div>
       </form>
     </div>
@@ -83,9 +91,14 @@ function ClassList({ org }: { org: Organization }) {
           {visible.map((c) => (
             <Link key={c.id} to={classPath(c)} className="grid grid-cols-[auto_1fr_auto] gap-4 items-center py-3 hover:bg-ink-800/40 px-2 -mx-2 transition-colors">
               <GraduationCap size={16} className="text-signal-sage/80" />
-              <span className="text-ink-50">{c.name} <span className="text-ink-500 text-sm">· {levelLabel(c.level)}</span></span>
+              <span className="text-ink-50 min-w-0">
+                {c.name} <span className="text-ink-500 text-sm">· {levelLabel(c.level)}</span>
+                {org.role !== "student" && <AttentionLine attention={c.attention} />}
+              </span>
               <span className="font-mono text-[11px] text-ink-500 flex items-center gap-1.5">
-                {org.role === "student" ? c.owner_name : <><Users size={12} /> {c.student_count}{org.role === "admin" && ` · ${c.owner_name}`}</>}
+                {org.role === "student"
+                  ? t("Teacher: {name}", { name: c.owner_name })
+                  : <><Users size={12} /> {c.student_count}{org.role === "admin" && ` · ${c.owner_name}`}</>}
               </span>
             </Link>
           ))}
@@ -153,16 +166,23 @@ function AdminPanel({ org }: { org: Organization }) {
         <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("teacher code")}</span>
         <span className="font-mono tracking-[0.2em] text-ink-50 flex-1">{org.teacher_code}</span>
         <button type="button" aria-label={t("Copy code")} onClick={() => navigator.clipboard.writeText(org.teacher_code || "")} className="text-ink-400 hover:text-signal-amber"><Copy size={13} /></button>
-        <button type="button" aria-label={t("New code")} onClick={() => rotate.mutate()} className="text-ink-400 hover:text-signal-amber"><RefreshCw size={13} /></button>
+        <button type="button" aria-label={t("New code")} title={t("New code")}
+          onClick={() => { if (window.confirm(t("Issue a new teacher code? The old code {code} will stop working.", { code: org.teacher_code ?? "" }))) rotate.mutate(); }}
+          className="text-ink-400 hover:text-signal-amber"><RefreshCw size={13} /></button>
       </div>
       <p className="text-xs text-ink-500 mb-3">{t("Teachers open this page, enter the code, and create classes under the school plan.")}</p>
       <div className="divide-y divide-[var(--line-strong)]">
         {teachers.map((teacher) => (
           <div key={teacher.user_id} className="flex items-center gap-3 py-2">
-            <span className="flex-1 truncate text-ink-100">{teacher.username}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block truncate text-ink-100">{teacher.name}</span>
+              {teacher.name !== teacher.username && <span className="block truncate font-mono text-[10px] text-ink-600">{teacher.username}</span>}
+            </span>
             <span className="font-mono text-[11px] text-ink-500">{teacher.role === "admin" ? t("admin") : tn(teacher.classes, "{n} class", "{n} classes")}</span>
             {teacher.user_id !== user?.id && teacher.role !== "admin" && (
-              <button type="button" aria-label={t("Remove teacher")} onClick={() => remove.mutate(teacher.user_id)} className="text-ink-600 hover:text-signal-blood"><UserMinus size={13} /></button>
+              <button type="button" aria-label={t("Remove teacher")} title={t("Remove teacher")}
+                onClick={() => { if (window.confirm(t("Remove {name} from the school? Their classes stay, but they will not be able to create new ones here.", { name: teacher.name }))) remove.mutate(teacher.user_id); }}
+                className="text-ink-600 hover:text-signal-blood"><UserMinus size={13} /></button>
             )}
           </div>
         ))}
@@ -178,7 +198,7 @@ function AdminPanel({ org }: { org: Organization }) {
         <span>
           <span className="block text-sm text-ink-100">{t("Search the web for copied passages")}</span>
           <span className="block text-xs text-ink-500 mt-1 leading-relaxed">
-            {t("Sends up to 8 short sentences from each work to servers outside Kazakhstan: Wikipedia in Russian, English and French, open academic catalogues and open web search. Finds copied encyclopedia and article passages. On by default; turn it off to keep the check inside ProofLayer.")}
+            {t("Sends up to 8 sentences from each work to web search and to Wikipedia (servers outside Kazakhstan). Finds passages copied from encyclopedias and articles. When it is off, work is compared only with other work in ProofLayer. Reference lists are always checked in open book catalogues (doi.org, OpenAlex, Crossref), whatever this setting says.")}
           </span>
         </span>
       </label>

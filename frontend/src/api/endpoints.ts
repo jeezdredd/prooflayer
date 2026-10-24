@@ -13,6 +13,7 @@ import type {
   ShadowSet,
   ShadowSetDetail,
   ClassSubmission,
+  ClassBatch,
   Classroom,
   BatchDetail,
   ApiKeyCreated,
@@ -239,7 +240,8 @@ export const batches = {
     return client.post<BatchDetail>("/content/batches/", form, { headers: { "Content-Type": "multipart/form-data" } });
   },
   detail: (id: string) => client.get<BatchDetail>(`/content/batches/${id}/`),
-  exportCsv: (id: string) => client.get<Blob>(`/content/batches/${id}/export.csv/`, { responseType: "blob" }),
+  exportCsv: (id: string, lang?: string) =>
+    client.get<Blob>(`/content/batches/${id}/export.csv/`, { responseType: "blob", params: lang ? { lang } : undefined }),
 };
 
 export const classrooms = {
@@ -247,7 +249,7 @@ export const classrooms = {
   create: (name: string) => client.post<Classroom>("/classroom/classrooms/", { name }),
   detail: (id: string) => client.get<Classroom>(`/classroom/classrooms/${id}/`),
   update: (id: string, data: Partial<Pick<Classroom, "name" | "archived" | "level">>) => client.patch<Classroom>(`/classroom/classrooms/${id}/`, data),
-  join: (code: string) => client.post<Classroom>("/classroom/join/", { code }),
+  join: (code: string, name?: string) => client.post<Classroom>("/classroom/join/", name ? { code, name } : { code }),
   leave: (id: string) => client.post(`/classroom/classrooms/${id}/leave/`, {}),
   rotateCode: (id: string) => client.post<{ join_code: string }>(`/classroom/classrooms/${id}/rotate-code/`, {}),
   roster: (id: string) => client.get<ClassMember[]>(`/classroom/classrooms/${id}/roster/`),
@@ -260,15 +262,19 @@ export const classrooms = {
   shadowDetail: (id: string, shadowId: string) => client.get<ShadowSetDetail>(`/classroom/classrooms/${id}/shadows/${shadowId}/`),
   deleteShadow: (id: string, shadowId: string) => client.delete(`/classroom/classrooms/${id}/shadows/${shadowId}/`),
   radar: (id: string, days?: number) => client.get<ClassRadar>(`/classroom/classrooms/${id}/radar/`, { params: days ? { days } : undefined }),
-  exportCsv: (id: string) => client.get<Blob>(`/classroom/classrooms/${id}/export.csv/`, { responseType: "blob" }),
+  batches: (id: string) => client.get<ClassBatch[]>(`/classroom/classrooms/${id}/batches/`),
+  exportCsv: (id: string, lang?: string) =>
+    client.get<Blob>(`/classroom/classrooms/${id}/export.csv/`, { responseType: "blob", params: lang ? { lang } : undefined }),
 };
 
 export const orgs = {
   hub: () => client.get<ClassroomHub>("/classroom/hub/"),
-  create: (name: string, slug: string) => client.post<Organization>("/classroom/orgs/", { name, slug }),
+  create: (name: string, slug: string, myName?: string) =>
+    client.post<Organization>("/classroom/orgs/", myName ? { name, slug, my_name: myName } : { name, slug }),
   detail: (slug: string) => client.get<Organization>(`/classroom/orgs/${slug}/`),
   remove: (slug: string, password: string) => client.delete(`/classroom/orgs/${slug}/`, { data: { password } }),
-  joinAsTeacher: (slug: string, code: string) => client.post<Organization>(`/classroom/orgs/${slug}/join-teacher/`, { code }),
+  joinAsTeacher: (slug: string, code: string, name?: string) =>
+    client.post<Organization>(`/classroom/orgs/${slug}/join-teacher/`, name ? { code, name } : { code }),
   rotateTeacherCode: (slug: string) => client.post<{ teacher_code: string }>(`/classroom/orgs/${slug}/rotate-teacher-code/`, {}),
   teachers: (slug: string) => client.get<OrgTeacher[]>(`/classroom/orgs/${slug}/teachers/`),
   removeTeacher: (slug: string, userId: number) => client.delete(`/classroom/orgs/${slug}/teachers/${userId}/`),

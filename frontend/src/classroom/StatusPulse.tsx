@@ -17,7 +17,7 @@ const ORDER = ["api", "database", "redis", "celery", "analyzers", "ollama", "sto
 const HEIGHTS = [5, 12, 7, 10];
 
 const GROUPS: { label: string; note: string; keys: string[] }[] = [
-  { label: msg("Checking work"), note: msg("Detectors, workers and language models"), keys: ["celery", "analyzers", "ollama"] },
+  { label: msg("Checking work"), note: msg("Essays, photos, audio and video"), keys: ["celery", "analyzers", "ollama"] },
   { label: msg("Files and reports"), note: msg("Uploads, PDF reports, class records"), keys: ["storage", "database"] },
   { label: msg("Sign-in and email"), note: msg("Accounts, invitations, notifications"), keys: ["api", "redis", "email"] },
 ];
@@ -123,7 +123,7 @@ export default function StatusPulse() {
             </ul>
             {(median || tribunal) && (
               <div className="mt-4 pt-3 border-t border-[var(--line-strong)] font-mono text-[11px] text-ink-400 space-y-1">
-                {median ? <div>{t("A check takes about {n} s right now", { n: Math.round(median) })}</div> : null}
+                {median ? <div>{t("A photo is checked in about {n} s right now", { n: Math.round(median) })}</div> : null}
                 {tribunal ? <div>{t("Verdicts by {name}", { name: tribunal })}</div> : null}
               </div>
             )}

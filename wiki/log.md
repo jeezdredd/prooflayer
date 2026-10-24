@@ -2,6 +2,11 @@
 
 Newest at top.
 
+## [2026-10-24] class-pages-act | Class pages show names, agree with their chips, and objections clear work
+
+- Source: owner demo review as a teacher (audit theme t4-class-pages), classroom/attention.py, classroom/export.py, content/objections.py apply_decision, radar examples
+- Pages updated: [[services/classroom]], [[hot]]
+
 ## [2026-10-24] email-resend | Resend key now reaches the prod containers
 
 - Source: public /api/v1/system/status/ (email backend smtp), deploy/compose.prod.yml environment blocks, settings/base.py backend order

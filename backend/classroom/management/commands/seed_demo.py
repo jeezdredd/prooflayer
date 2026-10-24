@@ -13,6 +13,7 @@ from billing.models import Subscription, get_or_create_subscription
 from classroom.models import Classroom, Membership, Organization, OrgMember, ShadowAnswer, ShadowSet
 from classroom.shadow import sentence_vectors
 from content.models import OBJECTION_ANSWER_BUSINESS_DAYS, Batch, Submission, VerdictObjection, add_business_days
+from content.objections import apply_decision
 from content.tasks import process_submission
 from users.models import User
 
@@ -165,16 +166,19 @@ class Command(BaseCommand):
     def _object(self, submission: Submission, student: User, teacher: User, spec: dict):
         objection = VerdictObjection(submission=submission, author=student, reason=spec["reason"])
         if spec.get("response"):
+            submission.refresh_from_db(fields=["final_verdict"])
             objection.status = VerdictObjection.Status.ANSWERED
             objection.decision = spec.get("decision", VerdictObjection.Decision.UPHELD)
             objection.response = spec["response"]
             objection.responded_by = teacher
             objection.responded_at = timezone.now()
+            apply_decision(objection, teacher)
         objection.save()
         if spec.get("days_ago"):
             filed = timezone.now() - timedelta(days=spec["days_ago"])
             due = add_business_days(timezone.localtime(filed), OBJECTION_ANSWER_BUSINESS_DAYS)
-            VerdictObjection.objects.filter(pk=objection.pk).update(created_at=filed, due_at=due)
+            answered = filed + timedelta(days=1) if objection.responded_at else None
+            VerdictObjection.objects.filter(pk=objection.pk).update(created_at=filed, due_at=due, responded_at=answered)
 
     def _wait(self, submission: Submission, timeout: int):
         deadline = time.monotonic() + timeout

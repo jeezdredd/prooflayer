@@ -1,20 +1,16 @@
 from rest_framework import serializers
 
+from common.names import display_name
+
 from .access import can_supervise
-from .models import Classroom, Membership, ShadowSet
+from .attention import FLAGGED, TEXT_FLAGS, is_cleared
+from .models import Classroom, Membership, OrgMember, ShadowSet
 from .shadow import MAX_TARGET
 
-FLAGGED = {"fake", "likely_fake", "suspicious"}
-FLAG_ORDER = ["ai_text", "ai_trace", "trace_hidden", "ai_image", "hidden_text", "tricks", "shadow", "copy", "sources", "age", "style"]
-TEXT_FLAGS = {
-    "text_classifier": "ai_text",
-    "text_grade_fit": "age",
-    "text_style": "style",
-    "text_citations": "sources",
-    "text_shadow": "shadow",
-}
-
-
+FLAG_ORDER = [
+    "ai_text", "ai_trace", "trace_hidden", "ai_image", "ai_media", "hidden_text",
+    "tricks", "shadow", "copy", "sources", "age", "style",
+]
 NOTES = {
     "text too short for a verdict": "too_short",
     "language not calibrated": "language",
@@ -30,8 +26,11 @@ def submission_note(obj) -> str | None:
 
 
 def submission_flags(obj) -> list[str]:
+    if is_cleared(obj):
+        return []
     flags = []
     is_image = obj.mime_type.startswith("image/")
+    is_media = obj.mime_type.startswith(("audio/", "video/"))
     for result in obj.analysis_results.all():
         name = result.analyzer.name
         evidence = result.evidence if isinstance(result.evidence, dict) else {}
@@ -49,26 +48,59 @@ def submission_flags(obj) -> list[str]:
         flags.append("copy")
     if is_image and obj.final_verdict in FLAGGED and "ai_trace" not in flags and "trace_hidden" not in flags:
         flags.append("ai_image")
-    return sorted(flags, key=FLAG_ORDER.index)
+    if is_media and obj.final_verdict in FLAGGED:
+        flags.append("ai_media")
+    return sorted(set(flags), key=FLAG_ORDER.index)
+
+
+def latest_objection(obj):
+    objections = sorted(obj.objections.all(), key=lambda o: o.created_at, reverse=True)
+    return objections[0] if objections else None
+
+
+def supervisor_ids(classroom) -> set[int]:
+    ids = {classroom.owner_id}
+    if classroom.organization_id:
+        ids |= set(
+            OrgMember.objects.filter(organization_id=classroom.organization_id, role=OrgMember.Role.ADMIN)
+            .values_list("user_id", flat=True)
+        )
+    return ids
+
+
+def is_unattributed(submission, context: dict) -> bool:
+    members = context.get("members")
+    supervisors = context.get("supervisors")
+    if members is None or supervisors is None:
+        return False
+    return submission.user_id not in members and submission.user_id in supervisors
+
+
+def class_context(classroom) -> dict:
+    return {
+        "members": set(Membership.objects.filter(classroom=classroom).values_list("user_id", flat=True)),
+        "supervisors": supervisor_ids(classroom),
+    }
 
 
 class ClassroomSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
     join_code = serializers.SerializerMethodField()
-    owner_name = serializers.CharField(source="owner.username", read_only=True)
+    owner_name = serializers.SerializerMethodField()
     student_count = serializers.IntegerField(read_only=True, default=0)
     organization_slug = serializers.CharField(source="organization.slug", read_only=True, default=None)
     organization_name = serializers.CharField(source="organization.name", read_only=True, default=None)
+    attention = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
         fields = (
             "id", "name", "level", "role", "join_code", "owner_name", "student_count", "archived", "created_at",
-            "organization_slug", "organization_name",
+            "organization_slug", "organization_name", "attention",
         )
         read_only_fields = (
             "id", "role", "join_code", "owner_name", "student_count", "created_at",
-            "organization_slug", "organization_name",
+            "organization_slug", "organization_name", "attention",
         )
 
     def _is_owner(self, obj) -> bool:
@@ -86,10 +118,19 @@ class ClassroomSerializer(serializers.ModelSerializer):
     def get_join_code(self, obj):
         return obj.join_code if self._is_owner(obj) else None
 
+    def get_owner_name(self, obj):
+        return display_name(obj.owner)
+
+    def get_attention(self, obj):
+        if not self._is_owner(obj):
+            return None
+        return self.context.get("attention", {}).get(obj.pk)
+
 
 class MemberSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(source="user.id")
     username = serializers.CharField(source="user.username")
+    name = serializers.SerializerMethodField()
     email = serializers.EmailField(source="user.email")
     total = serializers.IntegerField(default=0)
     flagged = serializers.IntegerField(default=0)
@@ -97,7 +138,10 @@ class MemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Membership
-        fields = ("user_id", "username", "email", "joined_at", "total", "flagged", "last_submission_at")
+        fields = ("user_id", "username", "name", "email", "joined_at", "total", "flagged", "last_submission_at")
+
+    def get_name(self, obj):
+        return display_name(obj.user)
 
 
 class ClassSubmissionSerializer(serializers.Serializer):
@@ -110,12 +154,24 @@ class ClassSubmissionSerializer(serializers.Serializer):
     tribunal_version = serializers.CharField()
     created_at = serializers.DateTimeField()
     student_id = serializers.IntegerField(source="user_id")
-    student = serializers.CharField(source="user.username")
-    uploaded_by = serializers.CharField(source="uploaded_by.username", default=None)
+    student = serializers.SerializerMethodField()
+    uploaded_by = serializers.SerializerMethodField()
+    unattributed = serializers.SerializerMethodField()
     words = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
     flags = serializers.SerializerMethodField()
     note = serializers.SerializerMethodField()
+    objection = serializers.SerializerMethodField()
+    cleared = serializers.SerializerMethodField()
+
+    def get_student(self, obj):
+        return display_name(obj.user)
+
+    def get_uploaded_by(self, obj):
+        return display_name(obj.uploaded_by) if obj.uploaded_by_id else None
+
+    def get_unattributed(self, obj):
+        return is_unattributed(obj, self.context)
 
     def get_flags(self, obj):
         return submission_flags(obj) if obj.status == "completed" else []
@@ -129,6 +185,21 @@ class ClassSubmissionSerializer(serializers.Serializer):
 
     def get_words(self, obj):
         return ((obj.metadata or {}).get("document") or {}).get("words")
+
+    def get_objection(self, obj):
+        objection = latest_objection(obj)
+        if objection is None:
+            return None
+        return {
+            "status": objection.status,
+            "decision": objection.decision,
+            "overdue": objection.overdue,
+            "due_at": objection.due_at,
+            "responded_at": objection.responded_at,
+        }
+
+    def get_cleared(self, obj):
+        return is_cleared(obj)
 
 
 class ShadowSetSerializer(serializers.ModelSerializer):

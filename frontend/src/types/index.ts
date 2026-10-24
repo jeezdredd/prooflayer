@@ -81,11 +81,13 @@ export interface VerdictObjection {
   submission_id: string;
   submission_title: string;
   student: string;
+  author_id: number;
   classroom: string | null;
   reason: string;
   status: ObjectionStatus;
   decision: ObjectionDecision | "";
   response: string;
+  original_verdict?: string;
   created_at: string;
   due_at: string;
   responded_at: string | null;
@@ -335,13 +337,35 @@ export interface BatchItem {
   tribunal_version: string;
 }
 
+export interface BatchClassroom {
+  id: string;
+  name: string;
+  organization_slug: string | null;
+  role: "teacher" | "student";
+}
+
 export interface BatchDetail {
   id: string;
   name: string;
   created_at: string;
   skipped: { name: string; reason: string }[];
-  summary: { total: number; done: number; by_status: Record<string, number>; by_verdict: Record<string, number> };
-  items: BatchItem[];
+  summary: { total: number; done: number; flagged?: number; by_status: Record<string, number>; by_verdict: Record<string, number> };
+  items: BatchItem[] | ClassSubmission[];
+  classroom: BatchClassroom | null;
+}
+
+export interface ClassBatch {
+  id: string;
+  name: string;
+  created_at: string;
+  total: number;
+  flagged: number;
+}
+
+export interface ClassAttention {
+  needs_attention: number;
+  open_objections: number;
+  overdue_objections: number;
 }
 
 export interface Classroom {
@@ -356,12 +380,15 @@ export interface Classroom {
   created_at: string;
   organization_slug: string | null;
   organization_name: string | null;
+  attention?: ClassAttention | null;
 }
 
 export interface Organization {
   name: string;
   slug: string;
   role: "admin" | "teacher" | "student" | null;
+  my_name?: string;
+  attention?: ClassAttention;
   teacher_code?: string;
   plan_active?: boolean;
   teacher_seats?: number | null;
@@ -372,6 +399,7 @@ export interface Organization {
 export interface OrgTeacher {
   user_id: number;
   username: string;
+  name: string;
   email: string;
   role: "admin" | "teacher";
   classes: number;
@@ -379,6 +407,7 @@ export interface OrgTeacher {
 }
 
 export interface ClassroomHub {
+  my_name: string;
   organizations: Organization[];
   enrolled: Classroom[];
   personal_classes: Classroom[];
@@ -388,11 +417,20 @@ export interface ClassroomHub {
 export interface ClassMember {
   user_id: number;
   username: string;
+  name: string;
   email: string;
   joined_at: string;
   total: number;
   flagged: number;
   last_submission_at: string | null;
+}
+
+export interface ClassObjection {
+  status: ObjectionStatus;
+  decision: ObjectionDecision | "";
+  overdue: boolean;
+  due_at: string;
+  responded_at: string | null;
 }
 
 export interface ClassSubmission {
@@ -407,10 +445,13 @@ export interface ClassSubmission {
   student_id: number;
   student: string;
   uploaded_by: string | null;
+  unattributed: boolean;
   words: number | null;
   originality: number | null;
   flags: string[];
   note: string | null;
+  objection: ClassObjection | null;
+  cleared: boolean;
 }
 
 export interface RadarRef {
@@ -418,6 +459,19 @@ export interface RadarRef {
   student: string;
   filename: string;
   created_at: string;
+  unattributed: boolean;
+}
+
+export interface RadarPair {
+  a: RadarRef;
+  b: RadarRef;
+  aligned_share: number;
+  in_order: number;
+  a_sentences: number;
+  a_matched: number;
+  b_sentences: number;
+  b_matched: number;
+  examples: { a: string; b: string }[];
 }
 
 export interface ShadowSet {
@@ -429,25 +483,34 @@ export interface ShadowSet {
   error: string;
   answers: number;
   created_at: string;
+  compared?: number;
+  matched?: { submission_id: string; student: string; filename: string }[];
 }
 
 export interface ShadowSetDetail extends ShadowSet {
   texts: { variant: string; text: string }[];
 }
 
+export type JumpReason =
+  | { kind: "vocabulary"; words: string[]; words_per_sentence?: { now: number; before: number } }
+  | { kind: "ai" }
+  | { kind: "style" };
+
 export interface ClassRadar {
   days: number;
   submissions: number;
+  compared: number;
+  level: number | null;
   skeleton_data: { enough: boolean; works: number; need_works: number; students: number; need_students: number };
   jump_history_needed: number;
-  shared_skeletons: { a: RadarRef; b: RadarRef; aligned_share: number; in_order: number }[];
+  shared_skeletons: RadarPair[];
   clusters: string[][];
   level_jumps: {
     submission_id: string;
     student: string;
     filename: string;
     created_at: string;
-    reasons: ({ kind: "readability"; now: string; before: string } | { kind: "ai" } | { kind: "style" })[];
+    reasons: JumpReason[];
   }[];
 }
 

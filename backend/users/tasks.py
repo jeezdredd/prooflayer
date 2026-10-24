@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
+from common.names import display_name
 from common.url_safety import UnsafeUrlError, safe_post
 from content.models import Submission, VerdictObjection
 from content.viewer import result_url
@@ -58,6 +59,11 @@ def send_password_reset_email(user_id: int) -> str:
     return status
 
 
+def _local_date(value, lang: str) -> str:
+    value = timezone.localtime(value)
+    return value.strftime("%d.%m.%Y %H:%M") if lang == "ru" else value.strftime("%b %d, %Y %H:%M")
+
+
 def _objection_recipients(objection):
     classroom = objection.submission.classroom
     if classroom is not None:
@@ -80,21 +86,49 @@ def send_objection_notice(objection_id) -> str:
         logger.info("objection notice skipped objection=%s (no recipient)", objection_id)
         return "skipped"
     classroom = objection.submission.classroom
-    due_at = timezone.localtime(objection.due_at)
     statuses = []
     for email, lang, recipient in recipients:
         context = mail.objection_context(
             lang=lang,
-            student=objection.author.username or objection.author.email,
+            student=display_name(objection.author) or objection.author.email,
             title=objection.submission.original_filename,
             classroom=classroom.name if classroom else "",
             reason=objection.reason,
-            due=due_at.strftime("%d.%m.%Y %H:%M") if lang == "ru" else due_at.strftime("%b %d, %Y %H:%M"),
+            due=_local_date(objection.due_at, lang),
             link=result_url(objection.submission),
         )
         statuses.append(mail.send(kind="objection", to=[email], context=context, user=recipient))
     logger.info("objection notice %s objection=%s", statuses, objection_id)
     return statuses[0] if len(set(statuses)) == 1 else "mixed"
+
+
+@shared_task(queue="default", autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_objection_answer(objection_id) -> str:
+    objection = (
+        VerdictObjection.objects.select_related("submission__classroom__owner", "author", "responded_by")
+        .filter(id=objection_id, status=VerdictObjection.Status.ANSWERED)
+        .first()
+    )
+    if objection is None:
+        return "missing"
+    author = objection.author
+    if not author.email:
+        return "skipped"
+    lang = mail.lang_of(author)
+    classroom = objection.submission.classroom
+    context = mail.objection_answer_context(
+        lang=lang,
+        teacher=display_name(objection.responded_by) if objection.responded_by else "",
+        title=objection.submission.original_filename,
+        classroom=classroom.name if classroom else "",
+        changed=objection.decision == VerdictObjection.Decision.CHANGED,
+        response=objection.response,
+        answered=_local_date(objection.responded_at or timezone.now(), lang),
+        link=result_url(objection.submission),
+    )
+    status = mail.send(kind="objection_answer", to=[author.email], context=context, user=author)
+    logger.info("objection answer %s objection=%s", status, objection_id)
+    return status
 
 
 def send_product_update_to(update, user) -> str:
