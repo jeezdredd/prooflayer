@@ -65,10 +65,9 @@ def sample_submission_context(lang: str, kind: str, image: Path | None) -> dict:
     c = COPY[lang]
     verdict = "likely_fake" if kind == "image" else "needs_review"
     votes = SAMPLE_VOTES if kind == "image" else SAMPLE_TEXT_VOTES
-    score = 87 if kind == "image" else 64
     details = [
-        [(c["file"], "IMG_4232.jpg" if kind == "image" else "essay-history.docx", False), (c["type"], "Изображение · JPEG" if lang == "ru" and kind == "image" else "Image · JPEG" if kind == "image" else ("Документ · DOCX" if lang == "ru" else "Document · DOCX"), False), (c["size"], "2.4 MB" if kind == "image" else "38 KB", False)],
-        [(c["uploaded"], "14.10.2026 18:02 UTC" if lang == "ru" else "Oct 14, 2026 18:02 UTC", False), (c["tribunal"], "Tribunal 1.9.1", False), (c["fingerprint"], "7a3f2c91e04b5d18…b91d4e07", True)],
+        [(c["student"], "Ольга Смирнова" if lang == "ru" else "Olga Smirnova"), (c["classroom"], "9Б" if lang == "ru" else "9B"), (c["handed_in"], "14.10.2026" if lang == "ru" else "Oct 14, 2026")],
+        [(c["file"], "IMG_4232.jpg" if kind == "image" else "essay-history.docx"), (c["type"], "Картинка · JPEG" if lang == "ru" and kind == "image" else "Picture · JPEG" if kind == "image" else ("Документ · DOCX" if lang == "ru" else "Document · DOCX")), (c["size"], "2.4 MB" if kind == "image" else "38 KB")],
     ]
     originality = None
     if kind == "text":
@@ -85,23 +84,29 @@ def sample_submission_context(lang: str, kind: str, image: Path | None) -> dict:
     return {
         **shared_context(lang, c["report"], "7A3F2C91"),
         **tone_set(VERDICT_TONE[verdict]),
-        "headline": c["headline"][verdict],
+        "badge": c["in_short"],
+        "headline": c["plain"]["teacher"][verdict],
         "meaning": c["meaning"][verdict],
-        "score_pct": score,
-        "score_bar": score,
+        "detector_line": c["detector_count"].format(fake=4, total=5) if kind == "image" else "",
+        "next_step": c["next_step"],
+        "note": c["class_note"],
         "known_fake": False,
         "thumbnail": _image_uri(image) if image and kind == "image" else "",
         "excerpt": SAMPLE_ESSAY[lang] if kind == "text" else "",
-        "members": _members([_Result(*v) for v in votes], lang),
+        "checks": [],
+        "show_traces": kind == "image",
+        "traces": [],
+        "members": _members([_Result(*v) for v in votes], lang, image=kind == "image"),
         "passages": [
             {"text": SAMPLE_ESSAY[lang], "pct": 91, **tone_set("blood")},
             {"text": SAMPLE_ESSAY[lang][:180] + "…", "pct": 58, **tone_set("amber")},
         ] if kind == "text" else [],
         "originality": originality,
-        "provenance": [{"title": "Reverse image match · stock photo archive", "url": "https://example.com/photo/4232", "similarity": 91}] if kind == "image" else [],
+        "provenance": [{"title": c["where"]["visible"].format(what=c["where"]["same"], who="Полина Новикова, 9Б, 16.10.2026" if lang == "ru" else "Polina Novikova, 9B, Oct 16, 2026"), "url": "", "similarity": None}] if kind == "image" else [],
         "claims": [],
         "details": details,
-        "result_url": "https://prooflayer.cloud/results/7a3f2c91",
+        "technical": "SHA-256 7a3f2c91e04b5d18…b91d4e07 · Tribunal 1.9.2",
+        "result_url": "https://classroom.prooflayer.cloud/results/7a3f2c91",
     }
 
 

@@ -13,6 +13,7 @@ from django.utils.http import urlsafe_base64_encode
 
 from common.url_safety import UnsafeUrlError, safe_post
 from content.models import Submission, VerdictObjection
+from content.viewer import result_url
 
 from . import mail
 from .models import ApiKey, EmailVerificationToken, ProductUpdate, ProductUpdateDelivery
@@ -89,7 +90,7 @@ def send_objection_notice(objection_id) -> str:
             classroom=classroom.name if classroom else "",
             reason=objection.reason,
             due=due_at.strftime("%d.%m.%Y %H:%M") if lang == "ru" else due_at.strftime("%b %d, %Y %H:%M"),
-            link=f"{settings.FRONTEND_URL}/results/{objection.submission_id}",
+            link=result_url(objection.submission),
         )
         statuses.append(mail.send(kind="objection", to=[email], context=context, user=recipient))
     logger.info("objection notice %s objection=%s", statuses, objection_id)

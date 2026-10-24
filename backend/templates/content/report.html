@@ -5,11 +5,8 @@
       <tr>
         <td>
           <div class="hero-accent" style="background: {{ tone }};"></div>
-          <span class="badge" style="color: {{ tone }}; border: 0.3mm solid {{ tone_line }};"><span class="dot" style="background: {{ tone }};"></span>{{ c.verdict }}</span>
-          <div class="headline display">{{ headline }}</div>
-          <div class="score display" style="color: {{ tone }};">{{ score_pct }}<span style="font-size: 22pt;">%</span></div>
-          <div class="score-label">{{ c.probability }}</div>
-          <div class="track"><div class="fill" style="width: {{ score_bar }}%; background: {{ tone }};"></div></div>
+          <span class="badge" style="color: {{ tone }}; border: 0.3mm solid {{ tone_line }};"><span class="dot" style="background: {{ tone }};"></span>{{ badge }}</span>
+          <div class="headline display" style="color: {{ tone }};">{{ headline }}</div>
           {% if known_fake %}<div class="alert">{{ c.known_fake }}</div>{% endif %}
         </td>
         {% if thumbnail %}
@@ -23,9 +20,37 @@
     <div class="section-title"><span class="dot"></span>{{ c.meaning_title }}</div>
     <div class="card">
       <p class="lead">{{ meaning }}</p>
-      <div class="note">{{ c.human_note }}</div>
+      {% if detector_line %}<p class="lead" style="margin-top: 2mm;">{{ detector_line }}</p>{% endif %}
+      {% if next_step %}<p class="lead" style="margin-top: 2mm;">{{ next_step }}</p>{% endif %}
+      <div class="note">{{ note }}</div>
     </div>
   </div>
+
+  {% if checks %}
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>{{ c.checks }}</div>
+    <div class="card" style="padding-top: 2mm; padding-bottom: 2mm;">
+      <table class="rows">
+        {% for ch in checks %}
+        <tr>
+          <td class="name" style="width: 42mm;">{{ ch.title }}</td>
+          <td class="src-title">{{ ch.headline }}</td>
+          <td class="pill-cell" style="text-align: right;"><span class="pill" style="color: {{ ch.tone }}; border: 0.3mm solid {{ ch.tone_line }}; background: {{ ch.tone_bg }};">{{ ch.word }}</span></td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if show_traces %}
+  <div class="section">
+    <div class="section-title"><span class="dot"></span>{{ c.ai_traces }}</div>
+    <div class="card">
+      {% for line in traces %}<p class="lead"{% if not forloop.first %} style="margin-top: 2mm;"{% endif %}>{{ line }}</p>{% empty %}<p class="lead">{{ c.trace.none }}</p>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   {% if excerpt and not passages %}
   <div class="section">
@@ -59,9 +84,7 @@
         {% for m in members %}
         <tr>
           <td class="name">{{ m.name }}</td>
-          <td class="pill-cell"><span class="pill" style="color: {{ m.tone }}; border: 0.3mm solid {{ m.tone_line }}; background: {{ m.tone_bg }};">{{ m.vote }}</span></td>
-          <td class="bar-cell">{% if m.pct is not None %}<div class="mini-track"><div class="mini-fill" style="width: {{ m.pct }}%; background: {{ m.tone }};"></div></div>{% endif %}</td>
-          <td class="pct">{% if m.pct is not None %}{{ m.pct }}%{% endif %}</td>
+          <td class="pill-cell" style="text-align: right;"><span class="pill" style="color: {{ m.tone }}; border: 0.3mm solid {{ m.tone_line }}; background: {{ m.tone_bg }};">{{ m.vote }}</span></td>
         </tr>
         {% endfor %}
       </table>
@@ -138,7 +161,7 @@
         {% for row in details %}
         <tr>
           {% for cell in row %}
-          <td><div class="label">{{ cell.0 }}</div><div class="value{% if cell.2 %} mono{% endif %}">{{ cell.1 }}</div></td>
+          <td><div class="label">{{ cell.0 }}</div><div class="value">{{ cell.1 }}</div></td>
           {% endfor %}
         </tr>
         {% endfor %}
@@ -147,6 +170,7 @@
   </div>
 
   <div class="closing">
-    {{ c.human_note }}{% if result_url %} {{ c.online }}: <a href="{{ result_url }}">{{ result_url }}</a>{% endif %}
+    {{ note }}{% if result_url %} {{ c.online }}: <a href="{{ result_url }}">{{ result_url }}</a>{% endif %}
+    <div class="mono" style="margin-top: 2mm; font-size: 6pt;">{{ c.technical }}: {{ technical }}</div>
   </div>
 {% endblock %}

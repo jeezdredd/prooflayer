@@ -7,6 +7,7 @@ from analyzers.content_credentials import has_remnants as c2pa_remnants
 from analyzers.content_credentials import summarize as summarize_c2pa
 from common.documents import DOCUMENT_MIMES, document_stats, read_text
 from plagiarism.models import PlagiarismReport
+from provenance.services import scan_provenance
 
 from .models import Submission
 from .retention import purge_expired_files
@@ -49,6 +50,13 @@ DOCUMENT_STATS_LIMIT = 2_000_000
 def _set_status(submission, message):
     submission.status_message = message
     submission.save(update_fields=["status_message"])
+
+
+def _scan_provenance(submission) -> None:
+    try:
+        scan_provenance(submission)
+    except Exception:
+        logger.exception("provenance scan failed for %s", submission.id)
 
 
 def queue_originality_check(submission) -> None:
@@ -103,6 +111,7 @@ def process_submission(self, submission_id):
                 "tribunal_version", "tribunal_fingerprint", "tribunal_revision",
             ])
             clone_analysis_results(cached, submission)
+            _scan_provenance(submission)
             logger.info("Submission %s resolved from cache (source: %s)", submission_id, cached.id)
             queue_originality_check(submission)
             return
@@ -156,11 +165,7 @@ def process_submission(self, submission_id):
             "phash", "dhash", "pdq_hash", "pdq_quality", "clip_embedding",
         ])
 
-        try:
-            from provenance.services import scan_provenance
-            scan_provenance(submission)
-        except Exception:
-            logger.exception("provenance scan failed for %s", submission.id)
+        _scan_provenance(submission)
 
         _set_status(submission, "Starting analyzers...")
         from analyzers.tasks import dispatch_analysis

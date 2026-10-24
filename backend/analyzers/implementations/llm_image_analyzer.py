@@ -34,8 +34,6 @@ VERDICT_CONFIDENCE = {
 
 WEAK_REASONING_CONFIDENCE = 0.35
 
-NO_DEFECT_NOTE = "No defect found is not evidence of a real photo, so the vision model abstains instead of voting authentic."
-
 MIN_REASONING_LEN = 20
 
 
@@ -50,8 +48,7 @@ def _parse_vision_response(raw: str) -> tuple[str, float, str]:
             if verdict in VERDICT_CONFIDENCE:
                 if len(reasoning) >= MIN_REASONING_LEN:
                     return verdict, VERDICT_CONFIDENCE[verdict], reasoning
-                model_text = reasoning or "(no reasoning provided)"
-                return "uncertain", WEAK_REASONING_CONFIDENCE, f"No specific artifacts identified. Model said: \"{model_text}\". Score downgraded; other analyzers take precedence."
+                return "uncertain", WEAK_REASONING_CONFIDENCE, reasoning
         except (json.JSONDecodeError, ValueError, TypeError):
             pass
 
@@ -81,12 +78,14 @@ Rules:
 Respond ONLY with JSON in this exact shape:
 {"verdict": "ai_generated|human_photo|uncertain", "confidence": 0.0-1.0, "reasoning": "Either describe SPECIFIC visible defects with their location in the frame, or state that no concrete defects are visible and the image looks like a normal photograph."}
 
+Write the reasoning in Russian, in one or two plain sentences that a school teacher understands. Keep the JSON keys and the verdict value in English.
+
 If unsure, choose uncertain. Being wrong on a real photo is worse than being wrong on an AI image."""
 
 
 class LLMImageAnalyzer(BaseAnalyzer):
     name = "llm_vision"
-    version = "1.3.0"
+    version = "1.4.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -131,7 +130,7 @@ class LLMImageAnalyzer(BaseAnalyzer):
                     "model": vision_model,
                     "llm_verdict": llm_verdict,
                     "reasoning": reasoning,
-                    **({"note": NO_DEFECT_NOTE} if llm_verdict == "human_photo" else {}),
+                    "weak_reasoning": llm_confidence == WEAK_REASONING_CONFIDENCE,
                 },
             )
         except Exception as exc:

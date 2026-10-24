@@ -5,10 +5,12 @@ import AnalyzerTimeline from "./AnalyzerTimeline";
 import TextReport from "./TextReport";
 import OriginalityPanel from "./OriginalityPanel";
 import AiTracePanel from "./AiTracePanel";
+import MediaSummary, { hasProvenanceProof } from "./MediaSummary";
 import TeacherSummary, { isTextSubmission } from "./TeacherSummary";
+import { isClassView, isStudentView, longDate } from "./resultView";
 import { VERDICT_DISCLAIMER } from "../legal";
 import { useAuthStore } from "../stores/authStore";
-import { msg, t } from "../i18n";
+import { locale, msg, t } from "../i18n";
 
 const CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -170,11 +172,15 @@ const VERDICT_TONE: Record<string, { color: string; label: string; ring: string;
   inconclusive: { color: "text-ink-300", ring: "border-ink-600", label: msg("Inconclusive") },
 };
 
-function riskLevel(score: number): { label: string; color: string } {
-  if (score < 0.35) return { label: msg("LOW"), color: "text-signal-sage" };
-  if (score < 0.65) return { label: msg("MED"), color: "text-signal-amber" };
-  return { label: msg("HIGH"), color: "text-signal-blood" };
-}
+const BAR_ZONES = [
+  { from: 0, to: 35, tone: "bg-signal-sage/15" },
+  { from: 35, to: 50, tone: "bg-signal-amber/15" },
+  { from: 50, to: 60, tone: "bg-ink-700/60" },
+  { from: 60, to: 75, tone: "bg-signal-blood/10" },
+  { from: 75, to: 100, tone: "bg-signal-blood/20" },
+];
+
+const NO_BAR_VERDICTS = ["needs_review", "inconclusive", ""];
 
 function shortHash(hash: string | undefined) {
   if (!hash) return "-";
@@ -182,129 +188,208 @@ function shortHash(hash: string | undefined) {
 }
 
 function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+  const number = (n: number) => n.toLocaleString(locale(), { maximumFractionDigits: 1 });
+  if (bytes < 1024) return t("{n} B", { n: bytes });
+  if (bytes < 1024 * 1024) return t("{n} KB", { n: number(bytes / 1024) });
+  return t("{n} MB", { n: number(bytes / 1024 / 1024) });
+}
+
+function kindText(mime: string | undefined) {
+  const value = mime ?? "";
+  if (value.startsWith("image/")) return t("picture {format}", { format: value.split("/")[1].toUpperCase() });
+  if (value.startsWith("video/")) return t("video");
+  if (value.startsWith("audio/")) return t("audio");
+  if (value === "application/pdf") return t("PDF document");
+  if (value.includes("wordprocessingml")) return t("Word document");
+  if (value === "text/plain") return t("text");
+  return value || t("unknown");
+}
+
+function VersionNote({ submission }: { submission: Submission }) {
+  const ensemble = submission.ensemble;
+  if (!ensemble || ensemble.is_current) return null;
+  const text =
+    ensemble.version === ensemble.current_version
+      ? t("This work was checked before the last update of Tribunal. Press \"Re-analyze\" and the old result will be replaced with the new one.")
+      : t("This work was checked by an earlier version of Tribunal ({version}). Version {current} is out: press \"Re-analyze\" and the old result will be replaced with the new one.", {
+          version: ensemble.version,
+          current: ensemble.current_version,
+        });
+  return <p className="text-xs text-signal-amber/90 leading-snug mt-2 max-w-md">{text}</p>;
+}
+
+function ClassHeader({ submission, student, isProcessing }: { submission: Submission; student: boolean; isProcessing: boolean }) {
+  const title = student ? t("Your work") : submission.student_name || submission.original_filename;
+  const facts = [
+    submission.classroom_name,
+    t("handed in {date}", { date: longDate(submission.created_at) }),
+    `${kindText(submission.mime_type)}, ${formatSize(submission.file_size)}`,
+  ].filter(Boolean);
+
+  return (
+    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-ink-700 px-4 sm:px-6 py-4 sm:py-5">
+      <div className="min-w-0">
+        <h2 className="font-display text-2xl sm:text-3xl text-ink-50 leading-tight break-words">{title}</h2>
+        <p className="mt-2 text-sm text-ink-300">{facts.join(" · ")}</p>
+        {title !== submission.original_filename && (
+          <p className="mt-1 text-xs text-ink-500 break-all">{submission.original_filename}</p>
+        )}
+        {!student && !isProcessing && <VersionNote submission={submission} />}
+      </div>
+      {isProcessing && (
+        <div className="text-right">
+          <div className="font-display text-2xl text-signal-amber italic">{t("analyzing…")}</div>
+          <div className="text-xs text-ink-500 mt-1">{t("The result appears here when every check is done.")}</div>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function MainHeader({ submission, isProcessing, proof }: { submission: Submission; isProcessing: boolean; proof: boolean }) {
+  const verdict = VERDICT_TONE[submission.final_verdict] || VERDICT_TONE.inconclusive;
+  return (
+    <header className="flex items-stretch border-b border-ink-700">
+      <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5 min-w-0">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="label-mono">{t("Evidence File")}</span>
+          <span className="font-mono text-[10px] text-ink-500">/</span>
+          <span className="font-mono text-[10px] text-ink-400 ticker">
+            {submission.id.slice(0, 8).toUpperCase()}
+          </span>
+        </div>
+        <h2 className="font-display text-2xl sm:text-3xl text-ink-50 leading-tight break-all">
+          <DecryptText text={submission.original_filename} />
+        </h2>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-ink-400">
+          <span><span className="text-ink-600">{t("type:")}</span> {submission.mime_type || t("unknown")}</span>
+          <span><span className="text-ink-600">{t("size:")}</span> {formatSize(submission.file_size)}</span>
+          <span><span className="text-ink-600">sha256:</span> <span className="ticker">{shortHash(submission.sha256_hash)}</span></span>
+        </div>
+        {!isProcessing && <VersionNote submission={submission} />}
+      </div>
+
+      <div className="reg-tick" />
+
+      <div className="px-4 sm:px-6 py-4 sm:py-5 flex flex-col items-end justify-between min-w-[110px] sm:min-w-[180px]">
+        {!isProcessing && (
+          <span className={clsx("badge", verdict.color, verdict.ring)}>
+            <span className="w-1 h-1 bg-current rounded-full" />
+            {t(verdict.label)}
+          </span>
+        )}
+        {!isProcessing && proof && (
+          <div className="text-sm text-signal-blood mt-2 text-right max-w-[220px] leading-snug">{t("Made by AI: the invisible mark in the file proves it.")}</div>
+        )}
+        {!isProcessing && submission.ensemble && (
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600 mt-2 text-right">
+            {t("verdict by {name}", { name: submission.ensemble.label })}
+          </div>
+        )}
+        {!isProcessing && (
+          <div className="text-[11px] leading-snug text-ink-500 mt-2 text-right max-w-[220px]">
+            {proof ? t("The mark is put there by the AI generator itself, so this is not a guess.") : t(VERDICT_DISCLAIMER)}
+          </div>
+        )}
+        {isProcessing && (
+          <div className="text-right mt-2">
+            <div className="font-display text-2xl text-signal-amber italic">{t("analyzing…")}</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mt-1">
+              {t("Awaiting verdict")}
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function ScoreBar({ score }: { score: number }) {
+  return (
+    <div className="px-6 py-3 border-b border-ink-700">
+      <div className="flex justify-between mb-1.5 text-[11px] text-ink-400">
+        <span>{t("Looks human-made")}</span>
+        <span>{t("Looks AI-made")}</span>
+      </div>
+      <div className="relative h-2 bg-ink-800">
+        {BAR_ZONES.map((zone) => (
+          <div key={zone.from} className={clsx("absolute inset-y-0", zone.tone)} style={{ left: `${zone.from}%`, width: `${zone.to - zone.from}%` }} />
+        ))}
+        <div
+          className="absolute -top-1 -bottom-1 w-0.5 bg-ink-50 shadow-[0_0_12px_rgba(255,255,255,0.6)]"
+          style={{ left: `${score * 100}%`, transform: "translateX(-1px)" }}
+        />
+      </div>
+      <p className="mt-1.5 text-[11px] text-ink-500">
+        {t("The marker shows where the detectors' combined score falls. Green: like a camera or a person, yellow and grey: unclear, red: like AI.")}
+      </p>
+    </div>
+  );
+}
+
+function PipelineDetails({ submission, runningAnalyzers, showRaw }: { submission: Submission; runningAnalyzers?: Set<string>; showRaw: boolean }) {
+  return (
+    <details className="px-6 py-4 group">
+      <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 hover:text-ink-200">
+        <span className="group-open:hidden">+ {t("Technical details")}</span>
+        <span className="hidden group-open:inline">- {t("Technical details")}</span>
+      </summary>
+      <div className="pt-4">
+        <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} showRaw={showRaw} />
+      </div>
+    </details>
+  );
 }
 
 export default function ResultCard({ submission, runningAnalyzers }: ResultCardProps) {
   const verdict = VERDICT_TONE[submission.final_verdict] || VERDICT_TONE.inconclusive;
   const score = submission.final_score;
   const isProcessing = submission.status === "processing" || submission.status === "pending";
-  const student = !!useAuthStore((s) => s.user?.student_only);
-  const textDone = !isProcessing && isTextSubmission(submission);
+  const studentOnly = !!useAuthStore((s) => s.user?.student_only);
+  const isStaff = !!useAuthStore((s) => s.user?.is_staff);
+  const student = submission.viewer_role ? isStudentView(submission) : studentOnly;
+  const classView = isClassView(submission);
+  const text = isTextSubmission(submission);
+  const proof = hasProvenanceProof(submission);
+  const shared = { submission, student };
+  const showBar = !classView && !proof && score !== null && score !== undefined && !NO_BAR_VERDICTS.includes(submission.final_verdict);
+  const showPipeline = isProcessing || (!student && (isStaff || !(classView && text)));
 
   return (
     <article className="case-card crop-marks animate-rise">
-      {/* Header strip: case ID, timestamp, verdict */}
-      <header className="flex items-stretch border-b border-ink-700">
-        <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="label-mono">{t("Evidence File")}</span>
-            <span className="font-mono text-[10px] text-ink-500">/</span>
-            <span className="font-mono text-[10px] text-ink-400 ticker">
-              {submission.id.slice(0, 8).toUpperCase()}
-            </span>
-          </div>
-          <h2 className="font-display text-2xl sm:text-3xl text-ink-50 leading-tight break-all">
-            <DecryptText text={submission.original_filename} />
-          </h2>
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-ink-400">
-            <span><span className="text-ink-600">{t("type:")}</span> {submission.mime_type || t("unknown")}</span>
-            <span><span className="text-ink-600">{t("size:")}</span> {formatSize(submission.file_size)}</span>
-            <span><span className="text-ink-600">sha256:</span> <span className="ticker">{shortHash(submission.sha256_hash)}</span></span>
-          </div>
-        </div>
+      {classView ? (
+        <ClassHeader submission={submission} student={student} isProcessing={isProcessing} />
+      ) : (
+        <MainHeader submission={submission} isProcessing={isProcessing} proof={proof} />
+      )}
 
-        <div className="reg-tick" />
+      {text ? <TeacherSummary submission={submission} student={student} /> : classView && <MediaSummary submission={submission} student={student} />}
 
-        <div className="px-4 sm:px-6 py-4 sm:py-5 flex flex-col items-end justify-between min-w-[110px] sm:min-w-[180px]">
-          <span className={clsx("badge", verdict.color, verdict.ring)}>
-            <span className="w-1 h-1 bg-current rounded-full" />
-            {t(verdict.label)}
-          </span>
-          {score !== null && score !== undefined && (
-            <div className="text-right mt-2">
-              <div className={clsx("font-display text-4xl sm:text-5xl leading-none ticker", riskLevel(score).color)}>
-                {t(riskLevel(score).label)}
-              </div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mt-1">
-                {Math.round(score * 100)}% · {t("Risk level")}
-              </div>
-            </div>
-          )}
-          {!isProcessing && submission.ensemble && (
-            <div
-              className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-600 mt-2 text-right"
-              title={`roster ${submission.ensemble.fingerprint}`}
-            >
-              {t("verdict by {name}", { name: submission.ensemble.label })}
-              {!submission.ensemble.is_current && (
-                <span className="block text-signal-amber/80 normal-case tracking-normal">
-                  {t("current {name} {version}", { name: submission.ensemble.name, version: submission.ensemble.current_version })}
-                </span>
-              )}
-            </div>
-          )}
-          {!isProcessing && (
-            <div className="text-[11px] leading-snug text-ink-500 mt-2 text-right max-w-[200px]">
-              {t(VERDICT_DISCLAIMER)}
-            </div>
-          )}
-          {isProcessing && (
-            <div className="text-right mt-2">
-              <div className="font-display text-2xl text-signal-amber italic">{t("analyzing…")}</div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mt-1">
-                {t("Awaiting verdict")}
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <TeacherSummary submission={submission} student={student} />
-
-      {verdict.sub && (
+      {!classView && verdict.sub && (
         <div className="px-6 py-2.5 border-b border-ink-700 bg-signal-amber/5 flex items-center gap-2.5">
           <span className="w-1 h-1 rounded-full bg-signal-amber shrink-0" />
           <span className="font-mono text-[11px] text-signal-amber">{t(verdict.sub)}</span>
         </div>
       )}
 
-      {/* Score bar */}
-      {score !== null && score !== undefined && (
-        <div className="px-6 py-3 border-b border-ink-700">
-          <div className="flex justify-between mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">
-            <span>{t("Authentic")}</span>
-            <span>{t("Fake")}</span>
-          </div>
-          <div className="relative h-2 bg-ink-800">
-            <div className="absolute inset-y-0 left-0 w-[30%] bg-signal-sage/15" />
-            <div className="absolute inset-y-0 left-[30%] w-[20%] bg-signal-amber/15" />
-            <div className="absolute inset-y-0 left-[50%] w-[20%] bg-signal-amber/20" />
-            <div className="absolute inset-y-0 left-[70%] right-0 bg-signal-blood/15" />
-            <div
-              className="absolute -top-1 -bottom-1 w-0.5 bg-ink-50 shadow-[0_0_12px_rgba(255,255,255,0.6)]"
-              style={{ left: `${score * 100}%`, transform: "translateX(-1px)" }}
-            />
-          </div>
-        </div>
-      )}
+      {showBar && <ScoreBar score={score} />}
 
-      {/* Known fake banner */}
       {submission.is_known_fake && (
         <div className="px-6 py-3 border-b border-ink-700 bg-signal-blood/5 flex items-center gap-3">
           <span className="w-6 h-6 border border-signal-blood text-signal-blood text-xs flex items-center justify-center font-bold">!</span>
           <div className="flex-1">
-            <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-signal-blood">{t("Known fake match")}</div>
-            <div className="text-sm text-ink-200">{t("This exact file is already in our list of confirmed fakes.")}</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-signal-blood">
+              {classView ? t("Known AI-made file") : t("Known fake match")}
+            </div>
+            <div className="text-sm text-ink-200">
+              {classView ? t("This exact file is already on our list of confirmed AI-made files.") : t("This exact file is already in our list of confirmed fakes.")}
+            </div>
           </div>
         </div>
       )}
 
       <AiTracePanel submission={submission} />
 
-      {/* Image preview */}
       {submission.file_url && submission.mime_type?.startsWith("image/") && (
         <div className="px-6 py-4 border-b border-ink-700">
           <img
@@ -319,7 +404,6 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
         </div>
       )}
 
-      {/* Audio player */}
       {submission.file_url && submission.mime_type?.startsWith("audio/") && (
         <div className="px-6 py-4 border-b border-ink-700">
           <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 mb-3">{t("Audio File")}</div>
@@ -327,25 +411,23 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
         </div>
       )}
 
-      <OriginalityPanel submission={submission} />
-      <TextReport submission={submission} />
-
-      {/* Pipeline */}
-      {textDone ? (
-        <details className="px-6 py-4 group">
-          <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 hover:text-ink-200">
-            <span className="group-open:hidden">+ {t("Technical details")}</span>
-            <span className="hidden group-open:inline">- {t("Technical details")}</span>
-          </summary>
-          <div className="pt-4">
-            <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} />
-          </div>
-        </details>
-      ) : (
-        <div className="px-6 py-6">
-          <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} />
+      {submission.file_url && submission.mime_type?.startsWith("video/") && (
+        <div className="px-6 py-4 border-b border-ink-700">
+          <video controls preload="metadata" src={submission.file_url} className="max-h-72 max-w-full border border-ink-700" />
         </div>
       )}
+
+      <OriginalityPanel {...shared} />
+      <TextReport {...shared} />
+
+      {showPipeline &&
+        (isProcessing ? (
+          <div className="px-6 py-6">
+            <AnalyzerTimeline submission={submission} runningAnalyzers={runningAnalyzers} showRaw={isStaff} />
+          </div>
+        ) : (
+          <PipelineDetails submission={submission} runningAnalyzers={runningAnalyzers} showRaw={isStaff} />
+        ))}
     </article>
   );
 }

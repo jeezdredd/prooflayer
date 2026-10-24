@@ -3,17 +3,19 @@ import logging
 
 import requests as http_requests
 from django.conf import settings
+from pgvector.django import CosineDistance
 
 from analyzers.content_credentials import read_manifest
+from content.models import KnownFakeHash, Submission
+from content.services import find_similar_submissions, similarity_scope_q
 from content.storage_utils import local_file
+
+from .models import ProvenanceResult
 
 logger = logging.getLogger(__name__)
 
 
 def run_phash_lookup(submission):
-    from content.services import find_similar_submissions
-    from .models import ProvenanceResult
-
     similar = find_similar_submissions(submission, threshold=15)
     results = []
     for match in similar:
@@ -22,7 +24,7 @@ def run_phash_lookup(submission):
         r = ProvenanceResult.objects.create(
             submission=submission,
             source_type=ProvenanceResult.SourceType.PHASH_MATCH,
-            title=match["filename"],
+            title="",
             similarity_score=similarity,
             raw_data={"submission_id": match["id"], "distance": distance},
         )
@@ -31,8 +33,6 @@ def run_phash_lookup(submission):
 
 
 def run_tineye_search(submission):
-    from .models import ProvenanceResult
-
     api_key = getattr(settings, "TINEYE_API_KEY", None)
     if not api_key:
         return []
@@ -67,8 +67,6 @@ def run_tineye_search(submission):
 
 
 def run_google_vision_search(submission):
-    from .models import ProvenanceResult
-
     api_key = getattr(settings, "GOOGLE_VISION_KEY", None)
     if not api_key:
         return []
@@ -114,8 +112,6 @@ CLIP_COSINE_DISTANCE_MAX = 0.15
 
 def check_perceptual_known_fake(submission) -> bool:
     """Check if submission's perceptual hash matches a known fake within Hamming threshold."""
-    from content.models import KnownFakeHash
-
     if submission.phash is None:
         return False
     qs = KnownFakeHash.objects.raw(
@@ -143,14 +139,11 @@ def check_perceptual_known_fake(submission) -> bool:
 def find_clip_neighbors(submission, limit: int = CLIP_NEAREST_LIMIT,
                         max_distance: float = CLIP_COSINE_DISTANCE_MAX):
     """Cosine-nearest neighbours using pgvector HNSW. Returns list of dicts."""
-    from pgvector.django import CosineDistance
-
-    from content.models import Submission
-
     if submission.clip_embedding is None:
         return []
     qs = (
         Submission.objects
+        .filter(similarity_scope_q(submission))
         .exclude(id=submission.id)
         .exclude(clip_embedding=None)
         .annotate(distance=CosineDistance("clip_embedding", submission.clip_embedding))
@@ -160,7 +153,6 @@ def find_clip_neighbors(submission, limit: int = CLIP_NEAREST_LIMIT,
     return [
         {
             "id": str(s.id),
-            "filename": s.original_filename,
             "distance": float(s.distance),
             "similarity": round(1.0 - float(s.distance), 4),
             "verdict": s.final_verdict,
@@ -190,15 +182,13 @@ def scan_provenance(submission) -> list:
 
 
 def run_clip_neighbor_lookup(submission):
-    from .models import ProvenanceResult
-
     neighbours = find_clip_neighbors(submission)
     results = []
     for n in neighbours:
         r = ProvenanceResult.objects.create(
             submission=submission,
             source_type=ProvenanceResult.SourceType.CLIP_NEIGHBOUR,
-            title=n["filename"],
+            title="",
             similarity_score=n["similarity"],
             raw_data={"submission_id": n["id"], "cosine_distance": n["distance"], "verdict": n["verdict"], "method": "clip_cosine"},
         )
@@ -211,8 +201,6 @@ def read_c2pa_manifest(path: str) -> str | None:
 
 
 def extract_c2pa(submission):
-    from .models import ProvenanceResult
-
     try:
         with local_file(submission.file) as path:
             manifest_json = read_c2pa_manifest(path)

@@ -1,3 +1,4 @@
+import html
 import re
 from datetime import datetime
 
@@ -59,6 +60,49 @@ AI_TOOL_SIGNATURES = [
     "ai-generated",
 ]
 
+CREDIT_SIGNATURES = [
+    "made with google ai",
+    "google ai",
+    "imagined with ai",
+    "meta ai",
+    "generative ai",
+    "ai generated",
+    "ai-generated",
+]
+
+
+def _signature_patterns(signatures):
+    return [(sig, re.compile(rf"(?<![a-z]){re.escape(sig)}(?![a-z])")) for sig in signatures]
+
+
+TOOL_PATTERNS = _signature_patterns(AI_TOOL_SIGNATURES)
+CREDIT_PATTERNS = _signature_patterns(CREDIT_SIGNATURES)
+
+PNG_TOOL_KEYS = {"parameters", "software", "comment", "prompt", "workflow"}
+XMP_TOOL_FIELDS = ("xmp:CreatorTool", "xap:CreatorTool", "stEvt:softwareAgent", "tiff:Software")
+XMP_CREDIT_FIELDS = ("photoshop:Credit",)
+RAW_VALUE_CHARS = 300
+
+
+def find_signature(value: str, patterns) -> str | None:
+    lowered = value.lower()
+    for sig, pattern in patterns:
+        if pattern.search(lowered):
+            return sig
+    return None
+
+
+def xmp_values(xmp: str, field: str) -> list[str]:
+    name = re.escape(field)
+    pattern = re.compile(rf"{name}\s*=\s*\"([^\"]*)\"|{name}\s*=\s*'([^']*)'|<{name}>([^<]*)</{name}>")
+    return [html.unescape(next(g for g in m.groups() if g is not None)).strip() for m in pattern.finditer(xmp)]
+
+
+def prompt_text(value: str) -> str:
+    prompt = re.split(r"\n\s*(?:negative prompt|steps):", value, maxsplit=1, flags=re.IGNORECASE)[0]
+    return prompt.strip()[:RAW_VALUE_CHARS]
+
+
 AI_GENERATED_PATTERN = re.compile(r"(?<!compositewith)trainedalgorithmicmedia")
 AI_EDITED_MARKERS = ("compositewithtrainedalgorithmicmedia", "compositesynthetic")
 
@@ -101,7 +145,7 @@ def camera_signature(metadata: dict) -> dict:
 
 class MetadataAnalyzer(BaseAnalyzer):
     name = "metadata"
-    version = "1.8.0"
+    version = "1.9.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -197,51 +241,36 @@ class MetadataAnalyzer(BaseAnalyzer):
         evidence["flags"] = flags
         return AnalysisOutput(confidence=confidence, verdict=verdict, evidence=evidence)
 
-    def _check_ai_tool_signatures(self, metadata: dict) -> dict:
-        exif = metadata.get("exif", {})
-        result = {"detected": False, "tool": None, "field": None}
-
-        for field in EXIF_SOFTWARE_FIELDS:
-            value = exif.get(field, "")
-            if not isinstance(value, str):
-                continue
-            value_lower = value.lower()
-            for sig in AI_TOOL_SIGNATURES:
-                if sig in value_lower:
-                    result["detected"] = True
-                    result["tool"] = sig
-                    result["field"] = field
-                    result["raw_value"] = value[:300]
-                    return result
-
-        for field, value in (metadata.get("png_text") or {}).items():
-            if not isinstance(value, str):
-                continue
-            value_lower = value.lower()
-            for sig in AI_TOOL_SIGNATURES:
-                if sig in value_lower:
-                    result["detected"] = True
-                    result["tool"] = sig
-                    result["field"] = f"png_text.{field}"
-                    result["raw_value"] = value[:300]
-                    return result
-
+    def _tool_candidates(self, metadata: dict):
+        exif = metadata.get("exif") or {}
+        if isinstance(exif, dict):
+            for field in EXIF_SOFTWARE_FIELDS:
+                value = exif.get(field)
+                if isinstance(value, str):
+                    yield field, value, TOOL_PATTERNS
+        for key, value in (metadata.get("png_text") or {}).items():
+            if isinstance(value, str) and str(key).lower() in PNG_TOOL_KEYS:
+                yield f"png_text.{key}", value, TOOL_PATTERNS
         xmp = metadata.get("xmp")
         if isinstance(xmp, str):
-            xmp_lower = xmp.lower()
-            for sig in AI_TOOL_SIGNATURES:
-                if sig in xmp_lower:
-                    result["detected"] = True
-                    result["tool"] = sig
-                    result["field"] = "xmp"
-                    return result
+            for field in XMP_TOOL_FIELDS:
+                for value in xmp_values(xmp, field):
+                    yield field, value, TOOL_PATTERNS
+            for field in XMP_CREDIT_FIELDS:
+                for value in xmp_values(xmp, field):
+                    yield field, value, CREDIT_PATTERNS
 
-        return result
+    def _check_ai_tool_signatures(self, metadata: dict) -> dict:
+        for field, value, patterns in self._tool_candidates(metadata):
+            sig = find_signature(value, patterns)
+            if sig:
+                return {"detected": True, "tool": sig, "field": field, "raw_value": value[:RAW_VALUE_CHARS]}
+        return {"detected": False, "tool": None, "field": None}
 
     def _check_generation_params(self, metadata: dict) -> dict:
         result = {"detected": False, "markers": [], "field": None}
         for field, value in (metadata.get("png_text") or {}).items():
-            if not isinstance(value, str):
+            if not isinstance(value, str) or str(field).lower() not in PNG_TOOL_KEYS:
                 continue
             lowered = value.lower()
             hits = [m for m in GENERATION_PARAM_MARKERS if m in lowered]
@@ -249,6 +278,7 @@ class MetadataAnalyzer(BaseAnalyzer):
                 result["detected"] = True
                 result["markers"] = hits
                 result["field"] = f"png_text.{field}"
+                result["text"] = prompt_text(value)
                 return result
         return result
 
@@ -321,10 +351,13 @@ class MetadataAnalyzer(BaseAnalyzer):
             })
         if evidence["ai_tool"]["detected"]:
             tool = evidence["ai_tool"]
-            trace.append({"kind": "software_tag", "ai": "generated", "generator": tool["tool"], "field": tool["field"]})
+            trace.append({
+                "kind": "software_tag", "ai": "generated", "generator": tool["tool"], "field": tool["field"],
+                "raw_value": tool.get("raw_value", ""),
+            })
         if evidence["generation_params"]["detected"]:
-            field = evidence["generation_params"]["field"]
-            trace.append({"kind": "generation_params", "ai": "generated", "field": field})
+            params = evidence["generation_params"]
+            trace.append({"kind": "generation_params", "ai": "generated", "field": params["field"], "text": params.get("text", "")})
         return trace
 
     def _check_gps_plausibility(self, metadata: dict) -> dict:

@@ -5,7 +5,9 @@ from content.tests.factories import SubmissionFactory
 from provenance.models import ProvenanceResult
 from provenance.services import (
     check_perceptual_known_fake,
+    extract_c2pa,
     find_clip_neighbors,
+    run_phash_lookup,
     scan_provenance,
 )
 
@@ -64,17 +66,15 @@ class TestScanProvenance:
 @pytest.mark.django_db
 class TestRunPhashLookup:
     def test_no_similar_returns_empty(self):
-        from provenance.services import run_phash_lookup
         submission = SubmissionFactory()
-        with patch("content.services.find_similar_submissions", return_value=[]):
+        with patch("provenance.services.find_similar_submissions", return_value=[]):
             result = run_phash_lookup(submission)
         assert result == []
 
     def test_creates_provenance_result_for_match(self):
-        from provenance.services import run_phash_lookup
         submission = SubmissionFactory()
         similar = [{"id": str(submission.id), "filename": "match.jpg", "distance": 5}]
-        with patch("content.services.find_similar_submissions", return_value=similar):
+        with patch("provenance.services.find_similar_submissions", return_value=similar):
             results = run_phash_lookup(submission)
         assert len(results) == 1
         assert results[0].source_type == ProvenanceResult.SourceType.PHASH_MATCH
@@ -84,7 +84,6 @@ class TestRunPhashLookup:
 @pytest.mark.django_db
 class TestExtractC2pa:
     def test_returns_none_when_c2pa_not_installed(self):
-        from provenance.services import extract_c2pa
         submission = SubmissionFactory()
         with patch.dict("sys.modules", {"c2pa": None}):
             result = extract_c2pa(submission)

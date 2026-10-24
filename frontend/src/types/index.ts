@@ -88,10 +88,24 @@ export interface VerdictObjection {
   overdue: boolean;
 }
 
+export type ViewerRole = "author" | "supervisor" | "viewer";
+
+export interface SubmissionClassroom {
+  id: string;
+  name: string;
+  organization_slug: string | null;
+}
+
 export interface Submission {
   originality?: OriginalityReport | null;
   objection?: VerdictObjection | null;
   in_class?: boolean;
+  viewer_role?: ViewerRole;
+  student_name?: string | null;
+  classroom_name?: string | null;
+  classroom?: SubmissionClassroom | null;
+  can_object?: boolean;
+  can_publish?: boolean;
   id: string;
   original_filename: string;
   mime_type: string;
@@ -168,6 +182,15 @@ export interface Report {
   created_at: string;
 }
 
+export interface ProvenanceMatch {
+  kind: "same" | "near" | "similar";
+  scope: "yours" | "visible" | "same_class" | "same_school" | "elsewhere";
+  submission_id: string | null;
+  author: string | null;
+  classroom: string | null;
+  submitted_at: string | null;
+}
+
 export interface ProvenanceResult {
   id: string;
   source_type: "phash_match" | "clip_neighbour" | "tineye" | "google_vision" | "c2pa";
@@ -177,6 +200,7 @@ export interface ProvenanceResult {
   raw_data: Record<string, unknown>;
   found_at: string;
   is_sensitive?: boolean;
+  match?: ProvenanceMatch | null;
 }
 
 export interface FactCheckClaim {

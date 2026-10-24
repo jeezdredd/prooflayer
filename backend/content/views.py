@@ -188,10 +188,15 @@ class SubmissionViewSet(
 
     @action(detail=True, methods=["get"], url_path="report.pdf")
     def report_pdf(self, request, id=None):
-        sub = get_or_create_subscription(request.user)
-        if not sub.can_download_pdf:
-            return Response({"detail": "PDF reports require Pro subscription.", "code": "upgrade_required"}, status=status.HTTP_402_PAYMENT_REQUIRED)
         submission = self.get_object()
+        payer = quota_owner(request.user, submission.classroom)
+        if not get_or_create_subscription(payer).can_download_pdf:
+            if submission.classroom_id:
+                return Response(
+                    {"detail": "PDF reports for class work come with the school plan.", "code": "school_plan_required"},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+            return Response({"detail": "PDF reports require Pro subscription.", "code": "upgrade_required"}, status=status.HTTP_402_PAYMENT_REQUIRED)
         if submission.status != "completed":
             return Response({"detail": "Report available only for completed submissions."}, status=status.HTTP_400_BAD_REQUEST)
         pdf_buffer = generate_report_pdf(submission, request)

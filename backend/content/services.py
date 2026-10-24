@@ -4,9 +4,13 @@ import logging
 
 import imagehash
 import numpy as np
+from django.db.models import Q
+from django.db.models.expressions import RawSQL
 from PIL import ExifTags, Image
 
 from analyzers.ensemble import roster_revision
+
+from .models import Submission
 
 logger = logging.getLogger(__name__)
 
@@ -269,32 +273,33 @@ def clone_analysis_results(source_submission, target_submission):
         )
 
 
-SIMILAR_SUBMISSIONS_SQL = """
-    SELECT *, bit_count((phash # %s)::bit(64)) AS distance
-    FROM submissions
-    WHERE id != %s AND phash IS NOT NULL
-    AND bit_count((phash # %s)::bit(64)) < %s
-    {sensitive_clause}
-    ORDER BY bit_count((phash # %s)::bit(64))
-    LIMIT 10
-"""
+SIMILAR_LIMIT = 10
+PHASH_DISTANCE_SQL = "bit_count((submissions.phash # %s)::bit(64))"
+
+
+def similarity_scope_q(submission) -> Q:
+    scope = Q(user_id=submission.user_id) | Q(is_public=True)
+    classroom = submission.classroom if submission.classroom_id else None
+    if classroom is not None:
+        scope |= Q(classroom__owner_id=classroom.owner_id)
+        if classroom.organization_id:
+            scope |= Q(classroom__organization_id=classroom.organization_id)
+    return scope
 
 
 def find_similar_submissions(submission, threshold=10, include_sensitive=True):
-    from .models import Submission
     if submission.phash is None:
         return []
-    sql = SIMILAR_SUBMISSIONS_SQL.format(sensitive_clause="" if include_sensitive else "AND NOT is_sensitive")
-    results = Submission.objects.raw(
-        sql,
-        [submission.phash, submission.id, submission.phash, threshold, submission.phash],
+    queryset = (
+        Submission.objects.filter(similarity_scope_q(submission))
+        .exclude(id=submission.id)
+        .exclude(phash=None)
+        .annotate(distance=RawSQL(PHASH_DISTANCE_SQL, (submission.phash,)))
+        .filter(distance__lt=threshold)
     )
+    if not include_sensitive:
+        queryset = queryset.exclude(is_sensitive=True)
     return [
-        {
-            "id": str(r.id),
-            "distance": r.distance,
-            "filename": r.original_filename,
-            "is_sensitive": r.is_sensitive,
-        }
-        for r in results
+        {"id": str(r.id), "distance": r.distance, "is_sensitive": r.is_sensitive}
+        for r in queryset.order_by("distance", "-created_at")[:SIMILAR_LIMIT]
     ]

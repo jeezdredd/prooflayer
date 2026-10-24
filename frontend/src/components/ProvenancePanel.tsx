@@ -1,108 +1,92 @@
 import { Link } from "react-router-dom";
 import { useProvenance } from "../hooks/useProvenance";
+import type { ProvenanceMatch, ProvenanceResult, Submission } from "../types";
 import { msg, t } from "../i18n";
+import { isClassView, isStudentView, longDate } from "./resultView";
 
-const SOURCE_LABELS: Record<string, string> = {
-  phash_match: msg("Near-Duplicate (pHash)"),
-  clip_neighbour: msg("Semantic Neighbour (CLIP)"),
-  tineye: "TinEye",
-  google_vision: "Google Vision",
-  c2pa: msg("C2PA Credentials"),
+const WHAT: Record<ProvenanceMatch["kind"], string> = {
+  same: msg("The same picture"),
+  near: msg("An almost identical picture"),
+  similar: msg("A picture with similar content"),
 };
 
-const SOURCE_COLORS: Record<string, string> = {
-  phash_match: "bg-iris/10 text-iris-light border-iris/40",
-  clip_neighbour: "bg-signal-violet/10 text-signal-violet border-signal-violet/40",
-  tineye: "bg-signal-violet/10 text-signal-violet border-signal-violet/40",
-  google_vision: "bg-iris/10 text-iris-light border-iris/40",
-  c2pa: "bg-signal-sage/10 text-sage-300 border-signal-sage/40",
+const WHERE: Record<ProvenanceMatch["scope"] | "yours_class", string> = {
+  visible: msg("{what} was handed in: {who}"),
+  yours: msg("{what} was checked by you before: {who}"),
+  yours_class: msg("{what} you already handed in: {who}"),
+  same_class: msg("{what} was handed in by another student of this class"),
+  same_school: msg("{what} was handed in to another class of your school"),
+  elsewhere: msg("{what} was already checked on ProofLayer"),
 };
 
-interface ProvenancePanelProps {
-  submissionId: string;
+function matchLine(row: ProvenanceResult, match: ProvenanceMatch, student: boolean): string {
+  const first = match.scope === "yours" ? row.title : match.author;
+  const who = [first, match.classroom, longDate(match.submitted_at)].filter(Boolean).join(", ");
+  const scope = match.scope === "yours" && student ? "yours_class" : match.scope;
+  return t(WHERE[scope], { what: t(WHAT[match.kind]), who });
 }
 
-function neighbourSubmissionId(raw: Record<string, unknown> | null): string | null {
-  if (!raw) return null;
-  const v = raw["submission_id"];
-  return typeof v === "string" ? v : null;
+function emptyText(submission: Submission): string {
+  if (isStudentView(submission)) return t("No other work has the same picture.");
+  if (isClassView(submission)) return t("None of the work in your classes has the same picture.");
+  return t("No similar pictures among your checks and the public feed.");
 }
 
-export default function ProvenancePanel({ submissionId }: ProvenancePanelProps) {
-  const { data: results, isLoading } = useProvenance(submissionId);
-
-  if (isLoading) {
-    return (
-      <div className="case-card p-6 mt-4">
-        <h4 className="label-mono mb-3">{t("Provenance")}</h4>
-        <p className="font-mono text-xs text-ink-500">{t("Checking sources...")}</p>
+function InternalRow({ row, match, student }: { row: ProvenanceResult; match: ProvenanceMatch; student: boolean }) {
+  return (
+    <div className="border-l-2 border-signal-amber/60 pl-3 py-1">
+      <p className="text-sm text-ink-100 leading-snug">{matchLine(row, match, student)}</p>
+      <div className="flex items-center gap-3 mt-1">
+        {row.is_sensitive && (
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-amber border border-signal-amber/40 px-2 py-0.5">
+            {t("Sensitive")}
+          </span>
+        )}
+        {match.submission_id && (
+          <Link to={`/results/${match.submission_id}`} className="text-xs text-iris hover:text-iris-light transition">
+            {t("Open that work")} &rarr;
+          </Link>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+function ExternalRow({ row }: { row: ProvenanceResult }) {
+  return (
+    <div className="border-l-2 border-ink-600 pl-3 py-1">
+      <p className="text-sm text-ink-100 leading-snug">
+        {t("Found on the web: {title}", { title: row.title || row.source_url })}
+        {row.similarity_score !== null && row.similarity_score <= 1 && (
+          <span className="text-ink-400"> · {t("{n}% similar", { n: (row.similarity_score * 100).toFixed(0) })}</span>
+        )}
+      </p>
+      {row.source_url && (
+        <a href={row.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-iris hover:text-iris-light truncate block transition">
+          {row.source_url}
+        </a>
+      )}
+    </div>
+  );
+}
+
+export default function ProvenancePanel({ submission }: { submission: Submission }) {
+  const { data: results, isLoading } = useProvenance(submission.id);
+  const rows = (results ?? []).filter((r) => r.match || r.source_url);
+  const student = isStudentView(submission);
 
   return (
     <div className="case-card p-6 mt-4">
-      <h4 className="label-mono mb-3">{t("Provenance")}</h4>
-
-      {!results || results.length === 0 ? (
-        <p className="font-mono text-xs text-ink-500">{t("No matches found in external sources or local index.")}</p>
+      <h4 className="label-mono mb-3">{t("Where else this picture appears")}</h4>
+      {isLoading ? (
+        <p className="text-sm text-ink-500">{t("Checking sources...")}</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-ink-300">{emptyText(submission)}</p>
       ) : (
         <div className="space-y-3">
-          {results.map((r) => {
-            const neighbourId = neighbourSubmissionId(r.raw_data as Record<string, unknown> | null);
-            const cosine = typeof (r.raw_data as Record<string, unknown> | null)?.["cosine_distance"] === "number"
-              ? ((r.raw_data as Record<string, number>).cosine_distance).toFixed(3)
-              : null;
-            return (
-              <div key={r.id} className="flex items-start justify-between gap-3 p-3 bg-ink-950/60 border border-ink-800">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span
-                      className={`font-mono text-[10px] uppercase tracking-[0.12em] px-2 py-0.5 border ${SOURCE_COLORS[r.source_type] ?? "bg-ink-900 text-ink-300 border-ink-700"}`}
-                    >
-                      {SOURCE_LABELS[r.source_type] ? t(SOURCE_LABELS[r.source_type]) : r.source_type}
-                    </span>
-                    {r.similarity_score !== null && (
-                      <span className="font-mono text-[10px] text-ink-400 tabular-nums">
-                        {t("{n}% similar", { n: (r.similarity_score * 100).toFixed(0) })}
-                      </span>
-                    )}
-                    {cosine !== null && (
-                      <span className="font-mono text-[10px] text-ink-500 tabular-nums">
-                        cosine {cosine}
-                      </span>
-                    )}
-                    {r.is_sensitive && (
-                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-amber border border-signal-amber/40 px-2 py-0.5">
-                        {t("Sensitive")}
-                      </span>
-                    )}
-                  </div>
-                  {r.title && (
-                    <p className="text-sm text-ink-200 truncate">{r.title}</p>
-                  )}
-                  {neighbourId && (
-                    <Link
-                      to={`/results/${neighbourId}`}
-                      className="text-xs text-iris hover:text-iris-light transition font-mono"
-                    >
-                      {t("view neighbour")} &rarr;
-                    </Link>
-                  )}
-                  {r.source_url && (
-                    <a
-                      href={r.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-iris hover:text-iris-light truncate block transition"
-                    >
-                      {r.source_url}
-                    </a>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {rows.map((row) =>
+            row.match ? <InternalRow key={row.id} row={row} match={row.match} student={student} /> : <ExternalRow key={row.id} row={row} />,
+          )}
         </div>
       )}
     </div>
