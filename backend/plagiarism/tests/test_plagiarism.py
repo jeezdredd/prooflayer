@@ -14,7 +14,15 @@ from plagiarism.models import PlagiarismReport, TextFingerprint
 from plagiarism.search import Hit
 from plagiarism.serializers import report_payload
 from plagiarism.service import run_check
-from plagiarism.shingles import covered_spans, covered_token_chars, shingle_hashes, text_chars, tokenize, winnow
+from plagiarism.shingles import (
+    copied_pairs,
+    covered_spans,
+    covered_token_chars,
+    shingle_hashes,
+    text_chars,
+    tokenize,
+    winnow,
+)
 from users.tests.factories import UserFactory
 
 ESSAY = (
@@ -141,6 +149,24 @@ class TestShingles:
         tokens = tokenize(text)
         assert covered_token_chars(tokens, [(0, len(text))]) == text_chars(tokens)
         assert covered_token_chars(tokens, [(tokens[0].start, tokens[3].end)]) == len("Одиндваитри")
+
+    def test_source_passage_keeps_a_word_the_copier_left_out(self):
+        own_text = "один два три четыре пять шесть семь восемь девять десять одиннадцать двенадцать"
+        source_text = "ноль один два три четыре пять шесть лишнее семь восемь девять десять одиннадцать двенадцать конец"
+        own = tokenize(own_text)
+        [(own_span, source_span)] = copied_pairs(own, shingle_hashes(own), tokenize(source_text))
+        assert own_text[own_span[0]:own_span[1]] == own_text
+        assert source_text[source_span[0]:source_span[1]] == (
+            "один два три четыре пять шесть лишнее семь восемь девять десять одиннадцать двенадцать"
+        )
+
+    def test_source_passage_does_not_swallow_the_text_between_two_copied_parts(self):
+        own_text = "альфа бета гамма дельта эпсилон дзета эта тета йота каппа лямбда мю"
+        filler = " ".join(f"слово{n}" for n in range(20))
+        source_text = f"альфа бета гамма дельта эпсилон дзета {filler} эта тета йота каппа лямбда мю"
+        own = tokenize(own_text)
+        [(_, source_span)] = copied_pairs(own, shingle_hashes(own), tokenize(source_text))
+        assert source_span[1] - source_span[0] < len(own_text) + 60
 
 
 @pytest.mark.django_db
@@ -458,6 +484,16 @@ class TestReportPrivacy:
         mine.refresh_from_db()
         row = report_payload(mine, mine.user)["matches"][0]
         assert row["hidden"] is True and row["hidden_reason"] == "student_view"
+
+    def test_teacher_checking_a_text_alone_is_told_the_source_class_is_not_theirs(self, _embed):
+        run_check(_text_submission(UserFactory(), ESSAY))
+        teacher = UserFactory()
+        Classroom.create_for(teacher, "7B", level=7)
+        mine = _text_submission(teacher, ESSAY, personal=True)
+        run_check(mine)
+        mine.refresh_from_db()
+        row = report_payload(mine, teacher)["matches"][0]
+        assert row["hidden"] is True and row["hidden_reason"] == "other_class"
 
 
 @pytest.mark.django_db

@@ -1,6 +1,7 @@
 import math
 
-from classroom.access import can_supervise, visible_submissions_q
+from classroom.access import supervised_q, visible_submissions_q
+from classroom.models import Classroom
 from common.names import display_name
 from content.models import Submission
 
@@ -42,7 +43,7 @@ def _share(matched: int, report) -> float:
 def _hidden_reason(submission, user) -> str:
     if user is None or not getattr(user, "is_authenticated", False) or submission.user_id != user.id:
         return "other_class"
-    if submission.classroom is not None and can_supervise(submission.classroom, user):
+    if Classroom.objects.filter(supervised_q(user)).exists():
         return "other_class"
     return "student_view"
 

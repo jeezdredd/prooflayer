@@ -112,14 +112,16 @@ def positions(hashes: list[int]) -> dict[int, list[int]]:
 def align(
     run: tuple[int, int], hashes: list[int], where: dict[int, list[int]], size: int, k: int = SHINGLE,
 ) -> tuple[int, int] | None:
-    votes: Counter = Counter()
-    for i in range(max(0, run[0] - k + 1), min(run[1], len(hashes))):
-        for p in where.get(hashes[i], ()):
-            votes[p - i] += 1
-    if not votes:
+    hits = [(i, where[hashes[i]]) for i in range(max(0, run[0] - k + 1), min(run[1], len(hashes))) if hashes[i] in where]
+    if not hits:
         return None
-    shift = votes.most_common(1)[0][0]
-    start, end = max(0, run[0] + shift), min(size, run[1] + shift)
+    shift = Counter(p - i for i, found in hits for p in found).most_common(1)[0][0]
+    (first, first_found), (last, last_found) = hits[0], hits[-1]
+    start = min(first_found, key=lambda p: abs(p - first - shift)) + run[0] - first
+    end = min(last_found, key=lambda p: abs(p - last - shift)) + run[1] - last
+    if not 0 < end - start <= run[1] - run[0] + k:
+        start, end = run[0] + shift, run[1] + shift
+    start, end = max(0, start), min(size, end)
     return (start, end) if start < end else None
 
 
