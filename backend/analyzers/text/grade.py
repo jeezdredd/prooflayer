@@ -30,7 +30,7 @@ RU_PLAIN_RARE_ZIPF_BY_LEVEL = [
 ]
 RARE_SHARE_ALERT = {"school": 0.07, "university": 0.12}
 RU_RARE_SHARE_ALERT = {"school": 0.04, "university": 0.07}
-STRESS_MARKS = str.maketrans("", "", "̀́")
+STRESS_MARKS = str.maketrans("", "", "\u0300\u0301")
 MIN_CONTENT_WORDS = 35
 RU_BOOKISH_ROOTS = (
     "парадигм", "детермин", "ретроспект", "социо", "интерпрет", "декомпоз", "концепт", "идентичн", "легитим",

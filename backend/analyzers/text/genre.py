@@ -63,7 +63,7 @@ FIRST_PERSON = {
     "fr": re.compile(r"(?<!\w)(je|j'|moi|mon|ma|mes|nous|nos|notre)(?!\w)"),
 }
 NUMBER = re.compile(r"\b\d+(?:[.,]\d+)?\s?%|\b(?:1[89]|20)\d{2}\b")
-DIALOGUE = re.compile(r"^\s*[—–-]\s?\S|^\s*[«\"“]", re.MULTILINE)
+DIALOGUE = re.compile(r"^\s*[\u2014\u2013-]\s?\S|^\s*[«\"“]", re.MULTILINE)
 
 LABELS = {
     "argument": {"en": "argumentative essay", "ru": "сочинение-рассуждение", "fr": "dissertation argumentative"},
@@ -84,10 +84,13 @@ GENRE_CUES = {
     "retelling": ("work", "sequence"),
     "analysis": ("analysis", "work"),
     "description": ("spatial",),
-    "report": ("section",),
 }
 FIRST_PERSON_CUE = {"ru": "рассказ от первого лица", "en": "first-person account", "fr": "récit à la première personne"}
 DIALOGUE_CUE = {"ru": "диалог", "en": "dialogue", "fr": "dialogue"}
+HEADINGS_CUE = {"ru": "заголовки", "en": "headings", "fr": "titres"}
+BIBLIOGRAPHY_CUE = {"ru": "список литературы", "en": "reference list", "fr": "bibliographie"}
+NUMBERS_CUE = {"ru": "много дат и чисел", "en": "many dates and figures", "fr": "beaucoup de dates et de chiffres"}
+MANY_NUMBERS = 1.0
 FIRST_PERSON_RATE = 1.0
 
 
@@ -126,12 +129,17 @@ class Genre:
 
 def _pattern(cue: str) -> str:
     if cue.endswith("*"):
-        return rf"(?<!\w){re.escape(cue[:-1])}"
+        return rf"(?<!\w){re.escape(cue[:-1])}\w*"
     return rf"(?<!\w){re.escape(cue)}(?!\w)"
 
 
 def _hits(lowered: str, group: str, lang: str) -> list[str]:
-    return [cue.rstrip("*") for cue in CUES[group][lang] if re.search(_pattern(cue), lowered)]
+    found = []
+    for cue in CUES[group][lang]:
+        match = re.search(_pattern(cue), lowered)
+        if match:
+            found.append(match.group(0))
+    return found
 
 
 def _rate(count: int, n_words: int) -> float:
@@ -146,9 +154,9 @@ def _is_poem(text: str) -> bool:
     return median(lengths) <= 8 and sum(n <= 10 for n in lengths) / len(lengths) >= 0.8
 
 
-def _headings(text: str, lang: str) -> int:
-    lines = [ln.strip().lower().rstrip(":") for ln in text.splitlines() if ln.strip()]
-    return sum(1 for ln in lines if len(ln.split()) <= 5 and any(ln.startswith(c) for c in CUES["section"][lang]))
+def _headings(text: str, lang: str) -> list[str]:
+    lines = [ln.strip().rstrip(":") for ln in text.splitlines() if ln.strip()]
+    return [ln for ln in lines if len(ln.split()) <= 5 and any(ln.lower().startswith(c) for c in CUES["section"][lang])]
 
 
 def detect_genre(text: str, lang: Language) -> Genre:
@@ -158,6 +166,9 @@ def detect_genre(text: str, lang: Language) -> Genre:
     n = len(words(text))
     found = {group: _hits(lowered, group, code) for group in CUES}
     first_person = _rate(len(FIRST_PERSON[code].findall(lowered)), n)
+    headings = _headings(text, code)
+    bibliography = bibliography_entries(text)
+    numbers = _rate(len(NUMBER.findall(text)), n)
     head, tail = "\n".join(lines[:2]), "\n".join(lines[-3:])
     greeting = any(re.search(_pattern(c.strip()), head) for c in CUES["greeting"][code])
     signoff = any(re.search(_pattern(c), tail) for c in CUES["signoff"][code])
@@ -168,7 +179,7 @@ def detect_genre(text: str, lang: Language) -> Genre:
         "retelling": 1.0 * len(found["work"]) + 0.6 * len(found["sequence"]) - 0.5 * first_person,
         "analysis": 1.0 * len(found["analysis"]) + 0.6 * len(found["work"]),
         "description": 1.2 * len(found["spatial"]),
-        "report": 1.5 * min(_headings(text, code), 4) + min(len(bibliography_entries(text)), 4) + 0.5 * _rate(len(NUMBER.findall(text)), n),
+        "report": 1.5 * min(len(headings), 4) + min(len(bibliography), 4) + (0.5 * numbers if headings or bibliography else 0.0),
         "letter": (3.0 if greeting else 0.0) + (2.0 if signoff else 0.0),
         "poem": 6.0 if _is_poem(text) else 0.0,
     }
@@ -179,6 +190,14 @@ def detect_genre(text: str, lang: Language) -> Genre:
     else:
         confidence = round(min(0.95, 0.5 + (top - runner) / (2 * top)), 3)
     cues = [c for group in GENRE_CUES.get(best, ()) for c in found[group]]
+    if best == "report":
+        cues = []
+        if headings:
+            cues.append(f"{HEADINGS_CUE[code]}: {', '.join(headings[:3])}")
+        if bibliography:
+            cues.append(BIBLIOGRAPHY_CUE[code])
+        if numbers >= MANY_NUMBERS:
+            cues.append(NUMBERS_CUE[code])
     if best == "narrative":
         if dialogue:
             cues.append(DIALOGUE_CUE[code])

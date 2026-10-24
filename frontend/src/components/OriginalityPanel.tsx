@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import type { OriginalityMatch, Submission } from "../types";
 import { locale, msg, t } from "../i18n";
 import SearchingOrb from "./SearchingOrb";
+import { isHiddenSource, webScope } from "./TeacherSummary";
 
 const KIND_LABEL: Record<OriginalityMatch["kind"], string> = {
   exact: msg("word for word"),
   paraphrase: msg("reworded"),
   translation: msg("translated"),
 };
+
+const PAIRED_MATCHES = 3;
 
 function tone(originality: number) {
   if (originality >= 85) return "text-signal-sage";
@@ -24,7 +27,7 @@ function hostOf(url: string): string {
   }
 }
 
-function SourceTitle({ match }: { match: OriginalityMatch }) {
+function SourceTitle({ match, student }: { match: OriginalityMatch; student: boolean }) {
   if (match.source === "web" && match.url) {
     return (
       <span className="block">
@@ -35,29 +38,58 @@ function SourceTitle({ match }: { match: OriginalityMatch }) {
       </span>
     );
   }
-  if (match.submission_id) {
+  const date = match.submitted_at ? new Date(match.submitted_at).toLocaleDateString(locale()) : "";
+  if (!isHiddenSource(match) && match.submission_id) {
     return (
       <span className="block">
         <Link to={`/results/${match.submission_id}`} className="text-ink-50 hover:text-signal-amber">{match.title}</Link>
         <span className="block text-xs text-ink-500">
           {t("Work by {name}", { name: match.author ?? "" })}{match.classroom ? `, ${match.classroom}` : ""}
-          {match.submitted_at ? ` · ${new Date(match.submitted_at).toLocaleDateString(locale())}` : ""}
+          {date ? ` · ${date}` : ""}
         </span>
       </span>
     );
   }
+  const fromOtherClass = !student && match.hidden_reason !== "student_view";
   return (
     <span className="block">
-      <span className="text-ink-50">{t("Another student's work on ProofLayer")}</span>
+      <span className="text-ink-50">{t("Another student's work")}</span>
       <span className="block text-xs text-ink-500">
-        {match.submitted_at ? `${t("handed in {date}", { date: new Date(match.submitted_at).toLocaleDateString(locale()) })} · ` : ""}
-        {t("from a class you do not teach, so its author and text are hidden")}
+        {date ? t("handed in {date}", { date }) : ""}
+        {date && fromOtherClass ? " · " : ""}
+        {fromOtherClass && t("from a class you do not teach, so its author and text are hidden")}
       </span>
     </span>
   );
 }
 
-export default function OriginalityPanel({ submission }: { submission: Submission }) {
+function Passages({ match, full }: { match: OriginalityMatch; full: boolean }) {
+  const sources = match.source_excerpts ?? [];
+  const paired = full && sources.some((s) => s);
+  if (match.excerpts.length === 0) return null;
+  return (
+    <div className="px-3 py-2.5 space-y-2.5">
+      <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">{paired ? t("Matching passages side by side") : t("Matching passages in this work")}</div>
+      {match.excerpts.map((e, j) => (
+        <div key={j} className="space-y-1">
+          <blockquote className="text-sm text-ink-200 border-l-2 border-signal-amber/60 pl-3 leading-relaxed">
+            {paired && <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500">{t("In the work:")}</span>}
+            {e}
+          </blockquote>
+          {paired && sources[j] && (
+            <blockquote className="text-sm text-ink-300 border-l-2 border-ink-500 pl-3 leading-relaxed">
+              <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-500">{t("In the source:")}</span>
+              {sources[j]}
+            </blockquote>
+          )}
+        </div>
+      ))}
+      {full && !paired && match.source !== "web" && isHiddenSource(match) && <div className="text-[11px] text-ink-600">{t("The text of the other work is hidden.")}</div>}
+    </div>
+  );
+}
+
+export default function OriginalityPanel({ submission, student = false }: { submission: Submission; student?: boolean }) {
   const report = submission.originality;
   if (!report) return null;
 
@@ -86,8 +118,8 @@ export default function OriginalityPanel({ submission }: { submission: Submissio
             </p>
           )}
           <p className="text-xs text-ink-500 mb-3">
-            {report.web_searched ? t("Compared with every work on ProofLayer and the open web, including reworded and translated passages.") : t("Compared with every work on ProofLayer, including reworded and translated passages.")}{" "}
-            {t("Quotes with references are fine; judge each match in context.")}
+            {webScope(report)} {t("Reworded and translated passages count too.")}{" "}
+            {student ? t("Quotes with references are fine.") : t("Quotes with references are fine; judge each match in context.")}
           </p>
           {report.matches.length === 0 ? (
             <p className="text-sm text-signal-sage">{t("No matching sources found.")}</p>
@@ -99,17 +131,10 @@ export default function OriginalityPanel({ submission }: { submission: Submissio
                     <span className="font-display text-xl tabular-nums text-signal-amber w-14">{Math.round(m.share)}%</span>
                     <span className="min-w-0">
                       <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500 mb-0.5">{t("Source")} · {t(KIND_LABEL[m.kind])}</span>
-                      <SourceTitle match={m} />
+                      <SourceTitle match={m} student={student} />
                     </span>
                   </div>
-                  {m.excerpts.length > 0 && (
-                    <div className="px-3 py-2.5 space-y-1.5">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-500">{t("Matching passages in this work")}</div>
-                      {m.excerpts.map((e, j) => (
-                        <blockquote key={j} className="text-sm text-ink-200 border-l-2 border-signal-amber/60 pl-3 leading-relaxed">{e}</blockquote>
-                      ))}
-                    </div>
-                  )}
+                  <Passages match={m} full={i < PAIRED_MATCHES} />
                 </div>
               ))}
               <p className="text-[11px] text-ink-600">{t("The percentage is the share of this work's text found in that source.")}</p>

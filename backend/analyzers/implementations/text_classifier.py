@@ -59,7 +59,7 @@ def probability(score: float, knots: list[tuple[float, float]]) -> float:
 
 class TextClassifierAnalyzer(BaseAnalyzer):
     name = "text_classifier"
-    version = "1.2.0"
+    version = "1.3.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
@@ -99,6 +99,7 @@ class TextClassifierAnalyzer(BaseAnalyzer):
             return AnalysisOutput(confidence=0.0, verdict="inconclusive", evidence=evidence)
         ai_probability = round(probability(result.score, entry["knots"]), 4)
         evidence["ai_probability"] = ai_probability
+        evidence["over_flag_line"] = threshold is not None and result.score >= threshold
         segments = classifier.split_segments(text)
         if len(segments) >= 2:
             margins = model.segment_margins(segments)

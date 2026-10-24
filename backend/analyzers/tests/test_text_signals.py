@@ -3,13 +3,18 @@ from docx import Document
 from docx.shared import Pt, RGBColor
 
 from analyzers.aggregator import aggregate
-from analyzers.implementations.text_signals import TextEvasionAnalyzer, TextGradeFitAnalyzer, TextStyleAnalyzer
+from analyzers.implementations.text_signals import (
+    CONTEXT_FLAG,
+    TextEvasionAnalyzer,
+    TextGradeFitAnalyzer,
+    TextStyleAnalyzer,
+)
 from analyzers.models import AnalysisResult
 from analyzers.text.evasion import scan_docx, scan_text
-from analyzers.text.grade import assess
+from analyzers.text.grade import assess, lexeme_zipf, readability_band
 from analyzers.text.language import detect_language
-from analyzers.text.style import drift, features
-from classroom.models import Classroom
+from analyzers.text.style import drift, features, phrasebook
+from classroom.models import Classroom, ShadowSet
 from content.tests.factories import SubmissionFactory
 from users.tests.factories import UserFactory
 
@@ -49,6 +54,31 @@ KID_EN = (
     "also has a dog named Rex and he likes to play with a ball in the garden. I was sad to go home but I "
     "promised to come back next summer and help grandpa paint the old barn."
 )
+GRAMMAR_RU = (
+    "На уроке русского языка мы повторяли обособленные определения и однородные члены предложения. "
+    "Учительница объяснила, что деепричастный оборот всегда выделяется запятыми с двух сторон. "
+    "Потом мы искали в стихотворении гиперболы, эпитеты и олицетворения. "
+    "Олицетворение помогает автору оживить природу, а гипербола усиливает впечатление от картины. "
+    "Я записал правило в тетрадь и придумал свои примеры с однородными членами. "
+    "Дома я ещё раз прочитал параграф и сделал упражнение с обособленным определением. "
+    "Мне понравилось, что примеры были из знакомых книг, поэтому запоминать правило было легко."
+)
+OBLIQUE_RU = (
+    "Бабушка часто рассказывает про индустриализацию и про то, как её родители строили завод. "
+    "Она говорит, что люди тогда отличались дружелюбием и нравственностью, хотя жили очень трудно. "
+    "Я иногда устаю, но не жалуюсь на перегруженностью уроками, потому что бабушке было тяжелее. "
+    "Мама учит меня запоминанию стихов: мы читаем строчку и повторяем её с закрытыми глазами. "
+    "Вчера мы разбирали стихотворение с гиперболой и предложения с однородными членами. "
+    "Папа сказал, что хорошая память пригодится мне на экзаменах и в жизни."
+)
+BOOKISH_RU = (
+    "Онегин кажется мне человеком, который сам не знает, чего хочет. Он умный и образованный, но ему всё скучно. "
+    "В книге его называют лишним человеком, и я понимаю почему: он не находит себе дела. "
+    "Учительница сказала, что это рефлексирующий герой байронического типа, который всё время думает о себе. "
+    "Мне его немного жалко, потому что он сам разрушил свою жизнь, когда отказал Татьяне. "
+    "Потом он убил друга на дуэли и уехал путешествовать, но и это не помогло. "
+    "В конце он понимает, что любит Татьяну, но уже поздно, и она остаётся верной мужу."
+)
 KID_FR = (
     "L'été dernier je suis allé chez ma grand-mère à la campagne. C'était super. Avec mon frère on allait à la "
     "rivière tous les jours et on pêchait des poissons. Une fois on a attrapé un gros poisson et mamie l'a "
@@ -81,6 +111,20 @@ class TestEvasion:
         report = scan_text("Plain​ text​ with​ zero​ width​ spaces.")
         assert report.invisible_total == 5
         assert report.strength() >= 0.9
+
+    def test_evidence_shows_where_hidden_characters_sit(self):
+        evidence = scan_text("Исто\u200bрия важна. Один\u2003два и\u2003три. Конец\u2024 Ещё\u2024 Всё\u2024").as_evidence()
+        assert evidence["invisible_words"] == ["Исто\u00b7рия"]
+        assert evidence["odd_space_words"] == ["Один\u00b7два", "и\u00b7три"]
+        assert evidence["punct_words"] == ["Конец\u2024", "Ещё\u2024", "Всё\u2024"]
+
+    def test_evidence_lists_words_with_stray_marks(self):
+        evidence = scan_text("The ma\u0323rket i\u0323s gro\u0323wing fast.").as_evidence()
+        assert evidence["stray_mark_words"] == ["ma\u0323rket", "i\u0323s", "gro\u0323wing"]
+
+    def test_examples_are_capped(self):
+        evidence = scan_text(" ".join(f"сло\u200bво{i}" for i in range(30))).as_evidence()
+        assert len(evidence["invisible_words"]) == 10
 
     def test_lookalike_punctuation(self):
         report = scan_text("The essay ends here\u2024 Another sentence\uff0c with a comma\u2024 And one more\u2024")
@@ -142,10 +186,40 @@ class TestGradeFit:
         fit = assess(text, detect_language(text), 8)
         assert not {"запоминание", "гармоничное", "перегруженности", "аргументированно"} & set(fit.rare_words)
 
+    @pytest.mark.parametrize("level", [8, 9, 11])
+    def test_ordinary_words_in_oblique_cases_are_not_beyond_level(self, level):
+        fit = assess(OBLIQUE_RU, detect_language(OBLIQUE_RU), level)
+        assert fit.rare_words == []
+        assert fit.mismatch < CONTEXT_FLAG
+
+    @pytest.mark.parametrize("level", [8, 9, 11])
+    def test_plain_grammar_lesson_stays_below_the_flag(self, level):
+        fit = assess(GRAMMAR_RU, detect_language(GRAMMAR_RU), level)
+        assert fit.rare_words == []
+        assert fit.mismatch < CONTEXT_FLAG
+
+    def test_word_frequency_counts_the_whole_word_not_one_form(self):
+        assert lexeme_zipf("запоминанию") == lexeme_zipf("запоминание")
+        assert lexeme_zipf("однородными") > 3.0
+        assert lexeme_zipf("детерминированность") < 2.0
+
     def test_look_alike_letters_do_not_count_as_rare_words(self):
         fit = assess(ACADEMIC_RU.replace("о", "o"), detect_language(ACADEMIC_RU), 8)
         assert all("o" not in w for w in fit.rare_words)
-        assert fit.as_evidence()["readability_band"] == "university"
+        assert fit.as_evidence()["readability_band"] == "adult"
+
+    def test_readability_is_reported_as_plain_facts(self):
+        evidence = assess(ACADEMIC_RU, detect_language(ACADEMIC_RU), 8).as_evidence()
+        assert evidence["words_per_sentence"] > 15
+        assert evidence["syllables_per_word"] > 3
+        kid = assess(KID_RU, detect_language(KID_RU), 8).as_evidence()
+        assert kid["words_per_sentence"] < 12 and kid["syllables_per_word"] < 2.5
+        assert kid["readability_band"] == "plain"
+
+    def test_russian_bands_never_call_a_school_essay_university(self):
+        assert readability_band(12.0, "ru") == "textbook"
+        assert readability_band(16.8, "ru") == "adult"
+        assert readability_band(12.0) == "university"
 
     def test_same_text_is_fine_for_a_university_student(self):
         assert assess(ACADEMIC_RU, detect_language(ACADEMIC_RU), 13).mismatch < 0.6
@@ -167,6 +241,32 @@ class TestStyleDrift:
         lang = detect_language(KID_RU)
         history = [features(KID_RU, lang), features(KID_RU.replace("бабушке", "дедушке"), lang)]
         assert drift(features(KID_RU.replace("щуку", "окуня"), lang), history)["score"] < 0.3
+
+    def test_drift_says_what_changed(self):
+        lang = detect_language(KID_RU)
+        history = [features(KID_RU, lang), features(KID_RU.replace("бабушке", "дедушке"), lang), features(KID_RU.replace("щуку", "окуня"), lang)]
+        changes = drift(features(ACADEMIC_RU, lang), history)["changes"]
+        keys = [c["key"] for c in changes]
+        assert "word_length" in keys and len(changes) <= 3
+        word_length = next(c for c in changes if c["key"] == "word_length")
+        assert word_length["now"] > word_length["usual"]
+
+
+class TestPhrasebook:
+    def test_school_connectors_are_not_chatbot_phrases(self):
+        text = "Таким образом, кроме того, в заключение, подводя итог, в целом, более того, в свою очередь, книги важны."
+        assert phrasebook(text, detect_language(KID_RU))["hits"] == {}
+
+    def test_chips_show_the_word_from_the_text(self):
+        text = "Немаловажную роль играет чтение, ведь оно многогранное. Чтение представляет собой труд."
+        hits = phrasebook(text, detect_language(KID_RU))["hits"]
+        assert hits == {"немаловажную": 1, "многогранное": 1, "представляет собой": 1}
+
+    def test_words_from_the_assignment_are_dropped(self):
+        text = "В современном мире книги важны. Чтение представляет собой труд, и в современном мире это ценно."
+        lang = detect_language(KID_RU)
+        hits = phrasebook(text, lang, ("Как читать в современном мире?",))["hits"]
+        assert hits == {"представляет собой": 1}
 
 
 def _text_file(tmp_path, text, name="work.txt"):
@@ -193,8 +293,58 @@ class TestTextAnalyzers:
         sub = self._class_submission(level=8, user=student)
         out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
         assert out.verdict == "inconclusive"
-        assert out.evidence["baseline"] == {"have": 2, "need": 3}
+        assert out.evidence["baseline"] == {"have": 2, "need": 3, "total": 2, "too_short": 0, "other_kind": 0}
         assert "not enough earlier work" in out.evidence["finding"]
+
+    def test_grade_fit_counts_short_earlier_works_it_could_not_use(self, tmp_path):
+        student = UserFactory()
+        config = AnalyzerConfigFactory(name="text_grade_fit")
+        AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence={"language": "ru", "mismatch": 0.1})
+        AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence={"reason": "text too short"})
+        sub = self._class_submission(level=8, user=student)
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert out.evidence["baseline"] == {"have": 1, "need": 3, "total": 2, "too_short": 1, "other_kind": 0}
+
+    def test_grade_fit_compares_sentence_length_with_earlier_work(self, tmp_path):
+        student = UserFactory()
+        config = AnalyzerConfigFactory(name="text_grade_fit")
+        for wps, spw in ((9.0, 1.9), (10.0, 2.0), (11.0, 2.1)):
+            evidence = {"language": "ru", "mismatch": 0.0, "words_per_sentence": wps, "syllables_per_word": spw}
+            AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence=evidence)
+        sub = self._class_submission(level=8, user=student)
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert out.evidence["usual"] == {"words_per_sentence": 10.0, "syllables_per_word": 2.0, "works": 3}
+        assert out.evidence["words_per_sentence"] > out.evidence["usual"]["words_per_sentence"]
+
+    def test_grade_fit_needs_three_earlier_works_for_a_comparison(self, tmp_path):
+        student = UserFactory()
+        config = AnalyzerConfigFactory(name="text_grade_fit")
+        evidence = {"language": "ru", "mismatch": 0.0, "words_per_sentence": 9.0, "syllables_per_word": 1.9}
+        AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence=evidence)
+        sub = self._class_submission(level=8, user=student)
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, KID_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert "usual" not in out.evidence
+
+    def test_grade_fit_names_bookish_words_even_when_the_text_fits(self, tmp_path):
+        sub = self._class_submission(level=9)
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, BOOKISH_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert out.verdict == "inconclusive"
+        assert out.evidence["finding"].startswith("mostly fits school year 9")
+        assert out.evidence["bookish_count"] == 2
+        assert set(out.evidence["beyond_level_words"]) == {"байронического", "рефлексирующий"}
+
+    def test_grade_fit_plain_text_simply_fits(self, tmp_path):
+        sub = self._class_submission(level=8)
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, KID_RU), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert out.evidence["finding"] == "fits school year 8"
+        assert "bookish_count" not in out.evidence
+
+    def test_grade_fit_too_short_keeps_the_class_year(self, tmp_path):
+        sub = self._class_submission(level=8)
+        text = "Пётр Первый основал Петербург, потому что ему был нужен выход к морю. Он построил флот и открыл школы, и страна стала сильнее."
+        out = TextGradeFitAnalyzer().analyze(_text_file(tmp_path, text), {"submission_id": str(sub.id), "mime_type": "text/plain"})
+        assert out.evidence["reason"] == "text too short"
+        assert out.evidence["level"] == 8
 
     def test_grade_fit_flags_a_jump_above_the_students_own_level(self, tmp_path):
         student = UserFactory()
@@ -258,7 +408,42 @@ class TestTextAnalyzers:
         out = TextStyleAnalyzer().analyze(_text_file(tmp_path, ACADEMIC_RU), {"submission_id": str(self._class_submission().id), "mime_type": "text/plain"})
         assert out.verdict == "inconclusive"
         assert "drift" not in out.evidence
-        assert out.evidence["baseline"] == {"have": 0, "need": 3}
+        assert out.evidence["baseline"] == {"have": 0, "need": 3, "total": 0, "too_short": 0, "other_kind": 0}
+
+    def test_style_baseline_says_why_earlier_works_were_left_out(self, tmp_path):
+        student = UserFactory()
+        config = AnalyzerConfigFactory(name="text_style")
+        lang = detect_language(KID_RU)
+        AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence={"profile": {**features(KID_RU, lang), "group": "personal"}})
+        AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence={"profile": {**features(ACADEMIC_RU, lang), "group": "expository"}})
+        AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence={"reason": "text too short"})
+        current = self._class_submission(user=student)
+        out = TextStyleAnalyzer().analyze(_text_file(tmp_path, ADULT_NARRATIVE_RU), {"submission_id": str(current.id), "mime_type": "text/plain"})
+        assert out.evidence["baseline"] == {"have": 1, "need": 3, "total": 3, "too_short": 1, "other_kind": 1}
+
+    def test_style_on_a_short_answer_says_it_is_too_short(self, tmp_path):
+        out = TextStyleAnalyzer().analyze(_text_file(tmp_path, "Пётр I основал Петербург в 1703 году, чтобы выйти к морю."), {"mime_type": "text/plain"})
+        assert out.evidence["reason"] == "text too short"
+        assert out.evidence["min_words"] == 60
+
+    def test_style_shows_what_changed_when_it_flags(self, tmp_path):
+        student = UserFactory()
+        config = AnalyzerConfigFactory(name="text_style")
+        lang = detect_language(KID_RU)
+        for variant in (KID_RU, KID_RU.replace("бабушке", "дедушке"), KID_RU.replace("щуку", "окуня")):
+            AnalysisResultFactory(submission=self._class_submission(user=student), analyzer=config, evidence={"profile": {**features(variant, lang), "group": "personal"}})
+        current = self._class_submission(user=student)
+        out = TextStyleAnalyzer().analyze(_text_file(tmp_path, ADULT_NARRATIVE_RU), {"submission_id": str(current.id), "mime_type": "text/plain"})
+        assert out.verdict == "suspicious"
+        changes = out.evidence["drift"]["changes"]
+        assert changes and {"key", "now", "usual"} <= set(changes[0])
+
+    def test_style_ignores_chatbot_phrases_that_come_from_the_assignment(self, tmp_path):
+        current = self._class_submission()
+        ShadowSet.objects.create(classroom=current.classroom, prompt="Как жить в современном мире без книг?", language="ru", status=ShadowSet.Status.DONE)
+        text = KID_RU + " В современном мире всё быстро меняется, и чтение представляет собой отдых."
+        out = TextStyleAnalyzer().analyze(_text_file(tmp_path, text), {"submission_id": str(current.id), "mime_type": "text/plain"})
+        assert out.evidence["phrasebook"]["hits"] == {"представляет собой": 1}
 
 
 @pytest.mark.django_db

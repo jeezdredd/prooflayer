@@ -327,8 +327,8 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
         </div>
       )}
 
-      <OriginalityPanel submission={submission} />
-      <TextReport submission={submission} />
+      <OriginalityPanel submission={submission} student={student} />
+      <TextReport submission={submission} student={student} />
 
       {/* Pipeline */}
       {textDone ? (

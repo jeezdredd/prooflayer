@@ -81,6 +81,21 @@ class TestDetectGenre:
         cues = detect_genre(text, detect_language(text)).cues
         assert "я считаю" in cues and "во-первых" in cues
 
+    def test_short_answer_with_one_date_is_not_a_report(self):
+        text = "Война 1812 года началась летом. Наполеон дошёл до Москвы, но русская армия его остановила."
+        assert detect_genre(text, detect_language(text)).key != "report"
+
+    def test_report_explains_itself(self):
+        text = SAMPLES["report"]
+        cues = detect_genre(text, detect_language(text)).cues
+        assert cues[0].startswith("headings: Introduction, Methods")
+        assert "reference list" in cues and "many dates and figures" in cues
+
+    def test_cues_show_the_whole_word(self):
+        text = SAMPLES["analysis"]
+        cues = detect_genre(text, detect_language(text)).cues
+        assert "композиция" in cues and "композиц" not in cues
+
     def test_plain_text_without_cues_is_general(self):
         text = "The weather was warm. The shop sold bread, milk and apples. The street was long and quiet."
         genre = detect_genre(text, detect_language(text))
