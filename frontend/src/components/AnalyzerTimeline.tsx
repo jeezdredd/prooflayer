@@ -4,19 +4,19 @@ import type { AnalysisResult, ExpectedAnalyzer, Submission } from "../types";
 import { msg, t } from "../i18n";
 
 export const ANALYZER_LABELS: Record<string, string> = {
-  metadata: msg("Metadata · EXIF"),
-  ela: msg("Error Level Analysis"),
-  ai_detector: msg("AI Image Ensemble"),
-  llm_vision: msg("Vision LLM"),
-  video_frame: msg("Video Frame Analysis"),
-  audio_spectrogram: msg("Audio Spectrogram"),
-  llm_text: msg("Text LLM"),
-  text_classifier: msg("Text Classifier"),
-  community_forensics: "Community Forensics · ViT",
-  npr_detector: "NPR Detector · ViT",
-  siglip_detector: "SigLIP Detector",
+  metadata: msg("Labels in the file"),
+  ela: msg("Pasted-in pieces check"),
+  ai_detector: msg("AI detector 2"),
+  llm_vision: msg("Model that looks at the picture"),
+  video_frame: msg("Video frames"),
+  audio_spectrogram: msg("Voice check"),
+  llm_text: msg("Language model"),
+  text_classifier: msg("AI writing detector"),
+  community_forensics: msg("AI detector 1"),
+  npr_detector: msg("Noise detector"),
+  siglip_detector: msg("Consistency detector"),
   custom_detector: msg("ProofLayer Detector"),
-  clip_probe: "CLIP Probe",
+  clip_probe: msg("AI detector 3"),
   text_evasion: msg("Bypass Check"),
   text_grade_fit: msg("Age Fit"),
   text_style: msg("Style Consistency"),
@@ -24,6 +24,15 @@ export const ANALYZER_LABELS: Record<string, string> = {
   text_genre: msg("Text Type"),
   text_shadow: msg("Assignment Shadow"),
 };
+
+const VOTE_WORDS: Record<string, string> = {
+  fake: msg("for AI"),
+  suspicious: msg("leans AI"),
+  inconclusive: msg("not sure"),
+  error: msg("did not run"),
+};
+
+const ELA_FORMATS = ["JPEG"];
 
 const ANALYZER_CODE: Record<string, string> = {
   metadata: "META",
@@ -180,7 +189,46 @@ function StateMarker({ state, verdict }: { state: Step["state"]; verdict: string
   return <div className="w-7 h-7 flex items-center justify-center">{dot}</div>;
 }
 
-function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; index: number }) {
+function elaFormatOk(evidence: Record<string, unknown>): boolean {
+  return typeof evidence.source_format === "string" && ELA_FORMATS.includes(evidence.source_format);
+}
+
+function voteWord(step: Step, image: boolean): string {
+  const result = step.result;
+  if (!result) return "";
+  if (step.name === "ela" && result.verdict !== "error") {
+    if (!elaFormatOk(result.evidence ?? {})) return t("not for this format");
+    return result.evidence?.manipulation_suspected === true ? t("may be edited") : t("no signs of editing");
+  }
+  if (result.verdict === "authentic") return image ? t("for a photo") : t("for a person");
+  return t(VOTE_WORDS[result.verdict] ?? VOTE_WORDS.inconclusive);
+}
+
+function evidenceLines(step: Step): string[] {
+  if (!step.result) return [];
+  if (step.result.verdict === "error") return [t("This check could not run this time. The verdict was made without it.")];
+  const ev = (step.result.evidence ?? {}) as Record<string, unknown>;
+  const lines: string[] = [];
+  if (step.name === "ela") {
+    if (!elaFormatOk(ev)) lines.push(t("This check only works on JPEG photos, so it does not show editing in this file."));
+    else if (ev.manipulation_suspected === true) lines.push(t("Some areas compress differently from the rest: they may have been pasted in. They are brighter on the map."));
+    else lines.push(t("No signs of pasted-in pieces were found."));
+  }
+  if (step.name === "llm_vision" && typeof ev.reasoning === "string" && ev.reasoning) {
+    lines.push(t("What the model noticed: \"{reasoning}\"", { reasoning: ev.reasoning }));
+  }
+  if (step.name === "metadata") {
+    const camera = ev.camera as { has_camera_signature?: boolean; make?: string; model?: string } | undefined;
+    if (camera?.has_camera_signature) lines.push(t("Camera recorded in the file: {name}", { name: [camera.make, camera.model].filter(Boolean).join(" ") }));
+    if ((ev.metadata_presence as { stripped?: boolean } | undefined)?.stripped) {
+      lines.push(t("The file has no camera data. That is normal after messengers and social networks."));
+    }
+    if ((ev.dates as { suspicious?: boolean } | undefined)?.suspicious) lines.push(t("The dates inside the file do not match each other."));
+  }
+  return lines;
+}
+
+function AnalyzerRow({ step, isLast, index, done, image, showRaw }: { step: Step; isLast: boolean; index: number; done: boolean; image: boolean; showRaw: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const label = ANALYZER_LABELS[step.name] ? t(ANALYZER_LABELS[step.name]) : step.name;
   const code = ANALYZER_CODE[step.name] || step.name.slice(0, 4).toUpperCase();
@@ -188,6 +236,9 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
   const tone = VERDICT_TONE[verdict] || VERDICT_TONE.inconclusive;
   const elapsed = useElapsed(step.state === "running");
   const expectedSecs = ANALYZER_ETA_SECS[step.name] || 15;
+  const lines = evidenceLines(step);
+  const evidence = step.result?.evidence ?? {};
+  const heatmap = typeof evidence.heatmap_url === "string" && elaFormatOk(evidence) ? evidence.heatmap_url : null;
 
   return (
     <div className={clsx("relative flex gap-4 animate-fade-in-up", !isLast && "pb-5")}>
@@ -209,34 +260,26 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 ticker">
-                #{String(index + 1).padStart(2, "0")} · {code}
-              </span>
+              {!done && (
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500 ticker">
+                  #{String(index + 1).padStart(2, "0")} · {code}
+                </span>
+              )}
               <span className="font-display text-lg text-ink-50 group-hover:text-signal-amber transition-colors leading-none">
                 {label}
               </span>
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
-              {step.result?.execution_time != null && (
-                <span className="font-mono text-[10px] text-ink-500 ticker">
-                  {step.result.execution_time.toFixed(1)}s
-                </span>
-              )}
               {step.state === "running" && (
                 <span className="font-mono text-[10px] text-signal-amber ticker animate-pulse-soft">
-                  {elapsed.toFixed(1)}s
+                  {t("{n} s", { n: elapsed.toFixed(1) })}
                 </span>
               )}
               {step.result && (
-                <>
-                  <span className="font-mono text-xs text-ink-200 ticker w-10 text-right">
-                    {Math.round(step.result.confidence * 100)}%
-                  </span>
-                  <span className={clsx("badge", tone.color, "border-current")}>
-                    {t(tone.label)}
-                  </span>
-                </>
+                <span className={clsx("badge normal-case tracking-normal", tone.color, "border-current")}>
+                  {voteWord(step, image)}
+                </span>
               )}
               {step.state === "running" && (
                 <span className="badge text-signal-amber border-current">
@@ -287,15 +330,18 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                 {t(step.description)}
               </p>
             )}
-            {step.result?.error_message && (
+            {lines.map((line) => (
+              <p key={line} className="text-sm text-ink-100 leading-relaxed mb-2">{line}</p>
+            ))}
+            {showRaw && step.result?.error_message && (
               <div className="text-xs text-signal-blood font-mono mb-2">
-                {t("ERROR")}: {step.result.error_message}
+                {step.result.error_message}
               </div>
             )}
-            {step.result && Object.keys(step.result.evidence || {}).length > 0 && (
+            {showRaw && step.result && Object.keys(step.result.evidence || {}).length > 0 && (
               <div className="bg-ink-950 border border-ink-700 p-3 relative">
                 <div className="absolute top-2 right-2 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-600">
-                  {t("Evidence")}
+                  {t("Raw data for staff")}
                 </div>
                 <pre className="font-mono text-[11px] text-ink-200 overflow-x-auto overflow-y-auto max-h-52 whitespace-pre-wrap leading-relaxed">
                   {JSON.stringify(
@@ -307,8 +353,8 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
                 </pre>
               </div>
             )}
-            {typeof step.result?.evidence?.heatmap_url === "string" && (
-              <ELAHeatmapOverlay heatmapUrl={step.result.evidence.heatmap_url} />
+            {heatmap && (
+              <ELAHeatmapOverlay heatmapUrl={heatmap} suspected={evidence.manipulation_suspected === true} />
             )}
           </div>
         )}
@@ -317,7 +363,7 @@ function AnalyzerRow({ step, isLast, index }: { step: Step; isLast: boolean; ind
   );
 }
 
-function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
+function ELAHeatmapOverlay({ heatmapUrl, suspected }: { heatmapUrl: string; suspected: boolean }) {
   const [opacity, setOpacity] = useState(60);
   const apiBase = import.meta.env.VITE_API_URL?.replace("/api/v1", "") || "";
   const fullUrl = heatmapUrl.startsWith("http") ? heatmapUrl : `${apiBase}${heatmapUrl}`;
@@ -325,7 +371,7 @@ function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
   return (
     <div className="mt-3 bg-ink-950 border border-ink-700 p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">{t("ELA Heatmap")}</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-500">{t("Editing map")}</span>
         <div className="flex items-center gap-2">
           <span className="font-mono text-[9px] text-ink-600">{t("opacity")}</span>
           <input
@@ -341,20 +387,24 @@ function ELAHeatmapOverlay({ heatmapUrl }: { heatmapUrl: string }) {
       </div>
       <img
         src={fullUrl}
-        alt={t("ELA Heatmap")}
+        alt={t("Editing map")}
         className="max-h-72 max-w-full object-contain border border-ink-700"
         style={{ opacity: opacity / 100 }}
       />
-      <p className="font-mono text-[9px] text-ink-600 mt-2">
-        {t("Bright red areas compress differently from the rest of the image, which is where it may have been edited. Even colour means no sign of edits.")}
+      <p className="text-xs text-ink-400 mt-2">
+        {suspected
+          ? t("The brightest areas compress differently from the rest of the picture: they may have been pasted in.")
+          : t("The map is scaled to its brightest spot, so some red is always there. The check found no area that stands out.")}
       </p>
     </div>
   );
 }
 
-export default function AnalyzerTimeline({ submission, runningAnalyzers }: { submission: Submission; runningAnalyzers?: Set<string> }) {
+export default function AnalyzerTimeline({ submission, runningAnalyzers, showRaw = false }: { submission: Submission; runningAnalyzers?: Set<string>; showRaw?: boolean }) {
   const steps = buildSteps(submission, runningAnalyzers);
   if (steps.length === 0) return null;
+  const image = !!submission.mime_type?.startsWith("image/");
+  const proof = submission.analysis_results.some((r) => r.analyzer_name === "metadata" && r.evidence?.provenance_proof === true);
 
   const doneCount = steps.filter((s) => s.state === "done").length;
   const skippedCount = steps.filter((s) => s.state === "skipped").length;
@@ -376,39 +426,40 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
 
   return (
     <div>
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <span className="label-mono">{t("Analyzer Pipeline")}</span>
-          <span className="text-ink-700">/</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 ticker">
-            {String(doneCount).padStart(2, "0")}<span className="text-ink-600">·</span>{String(totalCount).padStart(2, "0")} {isProcessing ? t("RUNNING") : t("COMPLETE")}
-            {skippedCount > 0 && <span className="text-ink-600 ml-2">{t("{n} SKIPPED", { n: skippedCount })}</span>}
-          </span>
+      {isProcessing ? (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="label-mono">{t("Analyzer Pipeline")}</span>
+              <span className="text-ink-700">/</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-400 ticker">
+                {String(doneCount).padStart(2, "0")}<span className="text-ink-600">·</span>{String(totalCount).padStart(2, "0")} {t("RUNNING")}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.14em]">
+              <span className="ticker text-ink-200">{Math.round(overallPct)}%</span>
+              {remainingSecs > 0 && (
+                <span className="text-signal-amber ticker">{t("~{n}S LEFT", { n: remainingSecs })}</span>
+              )}
+            </div>
+          </div>
+          <div className="relative h-1 bg-ink-800 mb-6 overflow-hidden">
+            <div className="absolute inset-y-0 left-0 transition-all duration-500 ease-out bg-signal-amber" style={{ width: `${overallPct}%` }} />
+            <div className="absolute inset-y-0 h-full w-1/4 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-scan-bar" />
+          </div>
+        </>
+      ) : (
+        <div className="mb-4">
+          <span className="label-mono">{t("How each check voted")}</span>
+          <p className="text-xs text-ink-500 mt-1">{t("Click a check to see what it looks at and what it found.")}</p>
         </div>
-        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.14em]">
-          <span className="ticker text-ink-200">{Math.round(overallPct)}%</span>
-          {isProcessing && remainingSecs > 0 && (
-            <span className="text-signal-amber ticker">{t("~{n}S LEFT", { n: remainingSecs })}</span>
-          )}
-        </div>
-      </div>
+      )}
 
-      {/* Overall bar */}
-      <div className="relative h-1 bg-ink-800 mb-6 overflow-hidden">
-        <div
-          className={clsx(
-            "absolute inset-y-0 left-0 transition-all duration-500 ease-out",
-            isProcessing ? "bg-signal-amber" : "bg-signal-sage",
-          )}
-          style={{ width: `${overallPct}%` }}
-        />
-        {isProcessing && (
-          <div
-            className="absolute inset-y-0 h-full w-1/4 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-scan-bar"
-          />
-        )}
-      </div>
+      {!isProcessing && proof && (
+        <div className="mb-6 px-3 py-2.5 border-l-2 border-signal-blood/60 bg-signal-blood/5 text-sm text-ink-200 leading-relaxed">
+          {t("The AI mark in the file outweighs the detector votes: even if a detector voted \"for a photo\", the conclusion does not change.")}
+        </div>
+      )}
 
       {/* Status message */}
       {isProcessing && (
@@ -468,7 +519,7 @@ export default function AnalyzerTimeline({ submission, runningAnalyzers }: { sub
       {/* Steps */}
       <div className="space-y-1">
         {steps.map((step, i) => (
-          <AnalyzerRow key={step.name} step={step} isLast={i === steps.length - 1} index={i} />
+          <AnalyzerRow key={step.name} step={step} isLast={i === steps.length - 1} index={i} done={!isProcessing} image={image} showRaw={showRaw} />
         ))}
       </div>
     </div>

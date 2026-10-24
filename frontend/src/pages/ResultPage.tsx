@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSubmissionDetail } from "../hooks/useUpload";
 import { useSubmissionWS } from "../hooks/useSubmissionWS";
@@ -8,21 +8,35 @@ import VotingPanel from "../components/VotingPanel";
 import ReportButton from "../components/ReportButton";
 import ProvenancePanel from "../components/ProvenancePanel";
 import ObjectionPanel from "../components/ObjectionPanel";
+import ObjectionBanner from "../components/ObjectionBanner";
+import { isClassView, isImage, isStudentView } from "../components/resultView";
 import { Skeleton, SkeletonText } from "../components/ui/Skeleton";
 import { toast } from "../components/ui/Toast";
+import { getAccessToken } from "../api/client";
 import { reanalyzeSubmission, togglePublic } from "../api/endpoints";
 import { IS_CLASSROOM_APP } from "../appMode";
+import { classPath } from "../classroom/shared";
+import { LEGAL } from "../legal";
 import { useAuthStore } from "../stores/authStore";
 import type { Submission } from "../types";
 import { t } from "../i18n";
 
-function DownloadReportButton({ submissionId }: { submissionId: string }) {
+function reportErrorText(status: number, code: string | undefined, student: boolean): string {
+  if (status === 402 && code === "school_plan_required") {
+    return student
+      ? t("Your school's plan does not include PDF reports. The whole result is on this page.")
+      : t("PDF reports for class work come with the school plan.");
+  }
+  if (status === 402) return t("PDF reports require Pro subscription.");
+  return t("Failed to download report");
+}
+
+function DownloadReportButton({ submissionId, student }: { submissionId: string; student: boolean }) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
     setLoading(true);
     try {
-      const { getAccessToken } = await import("../api/client");
       const access = getAccessToken();
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/content/submissions/${submissionId}/report.pdf`,
@@ -31,7 +45,11 @@ function DownloadReportButton({ submissionId }: { submissionId: string }) {
           credentials: "include",
         }
       );
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { code?: string } | null;
+        toast.error(reportErrorText(res.status, data?.code, student));
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -138,13 +156,32 @@ function TogglePublicButton({ submissionId, isPublic }: { submissionId: string; 
   );
 }
 
+function BackLinks({ submission }: { submission: Submission }) {
+  if (IS_CLASSROOM_APP) {
+    const target = submission.classroom;
+    return (
+      <Link to={target ? classPath(target) : "/"} className="text-ink-400 hover:text-ink-100 transition normal-case tracking-normal text-sm">
+        &larr; {target ? target.name : t("Classes")}
+      </Link>
+    );
+  }
+  return (
+    <>
+      <Link to="/dashboard" className="text-ink-400 hover:text-ink-100 transition">
+        &larr; {t("Dashboard")}
+      </Link>
+      <span className="text-ink-700">/</span>
+      <Link to="/upload" className="text-iris hover:text-iris-light transition">
+        {t("Verify another")}
+      </Link>
+    </>
+  );
+}
+
 export default function ResultPage() {
   const { id } = useParams<{ id: string }>();
   const { data: submission, isLoading, isError } = useSubmissionDetail(id || null);
   const { connected, runningAnalyzers } = useSubmissionWS(id);
-  const location = useLocation();
-  const supervising = !!(location.state as { supervising?: boolean } | null)?.supervising;
-  const student = !!useAuthStore((s) => s.user?.student_only);
 
   if (isLoading) {
     return (
@@ -200,25 +237,15 @@ export default function ResultPage() {
     );
   }
 
+  const student = isStudentView(submission);
+  const classView = isClassView(submission);
+  const completed = submission.status === "completed";
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em]">
-          {IS_CLASSROOM_APP ? (
-            <Link to="/" className="text-ink-400 hover:text-ink-100 transition">
-              &larr; {t("Classes")}
-            </Link>
-          ) : (
-            <>
-              <Link to="/dashboard" className="text-ink-400 hover:text-ink-100 transition">
-                &larr; {t("Dashboard")}
-              </Link>
-              <span className="text-ink-700">/</span>
-              <Link to="/upload" className="text-iris hover:text-iris-light transition">
-                {t("Verify another")}
-              </Link>
-            </>
-          )}
+          <BackLinks submission={submission} />
         </div>
         {submission.status === "processing" && connected && (
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-signal-sage">
@@ -226,24 +253,33 @@ export default function ResultPage() {
             {t("Live")}
           </span>
         )}
-        {submission.status === "completed" && (
-          <div className="flex items-center gap-2">
+        {completed && (
+          <div className="flex flex-wrap items-center gap-2">
             {!student && submission.ensemble && !submission.ensemble.is_current && (
               <ReanalyzeButton submissionId={submission.id} />
             )}
-            {!supervising && !student && <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />}
-            <DownloadReportButton submissionId={submission.id} />
-            <ReportButton submissionId={submission.id} />
+            {!IS_CLASSROOM_APP && submission.can_publish && (
+              <TogglePublicButton submissionId={submission.id} isPublic={submission.is_public} />
+            )}
+            <DownloadReportButton submissionId={submission.id} student={student} />
+            {!classView && <ReportButton submissionId={submission.id} />}
           </div>
         )}
       </div>
+      <ObjectionBanner submission={submission} />
       <ResultCard submission={submission} runningAnalyzers={runningAnalyzers} />
-      <ObjectionPanel submission={submission} supervising={supervising} />
-      {submission.status === "completed" && (
-        <ProvenancePanel submissionId={submission.id} />
-      )}
-      {submission.status === "completed" && !student && (
+      <ObjectionPanel submission={submission} />
+      {completed && isImage(submission) && <ProvenancePanel submission={submission} />}
+      {completed && !student && !classView && (
         <VotingPanel submissionId={submission.id} fileUrl={submission.file_url} />
+      )}
+      {completed && classView && !student && (
+        <p className="mt-4 text-xs text-ink-500">
+          {t("Think the check got it wrong?")}{" "}
+          <a href={`mailto:${LEGAL.emails.support}`} className="text-ink-300 underline hover:text-ink-100">
+            {t("Write to us")}
+          </a>
+        </p>
       )}
     </div>
   );

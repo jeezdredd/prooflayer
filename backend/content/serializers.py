@@ -1,28 +1,29 @@
 from rest_framework import serializers
 
 from analyzers.ensemble import ensemble_info
-from common.age import can_view_sensitive
 from plagiarism.serializers import report_payload
 
 from .models import Submission, VerdictOverride
 from .objections import latest_objection_payload
+from .viewer import viewer_info
 
 ANALYZER_DESCRIPTIONS = {
-    "metadata": "Reads EXIF/XMP metadata. Looks for editing software signatures, missing camera fields, and timestamp inconsistencies.",
-    "ela": "Error Level Analysis. Re-saves the image at a known compression and compares pixel-level differences to spot spliced or pasted regions.",
-    "ai_detector": "Ensemble of independent image classifiers. Pre-filters non-photographic content (screenshots, diagrams, UI) since AI photo detectors are unreliable outside their training distribution. Averages AI-generated probability across models; verdict requires multi-model agreement.",
-    "llm_vision": "Vision LLM. Examines lighting consistency, texture coherence, fine details (fingers, eyes, text), and overall aesthetic.",
-    "video_frame": "Samples frames from the video at uniform intervals and runs ELA + AI detection on each one.",
-    "audio_spectrogram": "Computes spectral features to detect synthetic-voice artifacts and unnatural frequency distributions.",
+    "metadata": "Reads the labels stored inside the file: which program made it, camera details, dates, and the marks AI generators leave on purpose.",
+    "ela": "Looks for pieces pasted in from another picture: they compress differently from the rest. Works only on JPEG photos.",
+    "ai_detector": "A set of detectors trained to tell AI pictures from photos. Screenshots and diagrams are skipped, because such detectors often get them wrong.",
+    "llm_vision": "A model that looks at the picture the way a person would: hands, eyes, lettering, light and shadows.",
+    "video_frame": "Takes frames from the video at even steps and checks each one like a picture.",
+    "audio_spectrogram": "Listens for traces of a synthetic voice in the sound.",
     "llm_text": "Text LLM. Classifies whether the input text was likely AI-generated based on stylistic and structural cues.",
     "text_classifier": "ProofLayer text classifier. Multilingual encoder (en/ru/fr) fine-tuned on student essays, news and encyclopedic text against current open models, including humanizer rewrites. Calibrated per language so that only 1% of human texts in calibration score above its flag line; on its own it can flag a text but never convict it.",
     "text_shadow": "Assignment shadow. Compares a class submission with AI answers the teacher generated for the class's assignments, sentence by sentence and in order. A close, same-order match sends the work to review; it never convicts on its own.",
     "text_genre": "Text type. Recognises an argumentative essay, narrative, retelling, literary analysis, description, report, letter or poem in en/ru/fr from cue phrases and structure, so the other checks are read in context. Never votes.",
     "text_citations": "Ghost citations check. Extracts DOIs, arXiv ids, ISBNs, links, bibliography entries and long quotes, and checks each against doi.org, arXiv, Open Library, Google Books, OpenAlex, Crossref and the web. Invented sources are a common trace of chatbot writing; a flag sends the work to review, it never convicts on its own.",
-    "community_forensics": "Community Forensics ViT-S/16 trained on 2.7M images from 4803 generators (NeurIPS 2024). Outputs a continuous AI probability score. Strongest signal for photorealistic deepfakes and diffusion-generated faces.",
-    "npr_detector": "NPR (Noise Pattern Residual) ViT detector. Analyzes high-frequency noise patterns left by camera sensors vs generative models. Effective against GAN and diffusion outputs that look clean to the eye but carry generator fingerprints.",
-    "siglip_detector": "SigLIP-based semantic coherence detector. Measures whether image regions are semantically consistent with each other. Inpainting, face swaps, and localized edits often produce regions with mismatched semantic context.",
-    "custom_detector": "ProofLayer proprietary detector. Fine-tuned on verified real/fake submissions collected by the ProofLayer community. Improves with every retrain cycle as more labeled data is approved.",
+    "community_forensics": "A detector trained on millions of pictures from thousands of AI generators. Strongest on realistic photos and faces.",
+    "npr_detector": "Looks at the fine noise in the picture: a camera leaves different noise than an AI generator.",
+    "siglip_detector": "Checks whether all parts of the picture fit together. Swapped faces and pasted pieces often do not.",
+    "custom_detector": "Our own detector, retrained regularly on checked pictures and new AI generators.",
+    "clip_probe": "Compares the picture with many known AI pictures and photos and says which it resembles more.",
 }
 
 
@@ -120,13 +121,18 @@ class PublicSubmissionSerializer(serializers.ModelSerializer):
 
 class SubmissionDetailSerializer(serializers.ModelSerializer):
     analysis_results = serializers.SerializerMethodField()
-    similar_submissions = serializers.SerializerMethodField()
     file_url = serializers.SerializerMethodField()
     expected_analyzers = serializers.SerializerMethodField()
     ensemble = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
     objection = serializers.SerializerMethodField()
     in_class = serializers.SerializerMethodField()
+    viewer_role = serializers.SerializerMethodField()
+    student_name = serializers.SerializerMethodField()
+    classroom_name = serializers.SerializerMethodField()
+    classroom = serializers.SerializerMethodField()
+    can_object = serializers.SerializerMethodField()
+    can_publish = serializers.SerializerMethodField()
 
     class Meta:
         model = Submission
@@ -151,12 +157,43 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             "originality",
             "objection",
             "in_class",
+            "viewer_role",
+            "student_name",
+            "classroom_name",
+            "classroom",
+            "can_object",
+            "can_publish",
             "analysis_results",
-            "similar_submissions",
             "expected_analyzers",
             "created_at",
             "updated_at",
         )
+
+    def _viewer(self, obj) -> dict:
+        cache = self.context.setdefault("viewer_info", {})
+        if obj.pk not in cache:
+            request = self.context.get("request")
+            cache[obj.pk] = viewer_info(obj, getattr(request, "user", None))
+        return cache[obj.pk]
+
+    def get_viewer_role(self, obj):
+        return self._viewer(obj)["role"]
+
+    def get_student_name(self, obj):
+        return self._viewer(obj)["student_name"]
+
+    def get_classroom_name(self, obj):
+        classroom = self._viewer(obj)["classroom"]
+        return classroom["name"] if classroom else None
+
+    def get_classroom(self, obj):
+        return self._viewer(obj)["classroom"]
+
+    def get_can_object(self, obj):
+        return self._viewer(obj)["can_object"]
+
+    def get_can_publish(self, obj):
+        return self._viewer(obj)["can_publish"]
 
     def get_originality(self, obj):
         request = self.context.get("request")
@@ -195,12 +232,6 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
     def get_analysis_results(self, obj):
         from analyzers.serializers import AnalysisResultSerializer
         return AnalysisResultSerializer(obj.analysis_results.all(), many=True).data
-
-    def get_similar_submissions(self, obj):
-        from .services import find_similar_submissions
-        request = self.context.get("request")
-        viewer = getattr(request, "user", None)
-        return find_similar_submissions(obj, include_sensitive=can_view_sensitive(viewer))
 
     def get_expected_analyzers(self, obj):
         return _expected_analyzers_for_mime(obj.mime_type or "")

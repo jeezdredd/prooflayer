@@ -5,6 +5,7 @@ import requests as http_requests
 from django.conf import settings
 
 from analyzers.content_credentials import read_manifest
+from content.services import similarity_scope_q
 from content.storage_utils import local_file
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ def run_phash_lookup(submission):
         r = ProvenanceResult.objects.create(
             submission=submission,
             source_type=ProvenanceResult.SourceType.PHASH_MATCH,
-            title=match["filename"],
+            title="",
             similarity_score=similarity,
             raw_data={"submission_id": match["id"], "distance": distance},
         )
@@ -151,6 +152,7 @@ def find_clip_neighbors(submission, limit: int = CLIP_NEAREST_LIMIT,
         return []
     qs = (
         Submission.objects
+        .filter(similarity_scope_q(submission))
         .exclude(id=submission.id)
         .exclude(clip_embedding=None)
         .annotate(distance=CosineDistance("clip_embedding", submission.clip_embedding))
@@ -160,7 +162,6 @@ def find_clip_neighbors(submission, limit: int = CLIP_NEAREST_LIMIT,
     return [
         {
             "id": str(s.id),
-            "filename": s.original_filename,
             "distance": float(s.distance),
             "similarity": round(1.0 - float(s.distance), 4),
             "verdict": s.final_verdict,
@@ -198,7 +199,7 @@ def run_clip_neighbor_lookup(submission):
         r = ProvenanceResult.objects.create(
             submission=submission,
             source_type=ProvenanceResult.SourceType.CLIP_NEIGHBOUR,
-            title=n["filename"],
+            title="",
             similarity_score=n["similarity"],
             raw_data={"submission_id": n["id"], "cosine_distance": n["distance"], "verdict": n["verdict"], "method": "clip_cosine"},
         )

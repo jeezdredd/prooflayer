@@ -4,6 +4,7 @@ import { objections } from "../api/endpoints";
 import { useAuthStore } from "../stores/authStore";
 import type { ObjectionDecision, Submission, VerdictObjection } from "../types";
 import { locale, msg, t } from "../i18n";
+import { canAnswerObjection } from "./resultView";
 
 const MIN_LENGTH = 10;
 const LABEL = "font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500";
@@ -171,20 +172,20 @@ function CreateForm({ submissionId, inClass }: { submissionId: string; inClass: 
   );
 }
 
-export default function ObjectionPanel({ submission, supervising }: { submission: Submission; supervising: boolean }) {
-  const { user } = useAuthStore();
+export default function ObjectionPanel({ submission }: { submission: Submission }) {
+  const isStaff = !!useAuthStore((s) => s.user?.is_staff);
   if (submission.status !== "completed") return null;
   const objection = submission.objection ?? null;
-  if (!objection && supervising) return null;
-  const isAuthor = !!objection && objection.student === user?.username;
+  if (!objection && !submission.can_object) return null;
+  const canAnswer = canAnswerObjection(submission, isStaff);
 
   return (
-    <section className="case-card p-6 mt-4">
+    <section id="objection" className="case-card p-6 mt-4 scroll-mt-4">
       <h4 className="label-mono mb-3">{t("Objection")}</h4>
       {objection ? (
         <>
           <ObjectionStatus objection={objection} />
-          {objection.status === "open" && !isAuthor && <RespondForm objection={objection} submissionId={submission.id} />}
+          {objection.status === "open" && canAnswer && <RespondForm objection={objection} submissionId={submission.id} />}
         </>
       ) : (
         <CreateForm submissionId={submission.id} inClass={!!submission.in_class} />

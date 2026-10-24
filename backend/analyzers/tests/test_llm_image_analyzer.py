@@ -35,6 +35,22 @@ class TestVisionVerdicts:
         out = LLMImageAnalyzer().analyze(image_path, {})
         assert out.verdict == "fake"
 
+    def test_reasoning_is_asked_in_russian_and_kept_as_is(self, post, image_path):
+        reasoning = "У девушки на левой руке шесть пальцев, надпись на вывеске не читается."
+        post.return_value = _reply("ai_generated", reasoning)
+        out = LLMImageAnalyzer().analyze(image_path, {})
+        assert "Russian" in post.call_args.kwargs["json"]["prompt"]
+        assert out.evidence["reasoning"] == reasoning
+        assert out.evidence["weak_reasoning"] is False
+        assert "note" not in out.evidence
+
+    def test_short_reasoning_is_flagged_not_rewritten_in_english(self, post, image_path):
+        post.return_value = _reply("ai_generated", "Похоже на ИИ.")
+        out = LLMImageAnalyzer().analyze(image_path, {})
+        assert out.verdict == "inconclusive"
+        assert out.evidence["weak_reasoning"] is True
+        assert out.evidence["reasoning"] == "Похоже на ИИ."
+
 
 @patch("analyzers.implementations.llm_image_analyzer.http_requests.post")
 def test_request_is_deterministic_and_names_model(post, image_path, settings):

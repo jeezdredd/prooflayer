@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
+import { IS_CLASSROOM_APP } from "../appMode";
 import type { Submission } from "../types";
-import { t } from "../i18n";
+import { msg, t } from "../i18n";
 
 interface AiTrace {
   kind: "c2pa" | "xmp" | "watermark" | "software_tag" | "generation_params";
@@ -12,6 +13,8 @@ interface AiTrace {
   match?: number;
   field?: string;
   damaged?: boolean;
+  raw_value?: string;
+  text?: string;
 }
 
 interface Evasion {
@@ -21,12 +24,30 @@ interface Evasion {
   match?: number;
 }
 
+const FIELD_LABEL: Record<string, string> = {
+  software: msg("Program"),
+  processingsoftware: msg("Program"),
+  creatortool: msg("Program"),
+  softwareagent: msg("Program"),
+  parameters: msg("Generation settings"),
+  prompt: msg("Generation settings"),
+  workflow: msg("Generation settings"),
+  comment: msg("Comment"),
+  credit: msg("Credit line"),
+  creator: msg("Author"),
+};
+
+function fieldLabel(field: string | undefined): string {
+  const raw = (field ?? "").split(".").pop()?.split(":").pop()?.toLowerCase() ?? "";
+  return FIELD_LABEL[raw] ? t(FIELD_LABEL[raw]) : field ?? "";
+}
+
 function evasionText(e: Evasion) {
   if (e.kind === "damaged_watermark") {
-    return t("The hidden watermark of {name} ({vendor}) was damaged: only {n}% of it survives", { name: e.generator ?? "", vendor: e.vendor ?? "", n: Math.round((e.match ?? 0) * 100) });
+    return t("The invisible mark of {name} was damaged on purpose: only {n}% of it is left.", { name: e.generator ?? "", n: Math.round((e.match ?? 0) * 100) });
   }
-  if (e.kind === "credentials_altered") return t("Content Credentials were changed after signing");
-  return t("Content Credentials were stripped from the file, fragments remain");
+  if (e.kind === "credentials_altered") return t("The digital signature in the file was changed after signing.");
+  return t("The digital signature was cut out of the file, but pieces of it are left.");
 }
 
 const SYNTHID_URL = "https://synthid.com";
@@ -48,17 +69,17 @@ function TraceLine({ trace }: { trace: AiTrace }) {
           {trace.generator && <> · {t("tool: {name}", { name: trace.generator })}</>}
           {trace.signed_by && <> · {t("signed by {name}", { name: trace.signed_by })}</>}
         </div>
-        <div className={`font-mono text-[11px] ${note.tone}`}>{note.text}</div>
+        <div className={`text-xs ${note.tone}`}>{note.text}</div>
       </>
     );
   }
   if (trace.kind === "watermark" && trace.damaged) {
-    return <div className="text-sm text-ink-100">{t("Traces of the {name} watermark ({vendor})", { name: trace.generator ?? "", vendor: trace.signed_by ?? "" })}</div>;
+    return <div className="text-sm text-ink-100">{t("Traces of the invisible mark of {name} were found, but the mark is damaged.", { name: trace.generator ?? "" })}</div>;
   }
   if (trace.kind === "watermark") {
     return (
       <div className="text-sm text-ink-100">
-        {t("Hidden watermark of {name} ({vendor}), {n}% of bits match", { name: trace.generator ?? "", vendor: trace.signed_by ?? "", n: Math.round((trace.match ?? 0) * 100) })}
+        {t("The picture carries the invisible mark of {name}. The AI generator puts it there itself; phones and cameras do not.", { name: trace.generator ?? "" })}
       </div>
     );
   }
@@ -66,7 +87,11 @@ function TraceLine({ trace }: { trace: AiTrace }) {
     return <div className="text-sm text-ink-100">{t("IPTC metadata declares the image {action}", { action })}</div>;
   }
   if (trace.kind === "software_tag") {
-    return <div className="text-sm text-ink-100">{t("The file names its generator: {name}", { name: trace.generator ?? "" })}</div>;
+    const value = trace.raw_value || trace.generator || "";
+    return <div className="text-sm text-ink-100">{t("The \"{field}\" field of the file says: \"{value}\"", { field: fieldLabel(trace.field), value })}</div>;
+  }
+  if (trace.text) {
+    return <div className="text-sm text-ink-100">{t("The file still holds the request sent to the AI generator: \"{text}\"", { text: trace.text })}</div>;
   }
   return <div className="text-sm text-ink-100">{t("Generation settings left in the file (prompt, sampler, steps)")}</div>;
 }
@@ -82,7 +107,7 @@ export default function AiTracePanel({ submission }: { submission: Submission })
   return (
     <div className="px-6 py-5 border-b border-ink-700">
       <div className="flex items-baseline justify-between gap-4 mb-2">
-        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("AI traces")}</div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-500">{t("AI marks in the file")}</div>
         {proof && <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-signal-blood">{t("proof of origin")}</div>}
       </div>
       {evasion.length > 0 && (
@@ -106,12 +131,14 @@ export default function AiTracePanel({ submission }: { submission: Submission })
           ))}
         </div>
       )}
-      <p className="text-xs text-ink-500 mt-3">
-        {t("Google SynthID, also used by OpenAI, can only be read by Google. Check this file yourself:")}{" "}
-        <a href={SYNTHID_URL} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 text-ink-200 hover:text-signal-amber">
-          synthid.com <ExternalLink size={11} />
-        </a>
-      </p>
+      {!IS_CLASSROOM_APP && !submission.in_class && (
+        <p className="text-xs text-ink-500 mt-3">
+          {t("Google SynthID, also used by OpenAI, can only be read by Google. Check this file yourself:")}{" "}
+          <a href={SYNTHID_URL} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 text-ink-200 hover:text-signal-amber">
+            synthid.com <ExternalLink size={11} />
+          </a>
+        </p>
+      )}
     </div>
   );
 }

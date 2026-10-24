@@ -109,3 +109,50 @@ class TestMetadataAnalyzer:
         self.analyzer._check_gps_plausibility = lambda metadata: {"suspicious": True, "details": "impossible coordinates"}
         result = self.analyzer.analyze(str(path), {"format": "JPEG", "width": 100, "height": 100, "exif": exif})
         assert result.verdict == "suspicious"
+
+
+LIGHTROOM_XMP = (
+    '<x:xmpmeta><rdf:RDF><rdf:Description xmp:CreatorTool="Adobe Photoshop Lightroom Classic 13.0" '
+    'aux:ImageNumber="4521" aux:SerialNumber="3021455"/></rdf:RDF></x:xmpmeta>'
+)
+
+
+class TestToolSignatureEvidence:
+    def setup_method(self):
+        self.analyzer = MetadataAnalyzer()
+
+    def _analyze(self, tmp_path, **metadata):
+        path = tmp_path / "photo.png"
+        Image.new("RGB", (64, 64)).save(str(path), format="PNG")
+        return self.analyzer.analyze(str(path), {"format": "PNG", "width": 64, "height": 64, **metadata})
+
+    def test_lightroom_image_number_is_not_imagen(self, tmp_path):
+        result = self._analyze(tmp_path, xmp=LIGHTROOM_XMP)
+        assert result.evidence["ai_tool"]["detected"] is False
+        assert result.verdict != "fake"
+
+    def test_spanish_description_is_not_a_generator(self, tmp_path):
+        xmp = '<rdf:Description><dc:description><rdf:Alt><rdf:li>Una imagen de la playa al atardecer</rdf:li></rdf:Alt></dc:description></rdf:Description>'
+        assert self._analyze(tmp_path, xmp=xmp).evidence["ai_tool"]["detected"] is False
+
+    def test_xmp_packet_copied_into_png_text_is_skipped(self, tmp_path):
+        result = self._analyze(tmp_path, png_text={"XML:com.adobe.xmp": LIGHTROOM_XMP})
+        assert result.evidence["ai_tool"]["detected"] is False
+
+    def test_creator_tool_names_the_generator_with_evidence(self, tmp_path):
+        result = self._analyze(tmp_path, xmp='<rdf:Description xmp:CreatorTool="Midjourney v6.1"/>')
+        tool = result.evidence["ai_tool"]
+        assert tool == {"detected": True, "tool": "midjourney", "field": "xmp:CreatorTool", "raw_value": "Midjourney v6.1"}
+        trace = next(t for t in result.evidence["ai_trace"] if t["kind"] == "software_tag")
+        assert trace["raw_value"] == "Midjourney v6.1" and trace["field"] == "xmp:CreatorTool"
+
+    def test_word_inside_another_word_is_not_a_match(self, tmp_path):
+        result = self._analyze(tmp_path, exif={"Software": "Fluxion Photo Lab"})
+        assert result.evidence["ai_tool"]["detected"] is False
+
+    def test_generation_settings_keep_the_prompt(self, tmp_path):
+        params = "a red fox in the snow, highly detailed\nNegative prompt: blurry\nSteps: 30, Sampler: Euler a, CFG scale: 7"
+        result = self._analyze(tmp_path, png_text={"parameters": params})
+        assert result.evidence["generation_params"]["text"] == "a red fox in the snow, highly detailed"
+        trace = next(t for t in result.evidence["ai_trace"] if t["kind"] == "generation_params")
+        assert trace["text"] == "a red fox in the snow, highly detailed"

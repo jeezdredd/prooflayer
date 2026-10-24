@@ -12,6 +12,7 @@ from classroom.models import Classroom, Membership
 from content.admin import mark_sensitive, unmark_sensitive
 from content.models import Submission
 from content.sensitivity import parse_flag
+from content.services import find_similar_submissions
 from users.tests.factories import UserFactory
 
 from .factories import SubmissionFactory
@@ -158,40 +159,46 @@ class TestStatusView:
 @pytest.mark.django_db
 class TestSimilarSubmissions:
     def setup_method(self):
-        self.sensitive = SubmissionFactory(
-            status=Submission.Status.COMPLETED, phash=PHASH, is_sensitive=True, original_filename="nsfw.jpg",
-        )
-        self.safe = SubmissionFactory(status=Submission.Status.COMPLETED, phash=PHASH, original_filename="ok.jpg")
+        self.sensitive = _public(True, phash=PHASH, original_filename="nsfw.jpg")
+        self.safe = _public(False, phash=PHASH, original_filename="ok.jpg")
+        self.private = SubmissionFactory(status=Submission.Status.COMPLETED, phash=PHASH, original_filename="diary.jpg")
 
-    def _similar(self, viewer):
+    def _similar(self, viewer, include_sensitive):
         own = SubmissionFactory(user=viewer, status=Submission.Status.COMPLETED, phash=PHASH)
-        response = _client(viewer).get(reverse("submission-detail", kwargs={"id": own.id}))
-        assert response.status_code == 200
-        return {item["id"]: item for item in response.data["similar_submissions"]}
+        return {item["id"]: item for item in find_similar_submissions(own, include_sensitive=include_sensitive)}
 
-    def test_minor_does_not_see_sensitive_match(self):
-        similar = self._similar(_minor())
+    def test_sensitive_match_dropped_when_asked(self):
+        similar = self._similar(_minor(), include_sensitive=False)
         assert str(self.safe.id) in similar
         assert str(self.sensitive.id) not in similar
         assert similar[str(self.safe.id)]["is_sensitive"] is False
 
-    def test_adult_sees_sensitive_match_flagged(self):
-        similar = self._similar(_adult())
+    def test_sensitive_match_flagged_when_kept(self):
+        similar = self._similar(_adult(), include_sensitive=True)
         assert similar[str(self.sensitive.id)]["is_sensitive"] is True
 
-    def test_compare_hides_sensitive_match_from_minor(self):
-        minor = _minor()
-        sub = get_or_create_subscription(minor)
+    def test_private_work_of_another_user_is_never_a_candidate(self):
+        similar = self._similar(_adult(), include_sensitive=True)
+        assert str(self.private.id) not in similar
+        assert all("filename" not in item for item in similar.values())
+
+    def test_own_earlier_work_is_a_candidate(self):
+        owner = _adult()
+        earlier = SubmissionFactory(user=owner, status=Submission.Status.COMPLETED, phash=PHASH)
+        assert str(earlier.id) in self._similar(owner, include_sensitive=True)
+
+    def test_detail_and_compare_no_longer_list_other_files(self):
+        owner = _adult()
+        sub = get_or_create_subscription(owner)
         sub.tier = Subscription.Tier.PRO
         sub.save(update_fields=["tier"])
-        first = SubmissionFactory(user=minor, status=Submission.Status.COMPLETED, phash=PHASH)
-        second = SubmissionFactory(user=minor, status=Submission.Status.COMPLETED, phash=PHASH)
-        response = _client(minor).get(reverse("submission-compare"), {"ids": f"{first.id},{second.id}"})
+        first = SubmissionFactory(user=owner, status=Submission.Status.COMPLETED, phash=PHASH)
+        second = SubmissionFactory(user=owner, status=Submission.Status.COMPLETED, phash=PHASH)
+        detail = _client(owner).get(reverse("submission-detail", kwargs={"id": first.id}))
+        assert "similar_submissions" not in detail.data
+        response = _client(owner).get(reverse("submission-compare"), {"ids": f"{first.id},{second.id}"})
         assert response.status_code == 200
-        for item in response.data:
-            ids = {match["id"] for match in item["similar_submissions"]}
-            assert str(self.sensitive.id) not in ids
-            assert str(self.safe.id) in ids
+        assert "ok.jpg" not in response.content.decode()
 
 
 @pytest.mark.django_db

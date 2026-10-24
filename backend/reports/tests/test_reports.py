@@ -1,16 +1,124 @@
 import pytest
 
 from analyzers.tests.factories import AnalysisResultFactory, AnalyzerConfigFactory
-from content.pdf import build_report_context
+from classroom.models import Classroom, Membership
+from content.pdf import _originality, build_report_context
 from content.tests.factories import SubmissionFactory
 from factcheck.pdf import build_factcheck_context
-from reports.copy import kind_name, tone_set
-from reports.render import HTML, render_pdf
+from reports.copy import field_name, kind_name, tone_set
+from reports.render import HTML, render_html, render_pdf
 from users.tests.factories import UserFactory
 
 
-def _vote(submission, name, verdict, confidence):
-    AnalysisResultFactory(submission=submission, analyzer=AnalyzerConfigFactory(name=name), verdict=verdict, confidence=confidence)
+def _vote(submission, name, verdict, confidence, evidence=None):
+    AnalysisResultFactory(
+        submission=submission, analyzer=AnalyzerConfigFactory(name=name), verdict=verdict, confidence=confidence,
+        evidence=evidence or {},
+    )
+
+
+def _class_work(verdict="needs_review", mime="text/plain"):
+    teacher = UserFactory(language="ru", first_name="Анна", last_name="Петрова")
+    classroom = Classroom.create_for(teacher, "9Б")
+    student = UserFactory(language="ru", first_name="Ольга", last_name="Смирнова")
+    Membership.objects.create(classroom=classroom, user=student)
+    work = SubmissionFactory(
+        user=student, classroom=classroom, final_verdict=verdict, final_score=0.6, mime_type=mime, status="completed",
+    )
+    return teacher, student, work
+
+
+@pytest.mark.django_db
+class TestClassReport:
+    def _text_votes(self, work):
+        _vote(work, "text_classifier", "suspicious", 0.7, {"ai_probability": 0.71})
+        _vote(work, "text_evasion", "authentic", 0.9)
+        _vote(work, "text_shadow", "inconclusive", 0.0, {"reason": "no shadow set"})
+
+    def test_teacher_report_speaks_like_the_result_page(self):
+        teacher, _student, work = _class_work()
+        self._text_votes(work)
+        context = build_report_context(work, teacher)
+        assert context["badge"] == "Итог"
+        assert context["headline"] == "Стоит присмотреться"
+        assert context["meaning"].startswith("На что обратить внимание: похоже на текст чат-бота")
+        assert context["next_step"].startswith("Что делать:")
+        assert [c["title"] for c in context["checks"]] == ["Текст от ИИ", "Скрытые уловки", "ИИ-ответы на задание"]
+        assert context["members"] == []
+        assert context["details"][0] == [("Ученик", "Ольга Смирнова"), ("Класс", "9Б"), ("Сдана", context["details"][0][2][1])]
+        assert context["details"][1][2] == ("Размер", "1,0 КБ")
+        assert "score_pct" not in context
+
+    def test_student_report_uses_student_wording(self):
+        _teacher, student, work = _class_work()
+        self._text_votes(work)
+        context = build_report_context(work, student)
+        assert context["headline"] == "Учитель может задать вопросы по этой работе"
+        assert context["next_step"] == ""
+        assert "ИИ-ответы на задание" not in [c["title"] for c in context["checks"]]
+
+    def test_class_link_points_to_classroom(self, settings):
+        settings.CLASSROOM_URL = "https://classroom.example"
+        teacher, _student, work = _class_work()
+        assert build_report_context(work, teacher)["result_url"] == f"https://classroom.example/results/{work.id}"
+
+    def test_watermark_proof_is_named_instead_of_detector_agreement(self):
+        teacher, _student, work = _class_work(verdict="fake", mime="image/png")
+        _vote(work, "metadata", "fake", 0.98, {
+            "provenance_proof": True,
+            "ai_trace": [{"kind": "watermark", "ai": "generated", "generator": "FLUX.1", "signed_by": "Black Forest Labs", "match": 1.0, "damaged": False}],
+        })
+        _vote(work, "community_forensics", "authentic", 0.8)
+        context = build_report_context(work, teacher)
+        assert context["meaning"].startswith("Создано нейросетью: в файле есть её невидимая метка (FLUX.1)")
+        assert context["note"] == "Метку ставит сама нейросеть. Что делать с работой, решает учитель."
+        assert context["detector_line"] == ""
+        assert context["next_step"].startswith("Что делать: обсудите с учеником")
+        assert context["show_traces"] is True
+        assert "FLUX.1" in context["traces"][0]
+
+    def test_single_detector_is_not_called_agreement(self):
+        user = UserFactory(language="ru")
+        work = SubmissionFactory(user=user, final_verdict="fake", final_score=0.8, mime_type="image/jpeg")
+        _vote(work, "custom_detector", "fake", 0.9)
+        _vote(work, "community_forensics", "inconclusive", 0.5)
+        context = build_report_context(work, user)
+        assert "независимые детекторы" not in context["meaning"]
+        assert context["meaning"].startswith("Один детектор уверен")
+        assert context["detector_line"] == "Детекторы нейросетей: за нейросеть 1 из 2."
+
+    def test_software_trace_shows_the_field_and_value(self):
+        teacher, _student, work = _class_work(verdict="fake", mime="image/png")
+        _vote(work, "metadata", "fake", 0.9, {
+            "ai_trace": [{"kind": "software_tag", "ai": "generated", "generator": "midjourney", "field": "xmp:CreatorTool", "raw_value": "Midjourney v6"}],
+        })
+        assert build_report_context(work, teacher)["traces"] == ["В поле «Программа» файла записано: «Midjourney v6»."]
+
+    def test_template_renders_without_scores(self):
+        teacher, _student, work = _class_work()
+        self._text_votes(work)
+        html = render_html("content/report.html", build_report_context(work, teacher))
+        assert "Стоит присмотреться" in html
+        assert "вероятность ИИ" not in html
+
+
+def test_hidden_internal_source_is_named_in_the_report_language():
+    payload = {
+        "status": "done", "originality": 70, "matched_chars": 30, "total_chars": 100, "web_searched": False,
+        "matches": [
+            {"source": "internal", "title": "Another ProofLayer submission", "share": 20},
+            {"source": "internal", "title": None, "hidden": True, "share": 5},
+            {"source": "internal", "submission_id": "x", "author": "Полина Новикова", "classroom": "9Б", "title": "essay.docx", "share": 5},
+        ],
+    }
+    titles = [s["title"] for s in _originality(payload, "ru")["sources"]]
+    assert titles == ["Работа, сданная раньше в ProofLayer", "Работа, сданная раньше в ProofLayer", "Работа: Полина Новикова, 9Б"]
+
+
+def test_field_names_are_plain():
+    assert field_name("png_text.parameters", "ru") == "Настройки генерации"
+    assert field_name("Software", "ru") == "Программа"
+    assert field_name("photoshop:Credit", "en") == "Credit line"
 
 
 @pytest.mark.django_db
@@ -24,14 +132,16 @@ class TestSubmissionReport:
         _vote(submission, "metadata", "error", 0.0)
         context = build_report_context(submission, user)
         assert context["lang"] == "ru"
-        assert context["headline"] == "Вероятно создано ИИ"
-        assert context["score_pct"] == 87
+        assert context["headline"] == "Вероятно, создано нейросетью"
+        assert "score_pct" not in context
         names = [m["name"] for m in context["members"]]
-        assert names == ["Детектор ProofLayer", "Анализ уровня ошибок (ELA)", "Визуальная модель"]
-        assert context["members"][-1]["pct"] is None
+        assert names == ["Детектор ProofLayer", "Проверка монтажа", "Модель, которая смотрит на картинку"]
+        assert [m["vote"] for m in context["members"]] == ["за нейросеть", "за фото", "не уверен"]
+        assert all("pct" not in m for m in context["members"])
         assert context["result_url"].endswith(f"/results/{submission.id}")
         flat = [cell[0] for row in context["details"] for cell in row]
-        assert "Статус" not in flat and "MIME" not in " ".join(flat)
+        assert "Статус" not in flat and "MIME" not in " ".join(flat) and "SHA-256" not in flat
+        assert context["technical"].startswith("SHA-256")
 
     def test_passages_pick_the_most_machine_like_segments(self):
         submission = SubmissionFactory(final_verdict="needs_review", final_score=0.6, mime_type="text/plain")
@@ -55,7 +165,7 @@ class TestSubmissionReport:
         context = build_report_context(submission, None)
         assert context["lang"] == "en"
         assert context["headline"] == "Inconclusive"
-        assert context["score_pct"] == 0
+        assert "score_pct" not in context
 
 
 def test_factcheck_context_localizes_and_collects_sources():
