@@ -2,6 +2,15 @@
 
 Newest at top.
 
+## [2026-10-24] demo-t5 | Demo shows what the accounts doc says; seed_demo keeps passwords, redates and verifies (Tribunal 1.10.1)
+
+- Source: audit theme t5-demo (findings 63, 88-102), owner decisions, local seed simulation with the real analyzers (t7, e5-small, image detectors), Wikipedia lookup for Polina's paste
+- Product: `text_classifier` 1.4.0 returns `inconclusive` for p >= 0.5 below the fpr1 line, so the chatbot chip only appears above the 1-in-100 line; DOCX hidden runs (`evasion.hidden_docx_texts` / `strip_hidden`) are left out of originality; the headline names the main source when originality < 60 (`top_source` on class rows for supervisors only, PDF report too); class batches take a per-file student map (`students` JSON, SubmitPage asks "Чья работа в каждом файле?")
+- seed_demo: passwords = base64url(HMAC-SHA256(DEMO_PASSWORD_SECRET or SECRET_KEY, email))[:12], `--rotate-passwords` for random ones; `--redate` shifts demo works, reports, overrides, batches, AI answers and objections (due dates recomputed) so the newest work is a day old; `--verify` waits for reports and prints a table against the per-work `expect` blocks, exit 1 on a mismatch; objections dated before their work are refused, answered ones are filed a day after the work and answered a day later
+- Demo data: honest baselines of Dmitry, Maria, Ivan, Kirill and Anna's PDF rewritten (t7 p 0.07-0.28, passage spread under 0.5); batches "· ответы с листков" hold an honest, an AI and a copied answer; Lev's Onegin essay trips the age check; Timofey's hidden instruction is English; Polina hands in a CC0 DiffusionDB drawing with a damaged SD 1.x watermark; Anna adds a CC0 camera photo of the Peter and Paul Fortress; Jordan's essay ends on a full sentence; Anna's objection to a match that no longer exists removed
+- Checks: `classroom/tests/test_demo_data.py` (evasion, genre, age, style, shingle copies, t7 bands when the model is present); local simulation: 82 of 83 works match their expect block, the last one (Polina's Wikipedia paste) matches when Wikipedia search is on (19.7% original)
+- Pages updated: [[services/classroom]], [[hot]]
+
 ## [2026-10-24] teacher-ui-audit | Result page, text checks and originality speak plainly (Tribunal 1.10.0)
 
 - Source: owner review of the demo as a non-technical teacher ("20 класс", false rare words, copy sources not visible), 104 confirmed audit findings in four themes (result page, text checks, originality, class pages), demo seed-order simulation with the real e5-small model

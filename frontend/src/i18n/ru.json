@@ -153,7 +153,6 @@
     "uploaded by {name}": "загрузил(а) {name}",
     "Check work by {name}": "Проверить работу: {name}",
     "{name} is being checked": "{name} отправлен на проверку",
-    "Upload any work yourself: a scanned page, an email attachment, an essay from another platform. Pick the student so it joins their history and the style comparison with their earlier work.": "Загрузите любую работу сами: скан страницы, вложение из письма, сочинение с другой платформы. Выберите ученика, чтобы работа попала в его историю и в сравнение стиля с прежними работами.",
     "Whose work is this?": "Чья это работа?",
     "No student, just check it": "Без ученика, просто проверить",
     "{name} will see this work and its verdict, like anything they hand in.": "{name} увидит эту работу и вердикт, как и всё, что сдаёт сам(а).",
@@ -1976,7 +1975,12 @@
     "{found} of {total} sources found, the rest are not in open catalogues": "Найдено источников: {found} из {total}, остальных нет в открытых каталогах",
     "Quotes with references are fine.": "Цитаты со ссылками допустимы.",
     "Less than 1% of the text matches other sources": "С другими источниками совпадает меньше 1% текста",
-    "Less than 1% of the text matches the sources below.": "С источниками ниже совпадает меньше 1% текста."
+    "Less than 1% of the text matches the sources below.": "С источниками ниже совпадает меньше 1% текста.",
+    "Whose work is each file?": "Чья работа в каждом файле?",
+    "Files named after a student are matched to them. Check the list before sending.": "Файлы, названные по имени или фамилии ученика, мы подобрали сами. Проверьте список перед отправкой.",
+    "Files inside the archive go to the student chosen above.": "Файлы из архива получит ученик, выбранный выше.",
+    "Most of the text was found in one source: {source}": "Большая часть текста найдена в источнике: {source}",
+    "Most of the text was found in other sources, the main one: {source}": "Большая часть текста найдена в других источниках, главный из них: {source}"
   },
   "plural": {
     "All {n} sources exist": [
@@ -2128,6 +2132,11 @@
       "В {n} слове буквы заменены похожими из другого алфавита, например:",
       "В {n} словах буквы заменены похожими из другого алфавита, например:",
       "В {n} словах буквы заменены похожими из другого алфавита, например:"
+    ],
+    "Check {n} files": [
+      "Проверить {n} файл",
+      "Проверить {n} файла",
+      "Проверить {n} файлов"
     ]
   },
   "patterns": {

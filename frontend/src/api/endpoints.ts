@@ -231,12 +231,13 @@ export const apiKeys = {
 };
 
 export const batches = {
-  create: (files: File[], name = "", classroom?: string | null, student?: number | null) => {
+  create: (files: File[], name = "", classroom?: string | null, student?: number | null, students?: Record<string, number | null>) => {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
     if (name) form.append("name", name);
     if (classroom) form.append("classroom", classroom);
     if (student) form.append("student", String(student));
+    if (students && Object.keys(students).length > 0) form.append("students", JSON.stringify(students));
     return client.post<BatchDetail>("/content/batches/", form, { headers: { "Content-Type": "multipart/form-data" } });
   },
   detail: (id: string) => client.get<BatchDetail>(`/content/batches/${id}/`),

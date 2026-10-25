@@ -1,12 +1,14 @@
 from rest_framework import serializers
 
 from common.names import display_name
+from plagiarism.serializers import main_source
 
 from .access import can_supervise
 from .attention import FLAGGED, TEXT_FLAGS, is_cleared
 from .models import Classroom, Membership, OrgMember, ShadowSet
 from .shadow import MAX_TARGET
 
+MAIN_SOURCE_BELOW = 60
 FLAG_ORDER = [
     "ai_text", "ai_trace", "trace_hidden", "ai_image", "ai_media", "hidden_text",
     "tricks", "shadow", "copy", "sources", "age", "style",
@@ -76,10 +78,12 @@ def is_unattributed(submission, context: dict) -> bool:
     return submission.user_id not in members and submission.user_id in supervisors
 
 
-def class_context(classroom) -> dict:
+def class_context(classroom, viewer=None) -> dict:
+    supervisors = supervisor_ids(classroom)
     return {
         "members": set(Membership.objects.filter(classroom=classroom).values_list("user_id", flat=True)),
-        "supervisors": supervisor_ids(classroom),
+        "supervisors": supervisors,
+        "supervising": viewer is not None and getattr(viewer, "id", None) in supervisors,
     }
 
 
@@ -159,6 +163,7 @@ class ClassSubmissionSerializer(serializers.Serializer):
     unattributed = serializers.SerializerMethodField()
     words = serializers.SerializerMethodField()
     originality = serializers.SerializerMethodField()
+    top_source = serializers.SerializerMethodField()
     flags = serializers.SerializerMethodField()
     note = serializers.SerializerMethodField()
     objection = serializers.SerializerMethodField()
@@ -182,6 +187,14 @@ class ClassSubmissionSerializer(serializers.Serializer):
     def get_originality(self, obj):
         report = getattr(obj, "plagiarism_report", None)
         return report.originality if report is not None and report.status == "done" else None
+
+    def get_top_source(self, obj):
+        if not self.context.get("supervising"):
+            return None
+        report = getattr(obj, "plagiarism_report", None)
+        if report is None or report.status != "done" or report.originality is None or report.originality >= MAIN_SOURCE_BELOW:
+            return None
+        return main_source(report, obj.classroom_id)
 
     def get_words(self, obj):
         return ((obj.metadata or {}).get("document") or {}).get("words")

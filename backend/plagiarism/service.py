@@ -6,9 +6,10 @@ from django.conf import settings
 from django.db import transaction
 from pgvector.django import CosineDistance
 
+from analyzers.text.evasion import hidden_docx_texts, strip_hidden
 from analyzers.text.language import CYRILLIC_RE, LATIN_RE, detect_language
 from classroom.models import ShadowSet
-from common.documents import read_text
+from common.documents import DOCX_MIME, read_text
 from content.storage_utils import local_file
 
 from .embeddings import EmbeddingsUnavailable, embed
@@ -318,4 +319,7 @@ def run_check(submission) -> PlagiarismReport:
 
 def _read(submission) -> str:
     with local_file(submission.file) as path:
-        return read_text(path, submission.mime_type, TEXT_LIMIT)
+        text = read_text(path, submission.mime_type, TEXT_LIMIT)
+        if submission.mime_type == DOCX_MIME:
+            text = strip_hidden(text, hidden_docx_texts(path))
+        return text

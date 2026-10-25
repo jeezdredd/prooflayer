@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { ClassObjection, ClassSubmission } from "../types";
 import { locale, msg, t, tn } from "../i18n";
 import { VERDICT_DISCLAIMER } from "../legal";
-import { STATUS_TEXT, plainOutcome, type CheckStatus } from "../components/TeacherSummary";
+import { STATUS_TEXT, plainOutcome, topSourceName, type CheckStatus } from "../components/TeacherSummary";
 
 export type Viewer = "teacher" | "student";
 
@@ -50,11 +50,11 @@ export function rowOutcome(s: ClassSubmission, viewer: Viewer): { text: string; 
   if (s.cleared) {
     return { text: student ? t("Your teacher accepted your objection") : t("Teacher cleared the work after the objection"), status: "ok" };
   }
-  const base = plainOutcome(s.final_verdict, s.originality, s.note, student);
+  const base = plainOutcome(s.final_verdict, s.originality, s.note, student, topSourceName(s.top_source));
   if (s.flags.length > 0 && (base.status === "ok" || base.status === "wait")) {
     return { text: student ? t("Your teacher may ask you about this work") : t("Worth a look: see what the checks found"), status: "look" };
   }
-  return { text: t(base.text), status: base.status };
+  return { text: t(base.text, base.params), status: base.status };
 }
 
 export function objectionLine(o: ClassObjection, viewer: Viewer): { text: string; tone: string } {

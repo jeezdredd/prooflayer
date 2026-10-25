@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 
 from django.db.models import Q
 from django.http import HttpResponse
@@ -31,6 +32,18 @@ CSV_COLUMNS = (
     "submission_id", "original_filename", "status", "final_verdict", "final_score",
     "tribunal_version", "mime_type", "sha256", "created_at",
 )
+
+
+def file_students(raw) -> dict[str, str] | None:
+    if raw in (None, ""):
+        return {}
+    try:
+        value = json.loads(raw) if isinstance(raw, str) else raw
+    except ValueError:
+        return None
+    if not isinstance(value, dict):
+        return None
+    return {str(name): "" if student is None else str(student) for name, student in value.items()}
 
 
 class BatchItemSerializer(serializers.Serializer):
@@ -66,7 +79,9 @@ class BatchSerializer(serializers.ModelSerializer):
 
     def get_items(self, obj):
         if obj.classroom_id:
-            return ClassSubmissionSerializer(self._subs(obj), many=True, context=class_context(obj.classroom)).data
+            request = self.context.get("request")
+            viewer = request.user if request is not None else None
+            return ClassSubmissionSerializer(self._subs(obj), many=True, context=class_context(obj.classroom, viewer)).data
         return BatchItemSerializer(self._subs(obj), many=True).data
 
     def get_classroom(self, obj):
@@ -136,10 +151,14 @@ class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.Retrie
                 {"files": ["None of the files are a supported type."], "skipped": intake.skipped},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        assigned = file_students(request.data.get("students"))
+        if assigned is None:
+            return Response({"students": ["Expected file names mapped to student ids."]}, status=status.HTTP_400_BAD_REQUEST)
         classroom = classroom_for_upload(request.user, request.data.get("classroom"))
         if classroom is None:
             deny_student_only(request.user)
         author, uploaded_by = upload_author(request.user, classroom, request.data.get("student"))
+        authors = {student: upload_author(request.user, classroom, student) for student in set(assigned.values())}
         try:
             check_quota(quota_owner(request.user, classroom), requested=len(intake.accepted))
         except QuotaExceeded as exc:
@@ -153,9 +172,9 @@ class BatchViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.Retrie
         )
         api_key = request.auth if isinstance(request.auth, ApiKey) else None
         for upload, mime_type in intake.accepted:
-            create_submission(
-                author, upload, mime_type, batch=batch, api_key=api_key, classroom=classroom, uploaded_by=uploaded_by,
-            )
+            student = assigned.get(upload.name)
+            owner, by = authors[student] if student is not None else (author, uploaded_by)
+            create_submission(owner, upload, mime_type, batch=batch, api_key=api_key, classroom=classroom, uploaded_by=by)
         return Response(BatchSerializer(batch, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"], url_path="export.csv")

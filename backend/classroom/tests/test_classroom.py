@@ -1,4 +1,5 @@
 import io
+import json
 from unittest.mock import patch
 
 import docx
@@ -34,10 +35,10 @@ def _teacher():
     return user
 
 
-def _jpeg():
+def _jpeg(name="work.jpg"):
     buf = io.BytesIO()
     Image.new("RGB", (16, 16), (9, 9, 9)).save(buf, format="JPEG")
-    return SimpleUploadedFile("work.jpg", buf.getvalue(), content_type="image/jpeg")
+    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/jpeg")
 
 
 def _docx_bytes(text):
@@ -358,3 +359,57 @@ class TestTeacherUploadsForStudent:
         subs = Submission.objects.filter(batch_id=response.data["id"])
         assert subs.count() == 2
         assert set(subs.values_list("user_id", "uploaded_by_id")) == {(student.id, teacher.id)}
+
+    def test_teacher_batch_assigns_each_file_to_its_student(self, _delay):
+        teacher, classroom, student = _class_with_student()
+        classmate = UserFactory(is_verified=True)
+        Membership.objects.create(classroom=classroom, user=classmate)
+        students = {"anna.jpg": student.id, "maria.jpg": classmate.id, "sheet.jpg": None}
+        response = _client(teacher).post(
+            reverse("batch-list"),
+            {
+                "files": [_jpeg("anna.jpg"), _jpeg("maria.jpg"), _jpeg("sheet.jpg"), _jpeg("other.jpg")],
+                "classroom": str(classroom.id),
+                "student": str(student.id),
+                "students": json.dumps(students),
+            },
+            format="multipart",
+        )
+        assert response.status_code == 201
+        owners = dict(Submission.objects.filter(batch_id=response.data["id"]).values_list("original_filename", "user_id"))
+        assert owners == {"anna.jpg": student.id, "maria.jpg": classmate.id, "sheet.jpg": teacher.id, "other.jpg": student.id}
+        uploaded = dict(Submission.objects.filter(batch_id=response.data["id"]).values_list("original_filename", "uploaded_by_id"))
+        assert uploaded == {"anna.jpg": teacher.id, "maria.jpg": teacher.id, "sheet.jpg": None, "other.jpg": teacher.id}
+
+    def test_batch_file_cannot_go_to_an_outsider(self, _delay):
+        teacher, classroom, _ = _class_with_student()
+        outsider = UserFactory(is_verified=True)
+        response = _client(teacher).post(
+            reverse("batch-list"),
+            {"files": [_jpeg("a.jpg"), _jpeg("b.jpg")], "classroom": str(classroom.id), "students": json.dumps({"a.jpg": outsider.id})},
+            format="multipart",
+        )
+        assert response.status_code == 400
+        assert not Submission.objects.filter(user=outsider).exists()
+
+    def test_student_cannot_assign_batch_files_to_classmates(self, _delay):
+        _, classroom, student = _class_with_student()
+        classmate = UserFactory(is_verified=True)
+        Membership.objects.create(classroom=classroom, user=classmate)
+        response = _client(student).post(
+            reverse("batch-list"),
+            {"files": [_jpeg("a.jpg"), _jpeg("b.jpg")], "classroom": str(classroom.id), "students": json.dumps({"a.jpg": classmate.id})},
+            format="multipart",
+        )
+        assert response.status_code == 403
+        assert not Submission.objects.filter(user=classmate).exists()
+
+    def test_malformed_file_students_is_rejected(self, _delay):
+        teacher, classroom, _ = _class_with_student()
+        response = _client(teacher).post(
+            reverse("batch-list"),
+            {"files": [_jpeg("a.jpg"), _jpeg("b.jpg")], "classroom": str(classroom.id), "students": "[1, 2]"},
+            format="multipart",
+        )
+        assert response.status_code == 400
+        assert not Submission.objects.filter(classroom=classroom).exists()

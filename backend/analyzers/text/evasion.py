@@ -252,17 +252,41 @@ def _run_text(run) -> str:
     return "".join(t.text or "" for t in run.iter(f"{W}t"))
 
 
-def scan_docx(path: str) -> list[dict]:
-    hidden = []
+def _hidden_reasons(rpr) -> list[str]:
+    reasons = []
+    vanish = rpr.find(f"{W}vanish")
+    if vanish is not None and vanish.get(f"{W}val", "true") not in ("0", "false"):
+        reasons.append("hidden")
+    color = rpr.find(f"{W}color")
+    if color is not None and (color.get(f"{W}val") or "").upper() in WHITE:
+        highlight = rpr.find(f"{W}highlight")
+        shading = rpr.find(f"{W}shd")
+        dark_background = (highlight is not None and highlight.get(f"{W}val") not in (None, "none", "white")) or (
+            shading is not None and (shading.get(f"{W}fill") or "auto").upper() not in ("AUTO", "FFFFFF")
+        )
+        if not dark_background:
+            reasons.append("white text")
+    size = rpr.find(f"{W}sz")
+    if size is not None:
+        try:
+            if int(size.get(f"{W}val", "24")) < TINY_HALF_POINTS:
+                reasons.append("tiny font")
+        except ValueError:
+            pass
+    return reasons
+
+
+def _hidden_runs(path: str) -> list[tuple[str, list[str]]]:
     try:
         with zipfile.ZipFile(path) as zf:
             if "word/document.xml" not in zf.namelist():
-                return hidden
+                return []
             if zf.getinfo("word/document.xml").file_size > 50 * 1024 * 1024:
-                return hidden
+                return []
             root = etree.fromstring(zf.read("word/document.xml"), parser=etree.XMLParser(resolve_entities=False, no_network=True))
     except (zipfile.BadZipFile, etree.XMLSyntaxError, OSError, KeyError):
-        return hidden
+        return []
+    found = []
     for run in root.iter(f"{W}r"):
         text = _run_text(run).strip()
         if not text:
@@ -270,26 +294,21 @@ def scan_docx(path: str) -> list[dict]:
         rpr = run.find(f"{W}rPr")
         if rpr is None:
             continue
-        reasons = []
-        vanish = rpr.find(f"{W}vanish")
-        if vanish is not None and vanish.get(f"{W}val", "true") not in ("0", "false"):
-            reasons.append("hidden")
-        color = rpr.find(f"{W}color")
-        if color is not None and (color.get(f"{W}val") or "").upper() in WHITE:
-            highlight = rpr.find(f"{W}highlight")
-            shading = rpr.find(f"{W}shd")
-            dark_background = (highlight is not None and highlight.get(f"{W}val") not in (None, "none", "white")) or (
-                shading is not None and (shading.get(f"{W}fill") or "auto").upper() not in ("AUTO", "FFFFFF")
-            )
-            if not dark_background:
-                reasons.append("white text")
-        size = rpr.find(f"{W}sz")
-        if size is not None:
-            try:
-                if int(size.get(f"{W}val", "24")) < TINY_HALF_POINTS:
-                    reasons.append("tiny font")
-            except ValueError:
-                pass
+        reasons = _hidden_reasons(rpr)
         if reasons:
-            hidden.append({"text": text[:200], "reasons": reasons})
-    return hidden
+            found.append((text, reasons))
+    return found
+
+
+def scan_docx(path: str) -> list[dict]:
+    return [{"text": text[:200], "reasons": reasons} for text, reasons in _hidden_runs(path)]
+
+
+def hidden_docx_texts(path: str) -> list[str]:
+    return [text for text, _ in _hidden_runs(path)]
+
+
+def strip_hidden(text: str, hidden: list[str]) -> str:
+    for run in sorted(hidden, key=len, reverse=True):
+        text = text.replace(run, "", 1)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()

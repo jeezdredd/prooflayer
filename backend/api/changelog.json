@@ -1,5 +1,18 @@
 [
   {
+    "slug": "batch-owners-main-source",
+    "date": "2026-10-24",
+    "kind": "improvement",
+    "title": {
+      "en": "Each file in a class upload goes to its own student",
+      "ru": "Каждый файл в пакете попадает к своему ученику"
+    },
+    "body": {
+      "en": "When a teacher uploads several files for a class at once, for example answers typed up from paper sheets, each file can now be given to its own student; files named after a student are matched automatically and can be changed before sending. When most of a work was found elsewhere, the headline now names the main source, such as a Wikipedia article or a classmate's work. A score that only leans towards machine writing no longer puts the chatbot label on the work: the label appears only above the line that about 1 in 100 texts written by people cross. Hidden text in a DOCX file is reported under hidden text and no longer counted as copied. Tribunal is now version 1.10.1.",
+      "ru": "Когда учитель загружает в класс сразу несколько файлов, например ответы, набранные с листков, каждый файл теперь можно отдать своему ученику; файлы, названные по имени ученика, подбираются сами, и до отправки это можно поправить. Если большая часть работы найдена в другом месте, в заголовке теперь назван главный источник, например статья Википедии или работа одноклассника. Оценка, которая только склоняется к машинному тексту, больше не ставит на работу метку «текст чат-бота»: метка появляется лишь выше линии, которую пересекает примерно 1 текст из 100, написанных людьми. Скрытый текст в файле DOCX показан в проверке на скрытый текст и больше не считается списанным. Tribunal обновлён до версии 1.10.1."
+    }
+  },
+  {
     "slug": "teacher-results-plain",
     "date": "2026-10-24",
     "kind": "improvement",
@@ -138,8 +151,8 @@
       "ru": "Учитель может сам проверить любую работу"
     },
     "body": {
-      "en": "In Classroom, a teacher can now upload any work: a scanned page, an email attachment, an essay from another platform. Pick the student it belongs to and it joins their history, so the style comparison with their earlier work keeps working; or leave it unassigned for a quick check. The class list shows who uploaded each work. Uploads count towards the class plan.",
-      "ru": "В разделе «Классы» учитель теперь может сам загрузить любую работу: скан страницы, вложение из письма, сочинение с другой платформы. Выберите ученика, и работа попадёт в его историю, а сравнение стиля с прежними работами продолжит работать. Или оставьте её без ученика для быстрой проверки. В списке класса видно, кто загрузил каждую работу. Загрузки учитываются в лимите тарифа класса."
+      "en": "In Classroom, a teacher can now upload any work: an answer typed up from a paper sheet, a PDF with text, an email attachment, an essay from another platform. Pick the student it belongs to and it joins their history, so the style comparison with their earlier work keeps working; or leave it unassigned for a quick check. The class list shows who uploaded each work. Uploads count towards the class plan.",
+      "ru": "В разделе «Классы» учитель теперь может сам загрузить любую работу: ответ, набранный с листка, PDF с текстом, вложение из письма, сочинение с другой платформы. Выберите ученика, и работа попадёт в его историю, а сравнение стиля с прежними работами продолжит работать. Или оставьте её без ученика для быстрой проверки. В списке класса видно, кто загрузил каждую работу. Загрузки учитываются в лимите тарифа класса."
     }
   },
   {

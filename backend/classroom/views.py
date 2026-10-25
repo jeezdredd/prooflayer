@@ -171,7 +171,7 @@ class ClassroomViewSet(
     def submissions(self, request, id=None):
         classroom = self.get_object()
         qs = self._class_submissions(classroom).order_by("-created_at")[:500]
-        return Response(ClassSubmissionSerializer(qs, many=True, context=class_context(classroom)).data)
+        return Response(ClassSubmissionSerializer(qs, many=True, context=class_context(classroom, request.user)).data)
 
     @action(detail=True, methods=["get"])
     def stats(self, request, id=None):

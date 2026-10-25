@@ -67,6 +67,48 @@ def _flagged_ids(client, classroom):
 
 
 @pytest.mark.django_db
+class TestMainSource:
+    def _copied(self):
+        teacher, classroom, student = _class()
+        classmate = UserFactory(is_verified=True, first_name="Мария", last_name="Петрова")
+        Membership.objects.create(classroom=classroom, user=classmate)
+        source = _done(classroom, classmate, original_filename="answer.txt")
+        work = _done(classroom, student, original_filename="copy.txt")
+        PlagiarismReport.objects.create(
+            submission=work, status=PlagiarismReport.Status.DONE, originality=20.0, total_chars=1000, matched_chars=800,
+            matches=[{"source": "internal", "kind": "exact", "submission_id": str(source.id), "matched_chars": 800, "spans": [[0, 800]]}],
+        )
+        web = _done(classroom, student, original_filename="wiki.txt")
+        PlagiarismReport.objects.create(
+            submission=web, status=PlagiarismReport.Status.DONE, originality=40.0, total_chars=1000, matched_chars=600,
+            matches=[
+                {"source": "web", "kind": "exact", "url": "https://ru.wikipedia.org/wiki/x", "title": "Наташа Ростова", "matched_chars": 400, "spans": [[0, 400]]},
+                {"source": "web", "kind": "exact", "url": "https://example.org/y", "title": "Другая страница", "matched_chars": 200, "spans": [[400, 600]]},
+            ],
+        )
+        return teacher, classroom, student, work, web
+
+    def test_teacher_sees_the_main_source_of_a_copied_work(self):
+        teacher, classroom, _student, work, web = self._copied()
+        rows = {r["id"]: r for r in _rows(_client(teacher), classroom)}
+        assert rows[str(work.id)]["top_source"] == {"source": "internal", "author": "Мария Петрова", "share": 80.0}
+        assert rows[str(web.id)]["top_source"] == {
+            "source": "web", "title": "Наташа Ростова", "url": "https://ru.wikipedia.org/wiki/x", "share": 40.0,
+        }
+
+    def test_student_never_gets_the_classmate_behind_a_match(self):
+        _teacher_user, classroom, student, work, _web = self._copied()
+        rows = {r["id"]: r for r in _rows(_client(student), classroom)}
+        assert rows[str(work.id)]["top_source"] is None
+
+    def test_original_work_has_no_main_source(self):
+        teacher, classroom, student = _class()
+        work = _done(classroom, student)
+        PlagiarismReport.objects.create(submission=work, status=PlagiarismReport.Status.DONE, originality=90.0, total_chars=100)
+        assert _rows(_client(teacher), classroom)[0]["top_source"] is None
+
+
+@pytest.mark.django_db
 class TestNames:
     def test_class_pages_show_names_not_logins(self):
         teacher, classroom, student = _class()

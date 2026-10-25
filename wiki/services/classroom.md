@@ -239,3 +239,45 @@ The owner reviewed the demo again as a teacher: logins instead of names, counter
   "из электронного журнала"; Timofey's Pechorin carries 4 stray U+030D marks (`stray_marks` 4, t7 margin 5.62 -> 5.49);
   Jordan's humanized essay has 2 words with styled letters (`styled_letter_words`, NFKC leaves the model input as is).
   Still missing: a translation case and a TTS audio answer.
+
+## Demo that matches its accounts doc (2026-10-24, Tribunal 1.10.1)
+
+Audit theme t5 (findings 63, 88-102). Product changes:
+- `text_classifier` 1.4.0: p >= 0.5 below `threshold_fpr1` is `inconclusive` ("leans towards machine text, below the flag
+  line"), so the `ai_text` chip ("текст чат-бота") only appears above the 1-in-100 line; the tile stays amber from p 0.45.
+- Originality skips DOCX hidden runs (`analyzers.text.evasion.hidden_docx_texts` + `strip_hidden` in
+  `plagiarism.service._read`); hidden text is reported only by `text_evasion`.
+- Originality < 60: the headline names the main source, "Большая часть текста найдена в источнике: {source}" when one
+  source holds at least half of the text, otherwise "... в других источниках, главный из них: {source}". Class rows carry
+  `top_source` (supervisors only; a student never sees which classmate matched), the PDF report uses the same wording.
+- Class batches: `POST /content/batches/` takes `students` (JSON file name -> student id, empty for "no student"); each id
+  goes through `upload_author`, so only a supervisor can assign and only to class members. SubmitPage shows a
+  per-file chooser and guesses the student from the file name.
+
+`seed_demo` options:
+- Passwords are `base64url(HMAC-SHA256(secret, email))[:12]`, secret = env `DEMO_PASSWORD_SECRET` or `SECRET_KEY`, so a
+  reseed keeps them; `--rotate-passwords` prints random ones once.
+- `--redate` shifts `created_at` of demo submissions, plagiarism reports, verdict overrides, batches, shadow sets and
+  objections (`due_at` recomputed in business days, `responded_at` shifted) by whole days so the newest work is about a
+  day old; nothing is re-analysed. It refuses when no demo exists.
+- `--verify` waits for every work and its originality report, prints who / work / verdict / flags / originality / radar
+  and the difference from the work's `expect` block (`verdict` list, exact `flags`, `originality` range or null, `radar`
+  marks ai / vocabulary / style / pair; `ai`, `genre`, `copied_from` are for the offline test), exits 1 on a mismatch.
+- `check_data` refuses unknown expect keys, duplicate file names per student and objections dated before their work;
+  answered objections are filed a day after the work and answered a day later.
+- `classroom/tests/test_demo_data.py` checks every expect block offline: evasion, genre, age and style history in seed
+  order, exact shingle copies against the named source and no shared run for 100%-original works, and the t7 AI band
+  when the model directory exists (`TEXT_CLASSIFIER_DIR`).
+
+Demo content now: honest baselines (Dmitry, Maria, Ivan, Kirill) and Anna's PDF rewritten in the pupils' own voice
+(t7 0.07-0.28, no uneven passages); batches "Контрольная 8А · ответы с листков" (Anna honest, Maria copied from Anna,
+Ivan AI) and "Контрольная по «Грозе» · ответы с листков" (Polina honest, Vera copied from Polina, Timofey AI); unsigned
+sheets long enough to score; Lev's Onegin essay trips the age check (mismatch 0.72, his earlier works stay narrative, so
+9Б has no style comparison and 8А shows it with Dmitry); Ivan's objection filed a day after his work (open), Kirill's
+overdue; Timofey's hidden instruction is English; Polina's drawing is a CC0 DiffusionDB picture with a damaged SD 1.x
+watermark (trace_hidden); Anna's Peter and Paul Fortress photo is a CC0 Commons original with camera EXIF (authentic).
+Sources in `classroom/demo/assets/SOURCES.md`. No C2PA case: no permissively licensed AI image with a Content Credentials
+signature that the trust list accepts was found, and public test fixtures are signed with test certificates, which the
+page would show as "not trusted". No translation case: no believable
+pair between the English university class and the Russian school classes. Local simulation: 82 of 83 works match; Polina's
+Wikipedia paste matches once web search runs (19.7% original, source "Наташа Ростова (ru.wikipedia.org)").

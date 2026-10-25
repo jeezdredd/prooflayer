@@ -59,7 +59,7 @@ def probability(score: float, knots: list[tuple[float, float]]) -> float:
 
 class TextClassifierAnalyzer(BaseAnalyzer):
     name = "text_classifier"
-    version = "1.3.0"
+    version = "1.4.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["text/plain", *DOCUMENT_MIMES]
@@ -116,7 +116,7 @@ class TextClassifierAnalyzer(BaseAnalyzer):
             evidence["finding"] = "writing pattern matches machine text more closely than 99% of human texts in calibration"
             return AnalysisOutput(confidence=confidence, verdict="suspicious", evidence=evidence)
         if ai_probability >= 0.5:
-            evidence["finding"] = "writing pattern leans towards machine text"
-            return AnalysisOutput(confidence=confidence, verdict="suspicious", evidence=evidence)
+            evidence["finding"] = "writing pattern leans towards machine text, below the flag line"
+            return AnalysisOutput(confidence=confidence, verdict="inconclusive", evidence=evidence)
         evidence["finding"] = "writing pattern in the range of human texts"
         return AnalysisOutput(confidence=confidence, verdict="authentic" if ai_probability <= 0.25 else "inconclusive", evidence=evidence)

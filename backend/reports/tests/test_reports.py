@@ -6,6 +6,7 @@ from content.pdf import _originality, build_report_context
 from content.tests.factories import SubmissionFactory
 from provenance.models import ProvenanceResult
 from factcheck.pdf import build_factcheck_context
+from plagiarism.models import PlagiarismReport
 from reports.copy import field_name, kind_name, tone_set
 from reports.render import HTML, render_html, render_pdf
 from users.tests.factories import UserFactory
@@ -57,6 +58,31 @@ class TestClassReport:
         assert context["headline"] == "Учитель может задать вопросы по этой работе"
         assert context["next_step"] == ""
         assert "ИИ-ответы на задание" not in [c["title"] for c in context["checks"]]
+
+    def _copied(self, work, matches, originality):
+        PlagiarismReport.objects.create(
+            submission=work, status=PlagiarismReport.Status.DONE, originality=originality, total_chars=1000,
+            matched_chars=sum(m["matched_chars"] for m in matches), matches=matches,
+        )
+
+    def test_headline_names_the_main_source_of_copied_work(self):
+        teacher, student, work = _class_work(verdict="inconclusive")
+        self._copied(work, [{
+            "source": "web", "kind": "exact", "url": "https://ru.wikipedia.org/wiki/x", "title": "Наташа Ростова",
+            "matched_chars": 700, "spans": [[0, 700]],
+        }], 30.0)
+        assert build_report_context(work, teacher)["headline"] == "Большая часть текста найдена в источнике: Наташа Ростова (ru.wikipedia.org)"
+        assert build_report_context(work, student)["headline"] == "Большая часть текста найдена в других источниках"
+
+    def test_headline_names_the_biggest_of_several_sources(self):
+        teacher, _student, work = _class_work(verdict="inconclusive")
+        self._copied(work, [
+            {"source": "web", "kind": "exact", "url": "https://ru.wikipedia.org/wiki/x", "title": "Наташа Ростова", "matched_chars": 400, "spans": [[0, 400]]},
+            {"source": "web", "kind": "exact", "url": "https://example.org/y", "title": "Сочинение", "matched_chars": 250, "spans": [[400, 650]]},
+        ], 35.0)
+        assert build_report_context(work, teacher)["headline"] == (
+            "Большая часть текста найдена в других источниках, главный из них: Наташа Ростова (ru.wikipedia.org)"
+        )
 
     def test_class_link_points_to_classroom(self, settings):
         settings.CLASSROOM_URL = "https://classroom.example"
