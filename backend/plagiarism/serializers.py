@@ -40,6 +40,21 @@ def _share(matched: int, report) -> float:
     return max(0.0, min(round(100 * matched / max(1, report.total_chars), 1), float(headline)))
 
 
+def main_source(report, classroom_id=None) -> dict | None:
+    if report is None or report.status != report.Status.DONE or not report.matches:
+        return None
+    top = report.matches[0]
+    share = round(100 * top.get("matched_chars", 0) / max(1, report.total_chars), 1)
+    if top.get("source") == "web":
+        return {"source": "web", "title": top.get("title", ""), "url": top.get("url", ""), "share": share}
+    author = None
+    if classroom_id is not None and top.get("submission_id"):
+        source = Submission.objects.filter(id=top["submission_id"], classroom_id=classroom_id).select_related("user").first()
+        if source is not None:
+            author = display_name(source.user)
+    return {"source": "internal", "author": author, "share": share}
+
+
 def _hidden_reason(submission, user) -> str:
     if user is None or not getattr(user, "is_authenticated", False) or submission.user_id != user.id:
         return "other_class"

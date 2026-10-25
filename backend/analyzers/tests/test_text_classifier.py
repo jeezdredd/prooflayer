@@ -223,8 +223,15 @@ class TestAnalyzer:
         assert out.verdict == "authentic"
         assert out.evidence["ai_probability"] == 0.05
 
-    def test_leaning_score_is_suspicious(self, tmp_path):
-        assert _run(tmp_path, 1.5).verdict == "suspicious"
+    def test_leaning_score_below_the_flag_line_is_not_a_flag(self, tmp_path):
+        out = _run(tmp_path, 1.5)
+        assert out.verdict == "inconclusive"
+        assert out.evidence["ai_probability"] >= 0.5
+        assert out.evidence["finding"] == "writing pattern leans towards machine text, below the flag line"
+
+    def test_flag_line_is_where_the_verdict_turns_suspicious(self, tmp_path):
+        assert _run(tmp_path, 1.99).verdict == "inconclusive"
+        assert _run(tmp_path, 2.0).verdict == "suspicious"
 
     def test_leaning_score_stays_below_the_flag_line(self, tmp_path):
         out = _run(tmp_path, 1.5)

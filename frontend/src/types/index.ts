@@ -433,6 +433,14 @@ export interface ClassObjection {
   responded_at: string | null;
 }
 
+export interface TopSource {
+  source: "web" | "internal";
+  title?: string;
+  url?: string;
+  author?: string | null;
+  share: number;
+}
+
 export interface ClassSubmission {
   id: string;
   original_filename: string;
@@ -448,6 +456,7 @@ export interface ClassSubmission {
   unattributed: boolean;
   words: number | null;
   originality: number | null;
+  top_source?: TopSource | null;
   flags: string[];
   note: string | null;
   objection: ClassObjection | null;

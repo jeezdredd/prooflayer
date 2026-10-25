@@ -1,5 +1,6 @@
 import io
 from datetime import datetime
+from urllib.parse import urlparse
 
 from django.utils import timezone
 
@@ -37,6 +38,7 @@ IMAGE_DETECTORS = (
     "community_forensics", "ai_detector", "clip_probe", "custom_detector", "npr_detector", "siglip_detector", "llm_vision",
 )
 RANK = {"off": 0, "wait": 1, "ok": 2, "look": 3, "alert": 4}
+MAIN_SOURCE_SHARE = 50
 
 
 def _members(results, lang: str, image: bool = False) -> list[dict]:
@@ -137,7 +139,25 @@ def _evidence(by_name: dict, name: str) -> dict:
     return (result.evidence or {}) if result is not None else {}
 
 
-def _plain_outcome(verdict: str, originality, too_short: bool, audience: str, c: dict) -> tuple[str, str]:
+def main_source(payload, plain: dict) -> tuple[str, bool] | None:
+    matches = (payload or {}).get("matches") or []
+    if not matches:
+        return None
+    top = matches[0]
+    most = (top.get("share") or 0) >= MAIN_SOURCE_SHARE
+    if top.get("source") == "web":
+        host = (urlparse(top.get("url") or "").hostname or "").removeprefix("www.")
+        title = top.get("title") or ""
+        name = f"{title} ({host})" if title and host else (title or host)
+        return (name, most) if name else None
+    if not top.get("hidden") and top.get("author"):
+        return plain["source_student"].format(name=top["author"]), most
+    return plain["source_other"], most
+
+
+def _plain_outcome(
+    verdict: str, originality, too_short: bool, audience: str, c: dict, source: tuple[str, bool] | None = None,
+) -> tuple[str, str]:
     plain = c["plain"]
     key = verdict if verdict in plain["teacher"] else "inconclusive"
     text = plain[audience][key]
@@ -146,6 +166,9 @@ def _plain_outcome(verdict: str, originality, too_short: bool, audience: str, c:
         text = plain["too_short"][audience]
         status = "wait"
     if originality is not None and originality < 60 and RANK[status] < RANK["alert"]:
+        if source and audience == "teacher":
+            name, most = source
+            return plain["copy_source" if most else "copy_sources_main"].format(source=name), "alert"
         return plain["copy_most"][audience], "alert"
     if originality is not None and originality < 85 and RANK[status] < RANK["look"]:
         return plain["copy_part"][audience], "look"
@@ -411,7 +434,7 @@ def build_report_context(submission, user=None) -> dict:
     if in_class:
         originality = payload.get("originality") if payload and payload.get("status") == "done" else None
         too_short = _evidence(by_name, "text_classifier").get("reason") == "text too short for a verdict"
-        headline, status = _plain_outcome(verdict, originality, too_short, audience, c)
+        headline, status = _plain_outcome(verdict, originality, too_short, audience, c, main_source(payload, c["plain"]))
         if is_image and audience == "teacher" and status == "alert":
             headline = c["proof_headline"] if proof else c["plain"]["image_alert"]
         tone = tone_set(STATUS_TONE[status])

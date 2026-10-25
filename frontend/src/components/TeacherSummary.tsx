@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { AnalysisResult, OriginalityMatch, OriginalityReport, Submission } from "../types";
+import type { AnalysisResult, OriginalityMatch, OriginalityReport, Submission, TopSource } from "../types";
 import { locale, msg, t, tn } from "../i18n";
 
 type Evidence = Record<string, unknown>;
@@ -18,6 +18,7 @@ const TEXT_ANALYZERS = ["text_classifier", "text_evasion", "text_grade_fit", "te
 const FLAGGED = new Set(["fake", "likely_fake", "suspicious"]);
 const AI_LOOK = 0.45;
 const SPREAD_ALERT = 0.5;
+const MAIN_SOURCE_SHARE = 50;
 const PROMPT_CHARS = 90;
 const SAMPLE_WORDS = 5;
 const MOSTLY_FITS_WORDS = 2;
@@ -127,20 +128,41 @@ export function isHiddenSource(match: OriginalityMatch): boolean {
   return !!match.hidden || !match.submission_id;
 }
 
-function sourceName(match: OriginalityMatch): string {
-  if (match.source === "web") {
-    if (match.url) {
-      try {
-        const host = new URL(match.url).hostname.replace(/^www\./, "");
-        return match.title ? `${match.title} (${host})` : host;
-      } catch {
-        return match.title || match.url;
-      }
+function webName(title: string | undefined, url: string | undefined): string {
+  if (url) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, "");
+      return title ? `${title} (${host})` : host;
+    } catch {
+      return title || url;
     }
-    return match.title || t("a web page");
   }
+  return title || t("a web page");
+}
+
+function sourceName(match: OriginalityMatch): string {
+  if (match.source === "web") return webName(match.title ?? undefined, match.url ?? undefined);
   if (!isHiddenSource(match) && match.author) return t("work by {name}", { name: match.author });
   return t("another student's work");
+}
+
+export interface MainSource {
+  name: string;
+  most: boolean;
+}
+
+export function topSourceName(top: TopSource | null | undefined): MainSource | null {
+  if (!top) return null;
+  const name = top.source === "web"
+    ? webName(top.title, top.url)
+    : top.author ? t("work by {name}", { name: top.author }) : t("another student's work");
+  return { name, most: top.share >= MAIN_SOURCE_SHARE };
+}
+
+function mainSource(report: OriginalityReport | null | undefined): MainSource | null {
+  if (!report || report.status !== "done" || report.matches.length === 0) return null;
+  const top = report.matches[0];
+  return { name: sourceName(top), most: top.share >= MAIN_SOURCE_SHARE };
 }
 
 function copyHeadline(report: OriginalityReport, matched: number): string {
@@ -511,9 +533,22 @@ export const PLAIN_VERDICT: Record<string, { teacher: string; student: string; s
 const RANK: Record<CheckStatus, number> = { off: 0, wait: 1, ok: 2, look: 3, alert: 4 };
 const NEXT_ORDER = ["copy", "tricks", "sources", "shadow", "ai", "style", "age"];
 
-export function plainOutcome(verdict: string, originality: number | null, note: string | null, student: boolean): { text: string; status: CheckStatus; showRisk: boolean } {
+export interface Outcome {
+  text: string;
+  params?: Record<string, string>;
+  status: CheckStatus;
+}
+
+export function plainOutcome(
+  verdict: string,
+  originality: number | null,
+  note: string | null,
+  student: boolean,
+  source: MainSource | null = null,
+): Outcome & { showRisk: boolean } {
   const base = PLAIN_VERDICT[verdict] ?? PLAIN_VERDICT.inconclusive;
   let text = student ? base.student : base.teacher;
+  let params: Record<string, string> | undefined;
   let status = base.status;
   let showRisk = verdict !== "inconclusive" && verdict !== "";
   if ((verdict === "inconclusive" || verdict === "") && note === "too_short") {
@@ -521,7 +556,14 @@ export function plainOutcome(verdict: string, originality: number | null, note: 
     status = "wait";
   }
   if (originality != null && originality < 60 && RANK[status] < RANK.alert) {
-    text = student ? msg("Matches with other texts were found in the work") : msg("Most of the text was found in other sources");
+    if (student) {
+      text = msg("Matches with other texts were found in the work");
+    } else if (source) {
+      text = source.most ? msg("Most of the text was found in one source: {source}") : msg("Most of the text was found in other sources, the main one: {source}");
+      params = { source: source.name };
+    } else {
+      text = msg("Most of the text was found in other sources");
+    }
     status = "alert";
     showRisk = false;
   } else if (originality != null && originality < 85 && RANK[status] < RANK.look) {
@@ -529,13 +571,13 @@ export function plainOutcome(verdict: string, originality: number | null, note: 
     status = "look";
     showRisk = false;
   }
-  return { text, status, showRisk };
+  return { text, params, status, showRisk };
 }
 
-export function summaryOutcome(submission: Submission, checks: Check[], student: boolean): { text: string; status: CheckStatus } {
+export function summaryOutcome(submission: Submission, checks: Check[], student: boolean): Outcome {
   const note = evidence(byName(submission, "text_classifier")).reason === "text too short for a verdict" ? "too_short" : null;
   const report = submission.originality;
-  const plain = plainOutcome(submission.final_verdict, report?.status === "done" ? report.originality ?? null : null, note, student);
+  const plain = plainOutcome(submission.final_verdict, report?.status === "done" ? report.originality ?? null : null, note, student, mainSource(report));
   const raised = checks.filter((c) => c.status === "alert" || c.status === "look");
   if (raised.length > 0 && RANK[plain.status] < RANK.look) {
     return { text: student ? msg("Your teacher may ask you about this work") : msg("Worth a closer look"), status: "look" };
@@ -543,7 +585,7 @@ export function summaryOutcome(submission: Submission, checks: Check[], student:
   const inconclusive = submission.final_verdict === "inconclusive" || submission.final_verdict === "";
   const cleared = checks.some((c) => c.status === "ok");
   if (inconclusive && raised.length === 0 && cleared && note === null) return { text: msg("No clear warning signs found"), status: "ok" };
-  return { text: plain.text, status: plain.status };
+  return { text: plain.text, params: plain.params, status: plain.status };
 }
 
 export function nextStep(checks: Check[]): string {
@@ -604,7 +646,7 @@ export default function TeacherSummary({ submission, student }: { submission: Su
 
   return (
     <section className="px-4 sm:px-6 py-5 border-b border-ink-700">
-      <SummaryBlock status={outcome.status} headline={t(outcome.text)}>
+      <SummaryBlock status={outcome.status} headline={t(outcome.text, outcome.params)}>
         <p className="text-sm text-ink-300 mt-2 leading-relaxed">
           {raised.length > 0
             ? t("Raised by: {reasons}.", { reasons: raised.map((c) => lowerFirst(c.headline)).join("; ") })

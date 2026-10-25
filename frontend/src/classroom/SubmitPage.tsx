@@ -5,13 +5,33 @@ import { ArrowLeft } from "lucide-react";
 import UploadForm from "../components/UploadForm";
 import { batches, classrooms, content } from "../api/endpoints";
 import { toast } from "../components/ui/Toast";
-import { classPath, INPUT } from "./shared";
+import { ACTION, classPath, INPUT, SECTION_LABEL } from "./shared";
 import { locale, t, tn } from "../i18n";
+import type { ClassMember } from "../types";
 
 function failureText(err: unknown, fallback: string): string {
   const res = (err as { response?: { status?: number; data?: { detail?: string; files?: string[]; file?: string[] } } })?.response;
   const detail = res?.data?.detail || res?.data?.files?.[0] || res?.data?.file?.[0];
   return detail ? t(detail) : fallback;
+}
+
+function plain(value: string): string {
+  return value.toLowerCase().replace(/ё/g, "е");
+}
+
+function isArchive(file: File): boolean {
+  return file.name.toLowerCase().endsWith(".zip");
+}
+
+function guessStudent(fileName: string, roster: ClassMember[]): number | null {
+  const name = plain(fileName);
+  const hits = roster.filter((m) =>
+    plain(m.name)
+      .split(/[\s.,_-]+/)
+      .filter((part) => part.length >= 4)
+      .some((part) => name.includes(part.length >= 5 ? part.slice(0, -1) : part)),
+  );
+  return hits.length === 1 ? hits[0].user_id : null;
 }
 
 export default function SubmitPage() {
@@ -22,6 +42,8 @@ export default function SubmitPage() {
   const [progress, setProgress] = useState<number | null>(null);
   const [student, setStudent] = useState<number | null>(Number(params.get("student")) || null);
   const [batchName, setBatchName] = useState("");
+  const [pending, setPending] = useState<File[] | null>(null);
+  const [owners, setOwners] = useState<Record<string, number | null>>({});
   const { data: cls } = useQuery({ queryKey: ["classroom", id], queryFn: () => classrooms.detail(id).then((r) => r.data) });
   const teacher = cls?.role === "teacher";
   const { data: roster = [] } = useQuery({
@@ -51,11 +73,21 @@ export default function SubmitPage() {
     }
   };
 
-  const sendMany = async (files: File[]) => {
+  const chooseMany = (files: File[]) => {
+    if (!teacher) {
+      void sendMany(files, {});
+      return;
+    }
+    setOwners(Object.fromEntries(files.filter((f) => !isArchive(f)).map((f) => [f.name, guessStudent(f.name, roster) ?? student])));
+    setPending(files);
+  };
+
+  const sendMany = async (files: File[], assigned: Record<string, number | null>) => {
+    setPending(null);
     setProgress(0);
     try {
       const name = batchName.trim() || t("Upload of {date}", { date: new Date().toLocaleDateString(locale()) });
-      const res = await batches.create(files, name, id, teacher ? student : null);
+      const res = await batches.create(files, name, id, teacher ? student : null, assigned);
       const skipped = res.data.skipped.length;
       toast.success(tn(res.data.summary.total, "{n} file handed in", "{n} files handed in") + (skipped ? t(", {n} skipped", { n: skipped }) : ""));
       navigate(`/batches/${res.data.id}`);
@@ -118,7 +150,42 @@ export default function SubmitPage() {
         />
         <span className="block text-xs text-ink-500 mt-2">{t("Used when you upload several files at once, so the set is easy to find later.")}</span>
       </label>
-      <UploadForm onFileSelect={sendOne} onBatchSelect={sendMany} disabled={progress !== null} />
+      {pending ? (
+        <div className="border border-[var(--line-strong)] p-4">
+          <div className={SECTION_LABEL}>{t("Whose work is each file?")}</div>
+          <p className="text-xs text-ink-500">{t("Files named after a student are matched to them. Check the list before sending.")}</p>
+          <div className="mt-3 divide-y divide-[var(--line-strong)]">
+            {pending.map((f, i) => (
+              <div key={`${f.name}-${i}`} className="flex flex-col sm:flex-row sm:items-center gap-2 py-2">
+                <span className="text-sm text-ink-100 truncate sm:flex-1 min-w-0">{f.name}</span>
+                {isArchive(f) ? (
+                  <span className="text-xs text-ink-500 sm:w-64">{t("Files inside the archive go to the student chosen above.")}</span>
+                ) : (
+                  <select
+                    aria-label={t("Whose work is this?")}
+                    value={owners[f.name] ?? ""}
+                    onChange={(e) => setOwners({ ...owners, [f.name]: e.target.value ? Number(e.target.value) : null })}
+                    className={`${INPUT} sm:flex-none sm:w-64 bg-ink-950`}
+                  >
+                    <option value="">{t("No student, just check it")}</option>
+                    {roster.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
+                  </select>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <button type="button" onClick={() => void sendMany(pending, owners)} className={`${ACTION} py-2`}>
+              {tn(pending.length, "Check {n} file", "Check {n} files")}
+            </button>
+            <button type="button" onClick={() => setPending(null)} className="px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-400 hover:text-ink-100">
+              {t("Cancel")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <UploadForm onFileSelect={sendOne} onBatchSelect={chooseMany} disabled={progress !== null} />
+      )}
       {progress !== null && (
         <div className="mt-4 h-px bg-[var(--line-strong)] relative overflow-hidden">
           <div className="absolute inset-y-0 left-0 bg-signal-amber transition-[width] duration-300" style={{ width: `${progress}%` }} />
