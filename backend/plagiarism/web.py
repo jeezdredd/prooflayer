@@ -132,7 +132,7 @@ def _match(url: str, title: str, engine: str, source: str, pairs) -> dict:
 def paper_matches(
     papers: list[Paper], tokens: list[Token], hashes: list[int], skip: list[bool], compared: set[str],
 ) -> list[dict]:
-    own = set(hashes)
+    own = {h for h, skipped in zip(hashes, skip) if not skipped}
     budget = settings.PLAGIARISM_PAPER_TEXTS
     titles: set[str] = set()
     matches = []
