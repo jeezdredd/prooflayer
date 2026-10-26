@@ -33,6 +33,11 @@ const SUBPROCESSORS: { name: string; country?: string; purpose: string }[] = [
     purpose: "Originality check: short search queries taken from submitted texts, sent through our self-hosted SearXNG search gateway, and, if that gateway fails, directly to the Brave Search API (where configured) or DuckDuckGo.",
   },
   {
+    name: "Wikipedia (Wikimedia Foundation), OpenAlex (OurResearch) and arXiv (Cornell University)",
+    country: "USA",
+    purpose: "Originality check: the same sentences looked up in Wikipedia's search, and short phrases of up to 8 words from them sent to the OpenAlex and arXiv catalogues of scientific papers. Open-access papers found are downloaded for comparison.",
+  },
+  {
     name: "Sentry",
     purpose: "Error monitoring, if enabled: technical error reports.",
   },
@@ -147,7 +152,7 @@ export default function DataProcessingPage() {
         <ul className="list-disc list-inside space-y-1 text-ink-400 mt-2">
           <li><strong className="text-ink-300">Cloudflare:</strong> all traffic, including uploaded work, passes through Cloudflare's network in transit.</li>
           <li><strong className="text-ink-300">Email:</strong> transactional emails, including recipients' email addresses, are sent through Resend on Amazon SES in Ireland. Emails sent to our support and legal addresses are held in Apple iCloud Mail.</li>
-          <li><strong className="text-ink-300">Search queries:</strong> for the originality check, up to 8 distinctive sentences of at most 14 words each from a submitted text are sent as search queries to the search engines listed in section 6. Pages found are downloaded from the open web for comparison. For class work this web search is on by default; a school admin can turn it off in the school settings.</li>
+          <li><strong className="text-ink-300">Search queries:</strong> for the originality check, up to 8 distinctive sentences of at most 14 words each from a submitted text are sent as search queries to the search engines listed in section 6. The same sentences are looked up in Wikipedia, and short phrases of up to 8 words from them are sent to OpenAlex and arXiv. Pages and open-access papers found are downloaded for comparison. For class work this web search is on by default; a school admin can turn it off in the school settings.</li>
           <li><strong className="text-ink-300">Technical data:</strong> visitors' IP addresses are sent to ip-api.com; if error monitoring is enabled, technical error reports are sent to Sentry; and if operations notices are enabled, visit notices and feedback messages are posted to our private Discord channel.</li>
           <li><strong className="text-ink-300">Payments:</strong> if the institution buys a paid plan, Paddle in the United Kingdom handles the payment, taxes and invoices.</li>
         </ul>

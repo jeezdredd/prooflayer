@@ -1025,7 +1025,7 @@
     "Personal uploads are deleted from storage 90 days after upload; verdicts stay in your history. To get a copy of your data or correct it, write to": "Личные загрузки удаляются из хранилища через 90 дней, вердикты остаются в истории. Чтобы получить копию своих данных или исправить их, напишите на",
     "Pipeline": "Разделы",
     "Pipeline Running": "Идёт проверка",
-    "Plagiarism checked on every upload, across the class, the school and the open web.": "Плагиат проверяется при каждой загрузке: по классу, школе и открытому интернету.",
+    "Plagiarism checked on every upload, across the class, the school, Wikipedia, open scientific papers and the open web.": "Плагиат проверяется при каждой загрузке: по классу, школе, Википедии, открытым научным статьям и открытому интернету.",
     "Please read the": "Прочитайте",
     "poem": "стихотворение",
     "point at or tap a neuron to see what it checks": "наведите на нейрон или нажмите, чтобы увидеть, что он проверяет",
@@ -1686,7 +1686,7 @@
     "Hand in work to your class here. Your teacher sees only the work you hand in to the class.": "Здесь вы сдаёте работы в свой класс. Учитель видит только работы, которые вы сдаёте в этот класс.",
     "Issue a new teacher code? The old code {code} will stop working.": "Выдать новый код для учителей? Старый код {code} перестанет работать.",
     "Remove {name} from the school? Their classes stay, but they will not be able to create new ones here.": "Убрать из школы: {name}? Уже созданные классы останутся, но создавать новые в этой школе этот учитель не сможет.",
-    "Sends up to 8 sentences from each work to web search and to Wikipedia (servers outside Kazakhstan). Finds passages copied from encyclopedias and articles. When it is off, work is compared only with other work in ProofLayer. Reference lists are always checked in open book catalogues (doi.org, OpenAlex, Crossref), whatever this setting says.": "Отправляет до 8 предложений из каждой работы в поиск в интернете и в Википедию (серверы за пределами Казахстана). Находит фрагменты, списанные из энциклопедий и статей. Если выключить, работы сравниваются только с другими работами в ProofLayer. Список литературы проверяется в открытых каталогах книг и статей (doi.org, OpenAlex, Crossref) независимо от этой настройки.",
+    "Sends up to 8 sentences from each work to web search and to Wikipedia, and short phrases from them to the open scientific catalogues OpenAlex and arXiv (servers outside Kazakhstan). Finds passages copied from encyclopedias, articles and scientific papers. When it is off, work is compared only with other work in ProofLayer. Reference lists are always checked in open book catalogues (doi.org, OpenAlex, Crossref), whatever this setting says.": "Отправляет до 8 предложений из каждой работы в поиск в интернете и в Википедию, а короткие фразы из них в открытые научные каталоги OpenAlex и arXiv (серверы за пределами Казахстана). Находит фрагменты, списанные из энциклопедий, статей и научных работ. Если выключить, работы сравниваются только с другими работами в ProofLayer. Список литературы проверяется в открытых каталогах книг и статей (doi.org, OpenAlex, Crossref) независимо от этой настройки.",
     "Essays, photos, audio and video": "Сочинения, фото, аудио и видео",
     "A photo is checked in about {n} s right now": "Фото сейчас проверяется примерно за {n} с",
     "looks like generated sound or video": "похоже на сгенерированный звук или видео",
@@ -1980,7 +1980,16 @@
     "Files named after a student are matched to them. Check the list before sending.": "Файлы, названные по имени или фамилии ученика, мы подобрали сами. Проверьте список перед отправкой.",
     "Files inside the archive go to the student chosen above.": "Файлы из архива получит ученик, выбранный выше.",
     "Most of the text was found in one source: {source}": "Большая часть текста найдена в источнике: {source}",
-    "Most of the text was found in other sources, the main one: {source}": "Большая часть текста найдена в других источниках, главный из них: {source}"
+    "Most of the text was found in other sources, the main one: {source}": "Большая часть текста найдена в других источниках, главный из них: {source}",
+    "Compared with students' work in ProofLayer, Wikipedia, open scientific papers and a web search.": "Сравнено с работами учеников в ProofLayer, Википедией, открытыми научными статьями и поиском в интернете.",
+    "Compared with students' work in ProofLayer, Wikipedia and open scientific papers.": "Сравнено с работами учеников в ProofLayer, Википедией и открытыми научными статьями.",
+    "Compared with students' work in ProofLayer, open scientific papers and a web search.": "Сравнено с работами учеников в ProofLayer, открытыми научными статьями и поиском в интернете.",
+    "Compared with students' work in ProofLayer and Wikipedia.": "Сравнено с работами учеников в ProofLayer и Википедией.",
+    "Compared with students' work in ProofLayer and open scientific papers.": "Сравнено с работами учеников в ProofLayer и открытыми научными статьями.",
+    "Compared with students' work in ProofLayer and a web search.": "Сравнено с работами учеников в ProofLayer и поиском в интернете.",
+    "{n}% of the text was found in scientific papers": "{n}% текста найдено в научных статьях",
+    "{names} et al.": "{names} и др.",
+    "Scientific paper": "Научная статья"
   },
   "plural": {
     "All {n} sources exist": [

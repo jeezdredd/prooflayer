@@ -54,6 +54,11 @@ export interface OriginalityMatch {
   similarity: number | null;
   url?: string;
   title?: string | null;
+  engine?: "web" | "wikipedia" | "openalex" | "arxiv" | null;
+  authors?: string[];
+  authors_total?: number;
+  year?: number | null;
+  venue?: string;
   submission_id?: string;
   author?: string;
   classroom?: string | null;
@@ -69,6 +74,7 @@ export interface OriginalityReport {
   total_chars: number;
   web_searched: boolean;
   web_status?: "ok" | "failed" | "off" | "short";
+  web_engines?: string[];
   checked_at: string;
   matches: OriginalityMatch[];
 }
