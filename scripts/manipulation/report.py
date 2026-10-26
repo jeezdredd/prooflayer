@@ -7,6 +7,7 @@ from pathlib import Path
 from evaluate import wilson_upper
 
 ROOT = Path("/Users/sevastyan0107/PycharmProjects/prooflayer/dataset/manipulation")
+MIN_SHORT = 384
 
 
 def pct(x: float) -> str:
@@ -38,8 +39,12 @@ def pooled(rows: list[dict], label: str, variant: str, splits: tuple) -> dict:
     return by
 
 
+def mappable(rows: list[dict]) -> list[dict]:
+    return [r for r in rows if r.get("orig_short", 10**6) >= MIN_SHORT]
+
+
 def fp_section(results: dict, config: str, splits=("test",)) -> str:
-    rows = results["configs"][config]["rows"]
+    rows = mappable(results["configs"][config]["rows"])
     by = pooled(rows, "authentic", "original", splits)
     lines = []
     tot_n = tot_k = 0
@@ -53,7 +58,7 @@ def fp_section(results: dict, config: str, splits=("test",)) -> str:
 
 
 def variants_section(results: dict, config: str, label: str) -> str:
-    rows = results["configs"][config]["rows"]
+    rows = mappable(results["configs"][config]["rows"])
     by = defaultdict(lambda: [0, 0])
     for r in rows:
         if r["label"] != label or r["variant"] == "original":
@@ -183,7 +188,7 @@ def calib_section(results: dict) -> str:
 def config_compare(results: dict, splits=("test",)) -> str:
     lines = []
     for config, data in results["configs"].items():
-        rows = data["rows"]
+        rows = mappable(data["rows"])
         auth = [r for r in rows if r["label"] == "authentic" and r["variant"] == "original" and r["split"] in splits]
         k = sum(r["shown"] for r in auth)
         n = len(auth)

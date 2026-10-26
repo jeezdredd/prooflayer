@@ -149,7 +149,15 @@ def method_scores(out: MethodOutputs, config: FusionConfig) -> dict:
 
 def calibrate(records: list[dict], config: FusionConfig, fp_quantile: float, strong_quantile: float) -> tuple[FusionConfig, dict]:
     report = {}
-    auth = [r for r in records if r["label"] == "authentic" and r["split"] == SPLIT_FIT and r["variant"] == "original"]
+    auth = [
+        r
+        for r in records
+        if r["label"] == "authentic"
+        and r["split"] == SPLIT_FIT
+        and r["variant"] == "original"
+        and r["orig_short"] >= config.min_short_side
+    ]
+    report["n_authentic_fit"] = {"n": len(auth)}
     for name in LEARNED:
         by_class = defaultdict(list)
         for r in auth:
@@ -210,6 +218,7 @@ def evaluate(records, config, raw_by_id, label_tag):
             "confidences": sorted({g.confidence for g in res.regions}),
             "likely_ai": any(g.likely_ai for g in res.regions),
             "input_class": res.input_class,
+            "orig_short": r["orig_short"],
         }
         if r["label"] == "manipulated" and r.get("gt") is not None:
             gt = r["gt"]
@@ -356,6 +365,7 @@ def main() -> None:
             front = d["extra"]["safire"]["front"].astype(np.float32) / 255.0
             rec["scores"]["safire_front"] = image_score(cv2.resize(front, (out.shape[1], out.shape[0])), out.orig_shape)
         rec["input_class"] = input_class_of(out, cfg0)
+        rec["orig_short"] = min(out.orig_shape)
         rec["tile_scores_list"] = [] if out.tile_scores is None else [float(x) for x in out.tile_scores]
         rec["gt"] = gt_mask(it, out.shape) if it["label"] == "manipulated" else None
         records.append(rec)
@@ -373,7 +383,13 @@ def main() -> None:
         "zero_only": {"use_learned_single": False, "use_learned_pair": False, "use_copymove": False},
         "copymove_only": {"use_learned_single": False, "use_learned_pair": False, "use_zero": False},
     }
-    results = {"calibration": calib_report, "configs": {}, "methods": method_level(records), "runtime": runtime(records, raws)}
+    results = {
+        "calibration": calib_report,
+        "fitted_config": dict(base_config.__dict__),
+        "configs": {},
+        "methods": method_level(records),
+        "runtime": runtime(records, raws),
+    }
     for name in args.configs:
         cfg = FusionConfig(**{**base_config.__dict__, **variants[name]})
         if name == "catnet_only":
