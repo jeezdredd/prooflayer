@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from .models import AnalysisResult
 
 VERDICT_SCORES = {
@@ -29,6 +31,14 @@ AUTHENTIC_EDITED_AI_CEIL = 0.30
 CONTEXT_ANALYZERS = {"text_grade_fit", "text_style", "text_citations", "text_genre", "text_shadow"}
 CONTEXT_FLAG_FLOOR = 0.6
 CONTEXT_ESCALATES = {"authentic", "authentic_edited", "inconclusive"}
+CAMERA_FILE_LEVEL = 3
+CAMERA_FILE_WEIGHT = 4.0
+CAMERA_FILE_AI_PROBABILITY = 0.02
+AI_MARK_FLAGS = {
+    "ai_tool_signature", "generation_parameters", "c2pa_ai_declared", "c2pa_ai_edited",
+    "invisible_watermark", "damaged_watermark",
+}
+CAMERA_GATED = {"fake", "likely_fake", "suspicious"}
 
 
 def _get_ai_probability(result) -> float | None:
@@ -108,9 +118,52 @@ def _has_manipulation_signal(valid_results) -> bool:
     return False
 
 
+def _camera_file_vote(results):
+    meta = next((r for r in results if r.analyzer.name == "metadata" and r.verdict != AnalysisResult.Verdict.ERROR), None)
+    if meta is None:
+        return None
+    evidence = meta.evidence or {}
+    if (evidence.get("camera_file") or {}).get("level", 0) < CAMERA_FILE_LEVEL:
+        return None
+    if AI_MARK_FLAGS & set(evidence.get("flags") or []):
+        return None
+    return SimpleNamespace(
+        analyzer=SimpleNamespace(name="camera_file", weight=CAMERA_FILE_WEIGHT),
+        verdict=AnalysisResult.Verdict.AUTHENTIC,
+        confidence=0.8,
+        evidence={"ai_probability": CAMERA_FILE_AI_PROBABILITY},
+    )
+
+
+def _confident_ai_voters(results) -> int:
+    voters = 0
+    for r in results:
+        if r.verdict == AnalysisResult.Verdict.ERROR:
+            continue
+        p = _get_ai_probability(r)
+        if p is not None:
+            if p >= 0.5 and abs(p - 0.5) * 2 >= CORROBORATION_CONFIDENCE_FLOOR:
+                voters += 1
+        elif r.verdict in (AnalysisResult.Verdict.FAKE, AnalysisResult.Verdict.SUSPICIOUS) and r.confidence >= CORROBORATION_CONFIDENCE_FLOOR:
+            voters += 1
+    return voters
+
+
+def _camera_gate(verdict: str, results) -> str:
+    if verdict not in CAMERA_GATED:
+        return verdict
+    if _confident_ai_voters(results) < MIN_CORROBORATING_FOR_FAKE:
+        return "inconclusive"
+    return "needs_review" if verdict in ("fake", "likely_fake") else verdict
+
+
 def aggregate(results: list[AnalysisResult]) -> tuple[float, str]:
     context = [r for r in results if r.analyzer.name in CONTEXT_ANALYZERS]
-    score, verdict = _aggregate_core([r for r in results if r.analyzer.name not in CONTEXT_ANALYZERS])
+    core = [r for r in results if r.analyzer.name not in CONTEXT_ANALYZERS]
+    camera = _camera_file_vote(core)
+    score, verdict = _aggregate_core(core + [camera] if camera else core)
+    if camera:
+        verdict = _camera_gate(verdict, core)
     flagged = any(
         r.verdict == AnalysisResult.Verdict.SUSPICIOUS and r.confidence >= CONTEXT_FLAG_FLOOR for r in context
     )

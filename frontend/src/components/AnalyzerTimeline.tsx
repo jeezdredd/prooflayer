@@ -214,6 +214,9 @@ function evidenceLines(step: Step): string[] {
   if (step.name === "metadata") {
     const camera = ev.camera as { has_camera_signature?: boolean; make?: string; model?: string } | undefined;
     if (camera?.has_camera_signature) lines.push(t("Camera recorded in the file: {name}", { name: [camera.make, camera.model].filter(Boolean).join(" ") }));
+    if ((ev.camera_file as { level?: number } | undefined)?.level === 3) {
+      lines.push(t("The file is built like a phone camera original: its HDR brightness map matches the picture. Copying camera data onto an AI picture does not reproduce this."));
+    }
     if ((ev.metadata_presence as { stripped?: boolean } | undefined)?.stripped) {
       lines.push(t("The file has no camera data. That is normal after messengers and social networks."));
     }

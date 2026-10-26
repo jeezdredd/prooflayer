@@ -100,3 +100,7 @@ Three voters provides corroboration the aggregator now requires (>=2 fake votes)
 - [[siglip-detector]] - second AI signal
 - [[aggregator]] - corroboration policy
 - [[detection-strategy-2026]] - parent plan
+
+## Native crop from a 1536 px copy (2026-10-26, 1.6.0)
+
+The `native_crop` view used to cut 384 px from the full 12-48 MP phone original. On real modern phone photos that crop scored 0.81 (owner's iPhone 17 photo) and drove false flags with `custom_detector`. It is now cut from a copy downscaled to 1536 px on the long side (`NATIVE_CROP_MAX_SIDE`); images at or under 1536 px are unchanged. On the phone benchmark this alone took likely_fake/fake on real originals from 79 to 23 of 1127 with AI recall unchanged (705/902). The calibration knots are unchanged.

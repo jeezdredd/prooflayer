@@ -290,3 +290,42 @@ class TestRealPhotoRegression:
         ]
         _, verdict = aggregate(results)
         assert verdict == "suspicious"
+
+
+@pytest.mark.django_db
+class TestCameraFileVote:
+    def _phone(self, level, custom_prob=0.93, extra=(), flags=("camera_signature",), cf_prob=0.0):
+        sub = SubmissionFactory()
+        v = AnalysisResult.Verdict
+        meta = {"camera_file": {"level": level}, "flags": list(flags)}
+        return [
+            _member(sub, "custom_detector", 3.5, v.FAKE, 0.85, {"ai_probability": custom_prob}),
+            _member(sub, "community_forensics", 3.5, v.AUTHENTIC, 0.85, {"ai_probability": cf_prob}),
+            _member(sub, "clip_probe", 2.5, v.INCONCLUSIVE, 0.4, {"ai_probability": 0.32}),
+            _member(sub, "ai_detector", 1.0, v.INCONCLUSIVE, 0.5, {"ai_probability_avg": 0.46}),
+            _member(sub, "metadata", 1.5, v.AUTHENTIC, 0.55, meta),
+            *[_member(sub, name, 2.5, v.FAKE, 0.85, {"ai_probability": p}) for name, p in extra],
+        ]
+
+    def test_real_iphone_file_with_one_overconfident_detector_is_not_ai(self):
+        _, verdict = aggregate(self._phone(3, custom_prob=0.99))
+        assert verdict not in ("fake", "likely_fake", "suspicious")
+
+    def test_two_confident_detectors_against_a_camera_file_go_to_review(self):
+        _, verdict = aggregate(self._phone(3, extra=(("npr_detector", 0.97), ("siglip_detector", 0.96))))
+        assert verdict == "needs_review"
+
+    def test_camera_file_below_level_three_keeps_the_old_rules(self):
+        results = self._phone(3, custom_prob=0.99, extra=(("npr_detector", 0.97),), cf_prob=0.6)
+        with_vote = aggregate(results)
+        results[4].evidence["camera_file"]["level"] = 2
+        without_vote = aggregate(results)
+        assert without_vote[0] > with_vote[0]
+        assert with_vote[1] == "needs_review"
+        assert without_vote[1] in ("fake", "likely_fake")
+
+    def test_ai_mark_in_the_file_disables_the_camera_vote(self):
+        results = self._phone(3, extra=(("npr_detector", 0.97),), flags=("camera_signature", "damaged_watermark"))
+        marked = aggregate(results)
+        results[4].evidence["camera_file"]["level"] = 0
+        assert aggregate(results) == marked

@@ -2,6 +2,7 @@ import html
 import re
 from datetime import datetime
 
+from analyzers import camera_file
 from analyzers.base import AnalysisOutput, BaseAnalyzer
 from analyzers.watermarks import find_known_watermark
 
@@ -145,7 +146,7 @@ def camera_signature(metadata: dict) -> dict:
 
 class MetadataAnalyzer(BaseAnalyzer):
     name = "metadata"
-    version = "1.9.0"
+    version = "1.10.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]
@@ -195,6 +196,11 @@ class MetadataAnalyzer(BaseAnalyzer):
         evidence["camera"] = self._check_camera_signature(metadata)
         if evidence["camera"]["has_camera_signature"]:
             flags.append("camera_signature")
+
+        structure = camera_file.inspect(file_path)
+        if structure is not None:
+            structure["level"] = camera_file.camera_level(structure, evidence["camera"]["has_camera_signature"])
+            evidence["camera_file"] = structure
 
         strong_flags = [f for f in flags if f not in ("metadata_stripped", "camera_signature")]
 

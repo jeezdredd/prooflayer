@@ -1,5 +1,18 @@
 [
   {
+    "slug": "phone-photos-not-ai",
+    "date": "2026-10-26",
+    "kind": "fix",
+    "title": {
+      "en": "Photos from new phones are no longer taken for AI",
+      "ru": "Фото с новых телефонов больше не принимаются за ИИ"
+    },
+    "body": {
+      "en": "A photo taken with an iPhone 17 was marked \"Likely AI\". We checked 1127 real photos from phones released since 2023 and found that 7% of them got the same false mark. Two things caused it: one detector looked at a tiny piece of the full-size photo, and another one had never seen pictures from new phones. Now the first detector looks at a reduced copy, and Tribunal recognises the structure of a genuine camera file: the HDR brightness map that new phones store next to the picture must match it, which copying camera data onto an AI picture does not reproduce. With such a file, one detector alone can no longer call the photo AI. False marks on real phone photos fell from 7% to 1.2%, and the share of AI pictures we catch did not change. Tribunal is now version 1.11.0.",
+      "ru": "Фото, снятое на iPhone 17, получило пометку «Скорее ИИ». Мы проверили 1127 настоящих снимков с телефонов, вышедших с 2023 года, и у 7% из них была такая же ложная пометка. Причин две: один детектор смотрел на крошечный кусок снимка в полном размере, а другой никогда не видел фото с новых телефонов. Теперь первый смотрит на уменьшенную копию, а Tribunal узнаёт устройство настоящего файла камеры: HDR-карта яркости, которую новые телефоны хранят рядом с картинкой, должна с ней совпадать, а простым копированием данных камеры на ИИ-картинку этого не добиться. Если файл такой, один детектор больше не может сам назвать фото ИИ. Ложных пометок на настоящих фото с телефонов стало 1,2% вместо 7%, а доля пойманных ИИ-картинок не изменилась. Tribunal обновлён до версии 1.11.0."
+    }
+  },
+  {
     "slug": "originality-scientific-papers",
     "date": "2026-10-26",
     "kind": "feature",

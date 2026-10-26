@@ -2,6 +2,17 @@
 
 Newest at top.
 
+## [2026-10-26] phone-photos | Real phone photos no longer read as AI (Tribunal 1.11.0)
+
+- Source: owner's own iPhone 17 Pro Max photo (IMG_7561, MPO with camera EXIF) judged "Likely AI"; benchmark of 1127 Commons originals from 2023+ phones (iPhone 14-17, Pixel 8-10, Galaxy S23-S25 and others) plus Safari, re-encoded, stripped and messenger variants, 902 OpenFake AI images and 690 forgeries (AI images with copied iPhone EXIF, re-encoded through Apple ImageIO, with a fake gain map), all scored locally on CPU (dataset/phone_photos, not in git)
+- Before: 79 of 1127 real phone originals likely_fake/fake (7.0%) and 247 suspicious; `custom_detector` drove 325 of 351 flags (median raw 0.93 on real phone photos), `community_forensics` native crop at full resolution added the rest
+- `community_forensics` 1.6.0: the native crop is taken from a copy downscaled to 1536 px, not from the 12-48 MP original
+- `metadata` 1.10.0 + `analyzers/camera_file.py`: camera file level 0-3 from the JPEG structure. Level 3 = camera EXIF, an HDR gain map (MPF secondary image, Apple aux or hdrgm) whose edges line up with the picture (gradient correlation >= 0.30, same aspect, not flat), matching EXIF pixel size and an EXIF thumbnail that shows the same scene
+- Aggregator: level 3 without any AI mark adds a "camera file" vote (weight 4.0, p 0.02); then a lone AI voter cannot convict (fake/likely/suspicious -> inconclusive) and two or more confident AI voters give needs_review, never fake
+- After: real phone originals 14/1127 (1.2%), suspicious 141; Safari copies 5 -> 3, stripped 32 -> 13; AI recall unchanged (705/902); every forgery set unchanged (ImageIO forgeries never reach level 3). Owner's photo: CF native crop 0.81 -> 0.0, camera file level 3
+- Rejected options measured on the same data: CF global view only (AI recall 78% -> 68%), stricter custom_detector calibration (recall 67-73%), custom head retrained on phone reals (recall 57%), level 2 camera vote (MakerNote only: ImageIO forgeries fall from 74 to 26 caught)
+- Pages updated: [[analyzers/metadata]], [[analyzers/community-forensics]], [[concepts/detector-evaluation]], [[hot]]
+
 ## [2026-10-26] originality-papers-review | Review fixes: PDF hyphenation, title mask, paper identity, time caps, arXiv PDF pacing
 
 - Source: review of `feat/openalex-arxiv` (diff against main, live smoke against the public OpenAlex, arXiv and Wikipedia APIs from the dev machine, arxiv.org robots.txt, arXiv API terms of use)

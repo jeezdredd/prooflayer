@@ -105,7 +105,7 @@ def sample_submission_context(lang: str, kind: str, image: Path | None) -> dict:
         "provenance": [{"title": c["where"]["visible"].format(what=c["where"]["same"], who="Полина Новикова, 9Б, 16.10.2026" if lang == "ru" else "Polina Novikova, 9B, Oct 16, 2026"), "url": "", "similarity": None}] if kind == "image" else [],
         "claims": [],
         "details": details,
-        "technical": "SHA-256 7a3f2c91e04b5d18…b91d4e07 · Tribunal 1.10.1",
+        "technical": "SHA-256 7a3f2c91e04b5d18…b91d4e07 · Tribunal 1.11.0",
         "result_url": "https://classroom.prooflayer.cloud/results/7a3f2c91",
     }
 

@@ -132,3 +132,19 @@ class TestCalibration:
         assert out.evidence["raw_probability"] == pytest.approx(0.32)
         assert out.evidence["ai_probability"] == pytest.approx(calibrate(0.32), abs=1e-4)
         assert out.verdict == "suspicious"
+
+
+class TestNativeCropScale:
+    def test_large_photo_is_cropped_from_a_1536_px_copy(self):
+        image = Image.radial_gradient("L").resize((4000, 3000)).convert("RGB")
+        views = dict(cf._views(image))
+        small = image.copy()
+        small.thumbnail((cf.NATIVE_CROP_MAX_SIDE, cf.NATIVE_CROP_MAX_SIDE), Image.Resampling.BICUBIC)
+        expected = cf._center_crop(small)
+        assert views["native_crop"].size == (cf.INPUT_SIZE, cf.INPUT_SIZE)
+        assert list(views["native_crop"].getdata()) == list(expected.getdata())
+
+    def test_small_photo_keeps_its_own_pixels(self):
+        image = Image.radial_gradient("L").resize((1000, 800)).convert("RGB")
+        views = dict(cf._views(image))
+        assert list(views["native_crop"].getdata()) == list(cf._center_crop(image).getdata())

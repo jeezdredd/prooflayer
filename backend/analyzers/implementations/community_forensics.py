@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 MODEL_NAME = "buildborderless/CommunityForensics-DeepfakeDet-ViT"
 INPUT_SIZE = 384
+NATIVE_CROP_MAX_SIDE = 1536
 
 CALIBRATION_KNOTS = (
     (0.0, 0.0),
@@ -74,9 +75,17 @@ def _fit_resize(image: Image.Image) -> Image.Image:
     return canvas
 
 
+def _crop_source(image: Image.Image) -> Image.Image:
+    if max(image.size) <= NATIVE_CROP_MAX_SIDE:
+        return image
+    scaled = image.copy()
+    scaled.thumbnail((NATIVE_CROP_MAX_SIDE, NATIVE_CROP_MAX_SIDE), Image.Resampling.BICUBIC)
+    return scaled
+
+
 def _views(image: Image.Image) -> list[tuple[str, Image.Image]]:
     views = [("global", _fit_resize(image))]
-    crop = _center_crop(image)
+    crop = _center_crop(_crop_source(image))
     if crop is not None:
         views.append(("native_crop", crop))
     return views
@@ -94,7 +103,7 @@ def _score(model, processor, view: Image.Image) -> float:
 
 class CommunityForensicsDetector(BaseAnalyzer):
     name = "community_forensics"
-    version = "1.5.0"
+    version = "1.6.0"
 
     def supported_mime_types(self) -> list[str]:
         return ["image/jpeg", "image/png", "image/webp"]

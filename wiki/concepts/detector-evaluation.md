@@ -109,3 +109,20 @@ the subsequent real reruns exactly every time so far.
 
 - [[concepts/verdict-thresholds]]
 - [[fixes/audit-2026-08]]
+
+## Modern phone photos benchmark (2026-10-26)
+
+`dataset/phone_photos/` (not in git; manifest with Commons licence and author per file): 1144 originals from 2023+ phones downloaded from Wikimedia Commons with full EXIF (iPhone 14/15/16/17, Pixel 8/9/10, Galaxy S23/S24/S25, other), variants (Safari-style re-encode, plain re-encode, EXIF stripped, messenger downscale), the OpenFake held-out AI and real sets, and forgeries (AI images with copied iPhone EXIF, re-encoded through Apple ImageIO, with a gain map from another picture, upscaled). Scores per analyzer in `runs/`, summary in `results/summary.json`, scenario replay in `tools/camera_vote.py`.
+
+| set | Tribunal 1.10.1 likely_fake/fake | Tribunal 1.11.0 |
+|---|---|---|
+| phone originals (1127) | 79 (7.0%) | 14 (1.2%) |
+| phone Safari copies (158) | 5 | 3 |
+| phone EXIF stripped (324) | 32 | 13 |
+| phone messenger (186) | 4 | 2 |
+| OpenFake AI (902) | 705 | 705 |
+| OpenFake real (700) | 0 | 0 |
+| forgeries, copied EXIF (115) | 67 | 67 |
+| forgeries, Apple ImageIO (115) | 74 | 74 |
+
+Still open: `custom_detector` scores real phone photos at a median raw 0.93; its next retrain needs phone reals in the training set (a head retrained on them fixed phones but cut AI recall to 57%, so it needs more AI data at the same time).

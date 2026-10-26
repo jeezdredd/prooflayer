@@ -2028,7 +2028,8 @@
     "Compared with students' work in ProofLayer and a web search.": "Сравнено с работами учеников в ProofLayer и поиском в интернете.",
     "{n}% of the text was found in scientific papers": "{n}% текста найдено в научных статьях",
     "{names} et al.": "{names} и др.",
-    "Scientific paper": "Научная статья"
+    "Scientific paper": "Научная статья",
+    "The file is built like a phone camera original: its HDR brightness map matches the picture. Copying camera data onto an AI picture does not reproduce this.": "Файл устроен как оригинал с камеры телефона: его HDR-карта яркости совпадает с картинкой. Если просто скопировать данные камеры на ИИ-картинку, так не получится."
   },
   "plural": {
     "All {n} sources exist": [
