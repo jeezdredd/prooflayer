@@ -11,6 +11,7 @@ from analyzers.manipulation.copymove import copymove_detect
 from analyzers.manipulation.fusion import FusionConfig, ManipulationMap, MethodOutputs, fuse
 from analyzers.manipulation.imageio import LoadedImage, load_image
 from analyzers.manipulation.jpeg_grid import zero_detect
+from analyzers.manipulation.regions import texture_map
 from analyzers.manipulation.safire import safire_predict
 
 WORK_MAX_SIDE = 768
@@ -55,6 +56,7 @@ def run_methods(image: LoadedImage, models: Models, methods: tuple = ("catnet", 
     h, w = image.height, image.width
     shape = work_shape(h, w)
     out = MethodOutputs(shape=shape, orig_shape=(h, w), is_jpeg=image.is_jpeg, jpeg_quality=image.jpeg_quality)
+    out.texture = texture_map(image.rgb, shape)
     timings, extra = {}, {}
 
     if "catnet" in methods and models.catnet is not None:

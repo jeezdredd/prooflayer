@@ -178,9 +178,9 @@ def runtime_section(results: dict) -> str:
     return table(["method", "size", "n", "wall s median", "wall s p90", "CPU s median", "CPU s p90"], lines) + f"\n\nPeak RSS of one worker process (all models loaded): {num(rt.get('peak_rss_mb_max'), 0)} MB."
 
 
-def calib_section(results: dict) -> str:
-    lines = []
-    for k, v in results["calibration"].items():
+def calib_section(results: dict, config: str) -> str:
+    lines = [["gates (from calibration-half positives)", json.dumps(results.get("gates", {}))]]
+    for k, v in results["configs"][config]["calibration"].items():
         lines.append([k, json.dumps({a: (round(b, 4) if isinstance(b, float) else b) for a, b in v.items()})])
     return table(["parameter", "fitted on authentic calibration half"], lines)
 
@@ -242,7 +242,7 @@ def main() -> None:
         "## Raw pixel scores per method (test half, before any gating)",
         pixel_section(results, args.config),
         "## Calibration",
-        calib_section(results),
+        calib_section(results, args.config),
         "## Runtime (CPU only, shared machine)",
         runtime_section(results),
     ]

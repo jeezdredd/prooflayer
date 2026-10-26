@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image
 
 from analyzers.manipulation.fusion import STATUS_REGIONS, FusionConfig, MethodOutputs, fuse, input_class_of
-from analyzers.manipulation.regions import image_score
+from analyzers.manipulation.regions import components, fill_ratio, image_score, texture_map
 
 ROOT = Path("/Users/sevastyan0107/PycharmProjects/prooflayer/dataset/manipulation")
 LEARNED = ("catnet", "safire")
@@ -124,7 +124,7 @@ def zero_best(out: MethodOutputs, config: FusionConfig) -> float:
     h, w = out.shape
     for r in out.zero_regions:
         m = r["mask"]
-        if m.mean() > config.zero_max_area:
+        if m.mean() > config.zero_max_area or fill_ratio(m) < config.zero_min_fill:
             continue
         if r["kind"] == "missing_grid":
             o, i = r.get("main_density_outside", 0.0), r.get("main_density_inside", 0.0)
@@ -139,7 +139,7 @@ def method_scores(out: MethodOutputs, config: FusionConfig) -> dict:
     for name in LEARNED:
         prob = getattr(out, name)
         if prob is not None:
-            s[name] = image_score(prob, out.orig_shape)
+            s[name] = image_score(prob, out.orig_shape, out.texture, config.min_texture_share)
     s["zero"] = zero_best(out, config)
     s["copymove"] = float(max((g["matches"] for g in out.copymove_groups), default=0))
     if out.tile_scores is not None and len(out.tile_scores):
@@ -334,6 +334,41 @@ def runtime(records, raws):
     return out
 
 
+def fit_gates(records: list[dict], outs: dict, quantile: float = 0.05) -> dict:
+    tex, fills = [], []
+    for r in records:
+        if r["label"] != "manipulated" or r["split"] != SPLIT_FIT or r["variant"] != "original" or r["gt"] is None:
+            continue
+        out = outs[r["id"]]
+        gt = r["gt"]
+        if out.catnet is not None:
+            for c in components(out.catnet, ref_shape=out.orig_shape, texture=out.texture):
+                if np.logical_and(c.mask, gt).sum() >= 0.5 * c.mask.sum():
+                    tex.append(c.texture_share)
+        for z in out.zero_regions:
+            m = z["mask"]
+            if z["log10_nfa"] <= -2 and np.logical_and(m, gt).sum() >= 0.5 * m.sum():
+                fills.append(fill_ratio(m))
+    gates = {
+        "min_texture_share": float(np.floor(np.quantile(tex, quantile) * 20) / 20) if tex else 0.0,
+        "zero_min_fill": float(np.floor(np.quantile(fills, quantile) * 20) / 20) if fills else 0.0,
+        "n_catnet_true_components": len(tex),
+        "n_zero_true_regions": len(fills),
+    }
+    return gates
+
+
+VARIANTS = {
+    "full": {},
+    "no_learned_single": {"use_learned_single": False},
+    "classical_only": {"use_learned_single": False, "use_learned_pair": False},
+    "catnet_only": {"use_learned_pair": False, "use_zero": False, "use_copymove": False},
+    "pair_only": {"use_learned_single": False, "use_zero": False, "use_copymove": False},
+    "zero_only": {"use_learned_single": False, "use_learned_pair": False, "use_copymove": False},
+    "copymove_only": {"use_learned_single": False, "use_learned_pair": False, "use_zero": False},
+}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--index", default=str(ROOT / "index.json"))
@@ -341,8 +376,9 @@ def main() -> None:
     parser.add_argument("--fp-quantile", type=float, default=0.995)
     parser.add_argument("--strong-quantile", type=float, default=0.999)
     parser.add_argument("--safire-mode", default="binary")
-    parser.add_argument("--require", nargs="+", default=["catnet", "safire"])
-    parser.add_argument("--configs", nargs="+", default=["full", "no_learned_single", "classical_only", "catnet_only", "pair_only"])
+    parser.add_argument("--require", nargs="+", default=["catnet"])
+    parser.add_argument("--configs", nargs="+", default=list(VARIANTS))
+    parser.add_argument("--gated", choices=["both", "on", "off"], default="both")
     args = parser.parse_args()
 
     items = json.loads(Path(args.index).read_text())
@@ -357,8 +393,10 @@ def main() -> None:
             missing["incomplete"] += 1
             continue
         out = to_outputs(d, args.safire_mode)
+        out.texture = texture_map(np.asarray(Image.open(it["path"]).convert("RGB")), out.shape)
         rec = dict(it)
         rec["cm_fresh"] = bool(d.get("cm_fresh"))
+        rec["has_safire"] = out.safire is not None
         cfg0 = FusionConfig()
         rec["scores"] = method_scores(out, cfg0)
         if d["extra"].get("safire") and d["extra"]["safire"].get("front") is not None:
@@ -371,35 +409,33 @@ def main() -> None:
         records.append(rec)
         raws[it["id"]] = d
         outs[it["id"]] = out
-    print(f"loaded {len(records)} records; skipped {dict(missing)}")
+    print(f"loaded {len(records)} records; skipped {dict(missing)}", flush=True)
 
-    base_config, calib_report = calibrate(records, FusionConfig(), args.fp_quantile, args.strong_quantile)
-    variants = {
-        "full": {},
-        "no_learned_single": {"use_learned_single": False},
-        "classical_only": {"use_learned_single": False, "use_learned_pair": False},
-        "catnet_only": {"use_learned_pair": False, "use_zero": False, "use_copymove": False},
-        "pair_only": {"use_learned_single": False, "use_zero": False, "use_copymove": False},
-        "zero_only": {"use_learned_single": False, "use_learned_pair": False, "use_copymove": False},
-        "copymove_only": {"use_learned_single": False, "use_learned_pair": False, "use_zero": False},
-    }
-    results = {
-        "calibration": calib_report,
-        "fitted_config": dict(base_config.__dict__),
-        "configs": {},
-        "methods": method_level(records),
-        "runtime": runtime(records, raws),
-    }
-    for name in args.configs:
-        cfg = FusionConfig(**{**base_config.__dict__, **variants[name]})
-        if name == "catnet_only":
-            cfg.strong = dict(cfg.strong)
-            cfg.strong["safire"] = {"all": 2.0}
-            cfg.t = dict(cfg.t)
-            cfg.t["safire"] = {"all": 2.0}
-        rows = evaluate(records, cfg, outs, name)
-        results["configs"][name] = {"summary": summarize(rows, records, name), "rows": rows}
-        print(f"config {name} done")
+    gates = fit_gates(records, outs)
+    print(f"gates {gates}", flush=True)
+    results = {"gates": gates, "configs": {}, "methods": method_level(records), "runtime": runtime(records, raws)}
+    gate_modes = {"both": [False, True], "on": [True], "off": [False]}[args.gated]
+    for gated in gate_modes:
+        for name in args.configs:
+            template = FusionConfig(**VARIANTS[name])
+            if gated:
+                template.min_texture_share = gates["min_texture_share"]
+                template.zero_min_fill = gates["zero_min_fill"]
+            for r in records:
+                r["scores"] = dict(r["scores"], **method_scores(outs[r["id"]], template))
+            cfg, calib_report = calibrate(records, template, args.fp_quantile, args.strong_quantile)
+            if name == "catnet_only":
+                cfg.t = dict(cfg.t, safire={"all": 2.0})
+                cfg.strong = dict(cfg.strong, safire={"all": 2.0})
+            rows = evaluate(records, cfg, outs, name)
+            key = name + ("+gates" if gated else "")
+            results["configs"][key] = {
+                "summary": summarize(rows, records, key),
+                "rows": rows,
+                "calibration": calib_report,
+                "fitted_config": dict(cfg.__dict__),
+            }
+            print(f"config {key} done", flush=True)
     Path(args.out).write_text(json.dumps(results, indent=1, default=lambda o: o.tolist() if hasattr(o, "tolist") else str(o)))
     print(f"written {args.out}")
 

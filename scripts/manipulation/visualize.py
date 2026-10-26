@@ -7,6 +7,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from analyzers.manipulation.fusion import FusionConfig, fuse
+from analyzers.manipulation.regions import texture_map
 from evaluate import ROOT, gt_mask, load_cache, to_outputs
 
 PANEL = 320
@@ -46,7 +47,7 @@ def main() -> None:
     parser.add_argument("--per-group", type=int, default=6)
     args = parser.parse_args()
     results = json.loads(Path(args.results).read_text())
-    cfg = FusionConfig(**results["fitted_config"])
+    cfg = FusionConfig(**results["configs"][args.config]["fitted_config"])
     rows = results["configs"][args.config]["rows"]
     items = {it["id"]: it for it in json.loads((ROOT / "index.json").read_text())}
     groups = {
@@ -61,8 +62,9 @@ def main() -> None:
             it = items[r["id"]]
             d = load_cache(r["id"])
             o = to_outputs(d)
-            res = fuse(o, cfg)
             rgb = np.asarray(Image.open(it["path"]).convert("RGB"))
+            o.texture = texture_map(rgb, o.shape)
+            res = fuse(o, cfg)
             gt = gt_mask(it, o.shape)
             tiles = [
                 fit(Image.fromarray(rgb)),

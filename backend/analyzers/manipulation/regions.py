@@ -7,6 +7,8 @@ from scipy import ndimage
 MIN_AREA_SHARE = 0.003
 MIN_SIDE = 32
 PIXEL_THRESHOLD = 0.5
+TEXTURE_STD = 2.0
+TEXTURE_WINDOW = 5
 
 
 @dataclass
@@ -16,6 +18,7 @@ class Component:
     area_share: float
     bbox: tuple[int, int, int, int]
     solidity: float
+    texture_share: float = 1.0
 
 
 def min_area(shape: tuple[int, int], ref_shape: tuple[int, int] | None = None) -> int:
@@ -35,11 +38,32 @@ def solidity(mask: np.ndarray) -> float:
     return float(mask.sum() / area) if area > 0 else 1.0
 
 
+def texture_map(rgb: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
+    small = cv2.resize(rgb, (shape[1], shape[0]), interpolation=cv2.INTER_AREA)
+    gray = cv2.cvtColor(small, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    k = (TEXTURE_WINDOW, TEXTURE_WINDOW)
+    mean = cv2.blur(gray, k)
+    return np.sqrt(np.maximum(cv2.blur(gray * gray, k) - mean * mean, 0.0))
+
+
+def texture_share(mask: np.ndarray, texture: np.ndarray | None) -> float:
+    if texture is None or not mask.any():
+        return 1.0
+    return float((texture[mask] >= TEXTURE_STD).mean())
+
+
+def fill_ratio(mask: np.ndarray) -> float:
+    x0, y0, x1, y1 = bbox_of(mask)
+    area = (x1 - x0) * (y1 - y0)
+    return float(mask.sum() / area) if area else 0.0
+
+
 def components(
     prob: np.ndarray,
     threshold: float = PIXEL_THRESHOLD,
     ref_shape: tuple[int, int] | None = None,
     min_pixels: int | None = None,
+    texture: np.ndarray | None = None,
 ) -> list[Component]:
     binary = prob >= threshold
     binary = ndimage.binary_opening(binary, structure=np.ones((3, 3), dtype=bool))
@@ -64,6 +88,7 @@ def components(
                 area_share=float(sizes[lab] / total),
                 bbox=(sl[1].start, sl[0].start, sl[1].stop, sl[0].stop),
                 solidity=solidity(mask[sl]),
+                texture_share=texture_share(mask, texture),
             )
         )
     out.sort(key=lambda c: -c.score)
@@ -75,8 +100,13 @@ def window_max(prob: np.ndarray, ref_shape: tuple[int, int] | None = None) -> fl
     return float(ndimage.uniform_filter(prob.astype(np.float32), size=side, mode="nearest").max())
 
 
-def image_score(prob: np.ndarray, ref_shape: tuple[int, int] | None = None) -> float:
-    comps = components(prob, ref_shape=ref_shape)
+def image_score(
+    prob: np.ndarray,
+    ref_shape: tuple[int, int] | None = None,
+    texture: np.ndarray | None = None,
+    min_texture_share: float = 0.0,
+) -> float:
+    comps = [c for c in components(prob, ref_shape=ref_shape, texture=texture) if c.texture_share >= min_texture_share]
     if comps:
         return max(c.score for c in comps)
     return 0.5 * min(window_max(prob, ref_shape), 0.999)

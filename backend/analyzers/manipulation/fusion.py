@@ -2,7 +2,7 @@ from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
-from analyzers.manipulation.regions import Component, bbox_of, components, image_score, iou, min_area
+from analyzers.manipulation.regions import Component, bbox_of, components, fill_ratio, image_score, iou, min_area
 
 KIND_COPY_MOVE = "copy_move"
 KIND_JPEG_GRID = "jpeg_history"
@@ -31,6 +31,8 @@ class FusionConfig:
     zero_max_area: float = 0.25
     zero_missing_min_outside: float = 0.1
     zero_missing_ratio: float = 3.0
+    zero_min_fill: float = 0.0
+    min_texture_share: float = 0.0
     copymove_min_matches: int = 3
     copymove_min_area_share: float = 0.0005
     tile_threshold: float = 0.5
@@ -61,6 +63,7 @@ class MethodOutputs:
     copymove_groups: list = field(default_factory=list)
     tile_boxes: np.ndarray | None = None
     tile_scores: np.ndarray | None = None
+    texture: np.ndarray | None = None
     is_photo: bool | None = None
     image_ai_verdict: str | None = None
 
@@ -132,7 +135,7 @@ def fuse(out: MethodOutputs, config: FusionConfig) -> ManipulationMap:
     for name in LEARNED:
         prob = getattr(out, name)
         if prob is not None:
-            scores[name] = image_score(prob, out.orig_shape)
+            scores[name] = image_score(prob, out.orig_shape, out.texture, config.min_texture_share)
     best_zero = min((r["log10_nfa"] for r in out.zero_regions), default=0.0)
     scores["zero_log10_nfa"] = best_zero
     scores["copymove_matches"] = max((g["matches"] for g in out.copymove_groups), default=0)
@@ -188,6 +191,8 @@ def fuse(out: MethodOutputs, config: FusionConfig) -> ManipulationMap:
                 mask = r["mask"]
                 if mask.sum() < need or mask.mean() > config.zero_max_area:
                     continue
+                if fill_ratio(mask) < config.zero_min_fill:
+                    continue
                 if r["kind"] == "missing_grid":
                     outside = r.get("main_density_outside", 0.0)
                     inside = r.get("main_density_inside", 0.0)
@@ -210,7 +215,11 @@ def fuse(out: MethodOutputs, config: FusionConfig) -> ManipulationMap:
             if prob is None:
                 continue
             t = config.threshold(name, cls)
-            comps[name] = [c for c in components(prob, ref_shape=out.orig_shape) if c.score >= t]
+            comps[name] = [
+                c
+                for c in components(prob, ref_shape=out.orig_shape, texture=out.texture)
+                if c.score >= t and c.texture_share >= config.min_texture_share
+            ]
             for c in comps[name]:
                 candidate_area |= c.mask
 
