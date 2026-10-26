@@ -171,6 +171,24 @@ def test_hidden_internal_source_is_named_in_the_report_language():
     assert titles == ["Работа, сданная раньше в ProofLayer", "Работа, сданная раньше в ProofLayer", "Работа: Полина Новикова, 9Б"]
 
 
+def test_paper_source_names_authors_year_and_venue_and_the_scope_names_the_engines():
+    paper = {
+        "source": "web", "engine": "openalex", "url": "https://doi.org/10.1/x", "title": "Winnowing", "share": 40,
+        "authors": ["S. Schleimer", "D. Wilkerson", "A. Aiken"], "authors_total": 4, "year": 2003, "venue": "SIGMOD",
+    }
+    wiki = {"source": "web", "engine": "wikipedia", "url": "https://ru.wikipedia.org/wiki/X", "title": "X", "share": 5}
+    payload = {
+        "status": "done", "originality": 55, "matched_chars": 45, "total_chars": 100, "web_searched": True,
+        "web_engines": ["arxiv", "openalex", "wikipedia"], "matches": [paper, wiki],
+    }
+    ru = _originality(payload, "ru")
+    assert [s["title"] for s in ru["sources"]] == ["Winnowing (S. Schleimer, D. Wilkerson, A. Aiken и др., 2003, SIGMOD)", "X"]
+    assert ru["scope"] == "Также сравнено: Википедия, открытые научные статьи (OpenAlex, arXiv)"
+    en = _originality({**payload, "web_engines": ["web"]}, "en")
+    assert en["scope"] == "Also compared with a web search"
+    assert _originality({**payload, "web_engines": []}, "en")["scope"] == "Web search included"
+
+
 def test_field_names_are_plain():
     assert field_name("png_text.parameters", "ru") == "Настройки генерации"
     assert field_name("Software", "ru") == "Программа"
