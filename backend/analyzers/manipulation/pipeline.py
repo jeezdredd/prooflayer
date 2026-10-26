@@ -107,7 +107,7 @@ def run_methods(image: LoadedImage, models: Models, methods: tuple = ("catnet", 
 
     if "copymove" in methods:
         t0, c0 = time.perf_counter(), time.process_time()
-        cm = copymove_detect(image.rgb, eps=0.01, min_matches=2)
+        cm = copymove_detect(image.rgb, eps=0.01, min_matches=2, luma_qtable=image.luma_qtable if image.is_jpeg else None)
         out.copymove_groups = [
             {
                 "matches": g.matches,
@@ -117,7 +117,7 @@ def run_methods(image: LoadedImage, models: Models, methods: tuple = ("catnet", 
             }
             for g in cm.groups[:5]
         ]
-        extra["copymove"] = {"keypoints": cm.keypoints, "validated_matches": cm.validated_matches}
+        extra["copymove"] = {"keypoints": cm.keypoints, "validated_matches": cm.validated_matches, "sigma0": cm.sigma0}
         timings["copymove"] = (time.perf_counter() - t0, time.process_time() - c0)
 
     if "tiles" in methods and models.tile_model is not None:

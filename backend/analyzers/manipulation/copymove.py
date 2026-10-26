@@ -10,7 +10,7 @@ MAX_SIDE = 2048
 MAX_KEYPOINTS = 4000
 PATCH_N = 6
 SIGMA0 = 1.0
-MIN_STEP = 1.0
+MIN_STEP = 2.0
 PATCH_SCALE = 1.0
 MIN_PAIR_DISTANCE = 16.0
 MAX_SATURATED_SHARE = 0.1
@@ -20,6 +20,8 @@ POS_TOL = 0.06
 POS_TOL_PX = 4.0
 DENSE_DIFF = 6.0
 HULL_GROW = 2.5
+DESCRIPTOR = "gray"
+JPEG_AWARE_SIGMA = False
 
 
 @dataclass
@@ -38,6 +40,7 @@ class CopyMoveResult:
     validated_matches: int
     groups: list[CopyMoveGroup] = field(default_factory=list)
     tau_level0: float = 0.0
+    sigma0: float = SIGMA0
 
 
 def _work_image(rgb: np.ndarray) -> tuple[np.ndarray, float]:
@@ -53,7 +56,8 @@ def _pyramid(img: np.ndarray) -> list[np.ndarray]:
     for _ in range(1, LEVELS):
         if min(levels[-1].shape[:2]) < 16:
             break
-        levels.append(cv2.pyrDown(levels[-1]))
+        down = cv2.pyrDown(levels[-1])
+        levels.append(down[:, :, None] if down.ndim == 2 else down)
     return levels
 
 
@@ -68,10 +72,17 @@ def _keypoints(rgb: np.ndarray):
     return arr[np.sort(keep)]
 
 
-def _descriptors(levels: list[np.ndarray], kps: np.ndarray):
+def jpeg_sigma(luma_qtable: np.ndarray | None) -> float:
+    if luma_qtable is None:
+        return SIGMA0
+    return float(math.sqrt(SIGMA0**2 + float(np.mean(np.asarray(luma_qtable, dtype=np.float64) ** 2)) / 12.0))
+
+
+def _descriptors(levels: list[np.ndarray], kps: np.ndarray, sigma0: float):
     n = PATCH_N + 2
     k = len(kps)
-    desc = np.zeros((k, 3, PATCH_N, PATCH_N, 2), dtype=np.float32)
+    nch = levels[0].shape[2]
+    desc = np.zeros((k, nch, PATCH_N, PATCH_N, 2), dtype=np.float32)
     level_of = np.zeros(k, dtype=np.int32)
     ok = np.zeros(k, dtype=bool)
     steps = np.maximum(kps[:, 2] * PATCH_SCALE / (n - 1), MIN_STEP)
@@ -92,15 +103,15 @@ def _descriptors(levels: list[np.ndarray], kps: np.ndarray):
         hh, ww = img.shape[:2]
         inside = (sx.min(axis=(1, 2)) >= 0) & (sy.min(axis=(1, 2)) >= 0)
         inside &= (sx.max(axis=(1, 2)) <= ww - 1) & (sy.max(axis=(1, 2)) <= hh - 1)
-        patches = np.zeros((len(idx), 3, n, n), dtype=np.float32)
+        patches = np.zeros((len(idx), nch, n, n), dtype=np.float32)
         coords = np.stack([sy.ravel(), sx.ravel()])
-        for ch in range(3):
+        for ch in range(nch):
             patches[:, ch] = ndimage.map_coordinates(img[:, :, ch], coords, order=1, mode="nearest").reshape(len(idx), n, n)
         gxv = patches[:, :, 1:-1, 2:] - patches[:, :, 1:-1, :-2]
         gyv = patches[:, :, 2:, 1:-1] - patches[:, :, :-2, 1:-1]
         desc[idx] = np.stack([gxv, gyv], axis=-1)
         sat = ((patches >= 250) | (patches <= 5)).mean(axis=(1, 2, 3))
-        sigma = SIGMA0 / f
+        sigma = sigma0 / f
         energy = (gxv**2 + gyv**2).mean(axis=(1, 2, 3)) / 2.0
         textured = energy >= MIN_TEXTURE_RATIO * 2.0 * sigma**2
         ok[idx] = inside & (sat <= MAX_SATURATED_SHARE) & textured
@@ -113,7 +124,7 @@ def _threshold(n_tests: float, eps: float, entries: int, sigma: float) -> float:
     return 2.0 * sigma**2 * float(chi2.ppf(p, df=1))
 
 
-def _match(desc, level_of, kps, eps):
+def _match(desc, level_of, kps, eps, sigma0):
     k = len(desc)
     flat = desc.reshape(k, -1, 2)
     flipped = desc[:, :, ::-1, :, :].copy()
@@ -121,7 +132,7 @@ def _match(desc, level_of, kps, eps):
     flat_flip = flipped.reshape(k, -1, 2)
     entries = flat.shape[1]
     n_tests = k * (k - 1)
-    taus = np.array([_threshold(n_tests, eps, entries, SIGMA0 / 2.0**lv) for lv in range(LEVELS)])
+    taus = np.array([_threshold(n_tests, eps, entries, sigma0 / 2.0**lv) for lv in range(LEVELS)])
     ii, jj = np.triu_indices(k, 1)
     same_level = level_of[ii] == level_of[jj]
     dist = np.hypot(kps[ii, 0] - kps[jj, 0], kps[ii, 1] - kps[jj, 1])
@@ -247,21 +258,26 @@ def _region_masks(rgb, kps, matches, members):
     return target, source, m.tolist()
 
 
-def copymove_detect(rgb: np.ndarray, eps: float = 0.01, min_matches: int = 2) -> CopyMoveResult:
+def copymove_detect(
+    rgb: np.ndarray, eps: float = 0.01, min_matches: int = 2, luma_qtable: np.ndarray | None = None
+) -> CopyMoveResult:
     work, scale = _work_image(rgb)
+    sigma0 = max(SIGMA0, jpeg_sigma(luma_qtable) * scale) if JPEG_AWARE_SIGMA else SIGMA0
     kps = _keypoints(work)
     result = CopyMoveResult(scale=scale, keypoints=len(kps), validated_matches=0)
     if len(kps) < 2:
         return result
-    levels = _pyramid(work)
-    desc, level_of, ok = _descriptors(levels, kps)
+    gray = (work.astype(np.float32) @ np.array([0.299, 0.587, 0.114], dtype=np.float32))[:, :, None]
+    levels = _pyramid(gray if DESCRIPTOR == "gray" else work)
+    desc, level_of, ok = _descriptors(levels, kps, sigma0)
     sel = np.nonzero(ok)[0]
     if len(sel) < 2:
         return result
     kps_ok, desc_ok, lv_ok = kps[sel], desc[sel], level_of[sel]
-    matches, tau0 = _match(desc_ok, lv_ok, kps_ok, eps)
+    matches, tau0 = _match(desc_ok, lv_ok, kps_ok, eps, sigma0)
     result.validated_matches = len(matches)
     result.tau_level0 = tau0
+    result.sigma0 = sigma0
     h0, w0 = rgb.shape[:2]
     for members in _groups(kps_ok, matches):
         if len(members) < min_matches:
