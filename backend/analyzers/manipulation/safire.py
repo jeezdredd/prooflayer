@@ -23,6 +23,8 @@ class SafireOutput:
     front_iou: float
     back_iou: float
     single_cluster: bool
+    front: np.ndarray | None = None
+    back: np.ndarray | None = None
 
 
 def load_safire(weights_path: str) -> SafireModel:
@@ -106,6 +108,8 @@ def safire_predict(rgb: np.ndarray, model: SafireModel, points_per_side: int = P
             front_iou=float(ious[idx]),
             back_iou=float(ious[idx]),
             single_cluster=True,
+            front=low.numpy(),
+            back=low.numpy(),
         )
         return out
     best = [g[torch.argmax(ious[g])] for g in groups]
@@ -124,6 +128,8 @@ def safire_predict(rgb: np.ndarray, model: SafireModel, points_per_side: int = P
         front_iou=float(ious[front]),
         back_iou=float(ious[back]),
         single_cluster=False,
+        front=torch.sigmoid(logits[front]).numpy(),
+        back=torch.sigmoid(logits[back]).numpy(),
     )
 
 

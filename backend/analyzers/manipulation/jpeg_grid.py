@@ -36,12 +36,15 @@ class GridRegion:
     log10_nfa: float
     bbox: tuple[int, int, int, int]
     pixels: int
+    main_density_inside: float = 0.0
+    main_density_outside: float = 0.0
 
 
 @dataclass
 class GridResult:
     main_grid: int | None
     main_log10_nfa: float
+    main_share: float
     global_grids: list[tuple[int, float]]
     foreign_mask: np.ndarray
     missing_mask: np.ndarray
@@ -203,10 +206,21 @@ def zero_detect(rgb: np.ndarray, eps: float = 1.0, keep_votes: bool = False) -> 
         votes2 = compute_votes(jpeg99_luminance(rgb))
         votes2[votes == main] = INVALID
         missing, regions2 = detect_regions(votes2, [0], eps_log10, "missing_grid")
+        is_main = votes == main
+        total_main = int(is_main.sum())
+        for r in regions2:
+            x0, y0, x1, y1 = r.bbox
+            area = max((x1 - x0) * (y1 - y0), 1)
+            inside = int(is_main[y0:y1, x0:x1].sum())
+            r.main_density_inside = inside / area
+            r.main_density_outside = (total_main - inside) / max(votes.size - area, 1)
         regions += regions2
+    valid = votes >= 0
+    main_share = float((votes == main).sum() / max(valid.sum(), 1)) if main is not None else 0.0
     return GridResult(
         main_grid=main,
         main_log10_nfa=main_nfa,
+        main_share=main_share,
         global_grids=found,
         foreign_mask=foreign,
         missing_mask=missing,
