@@ -187,7 +187,7 @@ def web_matches(text: str, tokens: list[Token], hashes: list[int], skip: list[bo
                     urls[hit.url] = (hit.title, engine)
     phrases = [key_phrase(sentence) for sentence in queries]
     papers: list[Paper] = []
-    for engine, search in (("openalex", openalex_lookup), ("arxiv", arxiv_lookup)):
+    for engine, search in (("arxiv", arxiv_lookup), ("openalex", openalex_lookup)):
         found, found_answered = search(phrases)
         if found_answered:
             engines.add(engine)

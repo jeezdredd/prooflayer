@@ -486,6 +486,18 @@ class TestOriginalityWithPapers:
 
     @patch("plagiarism.web.fetch_text", return_value="")
     @patch("plagiarism.academic.requests.get")
+    def test_same_paper_from_both_catalogues_is_listed_once_as_arxiv(self, get, _fetch, _lookup, clock, _embed):
+        clock.time.return_value = 300.0
+        summary = ". ".join(ABSTRACT_SENTENCES) + "."
+        get.side_effect = _routes(
+            openalex=_openalex(_work(title="Fingerprinting Student Programs at Scale")), arxiv=_arxiv(summary),
+        )
+        report = run_check(_personal(PAPER_ESSAY))
+        papers = [m for m in report.matches if m.get("engine") in ("openalex", "arxiv")]
+        assert [(m["engine"], m["url"]) for m in papers] == [("arxiv", "https://arxiv.org/abs/2101.00001")]
+
+    @patch("plagiarism.web.fetch_text", return_value="")
+    @patch("plagiarism.academic.requests.get")
     def test_failed_paper_engines_are_not_named(self, get, _fetch, _lookup, clock, _embed):
         clock.time.return_value = 300.0
         get.side_effect = _routes(openalex=ConnectionError("offline"), arxiv=_arxiv())
