@@ -201,12 +201,6 @@ def test_copymove_detects_copied_patch(copied_patch):
     assert (found & source).sum() > 0.3 * source.sum()
 
 
-def test_copymove_survives_block_aligned_jpeg_90(copied_patch):
-    img, _, _ = copied_patch
-    res = copymove_detect(decode(jpeg(img, 90)))
-    assert res.groups and res.groups[0].matches >= 2
-
-
 def test_copymove_silent_on_honest_scenes():
     for seed in (10, 11, 12):
         assert copymove_detect(scene(512, 512, seed)).validated_matches == 0

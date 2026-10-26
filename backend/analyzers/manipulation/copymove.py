@@ -10,7 +10,7 @@ MAX_SIDE = 2048
 MAX_KEYPOINTS = 4000
 PATCH_N = 6
 SIGMA0 = 1.0
-MIN_STEP = 2.0
+MIN_STEP = 1.0
 PATCH_SCALE = 1.0
 MIN_PAIR_DISTANCE = 16.0
 MAX_SATURATED_SHARE = 0.1
@@ -19,8 +19,10 @@ LEVELS = 6
 POS_TOL = 0.06
 POS_TOL_PX = 4.0
 DENSE_DIFF = 6.0
-HULL_GROW = 2.5
-DESCRIPTOR = "gray"
+HULL_GROW = 1.5
+MAX_REGION_SHARE = 0.25
+MAX_SELF_OVERLAP = 0.3
+DESCRIPTOR = "rgb"
 JPEG_AWARE_SIGMA = False
 
 
@@ -246,7 +248,8 @@ def _region_masks(rgb, kps, matches, members):
     cv2.fillConvexPoly(hull_t, cv2.convexHull(dst.astype(np.int32)), 1)
     for p in dst:
         cv2.circle(hull_t, (int(p[0]), int(p[1])), int(max(radius, 4)), 1, -1)
-    hull_t = cv2.dilate(hull_t, np.ones((3, 3), np.uint8), iterations=int(max(radius, 4)))
+    r = int(max(radius, 4))
+    hull_t = cv2.dilate(hull_t, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1)))
     target = similar & (hull_t > 0)
     lab, n = ndimage.label(target)
     if n:
@@ -256,6 +259,11 @@ def _region_masks(rgb, kps, matches, members):
     inv = cv2.invertAffineTransform(m)
     source = cv2.warpAffine(target.astype(np.uint8), inv, (w, h), flags=cv2.INTER_NEAREST) > 0
     return target, source, m.tolist()
+
+
+def _overlap(a: np.ndarray, b: np.ndarray) -> float:
+    union = np.logical_or(a, b).sum()
+    return float(np.logical_and(a, b).sum() / union) if union else 0.0
 
 
 def copymove_detect(
@@ -283,6 +291,8 @@ def copymove_detect(
         if len(members) < min_matches:
             continue
         target, source, m = _region_masks(work, kps_ok, matches, members)
+        if target.mean() > MAX_REGION_SHARE or _overlap(target, source) > MAX_SELF_OVERLAP:
+            continue
         if scale < 1.0:
             target = cv2.resize(target.astype(np.uint8), (w0, h0), interpolation=cv2.INTER_NEAREST) > 0
             source = cv2.resize(source.astype(np.uint8), (w0, h0), interpolation=cv2.INTER_NEAREST) > 0
