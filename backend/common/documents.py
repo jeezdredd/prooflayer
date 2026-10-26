@@ -11,10 +11,10 @@ PDF_MAX_PAGES = 300
 DOCX_MAX_UNCOMPRESSED = 100 * 1024 * 1024
 
 
-def extract_pdf(data: bytes) -> str:
+def extract_pdf(data: bytes, max_pages: int = PDF_MAX_PAGES) -> str:
     reader = pypdf.PdfReader(io.BytesIO(data))
     parts = []
-    for page in reader.pages[:PDF_MAX_PAGES]:
+    for page in reader.pages[:max_pages]:
         try:
             parts.append(page.extract_text() or "")
         except Exception:

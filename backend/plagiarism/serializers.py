@@ -5,6 +5,7 @@ from classroom.models import Classroom
 from common.names import display_name
 from content.models import Submission
 
+from .academic import PAPER_ENGINES
 from .models import TextFingerprint
 
 EXCERPTS = 5
@@ -113,7 +114,14 @@ def report_payload(submission, user) -> dict | None:
             "hidden": False,
         }
         if match["source"] == "web":
-            row.update({"url": match["url"], "title": match.get("title", "")})
+            row.update({"url": match["url"], "title": match.get("title", ""), "engine": match.get("engine")})
+            if match.get("engine") in PAPER_ENGINES:
+                row.update({
+                    "authors": match.get("authors") or [],
+                    "authors_total": match.get("authors_total") or len(match.get("authors") or []),
+                    "year": match.get("year"),
+                    "venue": match.get("venue") or "",
+                })
         else:
             row["submitted_at"] = match.get("submitted_at")
             if source is not None:
