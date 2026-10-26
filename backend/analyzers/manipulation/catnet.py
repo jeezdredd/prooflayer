@@ -6,7 +6,7 @@ from analyzers.manipulation.catnet_net import CATNet
 from analyzers.manipulation.imageio import LoadedImage, estimate_luma_coefficients
 
 DCT_CLIP = 20
-TILE = 1024
+TILE = 1536
 OVERLAP = 128
 
 _models: dict[str, CATNet] = {}

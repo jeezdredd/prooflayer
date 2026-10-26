@@ -160,7 +160,7 @@ def derived_items(base_items: list[dict], variants: list[str], per_subset: dict,
     return out
 
 
-CAPS = {"vision_nat": 35, "vision_fbh": 70, "cocoglide_real": 200, "cocoglide_fake": 200}
+CAPS = {"vision_nat": 35, "vision_fbh": 35, "vision_wa": 105, "unsplash": 150, "tgif_ps_sp": 240, "cocoglide_real": 200, "cocoglide_fake": 200}
 
 
 def apply_caps(items: list[dict], seed: int) -> list[dict]:

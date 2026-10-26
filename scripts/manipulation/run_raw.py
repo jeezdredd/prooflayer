@@ -61,6 +61,8 @@ def main() -> None:
     parser.add_argument("--methods", nargs="+", default=["catnet", "safire", "zero", "copymove", "tiles"])
     parser.add_argument("--subsets", nargs="*", default=[])
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--reverse", action="store_true")
+    parser.add_argument("--start", type=int, default=0)
     args = parser.parse_args()
 
     torch.set_num_threads(args.threads)
@@ -68,6 +70,10 @@ def main() -> None:
     if args.subsets:
         items = [it for it in items if it["subset"] in args.subsets]
     items = [it for i, it in enumerate(items) if i % args.shards == args.shard]
+    if args.start:
+        items = items[args.start :] + items[: args.start]
+    if args.reverse:
+        items = items[::-1]
     if args.limit:
         items = items[: args.limit]
     cache = Path(args.cache)
