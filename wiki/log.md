@@ -2,6 +2,15 @@
 
 Newest at top.
 
+## [2026-10-26] originality-papers | Copy check searches OpenAlex and arXiv; paper sources with authors, year, venue
+
+- Source: owner decision (web search stays free: Wikipedia, OpenAlex, arXiv, later an own index; no paid APIs, signups, key-only services or scraping), prod SearXNG engines all blocked, OpenAlex docs (search covers title, abstract, full text; keyless budget $0.10/day per IP, search $0.001, optional free key 10x), arXiv API guidance (one request per 3 s), live probes of both APIs
+- Backend: new `plagiarism.academic` (8-word key phrases, OR groups under a URL budget, OpenAlex works search with abstract rebuilt from the inverted index and open-access/CyberLeninka full-text links, arXiv Atom parsing, Redis-slot pacing for arXiv and its PDFs, 429/low-credit pauses, 7-day cache); `plagiarism.web` reads PDFs through `common.documents.extract_pdf` (15 MB, 60 pages), caches paper full texts, tags every web match with `engine`, drops an engine whose pages never opened; arXiv record wins a title collision; serializer and PDF report show authors, year and venue, PDF scope names the engines
+- Settings: `PLAGIARISM_WIKIPEDIA`, `PLAGIARISM_OPENALEX`, `PLAGIARISM_ARXIV` (on, off in tests), `OPENALEX_API_KEY` (optional), `OPENALEX_MAILTO`, hits, timeouts, full-text budget, cache TTL; compose passes the switches and the key
+- Frontend: scope sentence built from `web_engines` ("Wikipedia, open scientific papers and a web search"), paper rows "Scientific paper · authors · year · venue", headline "found in scientific papers"; landing originality line, school web search setting, Privacy and Data Processing (en/ru) name Wikipedia, OpenAlex and arXiv
+- Checks: `plagiarism/tests/test_academic.py` (31 tests, mocked HTTP), report scope test; live smoke from the dev machine: Transformer abstract copy found on arXiv (PDF read) plus three OpenAlex papers in 9 s, Russian copy from a CyberLeninka paper body found through OpenAlex full-text search (512 chars)
+- Pages updated: [[services/originality]], [[infrastructure/env-vars]], [[hot]]
+
 ## [2026-10-24] demo-t5 | Demo shows what the accounts doc says; seed_demo keeps passwords, redates and verifies (Tribunal 1.10.1)
 
 - Source: audit theme t5-demo (findings 63, 88-102), owner decisions, local seed simulation with the real analyzers (t7, e5-small, image detectors), Wikipedia lookup for Polina's paste

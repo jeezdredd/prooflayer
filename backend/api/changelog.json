@@ -1,5 +1,18 @@
 [
   {
+    "slug": "originality-scientific-papers",
+    "date": "2026-10-26",
+    "kind": "feature",
+    "title": {
+      "en": "The copy check now looks in open scientific papers",
+      "ru": "Проверка на списывание теперь ищет в открытых научных статьях"
+    },
+    "body": {
+      "en": "University and school essays are often copied from journal articles and preprints rather than from encyclopedias. The originality check now also searches two free scientific catalogues: OpenAlex, which covers journals in many languages including Russian ones, and arXiv. It compares the work with each paper's abstract and, when the paper is open access, with its full text. A paper found this way is listed as a source with its title, authors, year and journal, and the reference list of the work is still left out of the comparison. If a work quotes a paper and names it, the paper is still shown, so judge each match in context. The report now says exactly what the work was compared with, for example Wikipedia, open scientific papers and a web search, and leaves out anything that did not answer.",
+      "ru": "Сочинения, курсовые и рефераты часто списывают не из энциклопедий, а из журнальных статей и препринтов. Проверка оригинальности теперь ищет ещё и в двух бесплатных научных каталогах: OpenAlex, где есть журналы на многих языках, в том числе на русском, и arXiv. Работа сравнивается с аннотацией каждой найденной статьи, а если статья в открытом доступе, то и с её полным текстом. Найденная статья показана как источник с названием, авторами, годом и журналом, а список литературы самой работы по-прежнему не сравнивается. Если работа цитирует статью со ссылкой на неё, статья всё равно будет показана, поэтому каждое совпадение стоит оценивать в контексте. Отчёт теперь точно говорит, с чем сравнивалась работа, например с Википедией, открытыми научными статьями и поиском в интернете, и не упоминает то, что не ответило."
+    }
+  },
+  {
     "slug": "batch-owners-main-source",
     "date": "2026-10-24",
     "kind": "improvement",

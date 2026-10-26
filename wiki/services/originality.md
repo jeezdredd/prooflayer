@@ -26,8 +26,11 @@ evidence, plus semantic and cross-language matching.
    counted in the score only at >= 0.95 (classmates write on the same topic; e5 puts unrelated
    sentences near 0.8). A different per-sentence language makes it `translation`.
 4. **Web**: up to 8 distinctive sentences (long, many long words) quoted as queries through the
-   provider chain `PLAGIARISM_SEARCH_PROVIDERS` (default searxng, brave, ddg); pages fetched with
-   `safe_get` (3 MB cap), text extracted with trafilatura, aligned by shingles.
+   provider chain `PLAGIARISM_SEARCH_PROVIDERS` (default searxng, brave, ddg) and Wikipedia's own
+   full-text search; 8-word key phrases of the same sentences go to OpenAlex and arXiv
+   (`plagiarism.academic`, see "Open scientific papers" below). Pages fetched with `safe_get`
+   (3 MB HTML cap, 15 MB / 60 pages for PDFs read with `common.documents.extract_pdf`), text
+   extracted with trafilatura, aligned by shingles.
 5. **Originality** = 100 x (1 - union of counted spans / text characters).
 
 Same-author work never matches (resubmission is not plagiarism). Privacy in
@@ -80,3 +83,48 @@ percentages that did not add up. Fixes in `plagiarism.service` and `plagiarism.s
 Seed-order simulation of all 80 demo works with the real e5 model: every honest work 100%; left are
 Vera from Arina (75.6%), Olga from Ivan (exact plus reworded) and the two hidden-text DOCX (7%).
 
+
+## Open scientific papers: OpenAlex and arXiv (2026-10-26)
+
+University and school essays copy from papers more than from Wikipedia, and the prod SearXNG engines are all
+blocked, so two free catalogues joined the web part (owner rule: free only, no paid APIs, no signups, no
+key-only services, no browser scraping). Module `plagiarism.academic`, wired in `plagiarism.web.web_matches`.
+
+- **Queries**: each distinctive sentence gives an 8-word key phrase (`key_phrase`: the window with the most
+  words of 7+ letters, punctuation dropped, AND/OR/NOT lowercased so they are not operators). Phrases are
+  quoted and OR-combined (`or_groups`) under a URL budget: English texts fit one OpenAlex request, Russian ones
+  (percent-encoded Cyrillic) take two. Phrases stay in the text's own language, so Russian essays find Russian
+  journals and CyberLeninka; arXiv only gets Latin-script phrases.
+- **OpenAlex** (`/works?search=`, searches title, abstract and full text; `select` keeps the payload small,
+  `mailto=OPENALEX_MAILTO`). Abstract rebuilt from `abstract_inverted_index`. Full text links: best open
+  location PDF, its landing page, `open_access.oa_url`, and any location on CyberLeninka (free to read, but
+  OpenAlex marks it closed). Budget reality: without a key every IP shares $0.10 a day and a search costs
+  $0.001, so about 100 searches a day, 1-2 per check; a 429 or fewer than 10 credits left pauses OpenAlex until
+  `Retry-After` / `X-RateLimit-Reset`. `OPENALEX_API_KEY` (free, 10x budget) is optional, sent as a bearer
+  token, and a refused key falls back to keyless. OpenAlex's paid content API is not used.
+- **arXiv** (`export.arxiv.org/api/query`, Atom, `all:"phrase" OR ...`). Pacing: one request every 3 s across
+  all workers through Redis slots (`wait_turn`: `cache.add` on `plag:arxiv:turn:<slot>`, sleep to the slot
+  start, give up after 30 s); arXiv PDFs use the same slots. 429/503 pause arXiv and its PDFs for 10 minutes
+  (or `Retry-After`). The PDF is read only when the title or abstract shares a 5-word shingle with the work.
+  Live 2026-10-26 the API also answered 429 "Rate exceeded" after 46 s once, then worked in under a second.
+- **Caching**: search answers 7 days (`PLAGIARISM_ACADEMIC_CACHE`), paper full texts 7 days (failed fetches
+  1 hour), keyed by query or URL, so a class copying one paper downloads it once.
+- **Matching**: up to `PLAGIARISM_PAPER_TEXTS` (4) full texts per check; source text = title + abstract +
+  full text, aligned by shingles like web pages (the e5 sentence matching is internal only). The reference
+  list is still cut by `body_end` / the skip mask, so its titles are neither searched nor matched. A work
+  that quotes a paper with a proper citation still shows the paper as a source; the teacher judges context.
+  When both catalogues return the same title, the arXiv record wins (canonical link, free PDF).
+- **Match rows**: `source: "web"` plus `engine` (`web`, `wikipedia`, `openalex`, `arxiv`), and for papers
+  `authors` (first 5), `authors_total`, `year`, `venue` (arXiv: `journal_ref` or "arXiv"). The UI shows
+  "Scientific paper · authors · year · venue"; the PDF report adds "(authors et al., year, venue)".
+- **web_status / engines**: an engine is named only if it answered; one whose pages all failed to open is
+  dropped; no engine left means `failed`. The scope sentence is built from the engines: "Compared with
+  students' work in ProofLayer, Wikipedia, open scientific papers and a web search", minus what did not
+  answer. Privacy, Data Processing (both languages) and the school web search setting name Wikipedia,
+  OpenAlex and arXiv.
+- **Live smoke** (2026-10-26, not a test): an essay with three sentences of the "Attention Is All You Need"
+  abstract found the arXiv paper (2017, PDF 39.6k chars, before the arXiv-first rule an odd 2025 OpenAlex
+  duplicate record took its place) and three OpenAlex papers that reuse the abstract, 9 s in all; a Russian
+  essay with three sentences from the body of a CyberLeninka paper (not its abstract) was found through
+  OpenAlex full-text search, the full text came from CyberLeninka after the journal's own link failed on an
+  expired certificate, 512 characters matched.

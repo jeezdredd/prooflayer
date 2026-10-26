@@ -103,3 +103,23 @@ containers and prod kept sending over SMTP (`/api/v1/system/status/` -> `service
 services now get `RESEND_API_KEY`. Switching: verify `prooflayer.cloud` in Resend (DKIM TXT `resend._domainkey`, SPF TXT
 and MX on the `send` subdomain, DNS only in Cloudflare), add a sending key restricted to that domain to the shared
 `.env`, redeploy; the status endpoint then reports `resend`.
+
+## Originality sources (2026-10-26)
+
+Read in `backend/config/settings/base.py`; `PLAGIARISM_OPENALEX`, `PLAGIARISM_ARXIV` and `OPENALEX_API_KEY` are passed
+to `backend` and `celery_worker` in `deploy/compose.prod.yml`, the rest use their defaults. Tests turn Wikipedia,
+OpenAlex and arXiv off.
+
+| Var | Default | Purpose |
+|-----|---------|---------|
+| `PLAGIARISM_WIKIPEDIA` | `1` | MediaWiki full-text search on ru/en/fr Wikipedia per distinctive sentence |
+| `PLAGIARISM_OPENALEX` | `1` | OpenAlex works search (title, abstract, full text) with OR-combined key phrases |
+| `PLAGIARISM_ARXIV` | `1` | arXiv API search for Latin-script key phrases, paced at one request per 3 s |
+| `OPENALEX_API_KEY` | empty | optional free key (10x the keyless $0.10/day budget); refused keys fall back to keyless |
+| `OPENALEX_MAILTO` | `hello@prooflayer.cloud` | `mailto` for OpenAlex (no longer raises the budget) |
+| `PLAGIARISM_OPENALEX_HITS` / `PLAGIARISM_ARXIV_HITS` | `6` / `3` | papers compared per check |
+| `PLAGIARISM_OPENALEX_TIMEOUT` / `PLAGIARISM_ARXIV_TIMEOUT` | `12` / `25` | seconds per API call |
+| `PLAGIARISM_PAPER_TEXTS` | `4` | open-access full texts (PDF or page) fetched per check |
+| `PLAGIARISM_ACADEMIC_CACHE` | `604800` | seconds API answers and paper texts stay in Redis |
+
+See [[services/originality]].

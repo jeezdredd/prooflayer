@@ -41,7 +41,7 @@ essay and returns one verdict with the evidence behind it.
 |---|---|
 | **Images and video** | AI generation and manipulation detection, Error Level Analysis, EXIF / PNG parameters / C2PA, provenance by perceptual hash, frame sampling across whole clips |
 | **Audio** | Synthetic voice and vocoder artifact detection |
-| **Text** | AI-writing classifier for ru / en / fr, bypass detection (homoglyphs, invisible and hidden text), invented sources and reference formatting, originality and plagiarism with paraphrase and translation matching |
+| **Text** | AI-writing classifier for ru / en / fr, bypass detection (homoglyphs, invisible and hidden text), invented sources and reference formatting, originality and plagiarism with paraphrase and translation matching, compared with other works, Wikipedia, open scientific papers (OpenAlex, arXiv) and the web |
 | **Education** | Schools, classes and student accounts, a plain-language teacher report, class radar, assignment shadow, verdict objections |
 | **Platform** | Fact-check, compare, human review queue, batch upload, PDF reports, REST API with signed webhooks, browser extension, Russian and English interface |
 
@@ -102,7 +102,7 @@ A separate app at `classroom.prooflayer.cloud` for schools and universities.
 - A compact live status signal in the header and a link back to the main ProofLayer workspace
 - Each work opens with a plain answer ("Looks like the student's own work", "Worth a closer look") and one coloured tile per check, then the evidence
 - The whole text is shown with the passages that read most machine-like highlighted and scored, in the app and in the PDF report
-- Originality on every upload: winnowed fingerprints, e5 sentence vectors for rewording and translation, optional web search through self-hosted SearXNG
+- Originality on every upload: winnowed fingerprints, e5 sentence vectors for rewording and translation, optional web search through self-hosted SearXNG, Wikipedia full-text search and open scientific papers from OpenAlex and arXiv (abstracts plus open-access full text, free APIs only)
 - Class radar: works built on one skeleton and sudden jumps in a student's level
 - Assignment shadow: the server answers the assignment with AI the way students of different ages would and compares every work with it
 - Verdict objections with deadlines, CSV export
@@ -177,6 +177,7 @@ flowchart TB
     W --> S3
     W --> OL[Ollama on GPU, Vulkan<br/>Qwen2.5-VL 7B · Qwen2.5 3B]
     W --> SX[SearXNG]
+    W --> AC[Wikipedia · OpenAlex · arXiv]
     API -. WebSocket .-> SPA
 ```
 
@@ -196,7 +197,7 @@ flowchart TB
 | Backend | Python 3.12, Django 5.1, Django REST Framework, SimpleJWT, Celery 5.4, Django Channels + Daphne, WeasyPrint, Unfold admin |
 | Data | PostgreSQL 16 + pgvector, Redis 7.4, MinIO |
 | ML | PyTorch, Transformers, Community Forensics ViT, CLIP ViT-B/32, multilingual-e5-small, Ollama (Qwen2.5-VL 7B, Qwen2.5 3B), spaCy, librosa, OpenCV |
-| Search and text | SearXNG, Trafilatura, pypdf, python-docx, wordfreq |
+| Search and text | SearXNG, Wikipedia, OpenAlex, arXiv, Trafilatura, pypdf, python-docx, wordfreq |
 | Infrastructure | Docker Compose, Caddy, Cloudflare, Tailscale, Vulkan on AMD RX 6700S, Paddle, Resend, Sentry |
 
 The full list with links is on the [Stack page](https://prooflayer.cloud/stack).
@@ -235,6 +236,8 @@ The first start pulls the Ollama models; wait for `ollama_init` to finish before
 | `OLLAMA_MODEL` | `qwen2.5:3b` | Fact-check and assignment shadow |
 | `OLLAMA_VISION_MODEL` | `qwen2.5vl:7b` | Vision member, about 6 s per image on the GPU |
 | `SEARXNG_URL`, `PLAGIARISM_SEARCH_PROVIDERS` | `searxng,brave,ddg` | Web search for originality |
+| `PLAGIARISM_WIKIPEDIA`, `PLAGIARISM_OPENALEX`, `PLAGIARISM_ARXIV` | `1` | Wikipedia and open scientific papers for originality |
+| `OPENALEX_API_KEY` | | Optional free OpenAlex key (10x the keyless daily budget) |
 | `RETRAIN_MIN_NEW_SAMPLES` | `50` | New examples needed before a weekly retrain |
 | `RESEND_API_KEY` | | Transactional email |
 | `PADDLE_*` | | Billing |
