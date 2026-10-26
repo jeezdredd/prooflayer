@@ -20,6 +20,7 @@ from classroom.radar import class_radar
 from classroom.serializers import FLAG_ORDER, submission_flags
 from classroom.shadow import sentence_vectors
 from classroom.views import RADAR_DAYS
+from common.demo import DEMO_DOMAIN
 from common.documents import DOCUMENT_MIMES
 from content.models import (
     OBJECTION_ANSWER_BUSINESS_DAYS,
@@ -35,7 +36,6 @@ from plagiarism.models import PlagiarismReport
 from users.models import User
 
 DATA = Path(__file__).resolve().parents[2] / "demo" / "demo_data.json"
-DEMO_DOMAIN = "demo.prooflayer.cloud"
 POLL_SECONDS = 3
 DONE = {Submission.Status.COMPLETED, Submission.Status.FAILED}
 REPORT_DONE = {PlagiarismReport.Status.DONE, PlagiarismReport.Status.FAILED}

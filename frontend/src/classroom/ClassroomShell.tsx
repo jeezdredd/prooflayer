@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, LogOut } from "lucide-react";
+import { ArrowLeft, GraduationCap, LogOut, UserRound } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { auth } from "../api/endpoints";
 import TermsGate from "../components/TermsGate";
@@ -49,7 +49,10 @@ export default function ClassroomShell() {
             <LangSwitch />
             {isAuthenticated ? (
               <>
-                <span className="hidden sm:inline">{user?.username}</span>
+                <Link to="/account" className="flex items-center gap-1.5 hover:text-ink-100" title={t("Account & privacy")} aria-label={t("Account & privacy")}>
+                  <UserRound size={14} />
+                  <span className="hidden sm:inline">{user?.username}</span>
+                </Link>
                 <button type="button" onClick={signOut} className="hover:text-ink-100" aria-label={t("Sign out")}>
                   <LogOut size={14} />
                 </button>

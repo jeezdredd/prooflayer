@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from billing.models import get_or_create_subscription
 from billing.permissions import tier_allows
+from common.demo import refuse_demo, refuse_demo_mixing
 from common.names import display_name, own_name, save_name
 from content.models import Batch, Submission
 from users.permissions import IsVerifiedUser
@@ -125,6 +126,7 @@ class OrganizationDetailView(APIView):
         return Response(org_payload(_org(slug), request.user))
 
     def delete(self, request, slug):
+        refuse_demo(request.user)
         org = _org(slug)
         if not request.user.is_authenticated or org.owner_id != request.user.id:
             raise PermissionDenied("Only the owner can delete the school.")
@@ -149,6 +151,7 @@ class OrganizationJoinTeacherView(APIView):
         org = _org(slug)
         if (request.data.get("code") or "").strip().upper() != org.teacher_code:
             raise NotFound("Wrong teacher code.")
+        refuse_demo_mixing(org.owner, request.user)
         plan = _owner_plan(org.owner)
         already_seated = OrgMember.objects.filter(organization__owner=org.owner, user=request.user).exists()
         if plan and not already_seated:
@@ -166,6 +169,7 @@ class OrganizationRotateCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, slug):
+        refuse_demo(request.user)
         org = _org(slug)
         _require_admin(org, request.user)
         return Response({"teacher_code": org.rotate_teacher_code()})
@@ -202,6 +206,7 @@ class OrganizationTeachersView(APIView):
         ])
 
     def delete(self, request, slug, user_id):
+        refuse_demo(request.user)
         org = _org(slug)
         _require_admin(org, request.user)
         if int(user_id) == org.owner_id:

@@ -36,6 +36,18 @@ export function syncSession(force = false): Promise<void> {
   return running;
 }
 
+export async function refreshSignedInUser(): Promise<void> {
+  await syncSession(true);
+  const store = useAuthStore.getState();
+  if (!store.isAuthenticated) return;
+  try {
+    const me = await auth.me();
+    store.setUser(me.data);
+  } catch {
+    return;
+  }
+}
+
 export function useSessionSync(): void {
   useEffect(() => {
     syncSession(true);

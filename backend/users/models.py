@@ -79,6 +79,59 @@ class EmailVerificationToken(models.Model):
         self.save(update_fields=["used_at"])
 
 
+EMAIL_CHANGE_HOURS = 24
+
+
+def email_change_expiry():
+    return timezone.now() + timedelta(hours=EMAIL_CHANGE_HOURS)
+
+
+class EmailChangeQuerySet(models.QuerySet):
+    def pending(self):
+        return self.filter(used_at__isnull=True, cancelled_at__isnull=True, expires_at__gt=timezone.now())
+
+    def open(self):
+        return self.filter(used_at__isnull=True, cancelled_at__isnull=True)
+
+
+class EmailChangeToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="email_change_tokens")
+    new_email = models.EmailField()
+    token = models.CharField(max_length=64, unique=True, default=_gen_token, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=email_change_expiry)
+    used_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    objects = EmailChangeQuerySet.as_manager()
+
+    class Meta:
+        db_table = "email_change_tokens"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(used_at__isnull=True, cancelled_at__isnull=True),
+                name="one_open_email_change_per_user",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} -> {self.new_email}"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    @classmethod
+    def cancel_open(cls, user) -> int:
+        return cls.objects.open().filter(user=user).update(cancelled_at=timezone.now())
+
+    @classmethod
+    def pending_for(cls, user) -> "EmailChangeToken | None":
+        return cls.objects.pending().filter(user=user).first()
+
+
 class EmailLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     to_email = models.CharField(max_length=254)

@@ -141,6 +141,7 @@ function AdminPanel({ org }: { org: Organization }) {
       queryClient.invalidateQueries({ queryKey: ["org", org.slug] });
       toast.success(t("New teacher code issued; the old one no longer works"));
     },
+    onError: (err) => toast.error(errorText(err, t("Could not save"))),
   });
   const webSearch = useMutation({
     mutationFn: (enabled: boolean) => orgs.updateSettings(org.slug, { web_search_enabled: enabled }).then((r) => r.data),

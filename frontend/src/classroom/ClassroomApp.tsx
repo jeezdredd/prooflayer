@@ -14,7 +14,9 @@ const SubmitPage = lazy(() => import("./SubmitPage"));
 const ClassroomDetailPage = lazy(() => import("../pages/ClassroomDetailPage"));
 const ResultPage = lazy(() => import("../pages/ResultPage"));
 const BatchPage = lazy(() => import("../pages/BatchPage"));
-const VerifyEmailPage = lazy(() => import("../pages/VerifyEmailPage"));
+const VerifyEmailPage = lazy(() => import("../pages/EmailLinkPages").then((m) => ({ default: m.VerifyEmailPage })));
+const ConfirmEmailPage = lazy(() => import("../pages/EmailLinkPages").then((m) => ({ default: m.ConfirmEmailPage })));
+const AccountPage = lazy(() => import("../pages/AccountPage"));
 
 function Centered() {
   return (
@@ -34,10 +36,12 @@ export default function ClassroomRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/confirm-email" element={<ConfirmEmailPage />} />
         <Route element={<ClassroomShell />}>
           <Route path="/:slug" element={<OrgPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<HubPage />} />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/results/:id" element={<ResultPage />} />
             <Route path="/batches/:id" element={<BatchPage />} />
             <Route path="/c/:id" element={<ClassroomDetailPage />} />

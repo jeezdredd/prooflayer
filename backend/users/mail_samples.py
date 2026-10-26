@@ -1,7 +1,15 @@
 from django.conf import settings
 
-from .mail import objection_context, password_reset_context, update_context, verification_context
-from .models import ProductUpdate
+from .mail import (
+    email_change_confirm_context,
+    email_change_notice_context,
+    email_changed_context,
+    objection_context,
+    password_reset_context,
+    update_context,
+    verification_context,
+)
+from .models import ProductUpdate, User
 
 SAMPLE_UPDATE = ProductUpdate(
     title_en="Detection got sharper this week",
@@ -29,7 +37,8 @@ SAMPLE_UPDATE = ProductUpdate(
     cta_url="https://prooflayer.cloud/status",
 )
 
-KINDS = ("verify", "password_reset", "objection", "update")
+KINDS = ("verify", "password_reset", "email_change_confirm", "email_change_notice", "email_changed", "objection", "update")
+SAMPLE_NEW_EMAIL = "new.address@example.com"
 
 
 def sample_context(kind: str, user, update: ProductUpdate | None = None) -> dict:
@@ -39,6 +48,13 @@ def sample_context(kind: str, user, update: ProductUpdate | None = None) -> dict
         return verification_context(user, f"{site}/verify-email?token=test")
     if kind == "password_reset":
         return password_reset_context(user, f"{site}/forgot-password")
+    if kind == "email_change_confirm":
+        return email_change_confirm_context(user, f"{site}/confirm-email?token=test")
+    if kind == "email_change_notice":
+        return email_change_notice_context(user, user.email, SAMPLE_NEW_EMAIL)
+    if kind == "email_changed":
+        changed = User(email=SAMPLE_NEW_EMAIL, username=user.username, language=user.language)
+        return email_changed_context(changed, user.email)
     if kind == "objection":
         return objection_context(
             lang=lang,

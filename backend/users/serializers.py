@@ -6,7 +6,10 @@ from rest_framework import serializers
 
 from analyzers.training import forget
 from classroom.access import is_student_only
+from common.demo import is_demo_email
 from content.sensitivity import unpublish_all
+
+from .models import EmailChangeToken
 
 User = get_user_model()
 
@@ -60,13 +63,15 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     needs_terms = serializers.SerializerMethodField()
     student_only = serializers.SerializerMethodField()
+    pending_email = serializers.SerializerMethodField()
+    is_demo = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
             "id", "email", "username", "avatar", "bio", "is_verified", "is_staff", "date_joined",
             "allow_training", "training_consent_at", "is_adult", "terms_version", "needs_terms", "student_only",
-            "language", "email_updates",
+            "language", "email_updates", "pending_email", "is_demo",
         )
         read_only_fields = (
             "id", "email", "is_verified", "is_staff", "date_joined", "training_consent_at", "terms_version",
@@ -77,6 +82,13 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_student_only(self, obj) -> bool:
         return is_student_only(obj)
+
+    def get_pending_email(self, obj) -> str | None:
+        change = EmailChangeToken.pending_for(obj)
+        return change.new_email if change else None
+
+    def get_is_demo(self, obj) -> bool:
+        return is_demo_email(obj.email)
 
     def update(self, instance, validated_data):
         if "is_adult" in validated_data:

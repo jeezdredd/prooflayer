@@ -119,6 +119,10 @@ function DevelopersInner() {
   const revoke = useMutation({
     mutationFn: (id: number) => apiKeys.revoke(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
+    onError: (err: unknown) => {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail ? t(detail) : t("Could not revoke the key"));
+    },
   });
 
   const upload = `curl -X POST ${API_BASE}/content/submissions/ \\

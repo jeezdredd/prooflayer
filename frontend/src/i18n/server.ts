@@ -155,4 +155,6 @@ export const SERVER_TEXT = [
   msg("not a class submission"),
   msg("no AI answers generated for this class yet"),
   msg("text too short to compare"),
+  msg("This is a shared demo account, so this is turned off."),
+  msg("This is a demo school. Only its demo accounts can join it."),
 ];

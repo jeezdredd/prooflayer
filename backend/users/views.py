@@ -3,7 +3,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import transaction
+from django.core.validators import validate_email
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -11,6 +12,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -20,15 +22,22 @@ from analyzers.training import forget
 from api.models import Feedback
 from billing.models import Subscription
 from classroom.models import Classroom, Organization
+from common.demo import DEMO_CODE, DEMO_MESSAGE, is_demo_email, refuse_demo
 from content.models import Submission
 from content.sensitivity import unpublish_all
 
-from .models import EmailLog, EmailVerificationToken, ProductUpdate
+from .models import EmailChangeToken, EmailLog, EmailVerificationToken, ProductUpdate, email_change_expiry
 from .serializers import AcceptTermsSerializer, RegisterSerializer, UserSerializer, age_fields
 from . import mail
 from .mail import user_from_unsubscribe_token
 from .mail_samples import KINDS, sample_context
-from .tasks import send_password_reset_email, send_verification_email
+from .tasks import (
+    send_email_change_confirm,
+    send_email_change_notice,
+    send_email_changed_notice,
+    send_password_reset_email,
+    send_verification_email,
+)
 
 User = get_user_model()
 
@@ -50,6 +59,14 @@ class LoginThrottle(AnonRateThrottle):
 
 class PasswordResetThrottle(AnonRateThrottle):
     scope = "password_reset"
+
+
+class EmailChangeThrottle(UserRateThrottle):
+    scope = "email_change"
+
+
+class EmailChangeResendThrottle(UserRateThrottle):
+    scope = "email_change_resend"
 
 
 def _set_refresh_cookie(response, refresh: str) -> None:
@@ -163,6 +180,7 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def delete(self, request):
         user = request.user
+        refuse_demo(user)
         if not user.check_password(request.data.get("password") or ""):
             return Response({"detail": "Password is incorrect."}, status=status.HTTP_403_FORBIDDEN)
         schools = list(Organization.objects.filter(owner=user).values_list("name", flat=True))
@@ -264,6 +282,8 @@ class PasswordResetRequestView(APIView):
 
     def post(self, request):
         email = (request.data.get("email") or "").strip()
+        if is_demo_email(email):
+            return _demo_response()
         user = User.objects.filter(email__iexact=email, is_active=True).first() if email else None
         if user is not None:
             send_password_reset_email.delay(user.id)
@@ -288,6 +308,8 @@ class PasswordResetConfirmView(APIView):
         token = request.data.get("token", "")
         if user is None or not default_token_generator.check_token(user, token):
             return Response({"detail": "This reset link is invalid or has expired."}, status=status.HTTP_400_BAD_REQUEST)
+        if is_demo_email(user.email):
+            return _demo_response()
         password = request.data.get("password", "")
         try:
             validate_password(password, user)
@@ -299,9 +321,141 @@ class PasswordResetConfirmView(APIView):
             user.is_verified = True
             fields.append("is_verified")
         user.save(update_fields=fields)
+        EmailChangeToken.cancel_open(user)
         for outstanding in OutstandingToken.objects.filter(user=user):
             BlacklistedToken.objects.get_or_create(token=outstanding)
         return Response({"detail": "Password changed. Sign in with the new one."})
+
+
+def _demo_response():
+    return Response({"detail": DEMO_MESSAGE, "code": DEMO_CODE}, status=status.HTTP_403_FORBIDDEN)
+
+
+def _error(code: str, detail: str, http_status: int):
+    return Response({"detail": detail, "code": code}, status=http_status)
+
+
+def _delivery() -> str:
+    return "email" if settings.EMAIL_CONFIGURED else "console"
+
+
+def _email_in_use(email: str, user) -> bool:
+    return User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists()
+
+
+def _lock_user(pk: int):
+    return User.objects.select_for_update().filter(pk=pk).first()
+
+
+EMAIL_TAKEN = "Another account already uses this email."
+EMAIL_INVALID = "Enter a valid email address."
+LINK_INVALID = "This link is not valid."
+
+
+class EmailChangeView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [EmailChangeThrottle()]
+        return super().get_throttles()
+
+    def post(self, request):
+        user = request.user
+        refuse_demo(user)
+        if not user.check_password(str(request.data.get("password") or "")):
+            return _error("wrong_password", "Password is incorrect.", status.HTTP_403_FORBIDDEN)
+        new_email = User.objects.normalize_email(str(request.data.get("new_email") or "").strip())
+        try:
+            validate_email(new_email)
+        except DjangoValidationError:
+            return _error("invalid_email", EMAIL_INVALID, status.HTTP_400_BAD_REQUEST)
+        if len(new_email) > User._meta.get_field("email").max_length or is_demo_email(new_email):
+            return _error("invalid_email", EMAIL_INVALID, status.HTTP_400_BAD_REQUEST)
+        if new_email.lower() == (user.email or "").lower():
+            return _error("same_email", "This is already your email.", status.HTTP_400_BAD_REQUEST)
+        if _email_in_use(new_email, user):
+            return _error("email_taken", EMAIL_TAKEN, status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            _lock_user(user.pk)
+            EmailChangeToken.cancel_open(user)
+            change = EmailChangeToken.objects.create(user=user, new_email=new_email)
+        send_email_change_confirm.delay(change.id)
+        send_email_change_notice.delay(change.id, user.email)
+        return Response(
+            {"detail": "Confirmation link sent.", "pending_email": new_email, "delivery": _delivery()},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    def delete(self, request):
+        EmailChangeToken.cancel_open(request.user)
+        return Response({"detail": "Email change cancelled.", "pending_email": None})
+
+
+class EmailChangeResendView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+    throttle_classes = (EmailChangeResendThrottle,)
+
+    def post(self, request):
+        refuse_demo(request.user)
+        change = EmailChangeToken.pending_for(request.user)
+        if change is None:
+            return _error("no_pending", "There is no email change waiting for confirmation.", status.HTTP_404_NOT_FOUND)
+        change.expires_at = email_change_expiry()
+        change.save(update_fields=["expires_at"])
+        send_email_change_confirm.delay(change.id)
+        return Response({"detail": "Confirmation link sent.", "pending_email": change.new_email, "delivery": _delivery()})
+
+
+class EmailChangeConfirmView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request):
+        token_str = str(request.data.get("token") or "").strip()
+        if not token_str:
+            return _error("invalid", LINK_INVALID, status.HTTP_400_BAD_REQUEST)
+        try:
+            with transaction.atomic():
+                result = self._apply(token_str)
+        except IntegrityError:
+            return _error("email_taken", EMAIL_TAKEN, status.HTTP_409_CONFLICT)
+        if isinstance(result, Response):
+            return result
+        user, old_email = result
+        send_email_changed_notice.delay(user.id, old_email)
+        return Response({"detail": "Email changed.", "email": user.email})
+
+    def _apply(self, token_str: str):
+        user_id = EmailChangeToken.objects.filter(token=token_str).values_list("user_id", flat=True).first()
+        if user_id is None:
+            return _error("invalid", LINK_INVALID, status.HTTP_404_NOT_FOUND)
+        user = _lock_user(user_id)
+        change = EmailChangeToken.objects.select_for_update().get(token=token_str)
+        if user is None or not user.is_active:
+            return _error("invalid", LINK_INVALID, status.HTTP_404_NOT_FOUND)
+        if change.used_at is not None:
+            return _error("used", "This link was already used.", status.HTTP_410_GONE)
+        if change.cancelled_at is not None:
+            return _error("cancelled", "This link no longer works: the change was cancelled or a newer link was sent.", status.HTTP_410_GONE)
+        if change.is_expired:
+            return _error("expired", "This link has expired.", status.HTTP_410_GONE)
+        if is_demo_email(user.email):
+            return _demo_response()
+        if _email_in_use(change.new_email, user):
+            return _error("email_taken", EMAIL_TAKEN, status.HTTP_409_CONFLICT)
+        old_email = user.email
+        now = timezone.now()
+        change.used_at = now
+        change.save(update_fields=["used_at"])
+        EmailChangeToken.cancel_open(user)
+        EmailVerificationToken.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
+        user.email = change.new_email
+        user.is_verified = True
+        user.save(update_fields=["email", "is_verified"])
+        return user, old_email
 
 
 class UnsubscribeView(APIView):

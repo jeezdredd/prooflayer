@@ -55,7 +55,7 @@ class TestOrganizationCreate:
         response = _client(UserFactory(is_verified=True)).post(reverse("org-list"), {"name": "x", "slug": "abc"}, format="json")
         assert response.status_code == 402
 
-    @pytest.mark.parametrize("slug", ["ab", "-lead", "trail-", "Has Space", "admin", "login", "x" * 41])
+    @pytest.mark.parametrize("slug", ["ab", "-lead", "trail-", "Has Space", "admin", "login", "account", "confirm-email", "x" * 41])
     def test_bad_or_reserved_slug_rejected(self, slug):
         response = _client(_edu_user()).post(reverse("org-list"), {"name": "School", "slug": slug}, format="json")
         assert response.status_code == 400

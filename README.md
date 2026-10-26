@@ -106,7 +106,8 @@ A separate app at `classroom.prooflayer.cloud` for schools and universities.
 - Class radar: works built on one skeleton and sudden jumps in a student's level
 - Assignment shadow: the server answers the assignment with AI the way students of different ages would and compares every work with it
 - Verdict objections with deadlines, CSV export
-- `manage.py seed_demo` creates demo schools with teachers, students and analysed work
+- Teachers and pupils open their account settings (email change, consent, account deletion) from their name in the header
+- `manage.py seed_demo` creates demo schools with teachers, students and analysed work; the shared `@demo.prooflayer.cloud` accounts cannot change their email, delete the account, reset the password, manage API keys or billing, or delete or strip their school, and real accounts cannot join demo schools or classes
 
 ## Self-improving detector
 
@@ -145,6 +146,8 @@ plain-text part, sent through Resend. Users get email in the language they use o
 | --- | --- |
 | Confirm your email | after registration, link valid 48 hours |
 | Password reset | from "Forgot password?", link valid one hour, revokes all sessions |
+| Confirm new email | after "Change email" on the account page, to the new address, link valid 24 hours; the address changes only when it is opened |
+| Email change requested / Email changed | to the old address when a change is asked for and when it is done, with the new address masked |
 | Objection to a verdict | a student disputes a verdict, sent to the class teacher |
 | Product update | written in the admin in Russian and English, test to yourself, then send |
 | Retrain result | to the staff member who started a retrain |
@@ -297,6 +300,8 @@ wiki/           Engineering notes and the Tribunal changelog
 - All detection models run on our own servers; uploads are not sent to external AI providers.
 - Personal uploads are deleted after 90 days; class work is never used for training.
 - Passwords are hashed with PBKDF2, API keys stored as SHA-256 hashes, webhooks signed with HMAC-SHA256.
+- Changing the account email needs the current password and a link opened from the new address; the old address
+  is told when the change is asked for and when it is done, and older password reset links stop working.
 - Files are served only through short-lived signed links.
 - Training on reviewed personal uploads and web search for class originality checks are on by
   default and can be switched off on the account and school pages.

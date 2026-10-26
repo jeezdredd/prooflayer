@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from analyzers.models import AnalysisResult
 from billing.permissions import tier_feature
+from common.demo import refuse_demo_mixing
 from common.names import display_name, save_name
 from content.models import Batch, Submission
 from users.permissions import IsVerifiedUser
@@ -292,6 +293,7 @@ class JoinClassroomView(APIView):
             return Response({"detail": "No active classroom with that code."}, status=status.HTTP_404_NOT_FOUND)
         if classroom.owner_id == request.user.id:
             return Response({"detail": "You teach this classroom."}, status=status.HTTP_400_BAD_REQUEST)
+        refuse_demo_mixing(classroom.owner, request.user)
         save_name(request.user, request.data.get("name"))
         _, created = Membership.objects.get_or_create(classroom=classroom, user=request.user)
         data = ClassroomSerializer(classroom, context={"request": request}).data

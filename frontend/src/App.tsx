@@ -28,7 +28,8 @@ const ReviewQueuePage = lazy(() => import("./pages/ReviewQueuePage"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
 const ChangelogPage = lazy(() => import("./pages/ChangelogPage"));
 const CreditsPage = lazy(() => import("./pages/CreditsPage"));
-const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
+const VerifyEmailPage = lazy(() => import("./pages/EmailLinkPages").then((m) => ({ default: m.VerifyEmailPage })));
+const ConfirmEmailPage = lazy(() => import("./pages/EmailLinkPages").then((m) => ({ default: m.ConfirmEmailPage })));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
 const FeedPage = lazy(() => import("./pages/FeedPage"));
 const FeedDetailPage = lazy(() => import("./pages/FeedDetailPage"));
@@ -80,6 +81,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/confirm-email" element={<ConfirmEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/unsubscribe" element={<UnsubscribePage />} />
