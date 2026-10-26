@@ -6,6 +6,7 @@ import TextReport from "./TextReport";
 import OriginalityPanel from "./OriginalityPanel";
 import AiTracePanel from "./AiTracePanel";
 import MediaSummary, { hasProvenanceProof } from "./MediaSummary";
+import PhotoWithMap from "./PhotoWithMap";
 import TeacherSummary, { isTextSubmission } from "./TeacherSummary";
 import { isClassView, isStudentView, longDate } from "./resultView";
 import { VERDICT_DISCLAIMER } from "../legal";
@@ -390,19 +391,7 @@ export default function ResultCard({ submission, runningAnalyzers }: ResultCardP
 
       <AiTracePanel submission={submission} />
 
-      {submission.file_url && submission.mime_type?.startsWith("image/") && (
-        <div className="px-6 py-4 border-b border-ink-700">
-          <img
-            src={submission.file_url}
-            alt={submission.original_filename}
-            className="max-h-64 max-w-full object-contain border border-ink-700"
-            loading="lazy"
-            onError={(e) => {
-              e.currentTarget.parentElement?.style.setProperty("display", "none");
-            }}
-          />
-        </div>
-      )}
+      {submission.file_url && submission.mime_type?.startsWith("image/") && <PhotoWithMap submission={submission} student={student} />}
 
       {submission.file_url && submission.mime_type?.startsWith("audio/") && (
         <div className="px-6 py-4 border-b border-ink-700">

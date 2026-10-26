@@ -2032,7 +2032,27 @@
     "The file is built like a phone camera original: its HDR brightness map matches the picture. Copying camera data onto an AI picture does not reproduce this.": "Файл устроен как оригинал с камеры телефона: его HDR-карта яркости совпадает с картинкой. Если просто скопировать данные камеры на ИИ-картинку, так не получится.",
     "Enter a valid email address.": "Введите правильный адрес почты.",
     "An account with this email already exists.": "Аккаунт с этой почтой уже есть.",
-    "This address belongs to the shared demo. Use your own email.": "Этот адрес принадлежит общему демо. Укажите свою почту."
+    "This address belongs to the shared demo. Use your own email.": "Этот адрес принадлежит общему демо. Укажите свою почту.",
+    "Map of edited areas": "Карта изменённых мест",
+    "Where the photo may have been changed": "Где фото могли изменить",
+    "This area repeats another part of the same photo: it may have been copied within the image.": "Этот участок повторяет другой участок того же снимка: его могли скопировать внутри фото.",
+    "This area was compressed differently from the rest of the photo. That happens when a piece is pasted from another image or redrawn.": "У этого участка другая история сжатия, чем у остального снимка. Так бывает, когда фрагмент вставлен из другого изображения или перерисован.",
+    "This area does not match the rest of the photo: it may have been pasted in or redrawn.": "Этот участок не согласуется с остальным фото: его могли вставить или перерисовать.",
+    "Possible mismatch, look at this area more closely.": "Возможное несоответствие, посмотрите на этот участок внимательнее.",
+    "This area looks AI-generated.": "Участок похож на созданный ИИ.",
+    "The map shows inconsistencies, not proof of forgery.": "Карта показывает несоответствия, а не доказательство подделки.",
+    "No signs of local editing were found. This does not prove the photo is genuine.": "Следов местного редактирования не нашли. Это не доказывает, что фото подлинное.",
+    "We can't reliably show edited areas for this file (for example, because of strong compression).": "Для этого файла нельзя надёжно показать изменённые места (например, из-за сильного сжатия).",
+    "The whole picture looks AI-generated, so we don't show a map of separate areas.": "Снимок целиком похож на созданный ИИ, поэтому карту отдельных участков не показываем.",
+    "The changes cover almost the whole photo (a global filter or a full redraw), so a map of areas would mislead.": "Изменения затрагивают почти весь снимок (общий фильтр или перерисовка целиком), карта участков ввела бы в заблуждение.",
+    "The image is too small for a map of edited areas.": "Изображение слишком маленькое для карты изменённых мест.",
+    "The photo is too large for a map of edited areas.": "Снимок слишком большой для карты изменённых мест.",
+    "Map of edited areas. M.-J. Kwon, S.-H. Nam, I.-J. Yu, H.-K. Lee, C. Kim, \"Learning JPEG Compression Artifacts for Image Manipulation Detection and Localization\", IJCV 2022": "Карта изменённых мест. M.-J. Kwon, S.-H. Nam, I.-J. Yu, H.-K. Lee, C. Kim, «Learning JPEG Compression Artifacts for Image Manipulation Detection and Localization», IJCV 2022",
+    "Map of edited areas. M.-J. Kwon, W. Lee, S.-H. Nam, M. Son, C. Kim, \"SAFIRE: Segment Any Forged Image Region\", AAAI 2025": "Карта изменённых мест. M.-J. Kwon, W. Lee, S.-H. Nam, M. Son, C. Kim, «SAFIRE: Segment Any Forged Image Region», AAAI 2025",
+    "Edit Map": "Карта правок",
+    "Manipulation Map": "Карта изменённых мест",
+    "where a photo was changed": "где фото меняли",
+    "Shows where a photo was pasted into, copied within or redrawn: JPEG compression traces read by CAT-Net, the JPEG grid and copy-move matching. It marks areas with plain words for the teacher, never calls a photo AI on its own, and stays silent when it is unsure or the whole picture is AI.": "Показывает, где в фото что-то вставили, скопировали внутри кадра или перерисовали: по следам JPEG-сжатия (нейросеть CAT-Net), по сетке JPEG и по повторяющимся участкам. Отмечает места простыми словами для учителя, сама никогда не называет фото ИИ и молчит, когда не уверена или когда вся картинка создана ИИ."
   },
   "plural": {
     "All {n} sources exist": [
@@ -2189,6 +2209,11 @@
       "Проверить {n} файл",
       "Проверить {n} файла",
       "Проверить {n} файлов"
+    ],
+    "Marked {n} areas on the photo above.": [
+      "Отмечен {n} участок на фото выше.",
+      "Отмечено {n} участка на фото выше.",
+      "Отмечено {n} участков на фото выше."
     ]
   },
   "patterns": {

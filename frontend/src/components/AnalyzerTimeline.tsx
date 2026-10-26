@@ -1,12 +1,13 @@
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import type { AnalysisResult, ExpectedAnalyzer, Submission } from "../types";
-import { msg, t } from "../i18n";
+import { msg, t, tn } from "../i18n";
 import { elaWorksOn, readableReasoning } from "./resultView";
 
 export const ANALYZER_LABELS: Record<string, string> = {
   metadata: msg("Labels in the file"),
   ela: msg("Pasted-in pieces check"),
+  manipulation_map: msg("Map of edited areas"),
   ai_detector: msg("AI detector 2"),
   llm_vision: msg("Model that looks at the picture"),
   video_frame: msg("Video frames"),
@@ -36,6 +37,7 @@ const VOTE_WORDS: Record<string, string> = {
 const ANALYZER_CODE: Record<string, string> = {
   metadata: "META",
   ela: "ELA",
+  manipulation_map: "MAP",
   ai_detector: "AI-3",
   llm_vision: "VLM",
   video_frame: "VID",
@@ -58,6 +60,7 @@ const ANALYZER_CODE: Record<string, string> = {
 const ANALYZER_WEIGHTS: Record<string, number> = {
   metadata: 1,
   ela: 2,
+  manipulation_map: 6,
   ai_detector: 20,
   llm_vision: 25,
   video_frame: 30,
@@ -80,6 +83,7 @@ const ANALYZER_WEIGHTS: Record<string, number> = {
 const ANALYZER_ETA_SECS: Record<string, number> = {
   metadata: 2,
   ela: 3,
+  manipulation_map: 40,
   community_forensics: 15,
   llm_vision: 35,
   video_frame: 35,
@@ -211,6 +215,11 @@ function evidenceLines(step: Step): string[] {
   }
   const reasoning = step.name === "llm_vision" ? readableReasoning(ev) : null;
   if (reasoning) lines.push(t("What the model noticed: \"{reasoning}\"", { reasoning }));
+  if (step.name === "manipulation_map") {
+    const regions = Array.isArray(ev.regions) ? ev.regions.length : 0;
+    if (ev.status === "regions_found") lines.push(tn(regions, "Marked {n} area on the photo above.", "Marked {n} areas on the photo above."));
+    else if (ev.status === "no_local_edits") lines.push(t("No signs of local editing were found. This does not prove the photo is genuine."));
+  }
   if (step.name === "metadata") {
     const camera = ev.camera as { has_camera_signature?: boolean; make?: string; model?: string } | undefined;
     if (camera?.has_camera_signature) lines.push(t("Camera recorded in the file: {name}", { name: [camera.make, camera.model].filter(Boolean).join(" ") }));
@@ -341,14 +350,14 @@ function AnalyzerRow({ step, isLast, index, done, image, showRaw }: { step: Step
                 <pre className="font-mono text-[11px] text-ink-200 overflow-x-auto overflow-y-auto max-h-52 whitespace-pre-wrap leading-relaxed">
                   {JSON.stringify(
                     Object.fromEntries(
-                      Object.entries(step.result.evidence).filter(([k]) => k !== "heatmap_url" && k !== "heatmap_path")
+                      Object.entries(step.result.evidence).filter(([k]) => !["heatmap_url", "heatmap_path", "map_url", "map_path"].includes(k))
                     ),
                     null, 2
                   )}
                 </pre>
               </div>
             )}
-            {heatmap && (
+            {heatmap && showRaw && (
               <ELAHeatmapOverlay heatmapUrl={heatmap} suspected={evidence.manipulation_suspected === true} />
             )}
           </div>

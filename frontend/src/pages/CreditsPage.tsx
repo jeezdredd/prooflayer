@@ -40,6 +40,8 @@ const SERVER: Tech[] = [
 const MODELS: Tech[] = [
   { name: "Community Forensics ViT-S/16", href: "https://huggingface.co/buildborderless/CommunityForensics-DeepfakeDet-ViT", note: msg("Main image detector, 2.7M images from 4,803 generators (NeurIPS 2024)"), icon: "huggingface", license: "Apache-2.0" },
   { name: "ProofLayer Detector", href: "https://huggingface.co/buildborderless/CommunityForensics-DeepfakeDet-ViT", note: msg("Our detector, fine-tuned from Community Forensics on reviewed uploads and new generators"), icon: "huggingface" },
+  { name: "CAT-Net v2", href: "https://github.com/mjkwon2021/CAT-Net", note: msg("Map of edited areas. M.-J. Kwon, S.-H. Nam, I.-J. Yu, H.-K. Lee, C. Kim, \"Learning JPEG Compression Artifacts for Image Manipulation Detection and Localization\", IJCV 2022"), license: "CC BY 4.0" },
+  { name: "SAFIRE", href: "https://github.com/mjkwon2021/SAFIRE", note: msg("Map of edited areas. M.-J. Kwon, W. Lee, S.-H. Nam, M. Son, C. Kim, \"SAFIRE: Segment Any Forged Image Region\", AAAI 2025"), license: "CC BY 4.0" },
   { name: "CLIP ViT-B/32", href: "https://huggingface.co/openai/clip-vit-base-patch32", note: msg("Independent backbone for our CLIP probe and image similarity"), icon: "huggingface", license: "MIT" },
   { name: "dima806/ai_vs_real_image_detection", href: "https://huggingface.co/dima806/ai_vs_real_image_detection", note: msg("Image ensemble member"), icon: "huggingface" },
   { name: "umm-maybe/AI-image-detector", href: "https://huggingface.co/umm-maybe/AI-image-detector", note: msg("Image ensemble member"), icon: "huggingface" },
