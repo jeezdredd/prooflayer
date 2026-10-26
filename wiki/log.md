@@ -2,6 +2,15 @@
 
 Newest at top.
 
+## [2026-10-26] small-debts | Shared paper limits, email letter case, tokens out of logs, legal wording
+
+- Source: follow-ups from the email change and OpenAlex/arXiv reviews
+- Ghost citations (`analyzers/text/citations.py`): OpenAlex calls send the API key (`OPENALEX_API_KEY`, Bearer) and `mailto`, skip while the shared `plag:openalex:blocked` pause is set, and set it on 429 or when fewer than 10 credits are left; arXiv id checks wait for the shared 3 s turn and pause arXiv on 429/503. One budget and one pause for originality and citations
+- Accounts: `UserManager.by_email` (exact address first, else a single case-insensitive match) behind login (`get_by_natural_key`) and password reset; registration cleans the address (`users.addresses.clean_address`: NFKC, IDNA domain, lower-case domain), refuses case and look-alike twins of an existing address and the demo domain. Old case twins already in the database keep exact-address login only
+- Caddy (`deploy/caddy.snippet`): frontend and API access logs replace `token` and `uid` query values with REDACTED (verify, reset, confirm and unsubscribe links). Validate on the server: `caddy validate --config /etc/caddy/Caddyfile`
+- Legal: Terms (EN, RU) now name Wikipedia and the OpenAlex/arXiv paper catalogues next to web search, matching Privacy and Data Processing; "last updated" 26 October 2026
+- Pages updated: [[services/auth-email]], [[services/originality]], [[hot]]
+
 ## [2026-10-26] phone-photos | Real phone photos no longer read as AI (Tribunal 1.11.0)
 
 - Source: owner's own iPhone 17 Pro Max photo (IMG_7561, MPO with camera EXIF) judged "Likely AI"; benchmark of 1127 Commons originals from 2023+ phones (iPhone 14-17, Pixel 8-10, Galaxy S23-S25 and others) plus Safari, re-encoded, stripped and messenger variants, 902 OpenFake AI images and 690 forgeries (AI images with copied iPhone EXIF, re-encoded through Apple ImageIO, with a fake gain map), all scored locally on CPU (dataset/phone_photos, not in git)

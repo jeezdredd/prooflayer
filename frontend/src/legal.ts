@@ -16,8 +16,8 @@ export const LEGAL = {
   operatorAddress: "",
   country: "Republic of Kazakhstan",
   countryRu: "Республика Казахстан",
-  updated: "October 13, 2026",
-  updatedRu: "13 октября 2026 г.",
+  updated: "October 26, 2026",
+  updatedRu: "26 октября 2026 г.",
   emails: {
     legal: "legal@prooflayer.cloud",
     finance: "finance@prooflayer.cloud",

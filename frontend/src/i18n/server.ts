@@ -157,4 +157,7 @@ export const SERVER_TEXT = [
   msg("text too short to compare"),
   msg("This is a shared demo account, so this is turned off."),
   msg("This is a demo school. Only its demo accounts can join it."),
+  msg("Enter a valid email address."),
+  msg("An account with this email already exists."),
+  msg("This address belongs to the shared demo. Use your own email."),
 ];

@@ -2029,7 +2029,10 @@
     "{n}% of the text was found in scientific papers": "{n}% текста найдено в научных статьях",
     "{names} et al.": "{names} и др.",
     "Scientific paper": "Научная статья",
-    "The file is built like a phone camera original: its HDR brightness map matches the picture. Copying camera data onto an AI picture does not reproduce this.": "Файл устроен как оригинал с камеры телефона: его HDR-карта яркости совпадает с картинкой. Если просто скопировать данные камеры на ИИ-картинку, так не получится."
+    "The file is built like a phone camera original: its HDR brightness map matches the picture. Copying camera data onto an AI picture does not reproduce this.": "Файл устроен как оригинал с камеры телефона: его HDR-карта яркости совпадает с картинкой. Если просто скопировать данные камеры на ИИ-картинку, так не получится.",
+    "Enter a valid email address.": "Введите правильный адрес почты.",
+    "An account with this email already exists.": "Аккаунт с этой почтой уже есть.",
+    "This address belongs to the shared demo. Use your own email.": "Этот адрес принадлежит общему демо. Укажите свою почту."
   },
   "plural": {
     "All {n} sources exist": [

@@ -8,7 +8,15 @@ http://prooflayer.cloud {
     reverse_proxy 127.0.0.1:8080
     log {
         output file /var/log/caddy/prooflayer-fe.log
-        format json
+        format filter {
+            wrap json
+            fields {
+                request>uri query {
+                    replace token REDACTED
+                    replace uid REDACTED
+                }
+            }
+        }
     }
 }
 
@@ -29,7 +37,15 @@ http://api.prooflayer.cloud {
 
     log {
         output file /var/log/caddy/prooflayer-api.log
-        format json
+        format filter {
+            wrap json
+            fields {
+                request>uri query {
+                    replace token REDACTED
+                    replace uid REDACTED
+                }
+            }
+        }
     }
 }
 

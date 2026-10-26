@@ -285,7 +285,9 @@ class PasswordResetRequestView(APIView):
         email = (request.data.get("email") or "").strip()
         if is_demo_email(email):
             return _demo_response()
-        user = User.objects.filter(email__iexact=email, is_active=True).first() if email else None
+        user = User.objects.by_email(email)
+        if user is not None and not user.is_active:
+            user = None
         if user is not None:
             send_password_reset_email.delay(user.id)
         return Response({"detail": "If the address has an account, a reset link is on its way."})

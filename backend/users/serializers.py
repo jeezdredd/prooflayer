@@ -9,12 +9,16 @@ from classroom.access import is_student_only
 from common.demo import is_demo_email
 from content.sensitivity import unpublish_all
 
+from .addresses import address_variants, clean_address
 from .models import EmailChangeToken
 
 User = get_user_model()
 
 ACCEPT_TERMS_MESSAGE = "Accept the Terms of Service and Privacy Notice to continue."
 TERMS_VERSION_MESSAGE = "These terms are out of date. Reload the page and accept the current version."
+EMAIL_INVALID_MESSAGE = "Enter a valid email address."
+EMAIL_TAKEN_MESSAGE = "An account with this email already exists."
+EMAIL_DEMO_MESSAGE = "This address belongs to the shared demo. Use your own email."
 
 
 def age_fields(user, is_adult: bool) -> dict:
@@ -42,6 +46,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         if value is not True:
             raise serializers.ValidationError(ACCEPT_TERMS_MESSAGE)
         return value
+
+    def validate_email(self, value):
+        email = clean_address(value)
+        if email is None:
+            raise serializers.ValidationError(EMAIL_INVALID_MESSAGE)
+        if is_demo_email(email):
+            raise serializers.ValidationError(EMAIL_DEMO_MESSAGE)
+        if any(User.objects.filter(email__iexact=variant).exists() for variant in address_variants(email)):
+            raise serializers.ValidationError(EMAIL_TAKEN_MESSAGE)
+        return email
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:

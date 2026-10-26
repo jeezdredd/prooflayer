@@ -252,3 +252,7 @@ Three email modes (selected in `base.py`, exposed as `EMAIL_MODE`, which drives 
 - [[infrastructure/env-vars]]
 - [[services/celery-workers]]
 - [[services/gpu-rocm]]
+
+## Email letter case (2026-10-26)
+
+`User.email` is unique only as stored, and older accounts may differ just by letter case. `UserManager.by_email` returns the exact address if it exists, else the single case-insensitive match, else nothing; it backs login (`get_by_natural_key`) and the password reset request. Registration runs `users.addresses.clean_address` (NFKC, IDNA domain in ASCII, lower-case domain) and refuses an address whose case or look-alike variant is taken (`An account with this email already exists.`) and any `@demo.prooflayer.cloud` address. Access logs of the frontend and API redact `token` and `uid` query values (`deploy/caddy.snippet`).

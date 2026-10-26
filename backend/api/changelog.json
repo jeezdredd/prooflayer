@@ -1,5 +1,18 @@
 [
   {
+    "slug": "email-letter-case",
+    "date": "2026-10-26",
+    "kind": "fix",
+    "title": {
+      "en": "Your email works in any letter case",
+      "ru": "Почта работает в любом регистре букв"
+    },
+    "body": {
+      "en": "Signing in and resetting a password now work whether you type your address in capitals or not, and a second account cannot be registered for the same address written in other letters or with look-alike characters. The source check now shares one daily limit with the originality check for scientific catalogues, so neither stops the other. Links from our emails no longer end up in our server logs.",
+      "ru": "Вход и сброс пароля теперь работают, как бы вы ни написали адрес: заглавными буквами или строчными. Второй аккаунт на тот же адрес, написанный другими буквами или похожими символами, зарегистрировать нельзя. Проверка источников и проверка оригинальности теперь делят один дневной лимит научных каталогов и не мешают друг другу. Ссылки из наших писем больше не попадают в журналы сервера."
+    }
+  },
+  {
     "slug": "phone-photos-not-ai",
     "date": "2026-10-26",
     "kind": "fix",

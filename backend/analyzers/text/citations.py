@@ -5,8 +5,10 @@ from dataclasses import dataclass
 from urllib.parse import quote, urlparse
 
 import requests
+from django.conf import settings
 
 from common.url_safety import UnsafeUrlError, safe_get
+from plagiarism import academic
 from plagiarism.search import search
 
 logger = logging.getLogger(__name__)
@@ -107,6 +109,25 @@ def _get(url: str, **params) -> requests.Response:
     return requests.get(url, params=params or None, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT)
 
 
+def _openalex(query: str) -> requests.Response | None:
+    if academic.blocked("openalex"):
+        return None
+    params = {"search": query, "per-page": 5}
+    if settings.OPENALEX_MAILTO:
+        params["mailto"] = settings.OPENALEX_MAILTO
+    headers = {"User-Agent": USER_AGENT}
+    if settings.OPENALEX_API_KEY:
+        headers["Authorization"] = f"Bearer {settings.OPENALEX_API_KEY}"
+    resp = requests.get(academic.OPENALEX_URL, params=params, headers=headers, timeout=TIMEOUT)
+    if resp.status_code == 429:
+        academic.block("openalex", resp, academic.OPENALEX_BLOCK)
+        return None
+    remaining = resp.headers.get("X-RateLimit-Remaining")
+    if isinstance(remaining, str) and remaining.strip().isdigit() and int(remaining) < academic.OPENALEX_SEARCH_CREDITS:
+        academic.block("openalex", resp, academic.OPENALEX_BLOCK)
+    return resp
+
+
 def _tokens(text: str) -> list[str]:
     return [w.lower() for w in WORD.findall(text) if len(w) > 2]
 
@@ -168,9 +189,12 @@ def check_doi(ref: Reference):
 
 
 def check_arxiv(ref: Reference):
-    resp = requests.get(
-        "https://export.arxiv.org/api/query", params={"id_list": ref.value}, headers={"User-Agent": USER_AGENT}, timeout=ARXIV_TIMEOUT
-    )
+    if academic.blocked("arxiv") or not academic.wait_turn("arxiv"):
+        return
+    resp = requests.get(academic.ARXIV_URL, params={"id_list": ref.value}, headers={"User-Agent": USER_AGENT}, timeout=ARXIV_TIMEOUT)
+    if resp.status_code in (429, 503):
+        academic.block("arxiv", resp, academic.ARXIV_BLOCK)
+        return
     if resp.status_code != 200:
         return
     titles = [" ".join(t.split()) for t in re.findall(r"<title>(.*?)</title>", resp.text, re.S)[1:]]
@@ -241,8 +265,8 @@ def _crossref_authors(item: dict) -> list[str]:
 def check_bibliography(ref: Reference):
     query = YEAR.sub(" ", ref.value)[:240]
     answered = False
-    openalex = _get("https://api.openalex.org/works", search=guess_title(ref.value)[:200], **{"per-page": 5})
-    if openalex.status_code == 200:
+    openalex = _openalex(guess_title(ref.value)[:200])
+    if openalex is not None and openalex.status_code == 200:
         answered = True
         for work in openalex.json().get("results", []):
             title = work.get("title") or work.get("display_name") or ""

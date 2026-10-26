@@ -79,7 +79,7 @@ export default function TermsPage() {
       <section>
         <h2 className="text-ink-100 text-base mb-3">6. Originality repository</h2>
         <p>
-          Every text, PDF or DOCX submission is compared with the {LEGAL.brand} repository and with pages on the web. To search the web, up to 8 distinctive sentences from the text, each cut to at most 14 words, are sent as search queries to web search engines, and pages found are downloaded from the open web for comparison, as described in the <Link to="/privacy" className="text-iris hover:underline">Privacy Policy</Link>.
+          Every text, PDF or DOCX submission is compared with the {LEGAL.brand} repository, with pages on the web, with Wikipedia and with open scientific papers. To search, up to 8 distinctive sentences from the text, each cut to at most 14 words, are sent as search queries to web search engines and to Wikipedia, short phrases of up to 8 words from them are sent to the OpenAlex and arXiv catalogues of scientific papers, and pages and open-access papers found are downloaded for comparison, as described in the <Link to="/privacy" className="text-iris hover:underline">Privacy Policy</Link>.
         </p>
         <ul className="list-disc list-inside space-y-1 mt-3 text-ink-400">
           <li>Work handed in to a class is stored in the repository and compared with later submissions from any institution that uses {LEGAL.brand}, and with later personal uploads by any {LEGAL.brand} user.</li>

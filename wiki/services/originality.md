@@ -151,3 +151,7 @@ key-only services, no browser scraping). Module `plagiarism.academic`, wired in 
   that names the LoRA paper and an honest Russian essay that names a paper's 8-word title in its text (and
   lists it under "Источники:"): 100% each; the last one would read 80.5% without the title mask (OpenAlex
   returns that paper for the title phrase). 3 to 39 s per check.
+
+## One paper budget for originality and citations (2026-10-26)
+
+The ghost-citation check (`analyzers/text/citations.py`) now goes through the same OpenAlex settings and pause as `plagiarism.academic`: it sends `OPENALEX_API_KEY` as a Bearer token and `OPENALEX_MAILTO`, skips OpenAlex while `plag:openalex:blocked` is set, and sets it on 429 or under 10 credits left. arXiv id lookups take the shared 3 s `wait_turn("arxiv")` slot and pause arXiv on 429/503. With the key (set on the server 2026-10-26) the daily budget is 10x the keyless one.

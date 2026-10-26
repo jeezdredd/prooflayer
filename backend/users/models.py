@@ -18,6 +18,21 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+    def get_by_natural_key(self, email):
+        user = self.by_email(email)
+        if user is None:
+            raise self.model.DoesNotExist
+        return user
+
+    def by_email(self, email):
+        if not email:
+            return None
+        exact = self.filter(email=email).first()
+        if exact is not None:
+            return exact
+        matches = list(self.filter(email__iexact=email)[:2])
+        return matches[0] if len(matches) == 1 else None
+
     def create_superuser(self, email, username, password=None, **extra):
         extra.setdefault("is_staff", True)
         extra.setdefault("is_superuser", True)

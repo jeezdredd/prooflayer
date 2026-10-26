@@ -14,6 +14,7 @@ from analyzers.text.citations import (
     UNCHECKED,
     CitationReport,
     Reference,
+    check_arxiv,
     check_bibliography,
     check_doi,
     check_isbn,
@@ -27,6 +28,7 @@ from analyzers.text.citations import (
 from common.url_safety import UnsafeUrlError
 from plagiarism.search import Hit as SearchHit
 from content.tests.factories import SubmissionFactory
+from plagiarism import academic
 
 from .factories import AnalysisResultFactory, AnalyzerConfigFactory
 
@@ -333,3 +335,57 @@ class TestAnalyzer:
             ),
         ]
         assert aggregate(results)[1] == "needs_review"
+
+
+class TestSharedPaperLimits:
+    def test_paused_openalex_is_not_called(self):
+        ref = Reference("bibliography", "Ivanova, A. (2021). Quantum gardening for teenagers. Moscow Press.")
+        crossref = response(200, {"message": {"items": []}})
+        with mock.patch.object(academic, "blocked", side_effect=lambda engine: engine == "openalex"), \
+                mock.patch.object(citations.requests, "get", return_value=crossref) as get, \
+                mock.patch.object(citations, "search", return_value=[]):
+            check_bibliography(ref)
+        urls = [c.args[0] for c in get.call_args_list]
+        assert academic.OPENALEX_URL not in urls
+        assert ref.status == MISSING
+
+    def test_spent_openalex_budget_pauses_both_checks(self):
+        ref = Reference("bibliography", "Ivanova, A. (2021). Quantum gardening for teenagers. Moscow Press.")
+        replies = [response(429), response(200, {"message": {"items": []}})]
+        with mock.patch.object(academic, "blocked", return_value=False), \
+                mock.patch.object(academic, "block") as block, \
+                mock.patch.object(citations.requests, "get", side_effect=replies), \
+                mock.patch.object(citations, "search", return_value=[]):
+            check_bibliography(ref)
+        assert block.call_args.args[0] == "openalex"
+
+    def test_openalex_key_and_contact_are_sent(self, settings):
+        settings.OPENALEX_API_KEY = "test-key"
+        settings.OPENALEX_MAILTO = "hello@prooflayer.cloud"
+        ref = Reference("bibliography", "Walker, M. (2017). Why We Sleep: Unlocking the Power of Sleep and Dreams. Scribner.")
+        hit = response(200, {"results": [{"title": "Why We Sleep: Unlocking the Power of Sleep and Dreams"}]})
+        with mock.patch.object(academic, "blocked", return_value=False), \
+                mock.patch.object(citations.requests, "get", return_value=hit) as get:
+            check_bibliography(ref)
+        call = get.call_args_list[0]
+        assert call.kwargs["headers"]["Authorization"] == "Bearer test-key"
+        assert call.kwargs["params"]["mailto"] == "hello@prooflayer.cloud"
+
+    def test_arxiv_waits_its_turn_and_pauses_on_rate_limit(self):
+        ref = Reference("arxiv", "2301.01234")
+        with mock.patch.object(academic, "blocked", return_value=False), \
+                mock.patch.object(academic, "wait_turn", return_value=True) as turn, \
+                mock.patch.object(academic, "block") as block, \
+                mock.patch.object(citations.requests, "get", return_value=response(429)):
+            check_arxiv(ref)
+        turn.assert_called_once_with("arxiv")
+        assert block.call_args.args[0] == "arxiv"
+        assert ref.status == UNCHECKED
+
+    def test_paused_arxiv_leaves_the_id_unchecked(self):
+        ref = Reference("arxiv", "2301.01234")
+        with mock.patch.object(academic, "blocked", return_value=True), \
+                mock.patch.object(citations.requests, "get") as get:
+            check_arxiv(ref)
+        get.assert_not_called()
+        assert ref.status == UNCHECKED
