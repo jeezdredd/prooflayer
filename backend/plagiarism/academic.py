@@ -172,9 +172,8 @@ def openalex_paper(work: dict) -> Paper | None:
     url = next((u for u in (doi, primary.get("landing_page_url"), work.get("id")) if _http_url(u)), "")
     if not url:
         return None
-    authors = tuple(
-        name for name in (_clean((a.get("author") or {}).get("display_name")) for a in work.get("authorships") or []) if name
-    )
+    names = (_clean((a.get("author") or {}).get("display_name")) for a in work.get("authorships") or [])
+    authors = tuple(name for name in names if name)
     year = work.get("publication_year")
     return Paper(
         engine="openalex",
@@ -211,8 +210,10 @@ def openalex_search(query: str) -> list[Paper] | None:
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
         try:
-            resp = requests.get(OPENALEX_URL, params=params, headers=headers, timeout=settings.PLAGIARISM_OPENALEX_TIMEOUT)
-        except requests.RequestException as exc:
+            resp = requests.get(
+                OPENALEX_URL, params=params, headers=headers, timeout=settings.PLAGIARISM_OPENALEX_TIMEOUT,
+            )
+        except Exception as exc:
             logger.warning("openalex search failed: %s", exc)
             return None
         if resp.status_code not in (401, 403):
@@ -282,7 +283,7 @@ def arxiv_search(query: str) -> list[Paper] | None:
             headers={"User-Agent": USER_AGENT},
             timeout=settings.PLAGIARISM_ARXIV_TIMEOUT,
         )
-    except requests.RequestException as exc:
+    except Exception as exc:
         logger.warning("arxiv search failed: %s", exc)
         return None
     if resp.status_code in (429, 503):
