@@ -385,7 +385,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: "originality", group: "teach", Icon: Copy, title: msg("Originality check"), to: "/pricing",
-    line: msg("Plagiarism checked on every upload, across the class, the school and the open web."),
+    line: msg("Plagiarism checked on every upload, across the class, the school, Wikipedia, open scientific papers and the open web."),
     facts: [msg("Fingerprints of five-word sequences catch copied passages"), msg("Meaning matches catch paraphrase and translation in ru, en, fr"), msg("Sources listed with the matching spans highlighted")],
     preview: <OriginalityPreview />,
   },

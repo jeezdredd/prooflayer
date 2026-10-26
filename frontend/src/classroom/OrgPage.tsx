@@ -199,7 +199,7 @@ function AdminPanel({ org }: { org: Organization }) {
         <span>
           <span className="block text-sm text-ink-100">{t("Search the web for copied passages")}</span>
           <span className="block text-xs text-ink-500 mt-1 leading-relaxed">
-            {t("Sends up to 8 sentences from each work to web search and to Wikipedia (servers outside Kazakhstan). Finds passages copied from encyclopedias and articles. When it is off, work is compared only with other work in ProofLayer. Reference lists are always checked in open book catalogues (doi.org, OpenAlex, Crossref), whatever this setting says.")}
+            {t("Sends up to 8 sentences from each work to web search and to Wikipedia, and short phrases from them to the open scientific catalogues OpenAlex and arXiv (servers outside Kazakhstan). Finds passages copied from encyclopedias, articles and scientific papers. When it is off, work is compared only with other work in ProofLayer. Reference lists are always checked in open book catalogues (doi.org, OpenAlex, Crossref), whatever this setting says.")}
           </span>
         </span>
       </label>

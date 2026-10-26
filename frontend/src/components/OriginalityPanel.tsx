@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { OriginalityMatch, Submission } from "../types";
 import { locale, msg, t } from "../i18n";
 import SearchingOrb from "./SearchingOrb";
-import { isHiddenSource, webScope } from "./TeacherSummary";
+import { isHiddenSource, isPaper, webScope } from "./TeacherSummary";
 
 const KIND_LABEL: Record<OriginalityMatch["kind"], string> = {
   exact: msg("word for word"),
@@ -27,6 +27,16 @@ function hostOf(url: string): string {
   }
 }
 
+const SHOWN_AUTHORS = 3;
+
+function paperLine(match: OriginalityMatch): string {
+  const authors = match.authors ?? [];
+  const total = match.authors_total ?? authors.length;
+  const names = authors.slice(0, SHOWN_AUTHORS).join(", ");
+  const byline = names && total > SHOWN_AUTHORS ? t("{names} et al.", { names }) : names;
+  return [t("Scientific paper"), byline, match.year ? String(match.year) : "", match.venue ?? ""].filter(Boolean).join(" · ");
+}
+
 function SourceTitle({ match, student }: { match: OriginalityMatch; student: boolean }) {
   if (match.source === "web" && match.url) {
     return (
@@ -34,7 +44,9 @@ function SourceTitle({ match, student }: { match: OriginalityMatch; student: boo
         <a href={match.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 text-ink-50 hover:text-signal-amber break-all">
           {match.title || match.url} <ExternalLink size={11} />
         </a>
-        <span className="block text-xs text-ink-500">{t("Web page · {host}", { host: hostOf(match.url) })}</span>
+        <span className="block text-xs text-ink-500">
+          {isPaper(match) ? paperLine(match) : t("Web page · {host}", { host: hostOf(match.url) })}
+        </span>
       </span>
     );
   }

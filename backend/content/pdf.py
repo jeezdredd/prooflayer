@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from django.utils import timezone
 
+from plagiarism.academic import PAPER_ENGINES
 from plagiarism.serializers import report_payload
 from provenance.visibility import provenance_rows
 from reports.copy import (
@@ -25,6 +26,7 @@ from .viewer import result_url, viewer_info
 EXCERPT_CHARS = 700
 MAX_SOURCES = 6
 MAX_PASSAGES = 3
+PAPER_CATALOGUES = (("openalex", "OpenAlex"), ("arxiv", "arXiv"))
 PASSAGE_FLOOR = 0.45
 PASSAGE_CHARS = 600
 AI_LOOK = 0.45
@@ -57,13 +59,38 @@ def _members(results, lang: str, image: bool = False) -> list[dict]:
     return rows
 
 
+def _paper_title(match: dict, c: dict) -> str:
+    title = match.get("title") or match.get("url") or ""
+    authors = match.get("authors") or []
+    names = ", ".join(authors[:3])
+    if names and (match.get("authors_total") or len(authors)) > 3:
+        names = f"{names} {c['et_al']}"
+    details = ", ".join(str(part) for part in (names, match.get("year"), match.get("venue")) if part)
+    return f"{title} ({details})" if details else title
+
+
 def _source_title(match: dict, c: dict) -> str:
     if match.get("source") == "web":
+        if match.get("engine") in PAPER_ENGINES:
+            return _paper_title(match, c)
         return match.get("title") or match.get("url") or ""
     if match.get("submission_id") and match.get("author"):
         name = match["author"] if not match.get("classroom") else f"{match['author']}, {match['classroom']}"
         return c["internal_author"].format(name=name)
     return c["internal_source"]
+
+
+def _scope(payload: dict, c: dict) -> str:
+    if not payload.get("web_searched"):
+        return c["web_off"]
+    engines = set(payload.get("web_engines") or [])
+    catalogues = ", ".join(name for key, name in PAPER_CATALOGUES if key in engines)
+    names = [c["web_names"]["wikipedia"]] if "wikipedia" in engines else []
+    if catalogues:
+        names.append(c["web_names"]["papers"].format(catalogues=catalogues))
+    if "web" in engines:
+        names.append(c["web_names"]["web"])
+    return c["web_with"].format(sources=", ".join(names)) if names else c["web_on"]
 
 
 def _originality(payload: dict | None, lang: str) -> dict | None:
@@ -80,7 +107,7 @@ def _originality(payload: dict | None, lang: str) -> dict | None:
         "pct": pct,
         "tone": tone_set(tone)["tone"],
         "matched_line": c["matched"].format(matched=payload.get("matched_chars", 0), total=payload.get("total_chars", 0)),
-        "scope": c["web_on"] if payload.get("web_searched") else c["web_off"],
+        "scope": _scope(payload, c),
         "sources": sources,
     }
 

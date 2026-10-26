@@ -115,9 +115,34 @@ function aiCheck(submission: Submission, student: boolean): Check | null {
   return { key: "ai", title, status: "ok", headline: t("Reads like a person's writing"), detail: t("Scored {n} out of 100 towards machine writing.", { n: score }) };
 }
 
+const PAPER_ENGINES = new Set(["openalex", "arxiv"]);
+const DEFAULT_SCOPE = "wikipedia+web";
+const SCOPE: Record<string, string> = {
+  "wikipedia+papers+web": msg("Compared with students' work in ProofLayer, Wikipedia, open scientific papers and a web search."),
+  "wikipedia+papers": msg("Compared with students' work in ProofLayer, Wikipedia and open scientific papers."),
+  "wikipedia+web": msg("Compared with students' work in ProofLayer, Wikipedia and a web search."),
+  "papers+web": msg("Compared with students' work in ProofLayer, open scientific papers and a web search."),
+  wikipedia: msg("Compared with students' work in ProofLayer and Wikipedia."),
+  papers: msg("Compared with students' work in ProofLayer and open scientific papers."),
+  web: msg("Compared with students' work in ProofLayer and a web search."),
+};
+
+export function isPaper(match: OriginalityMatch): boolean {
+  return match.source === "web" && PAPER_ENGINES.has(match.engine ?? "");
+}
+
+function scopeKey(engines: string[]): string {
+  const parts = [
+    engines.includes("wikipedia") ? "wikipedia" : "",
+    engines.some((e) => PAPER_ENGINES.has(e)) ? "papers" : "",
+    engines.includes("web") ? "web" : "",
+  ].filter(Boolean);
+  return parts.join("+") || DEFAULT_SCOPE;
+}
+
 export function webScope(report: OriginalityReport): string {
   const status = report.web_status ?? (report.web_searched ? "ok" : "off");
-  if (status === "ok") return t("Compared with students' work in ProofLayer, Wikipedia and a web search.");
+  if (status === "ok") return t(SCOPE[scopeKey(report.web_engines ?? [])] ?? SCOPE[DEFAULT_SCOPE]);
   if (status === "failed") return t("The web search did not answer this time, so only students' work in ProofLayer was compared.");
   if (status === "short") return t("Too short for a web search; compared with students' work in ProofLayer.");
   return t("Compared with students' work in ProofLayer; web search is off for this school.");
@@ -168,6 +193,7 @@ function mainSource(report: OriginalityReport | null | undefined): MainSource | 
 function copyHeadline(report: OriginalityReport, matched: number): string {
   const web = report.matches.filter((m) => m.source === "web");
   const internal = report.matches.filter((m) => m.source !== "web");
+  if (internal.length === 0 && web.every(isPaper)) return t("{n}% of the text was found in scientific papers", { n: matched });
   if (internal.length === 0) return t("{n}% of the text was found on the web", { n: matched });
   if (web.length > 0) return t("{n}% of the text was found on the web and in other students' work", { n: matched });
   const sources = new Set(internal.map((m) => m.submission_id ?? m.submitted_at ?? m.title ?? ""));

@@ -2,6 +2,22 @@
 
 Newest at top.
 
+## [2026-10-26] originality-papers-review | Review fixes: PDF hyphenation, title mask, paper identity, time caps, arXiv PDF pacing
+
+- Source: review of `feat/openalex-arxiv` (diff against main, live smoke against the public OpenAlex, arXiv and Wikipedia APIs from the dev machine, arxiv.org robots.txt, arXiv API terms of use)
+- Backend: `plagiarism.web.join_line_breaks` joins words split by a line-break hyphen in PDF text; `title_skip` masks a paper's own title in the work for that paper; `plagiarism.academic.paper_keys` (title, arXiv id from abs/pdf links and the `10.48550/arXiv` DOI, DOI) dedupes papers within and across catalogues; arXiv PDFs on their own 15 s slots (`plag:arxiv_pdf:turn:*`); `fetch_text` stops after 30 s, the web page loop after 150 s, paper full texts after 90 s; full texts cached zlib-compressed; `BIBLIOGRAPHY_RE` adds Источники, Использованные источники, Sources, Literature, Literature cited, Sources et références; PDF report scope names only the catalogues that answered
+- Checks: 9 new tests in `plagiarism/tests/test_academic.py` (each of the four behaviour tests fails with its fix removed), report scope test extended; live smoke on 6 texts (LoRA abstract copy, Russian journal PDF body copy, Russian abstract copy, honest essay, essay naming LoRA, honest Russian essay naming a paper title)
+- Pages updated: [[services/originality]], [[hot]]
+
+## [2026-10-26] originality-papers | Copy check searches OpenAlex and arXiv; paper sources with authors, year, venue
+
+- Source: owner decision (web search stays free: Wikipedia, OpenAlex, arXiv, later an own index; no paid APIs, signups, key-only services or scraping), prod SearXNG engines all blocked, OpenAlex docs (search covers title, abstract, full text; keyless budget $0.10/day per IP, search $0.001, optional free key 10x), arXiv API guidance (one request per 3 s), live probes of both APIs
+- Backend: new `plagiarism.academic` (8-word key phrases, OR groups under a URL budget, OpenAlex works search with abstract rebuilt from the inverted index and open-access/CyberLeninka full-text links, arXiv Atom parsing, Redis-slot pacing for arXiv and its PDFs, 429/low-credit pauses, 7-day cache); `plagiarism.web` reads PDFs through `common.documents.extract_pdf` (15 MB, 60 pages), caches paper full texts, tags every web match with `engine`, drops an engine whose pages never opened; arXiv record wins a title collision; serializer and PDF report show authors, year and venue, PDF scope names the engines
+- Settings: `PLAGIARISM_WIKIPEDIA`, `PLAGIARISM_OPENALEX`, `PLAGIARISM_ARXIV` (on, off in tests), `OPENALEX_API_KEY` (optional), `OPENALEX_MAILTO`, hits, timeouts, full-text budget, cache TTL; compose passes the switches and the key
+- Frontend: scope sentence built from `web_engines` ("Wikipedia, open scientific papers and a web search"), paper rows "Scientific paper · authors · year · venue", headline "found in scientific papers"; landing originality line, school web search setting, Privacy and Data Processing (en/ru) name Wikipedia, OpenAlex and arXiv
+- Checks: `plagiarism/tests/test_academic.py` (31 tests, mocked HTTP), report scope test; live smoke from the dev machine: Transformer abstract copy found on arXiv (PDF read) plus three OpenAlex papers in 9 s, Russian copy from a CyberLeninka paper body found through OpenAlex full-text search (512 chars)
+- Pages updated: [[services/originality]], [[infrastructure/env-vars]], [[hot]]
+
 ## [2026-10-26] email-change-review | Security review of the email change: stamps, look-alikes, case race, more demo locks
 
 - Source: security review of `feat/email-change` (account takeover, token reuse and expiry, case and Unicode tricks, races, wrong recipients, demo abuse, UI states)
