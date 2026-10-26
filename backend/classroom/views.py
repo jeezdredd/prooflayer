@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from analyzers.models import AnalysisResult
 from billing.permissions import tier_feature
+from common.demo import refuse_demo, refuse_demo_mixing
 from common.names import display_name, save_name
 from content.models import Batch, Submission
 from users.permissions import IsVerifiedUser
@@ -140,6 +141,7 @@ class ClassroomViewSet(
 
     @action(detail=True, methods=["delete"], url_path=r"members/(?P<user_id>\d+)")
     def remove_member(self, request, id=None, user_id=None):
+        refuse_demo(request.user)
         classroom = self._owned()
         deleted, _ = Membership.objects.filter(classroom=classroom, user_id=user_id).delete()
         if not deleted:
@@ -148,6 +150,7 @@ class ClassroomViewSet(
 
     @action(detail=True, methods=["post"])
     def leave(self, request, id=None):
+        refuse_demo(request.user)
         classroom = self.get_object()
         if classroom.owner_id == request.user.id:
             return Response({"detail": "The teacher cannot leave; archive the class instead."}, status=status.HTTP_400_BAD_REQUEST)
@@ -264,6 +267,7 @@ class ClassroomViewSet(
         if shadow is None:
             raise NotFound("No such shadow set.")
         if request.method == "DELETE":
+            refuse_demo(request.user)
             shadow.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         answers = [{"variant": a.variant, "text": a.text} for a in shadow.answers.all()]
@@ -292,6 +296,7 @@ class JoinClassroomView(APIView):
             return Response({"detail": "No active classroom with that code."}, status=status.HTTP_404_NOT_FOUND)
         if classroom.owner_id == request.user.id:
             return Response({"detail": "You teach this classroom."}, status=status.HTTP_400_BAD_REQUEST)
+        refuse_demo_mixing(classroom.owner, request.user)
         save_name(request.user, request.data.get("name"))
         _, created = Membership.objects.get_or_create(classroom=classroom, user=request.user)
         data = ClassroomSerializer(classroom, context={"request": request}).data

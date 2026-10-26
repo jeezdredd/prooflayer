@@ -13,6 +13,7 @@ import LangSwitch from "../components/LangSwitch";
 import { currentLang, msg, t } from "../i18n";
 
 const SALES_EMAIL = "sales@prooflayer.cloud";
+const DEMO_LOCKED = msg("This is a shared demo account, so payments are turned off.");
 
 type Audience = "personal" | "education";
 
@@ -121,8 +122,9 @@ export default function PricingPage() {
     try {
       const res = await billing.portal();
       window.location.href = res.data.url;
-    } catch {
-      toast.error(t("Failed to open billing portal"));
+    } catch (err) {
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      toast.error(code === "demo_account" ? t(DEMO_LOCKED) : t("Failed to open billing portal"));
       setPortalLoading(false);
     }
   };
@@ -149,6 +151,7 @@ export default function PricingPage() {
       setCheckoutPlan(null);
       if (code === "manage_in_portal") handlePortal();
       else if (code === "contact_sales") mailSales(plan);
+      else if (code === "demo_account") toast.error(t(DEMO_LOCKED));
       else toast.error(t("Failed to start checkout"));
     }
   };

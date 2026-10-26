@@ -2,6 +2,30 @@
 
 Newest at top.
 
+## [2026-10-26] email-change-review | Security review of the email change: stamps, look-alikes, case race, more demo locks
+
+- Source: security review of `feat/email-change` (account takeover, token reuse and expiry, case and Unicode tricks, races, wrong recipients, demo abuse, UI states)
+- Password stamp: `EmailChangeToken.password_stamp` = `get_session_auth_hash()` at request time (migration 0008 regenerated, not yet deployed); confirm cancels the link with 410 `cancelled` when the password changed by any route (before only the reset view cancelled), `pending_for` and resend ignore such links
+- Addresses: `users/addresses.clean_address` (NFKC, IDNA to ASCII, no `[ip]` or dotless hosts, ASCII only) so `ｔaken@ｅxample.ｃom` is caught as taken and a look-alike `gmаil.com` is stored and shown as `xn--gmil-63d.com`; uniqueness checks the ASCII and Unicode domain forms
+- Case race: confirm takes `pg_advisory_xact_lock(7301, hashtext(lower(new_email)))` before the re-check; before, two accounts confirming `Shared@x` and `shared@x` at once both succeeded (the unique column is case-sensitive); covered by a threaded transactional test that fails without the lock
+- Second click on a used link returns 200 with the current address when it already matches (phone then laptop), no second mail; a used link never switches back after a later change
+- Confirm mail no longer falls back to the full old address in the greeting (masked)
+- Demo locks added: delete a work, leave a class, remove a pupil, delete AI answer sets, create a school (global slug squatting); class pages show the demo message as a toast, forgot-password shows it instead of "too many attempts"
+- UI: unconfirmed address gets "Send again" on the account page (Classroom has no verify banner); a pupil sent to the main site's `/account` lands on Classroom `/account`
+- Tests: email change tests use a private LocMem cache (the shared Redis cache was cleared by parallel runs and made the throttle test flaky)
+- Pages updated: [[services/auth-email]], [[hot]]
+
+## [2026-10-26] email-change | Account email can be changed with re-verification; demo accounts locked
+
+- Source: owner request "add the ability to change the email in the profile and ask for re-verification on change"; interrupted WIP commit 3e41eae reviewed and finished on `feat/email-change`
+- Backend: `users.EmailChangeToken` (migration 0008, 24 h, partial unique constraint for one open request per user); `POST/DELETE /auth/email/change/`, `POST /auth/email/change/resend/`, `POST /auth/email/change/confirm/` (AllowAny); codes `wrong_password`, `invalid_email`, `same_email`, `email_taken`, `no_pending`, `invalid`, `used`, `cancelled`, `expired`, `demo_account`; throttle scopes `email_change` and `email_change_resend` (5/hour, were missing from settings in the WIP); `/auth/me/` adds `pending_email` and `is_demo`
+- Fixed from the WIP: the old address got the notice only when it was verified (now always, like the final notice); confirm locked token then user while the request locked nothing, so the two could deadlock (both now lock the user row first); resend kept the old expiry although the mail promises 24 hours; change views accepted API keys (now JWT only); `seed_demo` import order; duplicate greeting helper replaced by `common.names.display_name`
+- Mails: `email_change_confirm` (new address, link), `email_change_notice` (old address, new one masked as `n***@domain`, reset-password button), `email_changed` (old address, after confirm); RU and EN, previewable from the status page
+- Demo locks (`common/demo.py`, `DEMO_DOMAIN` moved there from `seed_demo`): email change, account deletion, password reset, API key writes, checkout and billing portal, school deletion, teacher removal, new teacher code; demo and real accounts can no longer join each other's schools or classes (`demo_school` / `demo_account`)
+- Frontend: Email block on `AccountPage` (status, change form, pending box with send again / cancel, demo note), `/confirm-email` on both hosts sharing `EmailLinkPages.tsx` with `/verify-email` (one request per token; the old verify page could show a false failure to signed-in users), classroom `/account` route with a header link, `account` and `confirm-email` reserved as school slugs
+- Checks: `users/tests/test_email_change.py`, `users/tests/test_demo_locks.py`; local run of both apps against a scratch database: wrong password message, pending box, resend mail, confirm signed in and signed out, demo notes, classroom account page
+- Pages updated: [[services/auth-email]], [[services/classroom]], [[hot]]
+
 ## [2026-10-24] demo-t5 | Demo shows what the accounts doc says; seed_demo keeps passwords, redates and verifies (Tribunal 1.10.1)
 
 - Source: audit theme t5-demo (findings 63, 88-102), owner decisions, local seed simulation with the real analyzers (t7, e5-small, image detectors), Wikipedia lookup for Polina's paste

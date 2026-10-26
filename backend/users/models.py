@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 
 
 class UserManager(BaseUserManager):
@@ -77,6 +78,72 @@ class EmailVerificationToken(models.Model):
     def mark_used(self):
         self.used_at = timezone.now()
         self.save(update_fields=["used_at"])
+
+
+EMAIL_CHANGE_HOURS = 24
+
+
+def email_change_expiry():
+    return timezone.now() + timedelta(hours=EMAIL_CHANGE_HOURS)
+
+
+class EmailChangeQuerySet(models.QuerySet):
+    def pending(self):
+        return self.filter(used_at__isnull=True, cancelled_at__isnull=True, expires_at__gt=timezone.now())
+
+    def open(self):
+        return self.filter(used_at__isnull=True, cancelled_at__isnull=True)
+
+
+class EmailChangeToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="email_change_tokens")
+    new_email = models.EmailField()
+    token = models.CharField(max_length=64, unique=True, default=_gen_token, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=email_change_expiry)
+    used_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    password_stamp = models.CharField(max_length=128, blank=True)
+
+    objects = EmailChangeQuerySet.as_manager()
+
+    class Meta:
+        db_table = "email_change_tokens"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(used_at__isnull=True, cancelled_at__isnull=True),
+                name="one_open_email_change_per_user",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} -> {self.new_email}"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    def password_unchanged(self) -> bool:
+        return bool(self.password_stamp) and constant_time_compare(self.password_stamp, self.user.get_session_auth_hash())
+
+    @classmethod
+    def start(cls, user, new_email: str) -> "EmailChangeToken":
+        cls.cancel_open(user)
+        return cls.objects.create(user=user, new_email=new_email, password_stamp=user.get_session_auth_hash())
+
+    @classmethod
+    def cancel_open(cls, user) -> int:
+        return cls.objects.open().filter(user=user).update(cancelled_at=timezone.now())
+
+    @classmethod
+    def pending_for(cls, user) -> "EmailChangeToken | None":
+        change = cls.objects.pending().filter(user=user).first()
+        if change is None:
+            return None
+        change.user = user
+        return change if change.password_unchanged() else None
 
 
 class EmailLog(models.Model):

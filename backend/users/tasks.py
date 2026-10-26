@@ -17,7 +17,7 @@ from content.models import Submission, VerdictObjection
 from content.viewer import result_url
 
 from . import mail
-from .models import ApiKey, EmailVerificationToken, ProductUpdate, ProductUpdateDelivery
+from .models import ApiKey, EmailChangeToken, EmailVerificationToken, ProductUpdate, ProductUpdateDelivery
 from .webhooks import build_payload, encode
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,40 @@ def send_password_reset_email(user_id: int) -> str:
     link = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
     status = mail.send(kind="password_reset", to=[user.email], context=mail.password_reset_context(user, link), user=user)
     logger.info("password reset email %s user=%s", status, user_id)
+    return status
+
+
+@shared_task(queue="default", autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_email_change_confirm(token_id: int) -> str:
+    change = EmailChangeToken.objects.pending().select_related("user").filter(pk=token_id).first()
+    if change is None:
+        return "missing"
+    link = f"{settings.FRONTEND_URL}/confirm-email?token={change.token}"
+    context = mail.email_change_confirm_context(change.user, link)
+    status = mail.send(kind="email_change_confirm", to=[change.new_email], context=context, user=change.user)
+    logger.info("email change confirm %s user=%s", status, change.user_id)
+    return status
+
+
+@shared_task(queue="default", autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_email_change_notice(token_id: int, old_email: str) -> str:
+    change = EmailChangeToken.objects.select_related("user").filter(pk=token_id).first()
+    if change is None or not old_email:
+        return "missing"
+    context = mail.email_change_notice_context(change.user, old_email, change.new_email)
+    status = mail.send(kind="email_change_notice", to=[old_email], context=context, user=change.user)
+    logger.info("email change notice %s user=%s", status, change.user_id)
+    return status
+
+
+@shared_task(queue="default", autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def send_email_changed_notice(user_id: int, old_email: str) -> str:
+    user = User.objects.filter(pk=user_id).first()
+    if user is None or not old_email:
+        return "missing"
+    context = mail.email_changed_context(user, old_email)
+    status = mail.send(kind="email_changed", to=[old_email], context=context, user=user)
+    logger.info("email changed notice %s user=%s", status, user_id)
     return status
 
 

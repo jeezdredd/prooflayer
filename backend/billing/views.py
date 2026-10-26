@@ -11,6 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.demo import refuse_demo
 from common.throttling import PublicReadThrottle
 
 from .models import Subscription, get_or_create_subscription, uploads_this_month
@@ -54,6 +55,7 @@ class CreateCheckoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        refuse_demo(request.user)
         plan_key = request.data.get("plan") or "pro"
         interval = request.data.get("interval") or "month"
         plan = PLANS.get(plan_key)
@@ -111,6 +113,7 @@ class CustomerPortalView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        refuse_demo(request.user)
         sub = get_or_create_subscription(request.user)
         if not sub.paddle_customer_id or not settings.PADDLE_API_KEY:
             return Response({"detail": "No billing account"}, status=400)

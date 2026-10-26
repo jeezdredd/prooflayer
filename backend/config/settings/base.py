@@ -130,6 +130,8 @@ REST_FRAMEWORK = {
         "login": "20/hour",
         "resend_verification": "5/hour",
         "password_reset": "5/hour",
+        "email_change": "5/hour",
+        "email_change_resend": "5/hour",
         "api": "120/min",
         "batch": "10/hour",
     },

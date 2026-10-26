@@ -81,7 +81,23 @@ export const auth = {
 
   resendVerification: () =>
     client.post<{ detail: string; delivery: string }>("/auth/resend-verification/", {}),
+
+  requestEmailChange: (newEmail: string, password: string) =>
+    client.post<EmailChangeState>("/auth/email/change/", { new_email: newEmail, password }),
+
+  resendEmailChange: () => client.post<EmailChangeState>("/auth/email/change/resend/", {}),
+
+  cancelEmailChange: () => client.delete<EmailChangeState>("/auth/email/change/"),
+
+  confirmEmailChange: (token: string) =>
+    client.post<{ detail: string; email: string }>("/auth/email/change/confirm/", { token }),
 };
+
+export interface EmailChangeState {
+  detail: string;
+  pending_email: string | null;
+  delivery?: string;
+}
 
 export const content = {
   upload: (file: File, onProgress?: (progress: number) => void, classroom?: string | null, student?: number | null) => {

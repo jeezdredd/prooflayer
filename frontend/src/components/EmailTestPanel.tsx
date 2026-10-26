@@ -16,6 +16,9 @@ interface EmailTestState {
 const KIND_LABELS: Record<string, string> = {
   verify: msg("Confirm email"),
   password_reset: msg("Password reset"),
+  email_change_confirm: msg("Confirm new email"),
+  email_change_notice: msg("Email change requested"),
+  email_changed: msg("Email changed"),
   objection: msg("Objection"),
   update: msg("Product update"),
 };

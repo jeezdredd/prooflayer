@@ -36,6 +36,8 @@ the subdomain.
 | `/:slug/c/:id`, `/c/:id` | `ClassroomDetailPage` (teacher or student view) |
 | `.../submit` | hand in work into that class (single, batch, ZIP, PDF/DOCX) |
 | `/results/:id`, `/batches/:id` | reused result and batch pages, with classroom-aware back links |
+| `/account` | the main site's `AccountPage` inside the classroom shell (email change, age, consent, product updates, delete account); the header's person icon and name link here, so pupils, who never reach the main site, have account settings too (2026-10-26) |
+| `/verify-email`, `/confirm-email` | email links, outside the shell; `account` and `confirm-email` are in `RESERVED_SLUGS` |
 
 - **Sign-in carries over.** The refresh cookie sits on `api.prooflayer.cloud` (SameSite=Lax), which
   is same-site with both frontends, so `classroom/useSilentSignIn.ts` calls `auth/refresh` once on

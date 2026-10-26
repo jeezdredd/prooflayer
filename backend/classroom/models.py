@@ -80,9 +80,9 @@ class Membership(models.Model):
 
 SLUG_PATTERN = r"^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$"
 RESERVED_SLUGS = frozenset({
-    "api", "admin", "app", "assets", "c", "classroom", "classes", "dashboard", "join", "login",
-    "logout", "new", "orgs", "pricing", "register", "results", "settings", "static", "status",
-    "upload", "verify-email", "www",
+    "account", "api", "admin", "app", "assets", "c", "classroom", "classes", "confirm-email", "dashboard",
+    "join", "login", "logout", "new", "orgs", "pricing", "register", "results", "settings", "static",
+    "status", "upload", "verify-email", "www",
 })
 
 

@@ -15,6 +15,8 @@ export interface User {
   student_only?: boolean;
   language?: "en" | "ru";
   email_updates?: boolean;
+  pending_email?: string | null;
+  is_demo?: boolean;
 }
 
 export interface Tokens {

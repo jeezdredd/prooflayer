@@ -4,6 +4,8 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from common.names import display_name
+
 from .emails import deliver
 from .models import User
 
@@ -98,6 +100,104 @@ COPY = {
             "cta": "Задать новый пароль",
             "footnote": "Ссылка действует один час и срабатывает один раз. Если вы не запрашивали сброс, проигнорируйте письмо: пароль останется прежним.",
             "reason": "Вы получили это письмо, потому что для вашего аккаунта ProofLayer запросили сброс пароля.",
+        },
+    },
+    "email_change_confirm": {
+        "en": {
+            "subject": "Confirm your new email for ProofLayer",
+            "preheader": "Open the link to finish the change. It works for 24 hours.",
+            "badge": "Account",
+            "heading": "Confirm your new",
+            "accent_word": "email",
+            "paragraphs": [
+                "Hi {name}, you asked to use this address for your ProofLayer account.",
+                "The address changes only after you press the button below. Until then, sign in with your old address.",
+            ],
+            "cta": "Confirm new email",
+            "footnote": "The link works for 24 hours and only once. If you did not ask for this, ignore this email and nothing will change.",
+            "reason": "You get this email because this address was entered as the new email of a ProofLayer account.",
+        },
+        "ru": {
+            "subject": "Подтвердите новую почту для ProofLayer",
+            "preheader": "Откройте ссылку, чтобы закончить смену почты. Ссылка действует 24 часа.",
+            "badge": "Аккаунт",
+            "heading": "Подтвердите новую",
+            "accent_word": "почту",
+            "paragraphs": [
+                "Здравствуйте, {name}! Вы попросили привязать этот адрес к аккаунту ProofLayer.",
+                "Адрес сменится, только когда вы нажмёте кнопку ниже. До этого входите со старым адресом.",
+            ],
+            "cta": "Подтвердить новую почту",
+            "footnote": "Ссылка действует 24 часа и срабатывает один раз. Если вы ничего не меняли, просто проигнорируйте письмо: ничего не изменится.",
+            "reason": "Вы получили это письмо, потому что этот адрес указали как новую почту аккаунта ProofLayer.",
+        },
+    },
+    "email_change_notice": {
+        "en": {
+            "subject": "Email change requested for your ProofLayer account",
+            "preheader": "New address: {masked}. Nothing changes until it is confirmed.",
+            "badge": "Security",
+            "heading": "Email change",
+            "accent_word": "requested",
+            "paragraphs": [
+                "Someone asked to change the email of your ProofLayer account to {masked}.",
+                "Nothing changes until the new address is confirmed. If it was you, there is nothing else to do.",
+                "If it was not you, reset your password with the button below. That also stops the change.",
+            ],
+            "labels": {"new": "New address", "account": "Account"},
+            "cta": "Reset password",
+            "footnote": "Questions? Write to support@prooflayer.cloud.",
+            "reason": "You get this email because this is the current address of a ProofLayer account.",
+        },
+        "ru": {
+            "subject": "Запрос на смену почты в ProofLayer",
+            "preheader": "Новый адрес: {masked}. Пока его не подтвердят, ничего не изменится.",
+            "badge": "Безопасность",
+            "heading": "Запрошена смена",
+            "accent_word": "почты",
+            "paragraphs": [
+                "Для вашего аккаунта ProofLayer запросили смену почты на {masked}.",
+                "Пока новый адрес не подтвердят, ничего не изменится. Если это были вы, больше ничего делать не нужно.",
+                "Если это были не вы, сбросьте пароль кнопкой ниже. Смена почты при этом отменится.",
+            ],
+            "labels": {"new": "Новый адрес", "account": "Аккаунт"},
+            "cta": "Сбросить пароль",
+            "footnote": "Вопросы? Пишите на support@prooflayer.cloud.",
+            "reason": "Вы получили это письмо, потому что это текущий адрес аккаунта ProofLayer.",
+        },
+    },
+    "email_changed": {
+        "en": {
+            "subject": "Your ProofLayer email was changed",
+            "preheader": "Your account now uses {masked}.",
+            "badge": "Security",
+            "heading": "Your email was",
+            "accent_word": "changed",
+            "paragraphs": [
+                "Your ProofLayer account now uses {masked}. Sign in with the new address from now on.",
+                "Account emails no longer come to this address.",
+                "If you did not do this, write to support@prooflayer.cloud right away and we will help you get the account back.",
+            ],
+            "labels": {"new": "New address", "account": "Account"},
+            "cta": "Write to support",
+            "footnote": "We write to your old address so you know about every change to your account.",
+            "reason": "You get this email because this was the address of a ProofLayer account until now.",
+        },
+        "ru": {
+            "subject": "Почта в ProofLayer изменена",
+            "preheader": "Теперь аккаунт привязан к {masked}.",
+            "badge": "Безопасность",
+            "heading": "Почта",
+            "accent_word": "изменена",
+            "paragraphs": [
+                "Ваш аккаунт ProofLayer теперь привязан к адресу {masked}. Входите с новым адресом.",
+                "Письма об аккаунте на этот адрес больше не придут.",
+                "Если это сделали не вы, сразу напишите на support@prooflayer.cloud, и мы поможем вернуть аккаунт.",
+            ],
+            "labels": {"new": "Новый адрес", "account": "Аккаунт"},
+            "cta": "Написать в поддержку",
+            "footnote": "Мы пишем на старый адрес, чтобы вы знали о каждом изменении в аккаунте.",
+            "reason": "Вы получили это письмо, потому что до сих пор это был адрес аккаунта ProofLayer.",
         },
     },
     "objection": {
@@ -285,6 +385,46 @@ def verification_context(user, link: str) -> dict:
 def password_reset_context(user, link: str) -> dict:
     context = build("password_reset", lang_of(user), {"email": user.email})
     context.update(tone="amber", cta_url=link, show_link=True)
+    return context
+
+
+SUPPORT_EMAIL = "support@prooflayer.cloud"
+
+
+def mask_email(email: str) -> str:
+    local, _, domain = (email or "").partition("@")
+    if not domain:
+        return f"{local[:1]}***"
+    return f"{local[:1]}***@{domain}"
+
+
+def email_change_confirm_context(user, link: str) -> dict:
+    context = build("email_change_confirm", lang_of(user), {"name": display_name(user) or mask_email(user.email)})
+    context.update(tone="violet", cta_url=link, show_link=True)
+    return context
+
+
+def email_change_notice_context(user, old_email: str, new_email: str) -> dict:
+    masked = mask_email(new_email)
+    context = build("email_change_notice", lang_of(user), {"masked": masked})
+    labels = context.pop("labels")
+    context.update(
+        tone="amber",
+        details=[(labels["account"], old_email), (labels["new"], masked)],
+        cta_url=f"{settings.FRONTEND_URL}/forgot-password",
+    )
+    return context
+
+
+def email_changed_context(user, old_email: str) -> dict:
+    masked = mask_email(user.email)
+    context = build("email_changed", lang_of(user), {"masked": masked})
+    labels = context.pop("labels")
+    context.update(
+        tone="amber",
+        details=[(labels["account"], old_email), (labels["new"], masked)],
+        cta_url=f"mailto:{SUPPORT_EMAIL}",
+    )
     return context
 
 

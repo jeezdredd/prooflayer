@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from billing.permissions import CanUseApi
+from common.demo import DemoLockedWritesMixin
 from common.url_safety import UnsafeUrlError, validate_public_url
 
 from .models import ApiKey
@@ -42,7 +43,7 @@ class SessionOnlyMixin:
             raise PermissionDenied("API keys cannot manage API keys.")
 
 
-class ApiKeyListCreateView(SessionOnlyMixin, generics.ListCreateAPIView):
+class ApiKeyListCreateView(DemoLockedWritesMixin, SessionOnlyMixin, generics.ListCreateAPIView):
     serializer_class = ApiKeySerializer
     permission_classes = [IsAuthenticated, CanUseApi]
     pagination_class = None
@@ -66,7 +67,7 @@ class ApiKeyListCreateView(SessionOnlyMixin, generics.ListCreateAPIView):
         return Response(data, status=status.HTTP_201_CREATED)
 
 
-class ApiKeyDetailView(SessionOnlyMixin, generics.RetrieveUpdateDestroyAPIView):
+class ApiKeyDetailView(DemoLockedWritesMixin, SessionOnlyMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ApiKeySerializer
     permission_classes = [IsAuthenticated, CanUseApi]
     lookup_field = "id"

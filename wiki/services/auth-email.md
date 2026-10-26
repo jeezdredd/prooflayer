@@ -12,7 +12,7 @@ JWT auth via `rest_framework_simplejwt`. Email verification via signed token + R
 
 1. `POST /api/v1/auth/register/` -> creates `User(is_verified=False)` + dispatches `send_verification_email.delay(user.id)` -> returns JWT pair (user logged in immediately, banner nags them to verify).
 2. Celery task creates [[EmailVerificationToken]] (48h expiry, `secrets.token_urlsafe(32)`) and sends email with link `${FRONTEND_URL}/verify-email?token=<token>`.
-3. Frontend `VerifyEmailPage` reads `?token=` -> `POST /api/v1/auth/verify-email/ {token}`. Endpoint validates token, flips `user.is_verified = True`, marks token used.
+3. Frontend `VerifyEmailPage` (`frontend/src/pages/EmailLinkPages.tsx`, shared with `ConfirmEmailPage`) reads `?token=` -> `POST /api/v1/auth/verify-email/ {token}`. Endpoint validates token, flips `user.is_verified = True`, marks token used. The page posts each token once (module-level promise per token), so StrictMode and the `setUser` re-render no longer send a second request that came back 410 and showed a false failure to signed-in users.
 4. Unverified users see `EmailVerifyBanner` in [[Layout]]. Button -> `POST /auth/resend-verification/` (auth required).
 
 ## Models
@@ -31,8 +31,111 @@ Superusers auto-verified (`UserManager.create_superuser` sets `is_verified=True`
 |--------|------|------|------|
 | POST | `/api/v1/auth/verify-email/` | Anon | `{token}` |
 | POST | `/api/v1/auth/resend-verification/` | JWT | (none) |
+| POST | `/api/v1/auth/email/change/` | JWT only | `{new_email, password}` |
+| DELETE | `/api/v1/auth/email/change/` | JWT only | (none) |
+| POST | `/api/v1/auth/email/change/resend/` | JWT only | (none) |
+| POST | `/api/v1/auth/email/change/confirm/` | Anon | `{token}` |
 
-Response codes: 200 verified, 400 missing/already-verified, 404 invalid token, 410 expired/used.
+Response codes (verify): 200 verified, 400 missing/already-verified, 404 invalid token, 410 expired/used.
+
+## Email change (2026-10-26)
+
+Owner request: "add the ability to change the email in the profile and ask for re-verification on change".
+The address never changes until the new one is proven.
+
+`users.EmailChangeToken` (migration `0008_email_change_token`, table `email_change_tokens`): `user`, `new_email`,
+`token` (`secrets.token_urlsafe(32)`), `created_at`, `expires_at` (+24 h, `EMAIL_CHANGE_HOURS`), `used_at`,
+`cancelled_at`, `password_stamp` (`user.get_session_auth_hash()` when the change was asked for). Partial unique
+constraint `one_open_email_change_per_user` (one row per user with `used_at` and `cancelled_at` both null);
+`pending()` = open and not expired; `EmailChangeToken.start(user, new_email)` cancels older open rows and stamps the
+new one; `pending_for(user)` returns the pending row only while its stamp still matches the password.
+
+Flow:
+1. `POST /auth/email/change/` (`EmailChangeView`, throttle scope `email_change` 5/hour per user, counted on every
+   POST including wrong passwords). Order of checks: demo account -> 403 `demo_account`; password -> 403
+   `wrong_password`; address cleaned by `users/addresses.clean_address` (NFKC, so fullwidth letters become plain
+   ones; trimmed; domain IDNA-encoded to its ASCII form, so a look-alike such as `gmаil.com` with a Cyrillic "а" is
+   stored and shown as `xn--gmil-63d.com`; domain lowercased; no `[ip]` literals or dotless hosts; ASCII only; 254
+   chars; Django `validate_email`), demo domain refused -> 400 `invalid_email`; same address in any case or IDN form
+   -> 400 `same_email`; any other `User.email__iexact` match on the ASCII or Unicode form of the domain -> 400
+   `email_taken`. Then, with the user row locked, `EmailChangeToken.start` cancels older open tokens and creates a
+   stamped one. Returns 202 `{pending_email, delivery}`.
+2. Mails: `email_change_confirm` to the NEW address with `{FRONTEND_URL}/confirm-email?token=...`;
+   `email_change_notice` to the OLD address with the new one masked (`n***@domain`) and a "Reset password" button
+   (a password reset cancels open change requests). Sent to the old address whether or not it was ever verified.
+3. `POST /auth/email/change/confirm/` (`EmailChangeConfirmView`, AllowAny, no authentication, so the link works
+   logged out or on another device). In one transaction it locks the user row first and then the token row (same
+   order as the request view, so the two never deadlock), then: unknown -> 404 `invalid`; used -> 200 with the
+   current address when the account already uses the link's address (a second click, or the phone then the laptop,
+   shows success and sends nothing), otherwise 410 `used`; cancelled -> 410 `cancelled`; expired -> 410 `expired`;
+   demo -> 403 `demo_account`; password changed since the request by any route (reset, admin, shell) -> the token is
+   cancelled and 410 `cancelled`; then a transaction-level advisory lock on the lowercased new address
+   (`pg_advisory_xact_lock(7301, hashtext(lower(address)))`, `users/addresses.lock_address`) so two accounts
+   confirming `Foo@x` and `foo@x` at the same moment are serialised; address taken meanwhile (case-insensitive
+   re-check) -> 409 `email_taken`; an `IntegrityError` from the unique `email` column is also reported as 409
+   `email_taken`. On success: `email = new_email`, `is_verified = True`, token used, other open
+   change tokens cancelled, unused `EmailVerificationToken`s marked used, `email_changed` mail to the old address.
+4. `DELETE /auth/email/change/` cancels; `POST /auth/email/change/resend/` (scope `email_change_resend` 5/hour)
+   resends the same link and moves its expiry to now + 24 h; 404 `no_pending` when nothing is waiting (also after a
+   password change).
+
+The confirm mail greets by `display_name`; with no name it falls back to the masked old address, never the full one,
+because the new address may belong to someone else after a typo.
+
+Old password-reset links die on the change: Django's `default_token_generator` hashes the email field
+(tested in `users/tests/test_email_change.py::TestConfirm::test_old_password_reset_links_stop_working`). Sign-in
+uses the new address at once (login matches the stored address exactly, as at registration).
+
+The email change endpoints accept JWT only (`authentication_classes = (JWTAuthentication,)`), so an API key can
+never start or cancel a change. `UserSerializer` (`/auth/me/`) exposes `pending_email` (or null) and `is_demo`.
+
+Frontend: `AccountPage` "Email" block shows the address with confirmed / not confirmed, a "Change email" form (new
+address + current password, errors mapped from the codes, 429 -> "wait an hour"), then a pending box ("We sent a
+link to {email}. Your address changes when you open it.") with "Send again" and "Cancel the change"; it refetches
+`/auth/me/` on window focus while a change is pending. An unconfirmed address gets a "Send again" button for the
+verification link (Classroom has no verify banner). `ConfirmEmailPage` (`/confirm-email` on both hosts) posts
+the token once, refreshes the signed-in user (`auth/sessionSync.refreshSignedInUser`) and offers "Open your account"
+or "Sign in". Staff can preview and test-send the three new mails from the Email row on the status page
+(`mail_samples.KINDS`).
+
+## Demo account locks (2026-10-26)
+
+`common/demo.py` holds `DEMO_DOMAIN` (`demo.prooflayer.cloud`, also used by `seed_demo`), `is_demo_email`,
+`is_demo`, `refuse_demo(user)` (403 `{"detail": "This is a shared demo account, so this is turned off.", "code":
+"demo_account"}`), `DemoLockedWritesMixin` (refuses every non-GET for demo users) and `refuse_demo_mixing(owner,
+user)`. The demo passwords are public, so these are locked for `@demo.prooflayer.cloud` accounts:
+
+- email change request, resend and confirm; account deletion (`MeView.delete`); password reset request and confirm
+- API keys: create, rename, revoke (listing still works)
+- billing: checkout and customer portal
+- school: delete the school, remove a teacher, issue a new teacher code, create a new school (school addresses are
+  one global namespace, so a visitor could otherwise claim real schools' slugs)
+- seeded content: delete a work (`DELETE /content/submissions/<id>/`), leave a class, remove a pupil from a class,
+  delete a set of AI answers (`DELETE /classroom/classrooms/<id>/shadows/<sid>/`); these could only be undone with a
+  full `seed_demo --reset`, which re-runs every analysis
+- joins never mix demo and real accounts: a real account cannot join a demo school as teacher or a demo class as
+  student (403 `demo_school`, "This is a demo school. Only its demo accounts can join it."), a demo account cannot
+  join a real school or class (403 `demo_account`). This keeps visitors from using the demo school's Education plan
+  for their own classes and keeps real pupils' work out of a school whose admin password is public.
+
+Not locked on purpose: profile fields (username, language, age, training consent, product updates), the school's
+web search switch, class-level actions (rename, archive, new class code, new class), uploads, overrides and
+objections: visitors are meant to try them, and `seed_demo --reset` restores the demo.
+
+The account page shows a short note instead of the email form and the delete form for demo accounts; pricing shows
+"payments are turned off"; the forgot-password page shows the demo message instead of "too many attempts"; class
+pages show it as a toast when removing a pupil, leaving a class or removing AI answers.
+
+## Known gaps (2026-10-26 review)
+
+- Registration still checks `email` uniqueness case-sensitively and keeps IDN domains in Unicode, and sign-in matches
+  the stored address exactly, so `Foo@x` and `foo@x` can still be two accounts made through registration. The email
+  change flow checks every form.
+- The confirm link works for whoever controls the new address (by design: logged out or another device). After a
+  typo, the owner of the typed address could take the account; the pending box shows the address, the old address
+  gets a notice with a reset button (a reset cancels the change), and the change waits for the click.
+- The frontend Caddy log records the full URL, so `?token=` of verify, reset and confirm links lands in
+  `/var/log/caddy/prooflayer-fe.log` (single use, 24 h for confirm).
 
 ## Settings (env-driven)
 

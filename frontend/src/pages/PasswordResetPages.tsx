@@ -54,8 +54,9 @@ export function ForgotPasswordPage() {
     try {
       await auth.requestPasswordReset(email);
       setSent(true);
-    } catch {
-      setError(t("Too many attempts. Try again in an hour."));
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { detail?: string; code?: string } } })?.response?.data;
+      setError(data?.code === "demo_account" && data.detail ? t(data.detail) : t("Too many attempts. Try again in an hour."));
     } finally {
       setBusy(false);
     }
