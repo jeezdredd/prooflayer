@@ -399,7 +399,7 @@ def mask_email(email: str) -> str:
 
 
 def email_change_confirm_context(user, link: str) -> dict:
-    context = build("email_change_confirm", lang_of(user), {"name": display_name(user) or user.email})
+    context = build("email_change_confirm", lang_of(user), {"name": display_name(user) or mask_email(user.email)})
     context.update(tone="violet", cta_url=link, show_link=True)
     return context
 

@@ -28,6 +28,7 @@ from classroom.access import (
     visible_submissions_q,
 )
 from common.age import can_view_sensitive
+from common.demo import refuse_demo
 from common.url_safety import UnsafeUrlError, safe_get, validate_public_url
 from content.tasks import process_submission
 from users.models import ApiKey
@@ -224,6 +225,7 @@ class SubmissionViewSet(
         return Response({"id": str(submission.id), "status": submission.status}, status=status.HTTP_202_ACCEPTED)
 
     def perform_destroy(self, instance):
+        refuse_demo(self.request.user)
         if instance.user_id != self.request.user.id:
             raise PermissionDenied("Only the author can delete a submission.")
         if instance.file:

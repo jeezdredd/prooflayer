@@ -3,8 +3,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
@@ -29,6 +29,7 @@ from content.sensitivity import unpublish_all
 from .models import EmailChangeToken, EmailLog, EmailVerificationToken, ProductUpdate, email_change_expiry
 from .serializers import AcceptTermsSerializer, RegisterSerializer, UserSerializer, age_fields
 from . import mail
+from .addresses import address_variants, clean_address, lock_address
 from .mail import user_from_unsubscribe_token
 from .mail_samples import KINDS, sample_context
 from .tasks import (
@@ -340,7 +341,10 @@ def _delivery() -> str:
 
 
 def _email_in_use(email: str, user) -> bool:
-    return User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists()
+    match = Q()
+    for variant in address_variants(email):
+        match |= Q(email__iexact=variant)
+    return User.objects.filter(match).exclude(pk=user.pk).exists()
 
 
 def _lock_user(pk: int):
@@ -350,6 +354,7 @@ def _lock_user(pk: int):
 EMAIL_TAKEN = "Another account already uses this email."
 EMAIL_INVALID = "Enter a valid email address."
 LINK_INVALID = "This link is not valid."
+LINK_CANCELLED = "This link no longer works: the change was cancelled or a newer link was sent."
 
 
 class EmailChangeView(APIView):
@@ -366,21 +371,16 @@ class EmailChangeView(APIView):
         refuse_demo(user)
         if not user.check_password(str(request.data.get("password") or "")):
             return _error("wrong_password", "Password is incorrect.", status.HTTP_403_FORBIDDEN)
-        new_email = User.objects.normalize_email(str(request.data.get("new_email") or "").strip())
-        try:
-            validate_email(new_email)
-        except DjangoValidationError:
+        new_email = clean_address(request.data.get("new_email"))
+        if new_email is None or is_demo_email(new_email):
             return _error("invalid_email", EMAIL_INVALID, status.HTTP_400_BAD_REQUEST)
-        if len(new_email) > User._meta.get_field("email").max_length or is_demo_email(new_email):
-            return _error("invalid_email", EMAIL_INVALID, status.HTTP_400_BAD_REQUEST)
-        if new_email.lower() == (user.email or "").lower():
+        if (user.email or "").lower() in {variant.lower() for variant in address_variants(new_email)}:
             return _error("same_email", "This is already your email.", status.HTTP_400_BAD_REQUEST)
         if _email_in_use(new_email, user):
             return _error("email_taken", EMAIL_TAKEN, status.HTTP_400_BAD_REQUEST)
         with transaction.atomic():
             _lock_user(user.pk)
-            EmailChangeToken.cancel_open(user)
-            change = EmailChangeToken.objects.create(user=user, new_email=new_email)
+            change = EmailChangeToken.start(user, new_email)
         send_email_change_confirm.delay(change.id)
         send_email_change_notice.delay(change.id, user.email)
         return Response(
@@ -437,13 +437,21 @@ class EmailChangeConfirmView(APIView):
         if user is None or not user.is_active:
             return _error("invalid", LINK_INVALID, status.HTTP_404_NOT_FOUND)
         if change.used_at is not None:
+            if (user.email or "").lower() == change.new_email.lower():
+                return Response({"detail": "Email changed.", "email": user.email})
             return _error("used", "This link was already used.", status.HTTP_410_GONE)
         if change.cancelled_at is not None:
-            return _error("cancelled", "This link no longer works: the change was cancelled or a newer link was sent.", status.HTTP_410_GONE)
+            return _error("cancelled", LINK_CANCELLED, status.HTTP_410_GONE)
         if change.is_expired:
             return _error("expired", "This link has expired.", status.HTTP_410_GONE)
         if is_demo_email(user.email):
             return _demo_response()
+        change.user = user
+        if not change.password_unchanged():
+            change.cancelled_at = timezone.now()
+            change.save(update_fields=["cancelled_at"])
+            return _error("cancelled", LINK_CANCELLED, status.HTTP_410_GONE)
+        lock_address(change.new_email)
         if _email_in_use(change.new_email, user):
             return _error("email_taken", EMAIL_TAKEN, status.HTTP_409_CONFLICT)
         old_email = user.email

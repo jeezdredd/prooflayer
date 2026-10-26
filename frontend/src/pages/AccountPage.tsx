@@ -96,6 +96,15 @@ function EmailSection({ user }: { user: User }) {
     },
   });
 
+  const verify = useMutation({
+    mutationFn: () => auth.resendVerification().then((r) => r.data),
+    onSuccess: () => toast.success(t("We sent the link again to {email}", { email: user.email })),
+    onError: (err) => {
+      const { status } = errorResponse(err);
+      toast.error(status === 429 ? t(TOO_MANY) : t(SEND_FAILED));
+    },
+  });
+
   const cancel = useMutation({
     mutationFn: () => auth.cancelEmailChange(),
     onSuccess: () => {
@@ -117,7 +126,12 @@ function EmailSection({ user }: { user: User }) {
         )}
       </div>
       {!user.is_verified && (
-        <p className="text-xs text-ink-500 mt-2">{t("Open the link we sent to this address to confirm it.")}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <p className="text-xs text-ink-500">{t("Open the link we sent to this address to confirm it.")}</p>
+          <button type="button" onClick={() => verify.mutate()} disabled={verify.isPending || verify.isSuccess} className={QUIET_BUTTON}>
+            {verify.isPending ? t("Sending…") : t("Send again")}
+          </button>
+        </div>
       )}
       {user.is_demo ? (
         <p className="text-sm text-ink-400 mt-3">{t("This is a shared demo account, so its email cannot be changed.")}</p>

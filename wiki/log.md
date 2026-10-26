@@ -2,6 +2,19 @@
 
 Newest at top.
 
+## [2026-10-26] email-change-review | Security review of the email change: stamps, look-alikes, case race, more demo locks
+
+- Source: security review of `feat/email-change` (account takeover, token reuse and expiry, case and Unicode tricks, races, wrong recipients, demo abuse, UI states)
+- Password stamp: `EmailChangeToken.password_stamp` = `get_session_auth_hash()` at request time (migration 0008 regenerated, not yet deployed); confirm cancels the link with 410 `cancelled` when the password changed by any route (before only the reset view cancelled), `pending_for` and resend ignore such links
+- Addresses: `users/addresses.clean_address` (NFKC, IDNA to ASCII, no `[ip]` or dotless hosts, ASCII only) so `ｔaken@ｅxample.ｃom` is caught as taken and a look-alike `gmаil.com` is stored and shown as `xn--gmil-63d.com`; uniqueness checks the ASCII and Unicode domain forms
+- Case race: confirm takes `pg_advisory_xact_lock(7301, hashtext(lower(new_email)))` before the re-check; before, two accounts confirming `Shared@x` and `shared@x` at once both succeeded (the unique column is case-sensitive); covered by a threaded transactional test that fails without the lock
+- Second click on a used link returns 200 with the current address when it already matches (phone then laptop), no second mail; a used link never switches back after a later change
+- Confirm mail no longer falls back to the full old address in the greeting (masked)
+- Demo locks added: delete a work, leave a class, remove a pupil, delete AI answer sets, create a school (global slug squatting); class pages show the demo message as a toast, forgot-password shows it instead of "too many attempts"
+- UI: unconfirmed address gets "Send again" on the account page (Classroom has no verify banner); a pupil sent to the main site's `/account` lands on Classroom `/account`
+- Tests: email change tests use a private LocMem cache (the shared Redis cache was cleared by parallel runs and made the throttle test flaky)
+- Pages updated: [[services/auth-email]], [[hot]]
+
 ## [2026-10-26] email-change | Account email can be changed with re-verification; demo accounts locked
 
 - Source: owner request "add the ability to change the email in the profile and ask for re-verification on change"; interrupted WIP commit 3e41eae reviewed and finished on `feat/email-change`

@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
+from django.utils.crypto import constant_time_compare
 
 
 class UserManager(BaseUserManager):
@@ -102,6 +103,7 @@ class EmailChangeToken(models.Model):
     expires_at = models.DateTimeField(default=email_change_expiry)
     used_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    password_stamp = models.CharField(max_length=128, blank=True)
 
     objects = EmailChangeQuerySet.as_manager()
 
@@ -123,13 +125,25 @@ class EmailChangeToken(models.Model):
     def is_expired(self) -> bool:
         return timezone.now() >= self.expires_at
 
+    def password_unchanged(self) -> bool:
+        return bool(self.password_stamp) and constant_time_compare(self.password_stamp, self.user.get_session_auth_hash())
+
+    @classmethod
+    def start(cls, user, new_email: str) -> "EmailChangeToken":
+        cls.cancel_open(user)
+        return cls.objects.create(user=user, new_email=new_email, password_stamp=user.get_session_auth_hash())
+
     @classmethod
     def cancel_open(cls, user) -> int:
         return cls.objects.open().filter(user=user).update(cancelled_at=timezone.now())
 
     @classmethod
     def pending_for(cls, user) -> "EmailChangeToken | None":
-        return cls.objects.pending().filter(user=user).first()
+        change = cls.objects.pending().filter(user=user).first()
+        if change is None:
+            return None
+        change.user = user
+        return change if change.password_unchanged() else None
 
 
 class EmailLog(models.Model):

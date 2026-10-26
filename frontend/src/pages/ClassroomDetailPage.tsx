@@ -5,7 +5,7 @@ import { Copy, Download, FileCheck, RefreshCw, UserMinus, Archive } from "lucide
 import { classrooms, objections } from "../api/endpoints";
 import type { ClassRadar, JumpReason, RadarPair, RadarRef, ShadowSet, VerdictObjection } from "../types";
 import { toast } from "../components/ui/Toast";
-import { levelLabel, levelOptions } from "../classroom/shared";
+import { errorText, levelLabel, levelOptions } from "../classroom/shared";
 import SubmissionRows from "../classroom/SubmissionRows";
 import { currentLang, locale, msg, t, tn } from "../i18n";
 import { levelName } from "../components/TeacherSummary";
@@ -61,6 +61,7 @@ function ShadowSetRow({ s, classId, open, onToggle }: { s: ShadowSet; classId: s
   const remove = useMutation({
     mutationFn: () => classrooms.deleteShadow(classId, s.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["classroom-shadows", classId] }),
+    onError: (err) => toast.error(errorText(err, t("Could not save"))),
   });
   const status = s.status === "done"
     ? tn(s.answers, "ready: {n} answer of {target}", "ready: {n} answers of {target}", { target: s.target })
@@ -381,6 +382,7 @@ function TeacherView({ id }: { id: string }) {
   const dropStudent = useMutation({
     mutationFn: (userId: number) => classrooms.removeMember(id, userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["classroom-roster", id] }),
+    onError: (err) => toast.error(errorText(err, t("Could not save"))),
   });
   const archive = useMutation({
     mutationFn: () => classrooms.update(id, { archived: !cls?.archived }),
@@ -560,6 +562,7 @@ function StudentView({ id }: { id: string }) {
       queryClient.invalidateQueries({ queryKey: ["classrooms"] });
       navigate(cls?.organization_slug ? `/${cls.organization_slug}` : "/");
     },
+    onError: (err) => toast.error(errorText(err, t("Could not save"))),
   });
   if (!cls) return <p className="text-ink-500">{t("Loading…")}</p>;
   return (

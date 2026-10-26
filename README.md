@@ -107,7 +107,7 @@ A separate app at `classroom.prooflayer.cloud` for schools and universities.
 - Assignment shadow: the server answers the assignment with AI the way students of different ages would and compares every work with it
 - Verdict objections with deadlines, CSV export
 - Teachers and pupils open their account settings (email change, consent, account deletion) from their name in the header
-- `manage.py seed_demo` creates demo schools with teachers, students and analysed work; the shared `@demo.prooflayer.cloud` accounts cannot change their email, delete the account, reset the password, manage API keys or billing, or delete or strip their school, and real accounts cannot join demo schools or classes
+- `manage.py seed_demo` creates demo schools with teachers, students and analysed work; the shared `@demo.prooflayer.cloud` accounts cannot change their email, delete the account, reset the password, manage API keys or billing, create, delete or strip a school, or delete demo work, pupils or AI answers, and real accounts cannot join demo schools or classes
 
 ## Self-improving detector
 
@@ -301,7 +301,9 @@ wiki/           Engineering notes and the Tribunal changelog
 - Personal uploads are deleted after 90 days; class work is never used for training.
 - Passwords are hashed with PBKDF2, API keys stored as SHA-256 hashes, webhooks signed with HMAC-SHA256.
 - Changing the account email needs the current password and a link opened from the new address; the old address
-  is told when the change is asked for and when it is done, and older password reset links stop working.
+  is told when the change is asked for and when it is done, and older password reset links stop working. A password
+  change cancels a waiting email change, look-alike letters in the new address are shown in their plain form, and
+  two accounts can never end up with the same address in different letter case.
 - Files are served only through short-lived signed links.
 - Training on reviewed personal uploads and web search for class originality checks are on by
   default and can be switched off on the account and school pages.

@@ -10,7 +10,7 @@ interface Props {
 }
 
 function classroomTarget(pathname: string): string {
-  return pathname.startsWith("/results/") ? `${CLASSROOM_URL}${pathname}` : CLASSROOM_URL;
+  return pathname.startsWith("/results/") || pathname === "/account" ? `${CLASSROOM_URL}${pathname}` : CLASSROOM_URL;
 }
 
 function ToStudentClassroom({ pathname }: { pathname: string }) {

@@ -94,6 +94,7 @@ class OrganizationListView(APIView):
         return Response([org_payload(o, request.user) for o in orgs])
 
     def post(self, request):
+        refuse_demo(request.user)
         if not tier_allows(request.user, "can_classroom"):
             return Response(
                 {"detail": "Creating an organization needs the Education plan.", "code": "upgrade_required"},

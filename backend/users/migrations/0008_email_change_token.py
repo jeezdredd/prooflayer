@@ -21,6 +21,7 @@ class Migration(migrations.Migration):
                 ('expires_at', models.DateTimeField(default=users.models.email_change_expiry)),
                 ('used_at', models.DateTimeField(blank=True, null=True)),
                 ('cancelled_at', models.DateTimeField(blank=True, null=True)),
+                ('password_stamp', models.CharField(blank=True, max_length=128)),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='email_change_tokens', to=settings.AUTH_USER_MODEL)),
             ],
             options={

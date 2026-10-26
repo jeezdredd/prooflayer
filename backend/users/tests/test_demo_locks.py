@@ -9,8 +9,10 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient
 
 from billing.models import Subscription, get_or_create_subscription
-from classroom.models import Classroom, Membership, Organization, OrgMember
+from classroom.models import Classroom, Membership, Organization, OrgMember, ShadowSet
 from common.demo import DEMO_DOMAIN, is_demo_email
+from content.models import Submission
+from content.tests.factories import SubmissionFactory
 from users.models import ApiKey, EmailChangeToken, User
 
 from .factories import UserFactory
@@ -129,6 +131,31 @@ class TestDemoAccountLocks:
         org.refresh_from_db()
         assert org.teacher_code == code
         assert OrgMember.objects.filter(organization=org, user=colleague).exists()
+
+    def test_seeded_work_and_classes_cannot_be_deleted_or_emptied(self):
+        teacher = _demo_teacher()
+        classroom = Classroom.create_for(teacher, "8A")
+        pupil = UserFactory(email=f"pupil@{DEMO_DOMAIN}", is_verified=True)
+        Membership.objects.create(classroom=classroom, user=pupil)
+        work = SubmissionFactory(user=pupil, classroom=classroom)
+        shadow = ShadowSet.objects.create(classroom=classroom, prompt="Is reading still important today?", language="en")
+        _locked(_client(pupil).delete(reverse("submission-detail", args=[work.id])))
+        _locked(_client(pupil).post(reverse("classroom-leave", args=[classroom.id])))
+        _locked(_client(teacher).delete(reverse("classroom-remove-member", args=[classroom.id, pupil.id])))
+        _locked(_client(teacher).delete(reverse("classroom-shadow-detail", args=[classroom.id, shadow.id])))
+        assert Submission.objects.filter(pk=work.pk).exists()
+        assert Membership.objects.filter(classroom=classroom, user=pupil).exists()
+        assert ShadowSet.objects.filter(pk=shadow.pk).exists()
+
+    def test_cannot_claim_school_addresses(self):
+        _locked(_client(_demo_teacher()).post(reverse("org-list"), {"name": "School 57", "slug": "school-57"}, format="json"))
+        assert not Organization.objects.filter(slug="school-57").exists()
+
+    def test_real_accounts_still_delete_their_own_work(self):
+        user = UserFactory(is_verified=True)
+        work = SubmissionFactory(user=user)
+        assert _client(user).delete(reverse("submission-detail", args=[work.id])).status_code == 204
+        assert not Submission.objects.filter(pk=work.pk).exists()
 
     def test_real_accounts_still_manage_their_school(self):
         owner = _edu("owner@example.com")

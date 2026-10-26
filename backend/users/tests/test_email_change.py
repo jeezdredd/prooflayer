@@ -1,15 +1,20 @@
+import threading
+import time
 from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail as outbox
+from django.core.cache import cache
+from django.db import connection
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient
 
+from users import views as user_views
 from users.models import ApiKey, EmailChangeToken, EmailVerificationToken, User
 
 from .factories import UserFactory
@@ -23,6 +28,12 @@ def _locmem_mail(settings):
     settings.EMAIL_CONFIGURED = True
     settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
     outbox.outbox = []
+
+
+@pytest.fixture(autouse=True)
+def _private_cache(settings):
+    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "email-change-tests"}}
+    cache.clear()
 
 
 def _client(user):
@@ -100,7 +111,13 @@ class TestRequest:
         assert response.status_code == 400
         assert response.data["code"] == "same_email"
 
-    @pytest.mark.parametrize("value", ["", "not-an-email", "a@b", "x@demo.prooflayer.cloud", "a" * 250 + "@example.com"])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "", "not-an-email", "a@b", "x@demo.prooflayer.cloud", "x@ｄemo.prooflayer.cloud", "a" * 250 + "@example.com",
+            "x@localhost", "x@[127.0.0.1]", "фуу@example.com", "x@example.com.", "x@exa..mple.com",
+        ],
+    )
     def test_invalid_address(self, value):
         response = _request(UserFactory(), new_email=value)
         assert response.status_code == 400
@@ -109,6 +126,32 @@ class TestRequest:
     def test_address_is_trimmed_and_domain_lowercased(self):
         response = _request(UserFactory(), new_email="  Someone@EXAMPLE.com ")
         assert response.data["pending_email"] == "Someone@example.com"
+
+    def test_fullwidth_letters_cannot_dodge_a_taken_address(self):
+        UserFactory(email="taken@example.com")
+        response = _request(UserFactory(), new_email="ｔaken@ｅxample.ｃom")
+        assert response.status_code == 400
+        assert response.data["code"] == "email_taken"
+
+    def test_lookalike_domain_is_kept_in_its_visible_ascii_form(self):
+        user = UserFactory(email="old@example.com")
+        response = _request(user, new_email="teacher@gmаil.com")
+        assert response.status_code == 202
+        assert response.data["pending_email"] == "teacher@xn--gmil-63d.com"
+        assert len(_sent_to("teacher@xn--gmil-63d.com")) == 1
+        assert "t***@xn--gmil-63d.com" in _sent_to("old@example.com")[0].body
+
+    def test_international_domain_matches_an_account_stored_in_unicode(self):
+        UserFactory(email="ivan@почта.рф")
+        response = _request(UserFactory(), new_email="Ivan@ПОЧТА.РФ")
+        assert response.status_code == 400
+        assert response.data["code"] == "email_taken"
+
+    def test_own_address_in_another_form_is_the_same_address(self):
+        user = UserFactory(email="ivan@почта.рф")
+        response = _request(user, new_email="ivan@xn--80a1acny.xn--p1ai")
+        assert response.status_code == 400
+        assert response.data["code"] == "same_email"
 
     def test_new_request_replaces_the_older_one(self):
         user = UserFactory()
@@ -161,6 +204,15 @@ class TestRequest:
         change.refresh_from_db()
         assert change.expires_at > timezone.now() + timedelta(hours=23)
 
+    def test_confirm_mail_does_not_show_the_old_address(self):
+        user = UserFactory(email="old.private@example.com")
+        User.objects.filter(pk=user.pk).update(username="", first_name="", last_name="")
+        user.refresh_from_db()
+        _request(user)
+        [confirm] = _sent_to(NEW)
+        assert "old.private@example.com" not in confirm.body
+        assert "old.private@example.com" not in confirm.alternatives[0][0]
+
     def test_resend_without_a_pending_change(self):
         response = _client(UserFactory()).post(reverse("email-change-resend"))
         assert response.status_code == 404
@@ -198,14 +250,55 @@ class TestConfirm:
         assert client.post(reverse("login"), {"email": NEW, "password": PASSWORD}, format="json").status_code == 200
         assert client.post(reverse("login"), {"email": "old@example.com", "password": PASSWORD}, format="json").status_code == 401
 
-    def test_link_works_once(self):
-        user = UserFactory()
+    def test_opening_the_link_again_changes_nothing_and_says_it_is_done(self):
+        user = UserFactory(email="old@example.com")
         _request(user)
         token = _token(user).token
         assert _confirm(token).status_code == 200
+        outbox.outbox.clear()
         again = _confirm(token)
+        assert again.status_code == 200
+        assert again.data["email"] == NEW
+        assert outbox.outbox == []
+        user.refresh_from_db()
+        assert user.email == NEW
+
+    def test_used_link_cannot_switch_the_address_back(self):
+        user = UserFactory(email="old@example.com")
+        _request(user)
+        first = _token(user).token
+        _confirm(first)
+        _request(User.objects.get(pk=user.pk), new_email="third@example.com")
+        _confirm(_token(user).token)
+        again = _confirm(first)
         assert again.status_code == 410
         assert again.data["code"] == "used"
+        user.refresh_from_db()
+        assert user.email == "third@example.com"
+
+    def test_password_change_by_any_route_kills_the_link(self):
+        user = UserFactory(email="old@example.com")
+        _request(user)
+        change = _token(user)
+        user.set_password("Changed-By-Admin-2026")
+        user.save(update_fields=["password"])
+        fresh = User.objects.get(pk=user.pk)
+        assert _client(fresh).get(reverse("me")).data["pending_email"] is None
+        assert _client(fresh).post(reverse("email-change-resend")).status_code == 404
+        response = _confirm(change.token)
+        assert response.status_code == 410
+        assert response.data["code"] == "cancelled"
+        change.refresh_from_db()
+        assert change.cancelled_at is not None
+        fresh.refresh_from_db()
+        assert fresh.email == "old@example.com"
+
+    def test_token_without_a_password_stamp_is_refused(self):
+        user = UserFactory(email="old@example.com")
+        change = EmailChangeToken.objects.create(user=user, new_email=NEW)
+        assert _confirm(change.token).data["code"] == "cancelled"
+        user.refresh_from_db()
+        assert user.email == "old@example.com"
 
     def test_expired_link(self):
         user = UserFactory(email="old@example.com")
@@ -301,3 +394,36 @@ class TestPayload:
         assert data["pending_email"] is None
         assert data["email"] == NEW
         assert data["is_demo"] is False
+
+
+def _confirm_in_thread(token, results):
+    try:
+        results[token] = _confirm(token).status_code
+    finally:
+        connection.close()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_two_accounts_racing_for_one_address_in_different_case():
+    first = UserFactory(email="first@example.com")
+    second = UserFactory(email="second@example.com")
+    _request(first, new_email="Shared@example.com")
+    _request(second, new_email="shared@example.com")
+    tokens = [_token(first).token, _token(second).token]
+    real_check = user_views._email_in_use
+
+    def slow_check(email, user):
+        taken = real_check(email, user)
+        time.sleep(0.6)
+        return taken
+
+    results = {}
+    with patch("users.views._email_in_use", side_effect=slow_check):
+        threads = [threading.Thread(target=_confirm_in_thread, args=(token, results)) for token in tokens]
+        threads[0].start()
+        time.sleep(0.2)
+        threads[1].start()
+        for thread in threads:
+            thread.join()
+    assert sorted(results.values()) == [200, 409]
+    assert User.objects.filter(email__iexact="shared@example.com").count() == 1
