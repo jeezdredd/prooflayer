@@ -1,5 +1,7 @@
 import hashlib
 import json
+import time
+from itertools import count
 from unittest.mock import patch
 
 import pytest
@@ -17,6 +19,7 @@ from plagiarism.academic import (
     openalex_lookup,
     openalex_search,
     or_groups,
+    paper_keys,
     parse_arxiv,
     rebuild_abstract,
     wait_turn,
@@ -24,8 +27,9 @@ from plagiarism.academic import (
 from plagiarism.models import PlagiarismReport
 from plagiarism.search import Hit
 from plagiarism.serializers import report_payload
-from plagiarism.service import run_check
-from plagiarism.web import fetch_text, paper_text
+from plagiarism.service import body_end, run_check
+from plagiarism.shingles import shingle_hashes, tokenize
+from plagiarism.web import fetch_text, join_line_breaks, paper_matches, paper_text
 from users.tests.factories import UserFactory
 
 PAPER_ESSAY = (
@@ -41,6 +45,14 @@ RU_ESSAY = (
     "о самостоятельной работе студентов. "
     "Дистанционные технологии потребовали пересмотра традиционных подходов к организации промежуточной аттестации. "
     "Многие университеты внедрили электронные курсы, которые сопровождают очные занятия на протяжении всего семестра."
+)
+NAMED_TITLE = "Local algorithms for document fingerprinting in very large collections of student assignments"
+NAMING_ESSAY = (
+    f'In the paper "{NAMED_TITLE}" the authors describe a tool that our teacher showed us last month. '
+    "I tried a much simpler version of the idea with my friends, "
+    "comparing our old history homework by hand on the kitchen table. "
+    "We found that two of us had borrowed whole paragraphs from the same encyclopedia without noticing it at the time. "
+    "Next term we want to write a tiny program that does the comparison automatically for the whole class."
 )
 BIBLIOGRAPHY = (
     "\n\nReferences\n"
@@ -221,6 +233,22 @@ class TestQueries:
         )
         assert rebuild_abstract(None) == ""
 
+    def test_paper_identity_covers_arxiv_ids_and_dois(self):
+        arxiv = Paper("arxiv", "https://arxiv.org/abs/2106.09685", "LoRA: Low-Rank Adaptation of Large Language Models")
+        record = Paper("openalex", "https://doi.org/10.48550/arXiv.2106.09685", "LoRA Fine-Tuning of a 3B Code LLM")
+        journal = Paper(
+            "openalex", "https://doi.org/10.1145/872757.872770", "Winnowing", fulltext=("https://arxiv.org/pdf/cond-mat/0011267v1",),
+        )
+        assert "arxiv:2106.09685" in paper_keys(arxiv) & paper_keys(record)
+        assert {"doi:10.1145/872757.872770", "arxiv:cond-mat/0011267"} <= paper_keys(journal)
+        assert not paper_keys(arxiv) & paper_keys(journal)
+
+    def test_more_reference_headings_end_the_body(self):
+        reference = BIBLIOGRAPHY.split("\n")[3]
+        for heading in ("Источники:", "Использованные источники", "Sources", "Literature cited"):
+            text = f"{PAPER_ESSAY}\n\n{heading}\n{reference}\n"
+            assert body_end(text) == text.index(heading)
+
 
 class TestOpenAlex:
     @pytest.fixture(autouse=True)
@@ -335,8 +363,14 @@ class TestArxiv:
         assert arxiv_search('all:"first phrase of the essay"') is not None
         assert get.call_count == 2
         assert [c.args[0] for c in clock.sleep.call_args_list] == [3.0]
+
+    def test_arxiv_pdfs_keep_the_robots_crawl_delay(self, clock):
+        clock.time.return_value = 300.0
         assert fetch_turn("https://arxiv.org/pdf/2101.00001")
-        assert [c.args[0] for c in clock.sleep.call_args_list] == [3.0, 6.0]
+        assert fetch_turn("https://arxiv.org/pdf/2101.00002")
+        assert [c.args[0] for c in clock.sleep.call_args_list] == [15.0]
+        assert not fetch_turn("https://arxiv.org/pdf/2101.00003", max_wait=10)
+        assert fetch_turn("https://example.org/paper.pdf", max_wait=0)
 
     def test_no_free_turn_within_the_wait_limit_skips_arxiv(self, clock):
         clock.time.return_value = 300.0
@@ -390,14 +424,52 @@ class TestFetching:
     @patch("plagiarism.web.fetch_text", return_value="Full text of the paper. " * 60)
     def test_full_text_is_cached(self, fetch):
         paper = Paper("openalex", "https://doi.org/10.1/x", "Title", fulltext=("https://example.org/x.pdf",))
-        assert paper_text(paper) == paper_text(paper)
+        deadline = time.monotonic() + 60
+        assert paper_text(paper, deadline) == paper_text(paper, deadline)
         fetch.assert_called_once()
 
     @patch("plagiarism.web.fetch_text", side_effect=["", "Landing page full text. " * 60])
     def test_next_full_text_link_is_tried_when_the_first_fails(self, fetch):
         paper = Paper("openalex", "https://doi.org/10.1/y", "Title", fulltext=("https://example.org/y.pdf", "https://example.org/y"))
-        assert paper_text(paper).startswith("Landing page full text.")
+        assert paper_text(paper, time.monotonic() + 60).startswith("Landing page full text.")
         assert fetch.call_count == 2
+
+    def test_line_break_hyphens_are_joined(self):
+        raw = "мозг ребенка, по-\nэтому кри- \nтического; Санкт-\nПетербург; mini-\nmum; 7-\n10"
+        assert join_line_breaks(raw) == "мозг ребенка, поэтому критического; Санкт-\nПетербург; minimum; 7-\n10"
+        assert join_line_breaks("одно сооб­\nщение") == "одно сообщение"
+
+    @patch("plagiarism.web.extract_pdf", return_value="each window of consecu-\ntive hashes contributes its mini-\nmum")
+    @patch("plagiarism.web.safe_get")
+    def test_pdf_words_split_at_line_ends_are_joined(self, safe_get, _extract):
+        safe_get.return_value = FakeResponse(content=b"%PDF-1.4 body", content_type="application/pdf")
+        text = fetch_text("https://example.org/paper.pdf")
+        assert text == "each window of consecutive hashes contributes its minimum"
+
+    @patch("plagiarism.web.time")
+    @patch("plagiarism.web.safe_get")
+    def test_slow_pdf_download_is_cut_off(self, safe_get, clock):
+        pdf = _pdf(PAPER_ESSAY * 300)
+        assert len(pdf) > 2 * 65536
+        clock.monotonic.side_effect = count(0, 20)
+        safe_get.return_value = FakeResponse(content=pdf, content_type="application/pdf")
+        assert fetch_text("https://example.org/slow.pdf") == ""
+        assert safe_get.return_value.closed
+        clock.monotonic.side_effect = count(0, 1)
+        assert "consecutive hashes" in fetch_text("https://example.org/slow.pdf")
+
+    @patch("plagiarism.web.time")
+    @patch("plagiarism.web.fetch_text")
+    def test_full_texts_stop_when_the_paper_time_is_spent(self, fetch, clock):
+        clock.monotonic.side_effect = count(0, 100)
+        tokens = tokenize(PAPER_ESSAY)
+        paper = Paper(
+            "openalex", "https://doi.org/10.1/z", "Title",
+            abstract=". ".join(ABSTRACT_SENTENCES) + ".", fulltext=("https://example.org/z.pdf",),
+        )
+        matches = paper_matches([paper], tokens, shingle_hashes(tokens), [False] * len(tokens), set())
+        fetch.assert_not_called()
+        assert [m["engine"] for m in matches] == ["openalex"]
 
 
 def _routes(openalex=None, arxiv=None):
@@ -495,6 +567,28 @@ class TestOriginalityWithPapers:
         report = run_check(_personal(PAPER_ESSAY))
         papers = [m for m in report.matches if m.get("engine") in ("openalex", "arxiv")]
         assert [(m["engine"], m["url"]) for m in papers] == [("arxiv", "https://arxiv.org/abs/2101.00001")]
+
+    @patch("plagiarism.web.fetch_text", return_value="")
+    @patch("plagiarism.academic.requests.get")
+    def test_openalex_record_of_an_arxiv_paper_is_not_a_second_source(self, get, _fetch, _lookup, clock, _embed):
+        clock.time.return_value = 300.0
+        summary = ". ".join(ABSTRACT_SENTENCES) + "."
+        record = _work(title="Code models tuned for speed", doi="https://doi.org/10.48550/arXiv.2101.00001")
+        get.side_effect = _routes(openalex=_openalex(record), arxiv=_arxiv(summary))
+        report = run_check(_personal(PAPER_ESSAY))
+        papers = [(m["engine"], m["url"]) for m in report.matches if m.get("engine") in ("openalex", "arxiv")]
+        assert papers == [("arxiv", "https://arxiv.org/abs/2101.00001")]
+
+    @patch("plagiarism.web.fetch_text", return_value="")
+    @patch("plagiarism.academic.requests.get")
+    def test_naming_a_paper_by_its_title_is_not_copying(self, get, _fetch, _lookup, clock, _embed):
+        clock.time.return_value = 300.0
+        work = _work(title=NAMED_TITLE, abstract_inverted_index=_inverted("A short abstract about fingerprints."))
+        get.side_effect = _routes(openalex=_openalex(work))
+        report = run_check(_personal(NAMING_ESSAY))
+        assert report.web_status == PlagiarismReport.WebStatus.OK
+        assert not [m for m in report.matches if m.get("engine") == "openalex"]
+        assert report.originality == 100
 
     @patch("plagiarism.web.fetch_text", return_value="")
     @patch("plagiarism.academic.requests.get")

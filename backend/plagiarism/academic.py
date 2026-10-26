@@ -29,6 +29,7 @@ MIN_PHRASE_WORDS = 6
 OPENALEX_QUERY_BYTES = 2800
 ARXIV_QUERY_BYTES = 1800
 ARXIV_INTERVAL = 3.0
+ARXIV_PDF_INTERVAL = 15.0
 ARXIV_MAX_WAIT = 30.0
 OPENALEX_SEARCH_CREDITS = 10
 OPENALEX_BLOCK = 3600
@@ -43,6 +44,10 @@ WORD_RE = re.compile(r"[^\W_]+(?:['’][^\W_]+)*", re.UNICODE)
 LATIN_RE = re.compile(r"[A-Za-z]")
 CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
 ARXIV_ID_RE = re.compile(r"arxiv\.org/abs/(\S+?)(?:v\d+)?$")
+ARXIV_REF_RE = re.compile(
+    r"(?:arxiv\.org/(?:abs|pdf)/|10\.48550/arxiv\.)([^\s?#]+?)(?:v\d+)?(?:\.pdf)?$", re.IGNORECASE,
+)
+DOI_URL_RE = re.compile(r"^https?://(?:dx\.)?doi\.org/(10\.\S+)$", re.IGNORECASE)
 OPERATORS = {"AND", "OR", "NOT"}
 TITLE_KEY_RE = re.compile(r"[\W_]+", re.UNICODE)
 
@@ -131,11 +136,11 @@ def wait_turn(engine: str, interval: float = ARXIV_INTERVAL, max_wait: float = A
     return False
 
 
-def fetch_turn(url: str) -> bool:
+def fetch_turn(url: str, max_wait: float = ARXIV_MAX_WAIT) -> bool:
     host = (urlparse(url).hostname or "").lower()
     if not any(host == h or host.endswith("." + h) for h in ARXIV_HOSTS):
         return True
-    return not blocked("arxiv") and wait_turn("arxiv")
+    return not blocked("arxiv") and wait_turn("arxiv_pdf", ARXIV_PDF_INTERVAL, min(max_wait, ARXIV_MAX_WAIT))
 
 
 def _http_url(url: str | None) -> bool:
@@ -309,6 +314,18 @@ def title_key(title: str) -> str:
     return TITLE_KEY_RE.sub(" ", title).strip().casefold()
 
 
+def paper_keys(paper: Paper) -> set[str]:
+    keys = {"title:" + title_key(paper.title)}
+    for url in (paper.url, *paper.fulltext):
+        match = ARXIV_REF_RE.search(url)
+        if match:
+            keys.add("arxiv:" + match.group(1).lower())
+    doi = DOI_URL_RE.match(paper.url)
+    if doi:
+        keys.add("doi:" + doi.group(1).lower())
+    return keys
+
+
 def _collect(groups: list[tuple[str, list[int]]], search, limit: int) -> tuple[list[Paper], set[int]]:
     papers: list[Paper] = []
     answered: set[int] = set()
@@ -319,9 +336,9 @@ def _collect(groups: list[tuple[str, list[int]]], search, limit: int) -> tuple[l
             continue
         answered.update(members)
         for paper in found:
-            key = title_key(paper.title)
-            if key not in seen:
-                seen.add(key)
+            keys = paper_keys(paper)
+            if not keys & seen:
+                seen |= keys
                 papers.append(paper)
     return papers[:limit], answered
 

@@ -186,6 +186,8 @@ def test_paper_source_names_authors_year_and_venue_and_the_scope_names_the_engin
     assert ru["scope"] == "Также сравнено: Википедия, открытые научные статьи (OpenAlex, arXiv)"
     en = _originality({**payload, "web_engines": ["web"]}, "en")
     assert en["scope"] == "Also compared with a web search"
+    arxiv_only = _originality({**payload, "web_engines": ["arxiv", "web", "wikipedia"]}, "en")
+    assert arxiv_only["scope"] == "Also compared with Wikipedia, open scientific papers (arXiv), a web search"
     assert _originality({**payload, "web_engines": []}, "en")["scope"] == "Web search included"
 
 

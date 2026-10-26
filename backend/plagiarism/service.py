@@ -47,8 +47,9 @@ MIN_SHARE = 0.6
 MAX_PAIRS = 20
 KINDS = ("exact", "paraphrase", "translation")
 BIBLIOGRAPHY_RE = re.compile(
-    r"^[ \t]*(?:список(?:[ \t]+\w+){0,2}[ \t]+(?:литературы|источников)|литература|библиография|использованные источники"
-    r"|references|bibliography|works cited|reference list|bibliographie|références)[ \t]*:?[ \t]*$",
+    r"^[ \t]*(?:список(?:[ \t]+\w+){0,2}[ \t]+(?:литературы|источников)|литература|библиография"
+    r"|(?:использованные[ \t]+)?источники|references|bibliography|works cited|reference list|sources|literature(?:[ \t]+cited)?|bibliographie"
+    r"|références|sources et références)[ \t]*:?[ \t]*$",
     re.IGNORECASE | re.MULTILINE,
 )
 

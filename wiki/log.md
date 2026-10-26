@@ -2,6 +2,13 @@
 
 Newest at top.
 
+## [2026-10-26] originality-papers-review | Review fixes: PDF hyphenation, title mask, paper identity, time caps, arXiv PDF pacing
+
+- Source: review of `feat/openalex-arxiv` (diff against main, live smoke against the public OpenAlex, arXiv and Wikipedia APIs from the dev machine, arxiv.org robots.txt, arXiv API terms of use)
+- Backend: `plagiarism.web.join_line_breaks` joins words split by a line-break hyphen in PDF text; `title_skip` masks a paper's own title in the work for that paper; `plagiarism.academic.paper_keys` (title, arXiv id from abs/pdf links and the `10.48550/arXiv` DOI, DOI) dedupes papers within and across catalogues; arXiv PDFs on their own 15 s slots (`plag:arxiv_pdf:turn:*`); `fetch_text` stops after 30 s, the web page loop after 150 s, paper full texts after 90 s; full texts cached zlib-compressed; `BIBLIOGRAPHY_RE` adds Источники, Использованные источники, Sources, Literature, Literature cited, Sources et références; PDF report scope names only the catalogues that answered
+- Checks: 9 new tests in `plagiarism/tests/test_academic.py` (each of the four behaviour tests fails with its fix removed), report scope test extended; live smoke on 6 texts (LoRA abstract copy, Russian journal PDF body copy, Russian abstract copy, honest essay, essay naming LoRA, honest Russian essay naming a paper title)
+- Pages updated: [[services/originality]], [[hot]]
+
 ## [2026-10-26] originality-papers | Copy check searches OpenAlex and arXiv; paper sources with authors, year, venue
 
 - Source: owner decision (web search stays free: Wikipedia, OpenAlex, arXiv, later an own index; no paid APIs, signups, key-only services or scraping), prod SearXNG engines all blocked, OpenAlex docs (search covers title, abstract, full text; keyless budget $0.10/day per IP, search $0.001, optional free key 10x), arXiv API guidance (one request per 3 s), live probes of both APIs

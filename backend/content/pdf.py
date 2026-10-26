@@ -26,6 +26,7 @@ from .viewer import result_url, viewer_info
 EXCERPT_CHARS = 700
 MAX_SOURCES = 6
 MAX_PASSAGES = 3
+PAPER_CATALOGUES = (("openalex", "OpenAlex"), ("arxiv", "arXiv"))
 PASSAGE_FLOOR = 0.45
 PASSAGE_CHARS = 600
 AI_LOOK = 0.45
@@ -83,9 +84,12 @@ def _scope(payload: dict, c: dict) -> str:
     if not payload.get("web_searched"):
         return c["web_off"]
     engines = set(payload.get("web_engines") or [])
-    if engines & set(PAPER_ENGINES):
-        engines.add("papers")
-    names = [c["web_names"][key] for key in ("wikipedia", "papers", "web") if key in engines]
+    catalogues = ", ".join(name for key, name in PAPER_CATALOGUES if key in engines)
+    names = [c["web_names"]["wikipedia"]] if "wikipedia" in engines else []
+    if catalogues:
+        names.append(c["web_names"]["papers"].format(catalogues=catalogues))
+    if "web" in engines:
+        names.append(c["web_names"]["web"])
     return c["web_with"].format(sources=", ".join(names)) if names else c["web_on"]
 
 

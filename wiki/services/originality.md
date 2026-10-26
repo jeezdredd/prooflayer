@@ -29,8 +29,11 @@ evidence, plus semantic and cross-language matching.
    provider chain `PLAGIARISM_SEARCH_PROVIDERS` (default searxng, brave, ddg) and Wikipedia's own
    full-text search; 8-word key phrases of the same sentences go to OpenAlex and arXiv
    (`plagiarism.academic`, see "Open scientific papers" below). Pages fetched with `safe_get`
-   (3 MB HTML cap, 15 MB / 60 pages for PDFs read with `common.documents.extract_pdf`), text
-   extracted with trafilatura, aligned by shingles.
+   (3 MB HTML cap, 15 MB / 60 pages for PDFs read with `common.documents.extract_pdf`, words split
+   by a line-break hyphen joined again), text extracted with trafilatura, aligned by shingles. Time
+   caps so one check cannot hold the worker: 30 s per download (`FETCH_SECONDS`, on top of the 12 s
+   socket timeout), 150 s for all web pages (`PAGES_SECONDS`), 90 s for paper full texts
+   (`PAPER_SECONDS`); past a cap the rest is skipped and abstracts are still compared.
 5. **Originality** = 100 x (1 - union of counted spans / text characters).
 
 Same-author work never matches (resubmission is not plagiarism). Privacy in
@@ -104,23 +107,33 @@ key-only services, no browser scraping). Module `plagiarism.academic`, wired in 
   token, and a refused key falls back to keyless. OpenAlex's paid content API is not used.
 - **arXiv** (`export.arxiv.org/api/query`, Atom, `all:"phrase" OR ...`). Pacing: one request every 3 s across
   all workers through Redis slots (`wait_turn`: `cache.add` on `plag:arxiv:turn:<slot>`, sleep to the slot
-  start, give up after 30 s); arXiv PDFs use the same slots. 429/503 pause arXiv and its PDFs for 10 minutes
+  start, give up after 30 s). arXiv PDFs come from arxiv.org, whose robots.txt says `Crawl-delay: 15`, so they
+  get their own slots 15 s apart (`plag:arxiv_pdf:turn:<slot>`, wait capped by the time left for full texts).
+  429/503 pause arXiv and its PDFs for 10 minutes
   (or `Retry-After`). The PDF is read only when the title or abstract shares a 5-word shingle with the work.
   Live 2026-10-26 the API also answered 429 "Rate exceeded" after 46 s once, then worked in under a second.
 - **Caching**: search answers 7 days (`PLAGIARISM_ACADEMIC_CACHE`), paper full texts 7 days (failed fetches
-  1 hour), keyed by query or URL, so a class copying one paper downloads it once.
+  1 hour), keyed by query or URL, so a class copying one paper downloads it once. Full texts are stored
+  zlib-compressed: the prod Redis is also the Celery broker and has no `maxmemory`.
 - **Matching**: up to `PLAGIARISM_PAPER_TEXTS` (4) full texts per check; source text = title + abstract +
   full text, aligned by shingles like web pages (the e5 sentence matching is internal only). The reference
   list is still cut by `body_end` / the skip mask, so its titles are neither searched nor matched. A work
   that quotes a paper with a proper citation still shows the paper as a source; the teacher judges context.
-  When both catalogues return the same title, the arXiv record wins (canonical link, free PDF).
+  `body_end` knows the same headings as the citation check (`Источники`, `Использованные источники`,
+  `Sources`, `Literature`, `Literature cited`, `Sources et références` were missing). The paper's own title is
+  masked in the work for that paper (`title_skip`), so naming a paper by its title, in the text or in a
+  reference list whose heading is not recognized, is not copying from it.
+  Same paper twice: identity is the title, the arXiv id (abs/pdf links and DOI `10.48550/arXiv.*`) and the
+  DOI (`paper_keys`); the arXiv record wins (canonical link, free PDF). OpenAlex keeps records of arXiv
+  papers under the arXiv DOI with a wrong title (live: LoRA listed as "LoRA Fine-Tuning of a 3B Code LLM").
 - **Match rows**: `source: "web"` plus `engine` (`web`, `wikipedia`, `openalex`, `arxiv`), and for papers
   `authors` (first 5), `authors_total`, `year`, `venue` (arXiv: `journal_ref` or "arXiv"). The UI shows
   "Scientific paper · authors · year · venue"; the PDF report adds "(authors et al., year, venue)".
 - **web_status / engines**: an engine is named only if it answered; one whose pages all failed to open is
   dropped; no engine left means `failed`. The scope sentence is built from the engines: "Compared with
   students' work in ProofLayer, Wikipedia, open scientific papers and a web search", minus what did not
-  answer. Privacy, Data Processing (both languages) and the school web search setting name Wikipedia,
+  answer. The PDF report names the catalogues that answered ("open scientific papers (arXiv)").
+  Privacy, Data Processing (both languages) and the school web search setting name Wikipedia,
   OpenAlex and arXiv.
 - **Live smoke** (2026-10-26, not a test): an essay with three sentences of the "Attention Is All You Need"
   abstract found the arXiv paper (2017, PDF 39.6k chars, before the arXiv-first rule an odd 2025 OpenAlex
@@ -128,3 +141,13 @@ key-only services, no browser scraping). Module `plagiarism.academic`, wired in 
   essay with three sentences from the body of a CyberLeninka paper (not its abstract) was found through
   OpenAlex full-text search, the full text came from CyberLeninka after the journal's own link failed on an
   expired certificate, 512 characters matched.
+- **Review smoke** (2026-10-26, same pipeline as `run_check` minus classmates, Wikipedia on, SearXNG off):
+  English essay with three sentences of the LoRA abstract (arXiv 2106.09685) plus its reference: the arXiv
+  paper (PDF read), 440 chars, 28% original, plus two OpenAlex papers that reuse LoRA sentences (120 and 85
+  chars); the broken OpenAlex record of LoRA is no longer listed. Russian essay with three body sentences of
+  a Tver State University PDF (eprints.tversu.ru): found through OpenAlex full-text search, 481 chars after
+  joining hyphenated line breaks (401 before), 24.6% original. Russian essay with three abstract sentences
+  of a 2025 Management of Education paper: 497 chars, 23.7%. An honest English essay, an English essay
+  that names the LoRA paper and an honest Russian essay that names a paper's 8-word title in its text (and
+  lists it under "Источники:"): 100% each; the last one would read 80.5% without the title mask (OpenAlex
+  returns that paper for the title phrase). 3 to 39 s per check.

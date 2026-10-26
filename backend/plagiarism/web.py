@@ -1,5 +1,8 @@
 import hashlib
 import logging
+import re
+import time
+import zlib
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
@@ -11,16 +14,20 @@ from analyzers.text.language import detect_language, sentences
 from common.documents import extract_pdf
 from common.url_safety import UnsafeUrlError, safe_get
 
-from .academic import Paper, arxiv_lookup, fetch_turn, key_phrase, openalex_lookup, title_key
+from .academic import Paper, arxiv_lookup, fetch_turn, key_phrase, openalex_lookup, paper_keys
 from .models import PlagiarismReport
 from .search import USER_AGENT, lookup, wikipedia_lookup
-from .shingles import Token, copied_pairs, shingle_hashes, tokenize
+from .shingles import SHINGLE, Token, copied_pairs, matched_runs, shingle_hashes, tokenize
 
 logger = logging.getLogger(__name__)
 
 MAX_PAGE_BYTES = 3 * 1024 * 1024
 MAX_PDF_BYTES = 15 * 1024 * 1024
 PDF_PAGES = 60
+FETCH_TIMEOUT = 12
+FETCH_SECONDS = 30
+PAGES_SECONDS = 150
+PAPER_SECONDS = 90
 QUERY_WORDS = 14
 MIN_SENTENCE_WORDS = 10
 SNIPPET_CHARS = 400
@@ -28,6 +35,7 @@ PAPER_TEXT_CHARS = 400_000
 MIN_FULLTEXT_CHARS = 1000
 FAILED_FETCH_CACHE = 3600
 SHOWN_AUTHORS = 5
+LINE_BREAK_HYPHEN_RE = re.compile(r"(?<=[^\W\d_])[-\u00ad][ \t]*\r?\n[ \t]*([^\W\d_])")
 
 
 def distinctive_sentences(text: str, limit: int) -> list[str]:
@@ -47,9 +55,14 @@ def query_for(sentence: str) -> str:
     return '"' + " ".join(words[:QUERY_WORDS]).strip(' ,;:"«»') + '"'
 
 
-def fetch_text(url: str) -> str:
+def join_line_breaks(text: str) -> str:
+    return LINE_BREAK_HYPHEN_RE.sub(lambda m: m.group(1) if m.group(1).islower() else m.group(0), text)
+
+
+def fetch_text(url: str, seconds: float = FETCH_SECONDS) -> str:
+    started = time.monotonic()
     try:
-        resp = safe_get(url, timeout=12, headers={"User-Agent": USER_AGENT})
+        resp = safe_get(url, timeout=FETCH_TIMEOUT, headers={"User-Agent": USER_AGENT})
     except (UnsafeUrlError, Exception) as exc:
         logger.info("skip %s: %s", url, exc)
         return ""
@@ -66,8 +79,9 @@ def fetch_text(url: str) -> str:
         for chunk in resp.iter_content(65536):
             chunks.append(chunk)
             size += len(chunk)
-            if size > cap:
+            if size > cap or time.monotonic() - started > seconds:
                 if pdf:
+                    logger.info("skip %s: pdf over %s bytes or %s s", url, cap, seconds)
                     return ""
                 break
         body = b"".join(chunks)
@@ -78,7 +92,7 @@ def fetch_text(url: str) -> str:
         resp.close()
     if body.startswith(b"%PDF"):
         try:
-            return extract_pdf(body, PDF_PAGES)
+            return join_line_breaks(extract_pdf(body, PDF_PAGES))
         except Exception as exc:
             logger.info("unreadable pdf %s: %s", url, exc)
             return ""
@@ -87,15 +101,29 @@ def fetch_text(url: str) -> str:
     return trafilatura.extract(body.decode(resp.encoding or "utf-8", errors="replace")) or ""
 
 
-def paper_text(paper: Paper) -> str:
+def _cached_text(key: str) -> str | None:
+    raw = cache.get(key)
+    if isinstance(raw, bytes):
+        try:
+            return zlib.decompress(raw).decode("utf-8")
+        except (zlib.error, UnicodeDecodeError):
+            return None
+    return raw
+
+
+def paper_text(paper: Paper, deadline: float) -> str:
     for url in paper.fulltext:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            break
         key = "plag:fulltext:" + hashlib.sha1(url.encode()).hexdigest()
-        text = cache.get(key)
+        text = _cached_text(key)
         if text is None:
-            if not fetch_turn(url):
+            if not fetch_turn(url, left):
                 continue
-            text = fetch_text(url)[:PAPER_TEXT_CHARS]
-            cache.set(key, text, settings.PLAGIARISM_ACADEMIC_CACHE if text else FAILED_FETCH_CACHE)
+            text = fetch_text(url, min(FETCH_SECONDS, max(1.0, deadline - time.monotonic())))[:PAPER_TEXT_CHARS]
+            ttl = settings.PLAGIARISM_ACADEMIC_CACHE if text else FAILED_FETCH_CACHE
+            cache.set(key, zlib.compress(text.encode("utf-8")), ttl)
         if len(text) >= MIN_FULLTEXT_CHARS:
             return text
     return ""
@@ -103,6 +131,14 @@ def paper_text(paper: Paper) -> str:
 
 def shares_shingles(text: str, own: set[int]) -> bool:
     return bool(own.intersection(shingle_hashes(tokenize(text))))
+
+
+def title_skip(tokens: list[Token], hashes: list[int], skip: list[bool], title: str) -> list[bool]:
+    named = list(skip)
+    for start, end in matched_runs(tokens, hashes, set(shingle_hashes(tokenize(title))), min_len=SHINGLE):
+        for j in range(start, end):
+            named[j] = True
+    return named
 
 
 @dataclass
@@ -132,25 +168,27 @@ def _match(url: str, title: str, engine: str, source: str, pairs) -> dict:
 def paper_matches(
     papers: list[Paper], tokens: list[Token], hashes: list[int], skip: list[bool], compared: set[str],
 ) -> list[dict]:
-    own = {h for h, skipped in zip(hashes, skip) if not skipped}
     budget = settings.PLAGIARISM_PAPER_TEXTS
-    titles: set[str] = set()
+    deadline = time.monotonic() + PAPER_SECONDS
+    seen: set[str] = set()
     matches = []
     for paper in papers:
-        key = title_key(paper.title)
-        if paper.url in compared or key in titles:
+        keys = paper_keys(paper)
+        if paper.url in compared or keys & seen:
             continue
         compared.add(paper.url)
-        titles.add(key)
+        seen |= keys
+        paper_skip = title_skip(tokens, hashes, skip, paper.title)
+        own = {h for h, skipped in zip(hashes, paper_skip) if not skipped}
         head = "\n".join(part for part in (paper.title, paper.abstract) if part)
         source = head
         wanted = paper.engine != "arxiv" or shares_shingles(head, own)
-        if paper.fulltext and budget > 0 and wanted:
+        if paper.fulltext and budget > 0 and wanted and time.monotonic() < deadline:
             budget -= 1
-            full = paper_text(paper)
+            full = paper_text(paper, deadline)
             if full:
                 source = f"{head}\n{full}"
-        pairs = copied_pairs(tokens, hashes, tokenize(source), skip)
+        pairs = copied_pairs(tokens, hashes, tokenize(source), paper_skip)
         if pairs:
             match = _match(paper.url, paper.title, paper.engine, source, pairs)
             match.update({
@@ -198,7 +236,11 @@ def web_matches(text: str, tokens: list[Token], hashes: list[int], skip: list[bo
     matches = []
     tried: dict[str, int] = {}
     opened: dict[str, int] = {}
+    deadline = time.monotonic() + PAGES_SECONDS
     for url, (title, engine) in list(urls.items())[: getattr(settings, "PLAGIARISM_WEB_PAGES", 12)]:
+        if time.monotonic() >= deadline:
+            logger.info("web pages skipped after %s s", PAGES_SECONDS)
+            break
         tried[engine] = tried.get(engine, 0) + 1
         page = fetch_text(url)
         if not page:
