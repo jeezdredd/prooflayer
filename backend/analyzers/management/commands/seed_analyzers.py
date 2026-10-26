@@ -59,6 +59,13 @@ ANALYZERS = [
         "timeout": 60,
     },
     {
+        "name": "manipulation_map",
+        "analyzer_class": "analyzers.implementations.manipulation_map.ManipulationMapAnalyzer",
+        "weight": 0.0,
+        "queue": "ml",
+        "timeout": 300,
+    },
+    {
         "name": "community_forensics",
         "analyzer_class": "analyzers.implementations.community_forensics.CommunityForensicsDetector",
         "weight": 3.5,

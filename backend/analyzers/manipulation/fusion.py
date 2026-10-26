@@ -266,7 +266,7 @@ def fuse(out: MethodOutputs, config: FusionConfig) -> ManipulationMap:
         return result(STATUS_ABSTAIN, "global_change", abstain=True)
 
     if not accepted:
-        ran_all = all(getattr(out, n) is not None for n in LEARNED)
+        ran_all = all(getattr(out, n) is not None for n in LEARNED if n != "safire" or config.use_learned_pair)
         quiet = all(scores.get(n, 0.0) < config.threshold(n, cls) / 2 for n in LEARNED if n in scores)
         quiet = quiet and best_zero > config.zero_log10_nfa / 2
         if ran_all and quiet and not low_quality:

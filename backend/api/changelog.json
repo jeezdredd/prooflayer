@@ -1,5 +1,18 @@
 [
   {
+    "slug": "manipulation-map",
+    "date": "2026-10-26",
+    "kind": "feature",
+    "title": {
+      "en": "See where a photo was changed",
+      "ru": "Видно, где фото изменили"
+    },
+    "body": {
+      "en": "When a photo has a piece pasted in from another picture, a part copied within the same shot, or an area redrawn, the result now shows the photo with that area highlighted and a numbered note under it in plain words: \"this area does not match the rest of the photo\" or \"this area repeats another part of the same photo\". The map never calls a photo AI on its own and stays silent when it is not sure, when the photo is tiny or huge, or when the whole picture was made by AI. It is built on the published CAT-Net model and on classic checks of JPEG compression and copied areas. Tribunal is now version 1.12.0.",
+      "ru": "Если в фото вставлен кусок из другой картинки, скопирован участок внутри того же снимка или что-то перерисовано, в результате теперь видно фото с подсвеченным местом и пронумерованной подписью простыми словами: «этот участок не согласуется с остальным фото» или «этот участок повторяет другой участок того же снимка». Карта сама никогда не называет фото ИИ и молчит, когда не уверена, когда снимок слишком маленький или слишком большой, или когда вся картинка создана ИИ. В основе открытая модель CAT-Net и классические проверки сжатия JPEG и повторяющихся участков. Tribunal обновлён до версии 1.12.0."
+    }
+  },
+  {
     "slug": "email-letter-case",
     "date": "2026-10-26",
     "kind": "fix",

@@ -22,11 +22,11 @@ import { msg, t } from "../i18n";
 
 const TribunalBrain = lazy(() => import("../components/landing/TribunalBrain"));
 
-const TRIBUNAL_FALLBACK = "Tribunal 1.11.0";
+const TRIBUNAL_FALLBACK = "Tribunal 1.12.0";
 
 const ANALYZERS: (BrainMember & { desc: string; Icon: typeof Brain })[] = [
   { code: "01", short: msg("Metadata"), kind: "provenance", name: msg("Metadata & Provenance"), tag: msg("C2PA · IPTC · hidden watermarks"), desc: msg("Reads the traces generators leave on purpose: C2PA Content Credentials checked against the official trust list (Google, Adobe, Microsoft and others), IPTC AI labels, the hidden watermarks of Stable Diffusion and FLUX, and generation settings left by A1111 and ComfyUI. A verified signature or a decoded watermark settles the case on its own; a damaged watermark or stripped credentials are reported as an attempt to hide AI traces."), Icon: Fingerprint },
-  { code: "02", short: msg("ELA"), kind: "image", name: msg("Error Level Analysis"), tag: msg("splicing, not synthesis"), desc: msg("Re-saves at fixed JPEG quality and looks for localised recompression outliers. Flags splicing and editing; it never votes on whether an image is AI."), Icon: ScanLine },
+  { code: "02", short: msg("Edit Map"), kind: "image", name: msg("Manipulation Map"), tag: msg("where a photo was changed"), desc: msg("Shows where a photo was pasted into, copied within or redrawn: JPEG compression traces read by CAT-Net, the JPEG grid and copy-move matching. It marks areas with plain words for the teacher, never calls a photo AI on its own, and stays silent when it is unsure or the whole picture is AI."), Icon: ScanLine },
   { code: "03", short: msg("Forensics ViT"), kind: "image", name: msg("Community Forensics ViT"), tag: msg("2.7M images · 4,803 generators"), desc: msg("ViT-S/16 trained on 2.7M images from 4,803 generators. Runs on a native-resolution crop plus a global view; its score is calibrated against twenty 2026 generators."), Icon: Brain },
   { code: "04", short: msg("Retrained"), kind: "image", name: msg("Retrained Detector"), tag: msg("weekly, gated retraining"), desc: msg("Retrains itself every week on fresh generator output and reviewed uploads. A new version goes live only if it beats the current one on a held-out set and calls no real photo AI; otherwise it is thrown away. Sees Flux 2, Sora 2 and GPT Image where the rest of the bench is blind."), Icon: GraduationCap },
   { code: "05", short: msg("CLIP Probe"), kind: "image", name: msg("CLIP Probe"), tag: msg("independent backbone"), desc: msg("A linear probe on CLIP embeddings, a different network from the forensics models, so when it agrees with them the agreement means something. Calibrated so real photos stay below the line."), Icon: Network },

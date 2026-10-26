@@ -248,6 +248,10 @@ PLAGIARISM_WIKIPEDIA = os.environ.get("PLAGIARISM_WIKIPEDIA", "1") == "1"
 PLAGIARISM_OPENALEX = os.environ.get("PLAGIARISM_OPENALEX", "1") == "1"
 PLAGIARISM_ARXIV = os.environ.get("PLAGIARISM_ARXIV", "1") == "1"
 OPENALEX_API_KEY = os.environ.get("OPENALEX_API_KEY", "")
+MANIPULATION_WEIGHTS_DIR = os.environ.get("MANIPULATION_WEIGHTS_DIR", "/root/.cache/huggingface/prooflayer-retrained/manipulation")
+MANIPULATION_THREADS = int(os.environ.get("MANIPULATION_THREADS", "6"))
+MANIPULATION_SAFIRE = os.environ.get("MANIPULATION_SAFIRE", "0") == "1"
+MANIPULATION_MAX_PIXELS = int(os.environ.get("MANIPULATION_MAX_PIXELS", str(25_000_000)))
 OPENALEX_MAILTO = os.environ.get("OPENALEX_MAILTO", "hello@prooflayer.cloud")
 PLAGIARISM_OPENALEX_HITS = int(os.environ.get("PLAGIARISM_OPENALEX_HITS", "6"))
 PLAGIARISM_ARXIV_HITS = int(os.environ.get("PLAGIARISM_ARXIV_HITS", "3"))

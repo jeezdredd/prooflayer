@@ -16,7 +16,7 @@ DECISIVE_VERDICTS = {
 }
 
 PROBABILITY_KEYS = ("ai_probability", "ai_probability_avg")
-MANIPULATION_ANALYZERS = {"ela", "metadata"}
+MANIPULATION_ANALYZERS = {"ela", "metadata", "manipulation_map"}
 
 CORROBORATION_CONFIDENCE_FLOOR = 0.5
 MIN_CORROBORATING_FOR_FAKE = 2

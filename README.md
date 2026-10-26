@@ -39,7 +39,7 @@ essay and returns one verdict with the evidence behind it.
 
 | Area | Capabilities |
 |---|---|
-| **Images and video** | AI generation and manipulation detection, Error Level Analysis, EXIF / PNG parameters / C2PA, provenance by perceptual hash, frame sampling across whole clips |
+| **Images and video** | AI generation and manipulation detection, a map of edited areas (pasted, copied or redrawn parts), Error Level Analysis, EXIF / PNG parameters / C2PA, provenance by perceptual hash, frame sampling across whole clips |
 | **Audio** | Synthetic voice and vocoder artifact detection |
 | **Text** | AI-writing classifier for ru / en / fr, bypass detection (homoglyphs, invisible and hidden text), invented sources and reference formatting, originality and plagiarism with paraphrase and translation matching, compared with other works, Wikipedia, open scientific papers (OpenAlex, arXiv) and the web |
 | **Education** | Schools, classes and student accounts, a plain-language teacher report, class radar, assignment shadow, verdict objections |
@@ -65,6 +65,7 @@ Measured changes are recorded in [`wiki/concepts/tribunal.md`](wiki/concepts/tri
 | `ai_detector` | 1.0 | Two image classifiers behind a screenshot / diagram gate |
 | `metadata` | 1.5 | C2PA Content Credentials checked against the official trust list, IPTC AI labels, Stable Diffusion / FLUX hidden watermarks, EXIF, generation parameters; a verified signature or decoded watermark is proof on its own |
 | `ela` | 0.75 | Error Level Analysis, manipulation channel only |
+| `manipulation_map` | 0 | Map of edited areas: CAT-Net v2 (CC BY 4.0), JPEG grid, copy-move; marks regions, never votes on AI |
 | `llm_vision` | 1.5 | Qwen2.5-VL 7B on our GPU (about 6 s per image); must name a concrete defect, otherwise abstains |
 | `video_frame` | 2.0 | Frames across the whole clip, median verdict |
 | `audio_spectrogram` | 2.0 | Spectral features of synthetic voices |

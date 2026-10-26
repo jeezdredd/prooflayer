@@ -14,7 +14,7 @@ endif
 .PHONY: help dev down logs ps build seed sh fe-sh \
         deploy-server deploy-bootstrap deploy-cf deploy-redeploy \
         seed-server seed-analyzers seed-analyzers-host seed-analyzers-server \
-        roster-check ship-retrained ship-text wiki maintenance-worker maintenance-on maintenance-off
+        roster-check ship-retrained ship-text ship-manipulation wiki maintenance-worker maintenance-on maintenance-off
 
 help:
 	@echo "ProofLayer Makefile"
@@ -33,6 +33,7 @@ help:
 	@echo "  make roster-check      report analyzer roster drift without writing"
 	@echo "  make ship-retrained    copy a retrained custom_detector into the server's hf_cache volume"
 	@echo "  make ship-text        copy the trained text classifier into the server's hf_cache volume"
+	@echo "  make ship-manipulation  copy the edit-map weights (CAT-Net, optional SAFIRE) into the server's hf_cache volume"
 	@echo "  make sh                shell into backend container"
 	@echo "  make fe-sh             shell into frontend container"
 	@echo ""
@@ -145,6 +146,15 @@ ship-text:
 	ssh $(SERVER) "mkdir -p ~/text-upload"
 	rsync -av --delete --exclude 'scores.jsonl' --exclude '*.log' "$(TEXT_DIR)/" $(SERVER):~/text-upload/
 	$(SSH) "docker run --rm -v deploy_hf_cache:/hf -v ~/text-upload:/src:ro alpine sh -c 'mkdir -p /hf/prooflayer-retrained && rm -rf /hf/prooflayer-retrained/text && cp -r /src /hf/prooflayer-retrained/text && ls -la /hf/prooflayer-retrained/text'"
+
+MANIP_DIR ?= dataset/manipulation/weights
+MANIP_FILES ?= catnet_v2_state.pt
+
+ship-manipulation:
+	@for f in $(MANIP_FILES); do test -f "$(MANIP_DIR)/$$f" || (echo "missing $(MANIP_DIR)/$$f"; exit 1); done
+	ssh $(SERVER) "mkdir -p ~/manip-upload"
+	rsync -av --progress $(addprefix $(MANIP_DIR)/,$(MANIP_FILES)) $(SERVER):~/manip-upload/
+	$(SSH) "docker run --rm -v deploy_hf_cache:/hf -v ~/manip-upload:/src:ro alpine sh -c 'mkdir -p /hf/prooflayer-retrained/manipulation && cp /src/*.pt /hf/prooflayer-retrained/manipulation/ && ls -la /hf/prooflayer-retrained/manipulation'"
 
 seed-analyzers-server:
 	$(SSH) "cd /srv/prooflayer/current && docker compose -f deploy/compose.prod.yml exec -T backend python manage.py seed_analyzers"

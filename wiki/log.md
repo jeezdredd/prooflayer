@@ -2,6 +2,16 @@
 
 Newest at top.
 
+## [2026-10-26] manipulation-map | Map of edited areas on photos (Tribunal 1.12.0)
+
+- Source: owner request (queue item "manipulation map"), exp/manipulation-map research and prototype, bounded evaluation on 1103 cached images, owner decisions 2026-10-26 (accept CAT-Net/SAFIRE weight provenance risk, soft wording, no phone-photo run yet)
+- New analyzer `manipulation_map` (weight 0, queue `ml`, timeout 300 s): CAT-Net v2 (CC BY 4.0), ZERO JPEG grid and copy-move re-implemented from the papers, Community Forensics tiles only for a "looks AI" label; SAFIRE behind `MANIPULATION_SAFIRE`. Evidence: status, reason, regions with bbox (in the displayed orientation), kind, confidence, map PNG (`manipulation/<id>.png`, signed as `map_url`). Abstains when weights are missing, over 25 MP, under 384 px, not a photo, or when the whole picture is AI (serializer drops the map for fake / likely_fake)
+- Aggregator: `manipulation_map` joins `MANIPULATION_ANALYZERS`; only a high-confidence region (`manipulation_suspected`) can move a verdict, and only to authentic_edited
+- UI: `PhotoWithMap` shows the photo with an amber overlay and numbered boxes (solid for high, dashed for medium) and a plain list "Где фото могли изменить"; quiet one-line notes otherwise; nothing for students. The old ELA heatmap is staff-only now. Credits list CAT-Net and SAFIRE with authors (CC BY 4.0). Landing card 02 is now "Manipulation Map"
+- Numbers: map shown on 1.7% of authentic test photos (4/234), 58.5% of local edits found, 90.9% of copy-move
+- Server: `make ship-manipulation` copies `catnet_v2_state.pt` (458 MB) into the hf_cache volume; then `seed_analyzers`
+- Pages updated: [[analyzers/manipulation-map]], [[hot]]
+
 ## [2026-10-26] small-debts | Shared paper limits, email letter case, tokens out of logs, legal wording
 
 - Source: follow-ups from the email change and OpenAlex/arXiv reviews
