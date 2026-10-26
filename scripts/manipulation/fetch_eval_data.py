@@ -382,7 +382,7 @@ def fetch_unsplash(args, manifest: dict) -> None:
         picks.append((row["photo_id"], url, row.get("exif_camera_make") or ""))
         if len(picks) >= args.unsplash:
             break
-    out = ROOT / "unsplash"
+    out = ROOT / args.unsplash_dir
     out.mkdir(parents=True, exist_ok=True)
     meta = []
 
@@ -432,7 +432,8 @@ def main() -> None:
     parser.add_argument("--vision-per-device", type=int, default=6)
     parser.add_argument("--vision-variants", nargs="+", default=["nat", "natWA", "natFBH"])
     parser.add_argument("--unsplash", type=int, default=300)
-    parser.add_argument("--unsplash-width", type=int, default=2048)
+    parser.add_argument("--unsplash-width", type=int, default=1280)
+    parser.add_argument("--unsplash-dir", default="unsplash1280")
     args = parser.parse_args()
     for source in args.sources:
         manifest = load_manifest(source)

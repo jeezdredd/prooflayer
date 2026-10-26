@@ -52,7 +52,7 @@ def authentic_items() -> list[dict]:
         out.append(item(p, "cocoglide_real", "authentic", "authentic", "coco" + p.stem.rsplit("_", 1)[-1]))
     for p in sorted((ROOT / "grip_cmfd/images").glob("IMG_C*_[0-9][0-9][0-9].png")):
         out.append(item(p, "grip_orig", "authentic", "authentic", "grip" + p.stem[4:]))
-    for p in sorted((ROOT / "unsplash").glob("*.jpg")):
+    for p in sorted((ROOT / "unsplash1280").glob("*.jpg")):
         out.append(item(p, "unsplash", "authentic", "authentic", "unsplash" + p.stem))
     return out
 
@@ -160,7 +160,7 @@ def derived_items(base_items: list[dict], variants: list[str], per_subset: dict,
     return out
 
 
-CAPS = {"vision_nat": 70, "vision_fbh": 105, "cocoglide_real": 200, "cocoglide_fake": 200}
+CAPS = {"vision_nat": 35, "vision_fbh": 70, "cocoglide_real": 200, "cocoglide_fake": 200}
 
 
 def apply_caps(items: list[dict], seed: int) -> list[dict]:
@@ -187,13 +187,13 @@ def main() -> None:
     auth_variants = derived_items(
         auth,
         ["jpeg75", "jpeg90", "resize50", "screenshot"],
-        {"vision_nat": 30, "tgif_orig": 30, "opensdi_real": 30, "unsplash": 30},
+        {"vision_nat": 20, "tgif_orig": 20, "opensdi_real": 20, "unsplash": 20},
         args.seed,
     )
     manip_variants = derived_items(
         manip,
         ["jpeg75", "resize50"],
-        {"tgif_ps_sp": 60, "grip_copy": 40, "cocoglide_fake": 40, "opensdi_partial": 40},
+        {"tgif_ps_sp": 40, "grip_copy": 30, "cocoglide_fake": 30, "opensdi_partial": 30},
         args.seed,
     )
     core = auth + manip
