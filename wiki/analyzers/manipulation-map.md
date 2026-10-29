@@ -194,3 +194,8 @@ Never the word "fake" / "подделка" on a region; the teacher sees "may ha
 - [[analyzers/ela]] (stays as raw evidence only)
 - [[analyzers/community-forensics]]
 - [[concepts/tribunal]]
+
+## Runs after the verdict (2026-10-29)
+
+On the owner's 24 MP iPhone photo the map took 126 s on the server (CAT-Net 97 s, ZERO 25 s, tiles 2.6 s, copy-move 1.1 s) and the verdict waited for it. It is now a follow-up (`FOLLOW_UP_ANALYZERS` in `analyzers/tasks.py`): the verdict chord skips it, `aggregate_verdicts` queues it with `refresh_verdict` after it, and the result page polls for it for up to 5 minutes. Threads raised to 12. If it is still too slow, the next step is checking only a central 12 MP crop aligned to the 8 px JPEG grid.
+

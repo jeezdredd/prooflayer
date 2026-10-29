@@ -234,24 +234,32 @@ export default function LandingPage() {
                 variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.09 } } }}
                 className="font-display text-[clamp(3rem,8vw,7.5rem)] leading-[0.92] tracking-[-0.025em] text-ink-50"
               >
-                {t("Made by a person,").split(" ").map((word, i) => (
+                {t("The AI detector").split(" ").map((word, i) => (
                   <Fragment key={i}>
                     <motion.span variants={wordBlur} className="inline-block">{word}</motion.span>{" "}
                   </Fragment>
                 ))}
                 <br />
                 <motion.span variants={wordBlur} className="scan-text relative inline-block">
-                  <span className="italic text-iris pr-[0.04em]">{t("or by AI")}</span>
+                  <span className="italic text-iris pr-[0.04em]">{t("that doesn't lie")}</span>
                 </motion.span>
-                <motion.span variants={wordBlur} className="inline-block text-ink-50">?</motion.span>
+                <motion.span variants={wordBlur} className="inline-block text-ink-50">.</motion.span>
               </motion.h1>
 
               <motion.p
                 variants={fadeUp}
                 transition={{ duration: 0.6 }}
-                className="mt-10 text-lg text-ink-200 max-w-xl leading-relaxed"
+                className="mt-8 font-display text-2xl sm:text-3xl text-ink-50 leading-snug"
               >
-                {t("We check photos, video, voice and text for AI. Eleven independent analyzers examine every file and show you the evidence, not just the verdict.")}
+                {t("If we're not sure, we say so.")}
+              </motion.p>
+
+              <motion.p
+                variants={fadeUp}
+                transition={{ duration: 0.6 }}
+                className="mt-6 text-lg text-ink-200 max-w-xl leading-relaxed"
+              >
+                {t("Most detectors give a confident percentage even when they don't know the answer. Tribunal shows the evidence: what was found, where and by which check. And when there is too little to go on, it honestly says \"not sure\".")}
               </motion.p>
 
               <motion.div

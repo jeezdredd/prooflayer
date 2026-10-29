@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import type { Submission } from "../types";
 import { msg, t } from "../i18n";
+import { mapPending } from "../hooks/useUpload";
 
 type Region = { bbox: number[]; kind: string; confidence: string; likely_ai?: boolean };
 type MapEvidence = { status?: string; reason?: string; regions?: Region[]; map_url?: string; image_size?: number[] };
@@ -45,6 +46,7 @@ export default function PhotoWithMap({ submission, student }: { submission: Subm
   const regions = ev?.status === "regions_found" && size?.length === 2 ? ev.regions ?? [] : [];
   const show = !student && regions.length > 0;
   const quiet = !student && !show && ev?.reason ? QUIET_TEXT[ev.reason] : undefined;
+  const waiting = !student && !ev && mapPending(submission);
 
   if (!submission.file_url) return null;
   return (
@@ -106,6 +108,7 @@ export default function PhotoWithMap({ submission, student }: { submission: Subm
         </div>
       )}
       {quiet && <p className="text-xs text-ink-400 mt-2 max-w-2xl">{t(quiet)}</p>}
+      {waiting && <p className="text-xs text-ink-400 mt-2 max-w-2xl">{t("The map of edited areas is still being drawn; it will appear here in a minute or two.")}</p>}
     </div>
   );
 }

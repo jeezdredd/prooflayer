@@ -2,7 +2,7 @@ import logging
 import time
 
 from asgiref.sync import async_to_sync
-from celery import chord, group, shared_task
+from celery import chain, chord, group, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from channels.layers import get_channel_layer
 from django.conf import settings
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 AGGREGATION_LOCK_TTL = 600
 AGGREGATION_LOCK_KEY = "aggregating:{submission_id}"
+FOLLOW_UP_ANALYZERS = {"manipulation_map"}
 
 
 def _publish_status(submission_id, status_message="", status=None, final_score=None, final_verdict=None, event=None, analyzer=None, verdict=None):
@@ -92,17 +93,28 @@ def dispatch_analysis(submission_id):
     submission.save(update_fields=["status_message"])
     _publish_status(submission_id, "Starting analyzers...")
 
-    tasks = []
-    for config in configs:
-        sig = run_analyzer.s(submission_id, config.id).set(
-            queue=config.queue,
-            soft_time_limit=config.timeout,
-            time_limit=config.timeout + 30,
-        )
-        tasks.append(sig)
+    tasks = [_analyzer_signature(submission_id, config) for config in configs if config.name not in FOLLOW_UP_ANALYZERS]
 
     callback = aggregate_verdicts.s(submission_id)
     chord(group(tasks))(callback)
+
+
+def _analyzer_signature(submission_id, config):
+    return run_analyzer.si(submission_id, config.id).set(
+        queue=config.queue,
+        soft_time_limit=config.timeout,
+        time_limit=config.timeout + 30,
+    )
+
+
+def queue_follow_ups(submission) -> int:
+    done = set(submission.analysis_results.values_list("analyzer__name", flat=True))
+    configs = AnalyzerConfig.objects.filter(is_active=True, name__in=FOLLOW_UP_ANALYZERS).exclude(name__in=done)
+    queued = 0
+    for config in configs:
+        chain(_analyzer_signature(submission.id, config), refresh_verdict.si(str(submission.id))).apply_async()
+        queued += 1
+    return queued
 
 
 @shared_task(bind=True, max_retries=1, soft_time_limit=120, time_limit=150)
@@ -218,6 +230,23 @@ def aggregate_verdicts(result_ids, submission_id):
 
     from provenance.tasks import run_provenance_check
     run_provenance_check.delay(submission_id)
+    queue_follow_ups(submission)
+
+
+@shared_task
+def refresh_verdict(submission_id):
+    submission = Submission.objects.filter(id=submission_id, status=Submission.Status.COMPLETED).first()
+    if submission is None:
+        return
+    results = list(submission.analysis_results.select_related("analyzer").all())
+    if not results:
+        return
+    score, verdict = aggregate(results)
+    if verdict != submission.final_verdict or score != submission.final_score:
+        submission.final_score = score
+        submission.final_verdict = verdict
+        submission.save(update_fields=["final_score", "final_verdict"])
+    _publish_status(submission_id, "", status="completed", final_score=float(submission.final_score), final_verdict=submission.final_verdict)
 
 
 @shared_task(name="analyzers.tasks.rescue_stuck_submissions")

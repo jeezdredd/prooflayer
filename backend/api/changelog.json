@@ -1,5 +1,18 @@
 [
   {
+    "slug": "verdict-before-map",
+    "date": "2026-10-29",
+    "kind": "improvement",
+    "title": {
+      "en": "The verdict no longer waits for the map of edited areas",
+      "ru": "Вердикт больше не ждёт карту изменённых мест"
+    },
+    "body": {
+      "en": "Drawing the map of edited areas on a large phone photo takes a minute or two. Until now the whole result waited for it. Now the verdict appears as fast as before, and the map is added to the page by itself when it is ready.",
+      "ru": "Карта изменённых мест на большом фото с телефона строится минуту-две. Раньше весь результат ждал её. Теперь вердикт появляется так же быстро, как раньше, а карта сама добавляется на страницу, когда будет готова."
+    }
+  },
+  {
     "slug": "manipulation-map",
     "date": "2026-10-26",
     "kind": "feature",

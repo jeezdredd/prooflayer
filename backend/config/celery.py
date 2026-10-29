@@ -36,6 +36,7 @@ app.conf.task_default_routing_key = "default"
 app.conf.task_routes = {
     "content.tasks.*": {"queue": "default"},
     "analyzers.tasks.aggregate_verdicts": {"queue": "default"},
+    "analyzers.tasks.refresh_verdict": {"queue": "default"},
     "plagiarism.tasks.*": {"queue": "ml"},
     "classroom.tasks.*": {"queue": "ml"},
 }

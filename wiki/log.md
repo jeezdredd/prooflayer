@@ -2,6 +2,15 @@
 
 Newest at top.
 
+## [2026-10-29] map-after-verdict | Verdict no longer waits for the edit map; honest-detector landing
+
+- Source: owner on prod: the map took 126 s on his iPhone photo (CAT-Net 97 s, JPEG grid 25 s) and the whole verdict waited for it, because every analyzer ran in one chord
+- `analyzers.tasks`: `FOLLOW_UP_ANALYZERS = {"manipulation_map"}` is left out of the verdict chord; `aggregate_verdicts` ends with `queue_follow_ups` (chain `run_analyzer` then `refresh_verdict`, only when no result exists yet), and `refresh_verdict` re-aggregates and publishes when the map lands (a high-confidence region can still turn the verdict into authentic_edited)
+- `MANIPULATION_THREADS` default 6 -> 12 (the map now runs alone after the others)
+- Frontend: `useSubmissionDetail` keeps polling every 5 s for up to 5 minutes after the verdict while the expected map result is missing (`mapPending`); `PhotoWithMap` says the map is still being drawn
+- Landing hero (owner's pick, option 1 of 3): "The AI detector that doesn't lie. If we're not sure, we say so." with a subline about evidence instead of a confident percentage. Superlatives ("first", "most accurate") were rejected for now: comparative ad claims need a public benchmark against other detectors
+- Pages updated: [[analyzers/manipulation-map]], [[hot]]
+
 ## [2026-10-29] caddy-reload | Caddy cannot reload in place; deploy falls back to restart
 
 - Source: first deploy with a changed `deploy/caddy.snippet` (log token redaction). `systemctl reload caddy` runs `caddy reload`, which posts the config to the admin API on localhost:2019; the server's Caddy has the admin endpoint off, so reload always fails ("connection refused") and the running Caddy keeps the old config while the new file is already in /etc/caddy/sites

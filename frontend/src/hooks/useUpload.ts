@@ -4,6 +4,7 @@ import { content } from "../api/endpoints";
 import { useUploadStore } from "../stores/uploadStore";
 import { toast } from "../components/ui/Toast";
 import { t } from "../i18n";
+import type { Submission } from "../types";
 
 export function useUploadFile() {
   const { setProgress, setSubmissionId, setStatus, setError } = useUploadStore();
@@ -32,6 +33,16 @@ export function useUploadFile() {
   });
 }
 
+const MAP_WAIT_MS = 5 * 60 * 1000;
+
+export function mapPending(data: Submission): boolean {
+  if (data.status !== "completed") return false;
+  const expected = data.expected_analyzers?.some((a) => a.name === "manipulation_map");
+  const done = data.analysis_results?.some((r) => r.analyzer_name === "manipulation_map");
+  const since = Date.now() - Date.parse(data.updated_at);
+  return !!expected && !done && since < MAP_WAIT_MS;
+}
+
 export function useSubmissionDetail(id: string | null) {
   return useQuery({
     queryKey: ["submission", id],
@@ -41,7 +52,7 @@ export function useSubmissionDetail(id: string | null) {
       const data = query.state.data;
       if (data && (data.status === "completed" || data.status === "failed")) {
         const originality = data.originality?.status;
-        return originality === "pending" || originality === "running" ? 5000 : false;
+        return originality === "pending" || originality === "running" || mapPending(data) ? 5000 : false;
       }
       return 3000;
     },

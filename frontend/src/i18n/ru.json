@@ -2052,7 +2052,12 @@
     "Edit Map": "Карта правок",
     "Manipulation Map": "Карта изменённых мест",
     "where a photo was changed": "где фото меняли",
-    "Shows where a photo was pasted into, copied within or redrawn: JPEG compression traces read by CAT-Net, the JPEG grid and copy-move matching. It marks areas with plain words for the teacher, never calls a photo AI on its own, and stays silent when it is unsure or the whole picture is AI.": "Показывает, где в фото что-то вставили, скопировали внутри кадра или перерисовали: по следам JPEG-сжатия (нейросеть CAT-Net), по сетке JPEG и по повторяющимся участкам. Отмечает места простыми словами для учителя, сама никогда не называет фото ИИ и молчит, когда не уверена или когда вся картинка создана ИИ."
+    "Shows where a photo was pasted into, copied within or redrawn: JPEG compression traces read by CAT-Net, the JPEG grid and copy-move matching. It marks areas with plain words for the teacher, never calls a photo AI on its own, and stays silent when it is unsure or the whole picture is AI.": "Показывает, где в фото что-то вставили, скопировали внутри кадра или перерисовали: по следам JPEG-сжатия (нейросеть CAT-Net), по сетке JPEG и по повторяющимся участкам. Отмечает места простыми словами для учителя, сама никогда не называет фото ИИ и молчит, когда не уверена или когда вся картинка создана ИИ.",
+    "The map of edited areas is still being drawn; it will appear here in a minute or two.": "Карта изменённых мест ещё строится и появится здесь через минуту-две.",
+    "The AI detector": "Детектор ИИ,",
+    "that doesn't lie": "который не врёт",
+    "If we're not sure, we say so.": "Если мы не уверены, мы так и скажем.",
+    "Most detectors give a confident percentage even when they don't know the answer. Tribunal shows the evidence: what was found, where and by which check. And when there is too little to go on, it honestly says \"not sure\".": "Большинство детекторов выдают уверенный процент, даже когда не знают ответа. Tribunal показывает доказательства: что найдено, где и какой проверкой. А если данных мало, честно пишет «не уверены»."
   },
   "plural": {
     "All {n} sources exist": [
