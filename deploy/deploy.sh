@@ -120,7 +120,7 @@ ${PROJECT}.prooflayer.cloud {
     tls internal
 }
 EOF
-            sudo systemctl reload caddy
+            sudo systemctl reload caddy || sudo systemctl restart caddy
         fi
 
         # -- Atomic swap --
@@ -149,7 +149,7 @@ EOF
                 log "caddy config unchanged"
             else
                 sudo cp "$RELEASE/deploy/caddy.snippet" "/etc/caddy/sites/${PROJECT}.caddy"
-                sudo systemctl reload caddy
+                sudo systemctl reload caddy || sudo systemctl restart caddy
             fi
         fi
         ;;

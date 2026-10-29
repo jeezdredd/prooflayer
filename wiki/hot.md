@@ -4,6 +4,8 @@ Fast-load context for next session. Read me first.
 
 ## Last touched
 
+- 2026-10-29: **Deploy notes** - Tribunal 1.12.0 live (17 analyzers, manipulation map weights shipped). Caddy on the server has its admin API off, so `systemctl reload caddy` always fails; deploy.sh now falls back to restart (server copy /srv/_platform/deploy.sh needs the same change). Backend start after deploy can take ~2 min (collectstatic + seed_analyzers); the Cloudflare worker shows the maintenance page meanwhile.
+
 - 2026-10-26: **Manipulation map live in code (Tribunal 1.12.0)** - analyzer `manipulation_map` (weight 0) marks pasted, copied or redrawn areas on photos with soft wording; CAT-Net weights must be shipped with `make ship-manipulation` before it does anything (abstains `unavailable` until then). False maps 1.7% on 234 authentic test photos, 58.5% of local edits found. Not yet measured: modern phone photos and server timings (owner: no heavy runs on the Mac, he games on it). See [[analyzers/manipulation-map]].
 
 - 2026-10-26: **Small debts closed** - citations share the OpenAlex key, budget and pause with originality (arXiv paced too); login, reset and registration treat email case-insensitively (registration also normalises look-alike domains and refuses the demo domain); Caddy logs redact `token`/`uid`; Terms name Wikipedia/OpenAlex/arXiv, legal date 26.10.2026. Next: manipulation map (branch `exp/manipulation-map`). See [[services/auth-email]].

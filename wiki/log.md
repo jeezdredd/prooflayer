@@ -2,6 +2,13 @@
 
 Newest at top.
 
+## [2026-10-29] caddy-reload | Caddy cannot reload in place; deploy falls back to restart
+
+- Source: first deploy with a changed `deploy/caddy.snippet` (log token redaction). `systemctl reload caddy` runs `caddy reload`, which posts the config to the admin API on localhost:2019; the server's Caddy has the admin endpoint off, so reload always fails ("connection refused") and the running Caddy keeps the old config while the new file is already in /etc/caddy/sites
+- Fix: `deploy/deploy.sh` now runs `sudo systemctl reload caddy || sudo systemctl restart caddy` (a 1-2 s blip). The server runs its own copy at /srv/_platform/deploy.sh, so copy the change there too
+- Manual path used today: validate the full config (`sudo caddy validate --config /etc/caddy/Caddyfile`), then `sudo systemctl restart caddy`
+- Pages updated: [[hot]]
+
 ## [2026-10-26] manipulation-map | Map of edited areas on photos (Tribunal 1.12.0)
 
 - Source: owner request (queue item "manipulation map"), exp/manipulation-map research and prototype, bounded evaluation on 1103 cached images, owner decisions 2026-10-26 (accept CAT-Net/SAFIRE weight provenance risk, soft wording, no phone-photo run yet)
